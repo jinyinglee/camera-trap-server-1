@@ -33,10 +33,30 @@ class Project(models.Model):
     def __str__(self):
         return '<Project {}>'.format(self.name)
 
+    def get_deployment_list(self):
+        res = []
+        sa = self.studyareas.filter(parent__isnull=True).all()
+        for i in sa:
+            children = []
+            for j in StudyArea.objects.filter(parent_id=i.id).all():
+                children.append({
+                    'studyarea_id': j.id,
+                    'name': j.name,
+                    'deployments': [{'name': x.name, 'deployment_id': x.id} for x in j.deployment_set.all()]
+                })
+
+            res.append({
+                'studyarea_id': i.id,
+                'name': i.name,
+                'substudyarea': children,
+                'deployments': [{'name': x.name, 'deployment_id': x.id} for x in i.deployment_set.all()]
+            })
+        return res
+
 class StudyArea(models.Model):
     name = models.CharField(max_length=1000)
-    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True)
-    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True, related_name='studyareas')
     created = models.DateTimeField(auto_now_add=True)
 
 # Survey
@@ -73,7 +93,7 @@ class Deployment(models.Model):
     name = models.CharField(max_length=1000)
     #cameraStatus
     camera_status = models.CharField(max_length=4, default='1', choices=CAMERA_STATUS_CHOICES)
-    study_areas = models.ManyToManyField(StudyArea, related_name='deployments', blank=True)
+    study_areas = models.ManyToManyField(StudyArea, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     source_data = models.JSONField(default=dict, blank=True)
 
@@ -113,7 +133,3 @@ class Image(models.Model):
     animal_id = models.CharField(max_length=1000, default='', blank=True)
     created = models.DateTimeField(auto_now_add=True)
     annotation = models.JSONField(default=dict, blank=True)
-
-'''
-    antler 
-'''

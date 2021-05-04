@@ -21,7 +21,7 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=example
-      - POSTGRES_DB=hast
+      - POSTGRES_DB=cameratrap
   postgres:
     image: postgres:13-alpine
     #build:
@@ -32,11 +32,11 @@ services:
     restart: always
     volumes:
       - ../ct21-volumes/pgdata:/var/lib/postgresql/data/pgdata
-      - ../ctt21-volumes/bucket:/bucket
+      - ../ct21-volumes/bucket:/bucket
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=example
-      - POSTGRES_DB=hast
+      - POSTGRES_DB=cameratrap
       - PGDATA=/var/lib/postgresql/data/pgdata
 #  redis:
 #    image: redis:6-alpine
@@ -46,25 +46,3 @@ services:
     restart: always
     ports:
       - 8080:8080
-  mongo:
-    image: mongo
-    restart: always
-#    environment:
-#      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
-#      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
-    volumes:
-      - ../ct21-volumes/mongo_data:/data/db
-      - ../ct21-volumes/bucket:/bucket
-    expose:
-      - 27017
-    ports:
-      - "27017:27017"
-
-  mongo-express:
-    image: mongo-express
-    restart: always
-    ports:
-      - 8081:8081
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_USER}
-      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_PASSWORD}

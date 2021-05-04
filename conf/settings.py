@@ -89,7 +89,7 @@ WSGI_APPLICATION = 'conf.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'hast',
+        'NAME': 'cameratrap',
         'USER': 'postgres',
         'PASSWORD': 'example',
         'HOST': 'postgres',
