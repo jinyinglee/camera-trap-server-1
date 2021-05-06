@@ -1,4 +1,6 @@
 import json
+from datetime import datetime
+import pytz
 
 from django.shortcuts import render
 from django.http import (
@@ -10,8 +12,13 @@ from django.http import (
 from django.views.decorators.csrf import csrf_exempt
 from django.core.serializers import serialize
 from django.shortcuts import get_object_or_404
+from django.conf import settings
 
-from taicat.models import Image, Project
+from taicat.models import (
+    Image,
+    Project,
+    Deployment
+)
 
 def get_project_list(request):
     projects = Project.objects.all()
@@ -34,16 +41,54 @@ def get_project(request, project_id):
     return JsonResponse(data)
 
 @csrf_exempt
-def upload_image(request):
+def post_image_annotation(request):
+    ret = {}
     if request.method == 'POST':
-        res = {}
         data = json.loads(request.body)
-        for i in data:
-            img = Image(annotation=json.loads(i[1]))
-            img.save()
-            res[i[0]] = img.id
+        deployment = Deployment.objects.get(pk=data['deployment_id'])
+        if deployment:
+            res = {}
+            # aware datetime object
+            utc_tz = pytz.timezone(settings.TIME_ZONE)
 
-        data = {
-            'results': res
+            for i in data['image_list']:
+                anno = json.loads(i[7]) if i[7] else '{}'
+                if i[11]:
+                    img = Image.objects.get(pk=i[11])
+                    # only update annotation
+                    img.annotation = anno
+                else:
+                    img = Image(
+                        deployment_id=deployment.id,
+                        filename=i[2],
+                        datetime=datetime.fromtimestamp(i[3], utc_tz),
+                        source_data=i,
+                        image_hash=i[6],
+                        annotation=anno,
+                        memo=data['key']
+                    )
+                img.save()
+                res[i[0]] = img.id
+
+            ret['saved_image_ids'] = res
+        else:
+            ret['error'] = 'ct-server: no deployment key'
+
+    return JsonResponse(ret)
+
+@csrf_exempt
+def update_image(request):
+    res = {}
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        if pk := data['pk']:
+            image = Image.objects.get(pk=pk)
+            if image:
+                for i in data:
+                    if i == 'file_url':
+                        image.file_url = data[i]
+                image.save()
+        res = {
+            'text': 'update-image'
         }
-    return JsonResponse(data)
+    return JsonResponse(res)

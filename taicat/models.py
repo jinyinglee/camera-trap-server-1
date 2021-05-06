@@ -119,7 +119,7 @@ class Image(models.Model):
     #dateTimeCaptured
     datetime = models.DateTimeField(null=True)
     #photoType
-    photo_type = models.CharField(max_length=100, default='animal', choices=PHOTO_TYPE_CHOICES)
+    photo_type = models.CharField(max_length=100, null=True, choices=PHOTO_TYPE_CHOICES)
     #photoTypeIdentifiedBy
     count = models.PositiveSmallIntegerField(default=1)
     species = models.CharField(max_length=1000, default='', blank=True)
@@ -133,3 +133,5 @@ class Image(models.Model):
     animal_id = models.CharField(max_length=1000, default='', blank=True)
     created = models.DateTimeField(auto_now_add=True)
     annotation = models.JSONField(default=dict, blank=True)
+    memo = models.TextField(default='', blank=True)
+    image_hash = models.TextField(default='', blank=True)
