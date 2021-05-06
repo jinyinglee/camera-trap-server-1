@@ -2,22 +2,25 @@ version: '3.7'
 
 services:
   django:
-    build: .
-    container_name: ct21-django-dev-container
-    image: ct21-django-dev-image
-    ports:
-      - 8000:8000
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ct21-django-prod-container
+    image: ct21-django-prod-image
+    expose:
+      - 8001
     depends_on:
       - postgres
     volumes:
       - .:/code
-#      #- ../ct-volumes/bucket:/ct-bucket
+      - ../ct21-volumes/static:/ct21-volumes/static
+      - ../ct21-volumes/bucket:/bucket
     command: /srv/start
     restart: always
     #env_file:
     #  - .env
     environment:
-      - WEB_ENV=dev
+      - WEB_ENV=prod
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USER=postgres
@@ -25,10 +28,6 @@ services:
       - POSTGRES_DB=cameratrap
   postgres:
     image: postgres:13-alpine
-    #build:
-    #  context: .
-    #  dockerfile: ./compose/production/postgres/Dockerfile
-    #image: ct-postgres-image
     container_name: ct21-postgres-container
     restart: always
     volumes:
@@ -39,13 +38,15 @@ services:
       - POSTGRES_PASSWORD=example
       - POSTGRES_DB=cameratrap
       - PGDATA=/var/lib/postgresql/data/pgdata
-    env_file:
-      - .env
 #  redis:
 #    image: redis:6-alpine
 #    restart: always
-  adminer:
-    image: adminer
+  nginx:
+    image: nginx:1.19.10-alpine
     restart: always
     ports:
-      - 8080:8080
+      - 80:80
+    volumes:
+      - ./scripts/nginx-django.conf:/etc/nginx/conf.d/ct21.conf
+      - ../ct21-volumes/static:/ct21-volumes/static
+      #- ../basdb-volumes/media:/basdb-volumes/media

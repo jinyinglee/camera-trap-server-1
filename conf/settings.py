@@ -9,12 +9,17 @@ https://docs.djangoproject.com/en/3.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.1/ref/settings/
 """
-
+import os
 from pathlib import Path
 
 import environ
 env = environ.Env(DEBUG=(bool, False))
-#print (env, '-------------')
+
+BASE_DIR = environ.Path(__file__) - 2
+
+environ.Env.read_env(env_file=os.path.join(BASE_DIR, '.env'))
+
+ENV = env('ENV', default='dev')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,13 +29,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'eueu' #env('SECRET_KEY')
+SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 
 # Application definition
 
@@ -87,14 +91,7 @@ WSGI_APPLICATION = 'conf.wsgi.application'
 
 #DATABASES = {'default': 'postgres://postgres:example@portgres:5432/hast'}
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'cameratrap',
-        'USER': 'postgres',
-        'PASSWORD': 'example',
-        'HOST': 'postgres',
-        'PORT': 5432,
-    }
+    'default': env.db('DATABASE_URL'),
 }
 
 # Password validation
@@ -133,4 +130,21 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
+default_static_dir = os.path.join(BASE_DIR, 'static')
 STATIC_URL = '/static/'
+STATIC_ROOT = env('STATIC_ROOT', default=default_static_dir)
+STATICFILES_DIRS = [
+    default_static_dir,
+]
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
+
+#CACHES = {
+#    "default": {
+#        "BACKEND": "django_redis.cache.RedisCache",
+#        "LOCATION": "redis://redis:6379/1",
+#        "OPTIONS": {
+#            "CLIENT_CLASS": "django_redis.client.DefaultClient#"
+#        },
+#        "KEY_PREFIX": "basdb"
+#    }
+#}
