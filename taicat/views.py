@@ -32,7 +32,8 @@ def project_detail(request, pk):
         for j in i['deployments']:
             id_list.append(j['deployment_id'])
 
-    image_list = Deployment.objects.filter(id__in=id_list).all()[0:500]
+    #print (id_list)
+    image_list = Image.objects.filter(deployment_id__in=id_list).all()[0:500]
 
     return render(request, 'project_detail.html',{
         'project':project,
