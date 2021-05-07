@@ -1,0 +1,47 @@
+{% load static %}
+<!doctype html>
+
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+
+  <title>camera-trap</title>
+  <meta name="description" content="The HTML5 Herald">
+  <meta name="author" content="SitePoint">
+
+  <link rel="stylesheet" href="{%static 'css/musubii.min.css' %}">
+
+</head>
+
+<body>
+  <div class="app">
+    <header class="section is-padding-top-xl is-padding-bottom-xl">
+      <div class="inner is-padding-right-sm is-padding-left-md">
+        <div class="grid is-middle is-between">
+          <h1><span class="text is-xl is-strong">Camera Trap</span> <span class="text is-sm">2021</span></h1>
+        </div>
+      </div>
+    </header>
+    <main class="main">
+      <div class="section is-padding-horizontal-safe">
+        <div class="inner is-padding-horizontal-md">
+          {% block main %}
+          {% endblock %}
+          </div>
+        </div>
+    </main>
+    <footer class="section is-footer is-padding-bottom-safe">
+      <div class="inner is-padding-horizontal-md">
+        <div class="box is-space-md">
+          <div class="box">
+            <p class="text is-center is-sm">
+              <span class="text is-font-sans-en">©</span> rights, 2021
+            </p>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+  {#<script src="js/scripts.js"></script>#}
+</body>
+</html>

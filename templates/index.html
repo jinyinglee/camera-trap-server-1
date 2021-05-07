@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block main %}
+<ul class="list is-disc">
+  {% for i in project_list %}
+  <li class="item"><a href={% url 'project-detail' i.id %}>{{ i.name }}</a></li>
+  {% endfor %}
+</ul>
+
+{% endblock %}

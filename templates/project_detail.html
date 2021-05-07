@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block main %}
+{{ project.name }}
+<hr>
+
+{% with d=project.get_deployment_list %}
+<ul class="list is-disc">
+  {% for i in d %}
+  <li class="item">{{ i.name }}
+    <div> [
+      {% for j in i.deployments %}
+      {{ j.name }} {% if not forloop.last %} | {% endif  %}
+      {% endfor %}
+    ] </div>
+  </li>
+  {% endfor %}
+</ul>
+{% endwith %}
+
+
+{% endblock %}
