@@ -4,7 +4,17 @@
 {{ project.name }}
 <hr>
 
-{% with d=project.get_deployment_list %}
+
+<div class="grid is-gap-md">
+  {% for i in image_list %}
+  <div class="column is-2">
+    <div class="card is-bg-light is-floating">
+      <div class="box is-padding-md"><img src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{{ i.file_url }}" /></div>
+    </div>
+  </div>
+{% endfor %}
+</div>
+{% with d=deployment %}
 <ul class="list is-disc">
   {% for i in d %}
   <li class="item">{{ i.name }}

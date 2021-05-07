@@ -26,7 +26,19 @@ def index(request):
 
 def project_detail(request, pk):
     project = Project.objects.get(pk=pk)
-    return render(request, 'project_detail.html', {'project':project})
+    d = project.get_deployment_list()
+    id_list = []
+    for i in d:
+        for j in i['deployments']:
+            id_list.append(j['deployment_id'])
+
+    images = Deployment.objects.filter(id__in=id_list).all()[0:100]
+
+    return render(request, 'project_detail.html',{
+        'project':project,
+        'deployment': d,
+        'image_list': images,
+    })
 
 def get_project_list(request):
     projects = Project.objects.all()
