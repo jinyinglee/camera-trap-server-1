@@ -32,12 +32,12 @@ def project_detail(request, pk):
         for j in i['deployments']:
             id_list.append(j['deployment_id'])
 
-    images = Deployment.objects.filter(id__in=id_list).all()[0:100]
+    image_list = Deployment.objects.filter(id__in=id_list).all()[0:500]
 
     return render(request, 'project_detail.html',{
         'project':project,
         'deployment': d,
-        'image_list': images,
+        'image_list': image_list,
     })
 
 def get_project_list(request):
