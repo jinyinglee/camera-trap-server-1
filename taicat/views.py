@@ -20,6 +20,14 @@ from taicat.models import (
     Deployment
 )
 
+def index(request):
+    project_list = Project.objects.filter(mode='test').all()
+    return render(request, 'index.html', {'project_list': project_list})
+
+def project_detail(request, pk):
+    project = Project.objects.get(pk=pk)
+    return render(request, 'project_detail.html', {'project':project})
+
 def get_project_list(request):
     projects = Project.objects.all()
     ret = {

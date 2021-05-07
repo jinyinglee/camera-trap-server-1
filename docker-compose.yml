@@ -11,7 +11,7 @@ services:
       - postgres
     volumes:
       - .:/code
-#      #- ../ct-volumes/bucket:/ct-bucket
+      - ../ct21-volumes/bucket:/bucket
     command: /srv/start
     restart: always
     #env_file:

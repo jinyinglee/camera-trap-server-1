@@ -29,6 +29,7 @@ class Project(models.Model):
     #publishDate
     created = models.DateTimeField(auto_now_add=True)
     source_data = models.JSONField(default=dict, blank=True)
+    mode = models.CharField(max_length=4, blank=True, null=True)
 
     def __str__(self):
         return '<Project {}>'.format(self.name)
