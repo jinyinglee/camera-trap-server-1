@@ -101,6 +101,8 @@ class Deployment(models.Model):
 
 class Image(models.Model):
     '''if is_sequence, ex: 5 Images, set last 4 Images's is_sequence to True (wouldn't  count)'''
+    FILE_URL_HOST = 'https://camera-trap-21.s3-ap-northeast-1.amazonaws.com'
+
     PHOTO_TYPE_CHOICES = (
         ('start', 'Start'),
         ('end', 'End'),
@@ -136,3 +138,8 @@ class Image(models.Model):
     annotation = models.JSONField(default=dict, blank=True)
     memo = models.TextField(default='', blank=True)
     image_hash = models.TextField(default='', blank=True)
+
+    @property
+    def full_file_url(self):
+        if self.file_url:
+            return f'{self.FILE_URL_HOST}/{self.file_url}'

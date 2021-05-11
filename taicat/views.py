@@ -25,15 +25,18 @@ def index(request):
     return render(request, 'index.html', {'project_list': project_list})
 
 def project_detail(request, pk):
+    dep_id = request.GET.get('deployment', '')
+
     project = Project.objects.get(pk=pk)
     d = project.get_deployment_list()
-    id_list = []
-    for i in d:
-        for j in i['deployments']:
-            id_list.append(j['deployment_id'])
+    #id_list = []
+    #for i in d:
+    #    for j in i['deployments']:
+    #        id_list.append(j['deployment_id'])
 
-    #print (id_list)
-    image_list = Image.objects.filter(deployment_id__in=id_list).all()[0:500]
+    image_list = []
+    if dep_id:
+        image_list = Image.objects.filter(deployment_id=dep_id).all()
 
     return render(request, 'project_detail.html',{
         'project':project,
