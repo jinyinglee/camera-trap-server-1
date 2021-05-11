@@ -37,7 +37,7 @@
   </thead>
   <tbody>
     {% for i in image_list %}
-    <tr><td>{{ i.filename }}</td><td>{{ i.datetime }}</td><td>{{ i.annotation.species }}</td><td><img src="{{ i.full_file_url }}"></td></tr>
+    <tr><td>{{ i.filename }}</td><td>{{ i.datetime }}</td><td>{{ i.annotation.species }}</td><td><div class="card is-bg-light"><img src="{{ i.full_file_url }}" width="200">/div></td></tr>
     {% endfor %}
   </tbody>
 </table>
