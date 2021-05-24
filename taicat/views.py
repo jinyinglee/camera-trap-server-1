@@ -2,7 +2,6 @@ from django.shortcuts import render, HttpResponse
 from .models import *
 from django.db import connection  # for executing raw SQL
 import re
-from django_serverside_datatable.views import ServerSideDatatableView
 import json
 import math
 
