@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+.deployment-elink:link {
+  text-decoration: underline;
+ }
+.deploymente-link:hover {
+  background-color: #eeeeee;
+ }
+</style>
+{% endblock %}
+
+{% block main %}
+<h1 class="text is-xl">{{ project.name }}</h1>
+<hr>
+<h2 class="text is-lg is-margin-sm">樣區/相機位置</h2>
+{% with d=deployment %}
+<ul class="list is-disc">
+  {% for i in d %}
+  <li class="item">{{ i.name }}
+    <div> [
+      {% for j in i.deployments %}
+      <a href="{% url 'project-detail' pk=project.id %}?deployment={{ j.deployment_id }}" class="text is-link is-primary">{{ j.name }}</a> {% if not forloop.last %} | {% endif  %}
+      {% endfor %}
+    ] </div>
+  </li>
+  {% endfor %}
+</ul>
+{% endwith %}
+
+<hr class="is-margin-md" />
+<h2 class="text is-lg is-margin-sm">照片</h2>
+<table class="table is-border">
+  <thead>
+    <tr><th>原始檔名</th><th>時間</th><th>物種</th><th>照片</th></tr>
+  </thead>
+  <tbody>
+    {% for i in image_list %}
+    <tr><td>{{ i.filename }}</td><td>{{ i.datetime }}</td><td>{{ i.annotation.species }}</td><td><div class="card is-bg-light"><img src="{{ i.full_file_url }}"></div></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
+
+{% comment %}
+<div class="grid is-gap-md">
+  {% for i in image_list %}
+  <div class="column is-2">
+    <div class="card is-bg-light is-floating">
+      <div class="box is-padding-md"><img src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{{ i.file_url }}" /></div>
+    </div>
+  </div>
+{% endfor %}
+</div>
+{% endcomment %}
