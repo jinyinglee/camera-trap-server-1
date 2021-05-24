@@ -1,118 +1,112 @@
+from django.shortcuts import render, HttpResponse
+from .models import *
+from django.db import connection  # for executing raw SQL
+import re
+from django_serverside_datatable.views import ServerSideDatatableView
 import json
-from datetime import datetime
-import pytz
+import math
 
-from django.shortcuts import render
-from django.http import (
-    JsonResponse,
-    HttpResponseRedirect,
-    Http404,
-    HttpResponse,
-)
-from django.views.decorators.csrf import csrf_exempt
-from django.core.serializers import serialize
-from django.shortcuts import get_object_or_404
-from django.conf import settings
 
-from taicat.models import (
-    Image,
-    Project,
-    Deployment
-)
+def data(request):
+    pk = request.GET.get('pk')
+    _start = request.GET.get('start')
+    _length = request.GET.get('length')
+    species = request.GET.get('species')
+    deployment = request.GET.get('deployment')
+    sa = request.GET.get('sa')
 
-def index(request):
-    project_list = Project.objects.filter(mode='test').all()
-    return render(request, 'index.html', {'project_list': project_list})
+    with connection.cursor() as cursor:
+        query = """with base_request as ( \
+                 SELECT 
+                        sa.name AS saname, d.name AS dname, i.filename, to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, \
+                        i.annotation -> 'species' AS species, i.annotation -> 'lifestage' AS lifestage , i.id FROM taicat_deployment d \
+                        JOIN taicat_deployment_study_areas dsa ON dsa.deployment_id = d.id \
+                        JOIN taicat_studyarea sa ON sa.id = dsa.studyarea_id \
+                        JOIN taicat_image i ON i.deployment_id = d.id \
+                        WHERE d.project_id= {} \
+                        ORDER BY i.created, i.filename)\
+                select row_to_json(t) from ( \
+                    select 1 as draw, \
+                    ( select array_to_json(array_agg(row_to_json(u)))\
+                        from (select * from base_request) u\
+                    ) as data) t;"""   
+        cursor.execute(query.format(pk))
+        image_info = cursor.fetchall()
+        image_info = image_info[0][0]
+        data = image_info['data']
+        if species != "":
+            data = [i for i in data if i['species'] == species]
+        if sa != "":
+            data = [i for i in data if i['saname'] == sa]
+        if deployment != "":
+            data = [i for i in data if i['dname'] == deployment]
+
+    recordsTotal = len(data)
+    recordsFiltered = len(data)
+
+    for i in range(len(data)):
+        if data[i]['species'] is not None:
+            data[i]['species'] = re.sub(r'^"|"$', '', data[i]['species'])
+        else:
+            data[i]['species'] = ''
+        if data[i]['lifestage'] is not None:
+            data[i]['lifestage'] = re.sub(r'^"|"$', '', data[i]['lifestage'])
+        else:
+            data[i]['lifestage'] = ''
+        data[i]['id'] =  """<img class="img lazy" style="height: 200px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}.jpg" />""".format(data[i]['id'])
+
+    if _start and _length:
+        start = int(_start)
+        length = int(_length)
+        page = math.ceil(start / length) + 1
+        per_page = length
+        data = data[start:start + length]
+
+    response = {
+        'data': data,
+        'page': page,  # [opcional]
+        'per_page': per_page,  # [opcional]
+        'recordsTotal': recordsTotal,
+        'recordsFiltered': recordsFiltered,
+    }
+
+    return HttpResponse(json.dumps(response), content_type='application/json')
+    
+
+def overview(request):
+    with connection.cursor() as cursor:
+        cursor.execute('SELECT taicat_project.id, taicat_project.name, \
+                        EXTRACT (year from taicat_project.start_date)::int, \
+                        taicat_project.funding_agency, COUNT(DISTINCT(taicat_studyarea.name)) AS num_studyarea, \
+                        COUNT(DISTINCT(taicat_deployment.name)) AS num_deployment, \
+                        COUNT(taicat_image.id) AS num_image \
+                        FROM taicat_studyarea \
+                        RIGHT JOIN taicat_project ON taicat_project.id = taicat_studyarea.project_id \
+                        JOIN taicat_deployment ON taicat_deployment.project_id = taicat_project.id \
+                        RIGHT JOIN taicat_image ON taicat_image.deployment_id = taicat_deployment.id \
+                        GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id '
+                       'ORDER BY taicat_project.created DESC;')
+        row = cursor.fetchall()
+
+    return render(request, 'taicat/overview.html', {'row': row})
+
 
 def project_detail(request, pk):
-    dep_id = request.GET.get('deployment', '')
+    with connection.cursor() as cursor:
+        query = "SELECT name, funding_agency, source_data -> 'code', " \
+                "principal_investigator, " \
+                "to_char(start_date, 'YYYY-MM-DD'), " \
+                "to_char(end_date, 'YYYY-MM-DD') FROM taicat_project WHERE id={}"
+        cursor.execute(query.format(pk))
+        project_info = cursor.fetchone()
+    project_info = list(project_info)
 
-    project = Project.objects.get(pk=pk)
-    d = project.get_deployment_list()
-    #id_list = []
-    #for i in d:
-    #    for j in i['deployments']:
-    #        id_list.append(j['deployment_id'])
+    studyarea = StudyArea.objects.filter(project_id=pk).values('name').exclude(name=[None, '']).distinct() 
+    deployment = Deployment.objects.filter(project_id=pk).values('name','id').exclude(name=[None, '']).distinct() 
 
-    image_list = []
-    if dep_id:
-        image_list = Image.objects.filter(deployment_id=dep_id).all()
+    deployment_list = [i['id'] for i in deployment]
+    species = Image.objects.filter(deployment_id__in=deployment_list).values('annotation__species').exclude(annotation__species__in=[None, '']).distinct()  # add exclude
 
-    return render(request, 'project_detail.html',{
-        'project':project,
-        'deployment': d,
-        'image_list': image_list,
-    })
-
-def get_project_list(request):
-    projects = Project.objects.all()
-    ret = {
-        'results': [{
-            'project_id': x.id,
-            'name': x.name,
-        } for x in projects]
-    }
-    return JsonResponse(ret)
-
-def get_project(request, project_id):
-    proj = get_object_or_404(Project, pk=project_id)
-    data = {
-        'project_id': proj.id,
-        'name': proj.name,
-        'studyareas': proj.get_deployment_list()
-    }
-    #return HttpResponse(data, content_type="application/json")
-    return JsonResponse(data)
-
-@csrf_exempt
-def post_image_annotation(request):
-    ret = {}
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        deployment = Deployment.objects.get(pk=data['deployment_id'])
-        if deployment:
-            res = {}
-            # aware datetime object
-            utc_tz = pytz.timezone(settings.TIME_ZONE)
-
-            for i in data['image_list']:
-                anno = json.loads(i[7]) if i[7] else '{}'
-                if i[11]:
-                    img = Image.objects.get(pk=i[11])
-                    # only update annotation
-                    img.annotation = anno
-                else:
-                    img = Image(
-                        deployment_id=deployment.id,
-                        filename=i[2],
-                        datetime=datetime.fromtimestamp(i[3], utc_tz),
-                        source_data=i,
-                        image_hash=i[6],
-                        annotation=anno,
-                        memo=data['key']
-                    )
-                img.save()
-                res[i[0]] = img.id
-
-            ret['saved_image_ids'] = res
-        else:
-            ret['error'] = 'ct-server: no deployment key'
-
-    return JsonResponse(ret)
-
-@csrf_exempt
-def update_image(request):
-    res = {}
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        if pk := data['pk']:
-            image = Image.objects.get(pk=pk)
-            if image:
-                for i in data:
-                    if i == 'file_url':
-                        image.file_url = data[i]
-                image.save()
-        res = {
-            'text': 'update-image'
-        }
-    return JsonResponse(res)
+    return render(request, 'taicat/project_detail.html',
+                {'project_info': project_info, 'species': species, 'pk': pk,
+                'studyarea':studyarea, 'deployment':deployment})

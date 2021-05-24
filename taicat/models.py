@@ -1,6 +1,102 @@
-
+# This is an auto-generated Django model module.
+# You'll have to do the following manually to clean this up:
+#   * Rearrange models' order
+#   * Make sure each model has one field with primary_key=True
+#   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
+#   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
+# Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
-from django.db.models import Q
+
+
+# class TaicatContact(models.Model):
+#     name = models.CharField(max_length=1000)
+#     email = models.CharField(max_length=1000)
+#     role = models.CharField(max_length=1000)
+#
+#     class Meta:
+#         managed = False
+#         db_table = 'taicat_contact'
+#
+#
+# class TaicatDeployment(models.Model):
+#     longitude = models.DecimalField(max_digits=11, decimal_places=8, blank=True, null=True)
+#     latitude = models.DecimalField(max_digits=10, decimal_places=8, blank=True, null=True)
+#     altitude = models.SmallIntegerField(blank=True, null=True)
+#     name = models.CharField(max_length=1000)
+#     camera_status = models.CharField(max_length=4)
+#     created = models.DateTimeField()
+#     source_data = models.JSONField()
+#     taicat = models.ForeignKey('TaicatProject', models.DO_NOTHING, blank=True, null=True)
+#
+#     class Meta:
+#         managed = False
+#         db_table = 'taicat_deployment'
+#
+#
+# class TaicatDeploymentStudyAreas(models.Model):
+#     deployment = models.ForeignKey(TaicatDeployment, models.DO_NOTHING)
+#     studyarea = models.ForeignKey('TaicatStudyarea', models.DO_NOTHING)
+#
+#     class Meta:
+#         managed = False
+#         db_table = 'taicat_deployment_study_areas'
+#         unique_together = (('deployment', 'studyarea'),)
+#
+#
+# class TaicatImage(models.Model):
+#     filename = models.CharField(max_length=1000)
+#     datetime = models.DateTimeField(blank=True, null=True)
+#     photo_type = models.CharField(max_length=100, blank=True, null=True)
+#     count = models.SmallIntegerField()
+#     species = models.CharField(max_length=1000)
+#     source_data = models.JSONField()
+#     sequence_definition = models.CharField(max_length=1000)
+#     life_stage = models.CharField(max_length=1000)
+#     sex = models.CharField(max_length=1000)
+#     remarks = models.TextField()
+#     animal_id = models.CharField(max_length=1000)
+#     created = models.DateTimeField()
+#     sequence = models.ForeignKey('self', models.DO_NOTHING, blank=True, null=True)
+#     deployment = models.ForeignKey(TaicatDeployment, models.DO_NOTHING, blank=True, null=True)
+#     file_url = models.CharField(max_length=1000, blank=True, null=True)
+#     # annotation = models.JSONField()
+#     # memo = models.TextField()
+#     # image_hash = models.TextField()
+#
+#     class Meta:
+#         managed = False
+#         db_table = 'taicat_image'
+#
+#
+# class TaicatProject(models.Model):
+#     name = models.CharField(max_length=1000)
+#     description = models.TextField()
+#     start_date = models.DateField(blank=True, null=True)
+#     end_date = models.DateField(blank=True, null=True)
+#     principal_investigator = models.CharField(max_length=1000, blank=True, null=True)
+#     funding_agency = models.CharField(max_length=1000, blank=True, null=True)
+#     created = models.DateTimeField()
+#     source_data = models.JSONField()
+#     note = models.CharField(max_length=1000, blank=True, null=True)
+#     region = models.CharField(max_length=1000, blank=True, null=True)
+#     mode = models.CharField(max_length=4, blank=True, null=True)
+#
+#     class Meta:
+#         managed = False
+#         db_table = 'taicat_project'
+#
+#
+# class TaicatStudyArea(models.Model):
+#     name = models.CharField(max_length=1000)
+#     created = models.DateTimeField()
+#     parent = models.ForeignKey('self', models.DO_NOTHING, blank=True, null=True)
+#     taicat = models.ForeignKey(TaicatProject, models.DO_NOTHING, blank=True, null=True)
+#
+#     class Meta:
+#         managed = False
+#         db_table = 'taicat_studyarea'
+
+
 
 class Contact(models.Model):
     name = models.CharField(max_length=1000)
@@ -101,8 +197,6 @@ class Deployment(models.Model):
 
 class Image(models.Model):
     '''if is_sequence, ex: 5 Images, set last 4 Images's is_sequence to True (wouldn't  count)'''
-    FILE_URL_HOST = 'https://camera-trap-21.s3-ap-northeast-1.amazonaws.com'
-
     PHOTO_TYPE_CHOICES = (
         ('start', 'Start'),
         ('end', 'End'),
@@ -138,8 +232,3 @@ class Image(models.Model):
     annotation = models.JSONField(default=dict, blank=True)
     memo = models.TextField(default='', blank=True)
     image_hash = models.TextField(default='', blank=True)
-
-    @property
-    def full_file_url(self):
-        if self.file_url:
-            return f'{self.FILE_URL_HOST}/{self.file_url}'

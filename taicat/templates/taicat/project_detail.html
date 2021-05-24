@@ -1,0 +1,212 @@
+{% extends 'base/base.html' %}
+{% block title %}
+{{ project_info.0 }} | {{ block.super }}
+{% endblock title %}
+{% block head %}
+{% endblock head %}
+{% block style %}
+{% endblock style %}
+{% block body %}
+<div class="row">
+    <div class="col-3">
+        <h4>篩選條件</h4>
+        <h5 style="margin: 10px 0">物種</h5>
+        <ul style="list-style: none">
+            <li>       
+                <label class="form-check-label">         
+                <input class="filter" type="radio" name="species-filter" value="" checked>
+                  全部
+                </label>
+            </li>
+            {% for i in species %}
+            <li>
+                <label class="form-check-label">
+                <input class="filter" type="radio" name="species-filter" value="{{ i.annotation__species }}">
+                    {{ i.annotation__species }}
+                </label>
+
+            </li>
+            {% endfor %}
+        </ul>
+        <h5 style="margin: 10px 0">樣區</h5>
+        <ul style="list-style: none">
+            <li>
+                <label class="form-check-label">             
+                <input class="filter" type="radio" name="sa-filter" value="" checked>
+                  全部
+                </label>
+
+            </li>
+            {% for i in studyarea %}
+            <li>
+                <label class="form-check-label">
+                <input class="filter" type="radio" name="sa-filter" value="{{ i.name }}">
+                    {{ i.name }}
+                </label>
+            </li>
+            {% endfor %}
+        </ul>
+        <h5 style="margin: 10px 0">相機位置</h5>
+        <ul style="list-style: none">
+            <li>
+                <label class="form-check-label">             
+                <input class="filter" type="radio" name="deployment-filter" value="" checked>
+                  全部
+                </label>
+
+            </li>
+            {% for i in deployment %}
+            <li>
+                <label class="form-check-label">
+                <input class="filter" type="radio" name="deployment-filter" value="{{ i.name }}">
+                    {{ i.name }}
+                </label>
+            </li>
+            {% endfor %}
+        </ul>
+        <!-- <h5>拍攝日期</h5>
+        <input type="text" id="amount" readonly style="border:0; width: 100%;">
+        <div id="slider-range"></div> -->
+          
+    </div>
+    <div class="col-9">
+        <h4>{{ project_info.0 }}</h4>
+        <table class="table table-striped" style="margin-bottom: 20px">
+            <tr>
+                <td>委辦單位</td>
+                <td>{{ project_info.1 }}</td>
+            </tr>
+            <tr>
+                <td>計畫編號</td>
+                <td>{{ project_info.2 }}</td>
+            </tr>
+            <tr>
+                <td>計畫主持人</td>
+                <td>{{ project_info.3 }}</td>
+            </tr>
+            <tr>
+                <td>計畫時間</td>
+                <td>{{ project_info.4 }} ~ {{ project_info.5 }}</td>
+            </tr>
+        </table>
+        <h4>影像列表</h4>
+        <table class="table" id="img-table">
+            <thead class="thead-light">
+                <tr>
+                    <td>樣區</td>
+                    <td>相機位置</td>
+                    <td>檔名</td>
+                    <td>拍攝時間</td>
+                    <td>物種</td>
+                    <td>年齡</td>
+                    <!-- <td>備註</td> -->
+                    <td>影像</td>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+{% endblock body %}
+
+{% block script %}
+<script>
+    // window.speciesonclick = null;
+    // datatable
+    document.addEventListener("DOMContentLoaded", function (event) {
+        let table = $("#img-table").DataTable({
+            ordering: false,
+            processing: false,
+            serverSide: true,
+            searching: false,
+            ajax: {
+                url: "{% url 'data' %}",
+                data: function ( d ) {
+                    d.pk = "{{ pk }}";
+                    d.species = $("input[name=species-filter]:checked").val()
+                    d.sa =  $("input[name=sa-filter]:checked").val()
+                    d.deployment =  $("input[name=deployment-filter]:checked").val()
+                }
+            }, 
+            order: [[0, "asc"]], 
+            drawCallback:function(){
+            // lazy loading for images
+            var watcher = new IntersectionObserver(onEnterView);
+            var lazyImages = document.querySelectorAll("img.lazy");
+            for (let image of lazyImages) {
+                watcher.observe(image); // 開始監視
+            }
+
+            function onEnterView(entries, observer) {
+                for (let entry of entries) {
+                    if (entry.isIntersecting) {
+                        var img = entry.target;
+                        img.setAttribute("src", img.dataset.src);
+                        observer.unobserve(img); 
+                    }
+                }
+            }
+            },
+            columns: [
+                        {data: "saname"},
+                        {data: "dname"},
+                        {data: "filename" },
+                        {data: "datetime"},
+                        {data: "species"},
+                        {data: "lifestage"},
+                        {data: "id"},
+                    ], 
+    });
+
+    $('.filter').on('click', function() {
+        table.draw();
+    });
+
+    // $("#ex2").slider({
+    //     tooltip: 'always'
+    // });
+
+    // $("#slider-range").slider({
+    //   range: true,
+    //   min: 0,
+    //   max: 500,
+    //   values: [ 75, 300 ],
+    //   slide: function( event, ui ) {
+    //     $( "#amount" ).val( "$" + ui.values[ 0 ] + " - $" + ui.values[ 1 ] );
+    //   }
+    // });
+    // $( "#amount" ).val( "$" + $( "#slider-range" ).slider( "values", 0 ) +
+    //   " - $" + $( "#slider-range" ).slider( "values", 1 ) );
+    $( "#slider-range" ).slider({
+      range: true,
+      min: new Date('2010-01-01').getTime() / 1000,
+      max: new Date('2014-01-01').getTime() / 1000,
+      step: 86400,
+      values: [ new Date('2013-01-01').getTime() / 1000, new Date('2013-02-01').getTime() / 1000 ],
+      slide: function( event, ui ) {
+        $( "#amount" ).val( (new Date(ui.values[ 0 ] *1000).toDateString() ) + " - " + (new Date(ui.values[ 1 ] *1000)).toDateString() );
+      }
+    });
+    $( "#amount" ).val( (new Date($( "#slider-range" ).slider( "values", 0 )*1000).toDateString()) +
+      " - " + (new Date($( "#slider-range" ).slider( "values", 1 )*1000)).toDateString());
+
+});
+
+// $( function() {
+//     $( "#slider-range" ).slider({
+//       range: true,
+//       min: 0,
+//       max: 500,
+//       values: [ 75, 300 ],
+//       slide: function( event, ui ) {
+//         $( "#amount" ).val( "$" + ui.values[ 0 ] + " - $" + ui.values[ 1 ] );
+//       }
+//     });
+//     $( "#amount" ).val( "$" + $( "#slider-range" ).slider( "values", 0 ) +
+//       " - $" + $( "#slider-range" ).slider( "values", 1 ) );
+//   } );
+
+    // slider
+    // https://jsfiddle.net/mwqkztn8/1/
+
+</script>
+{% endblock script %}

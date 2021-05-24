@@ -35,6 +35,17 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "django-serverside-datatable"
+version = "0.1.1"
+description = "Simple Server-side Datatable processing view for Django"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+Django = ">=1.8"
+
+[[package]]
 name = "gunicorn"
 version = "20.1.0"
 description = "WSGI HTTP Server for UNIX"
@@ -93,7 +104,7 @@ python-versions = ">=3.5"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "c1e03c603993eb34271ab78edced8ca14366df598eef5132b6fc68b6b4e3fa47"
+content-hash = "4a0c9745aa9d69a98f7422b18332b52234d23aa0e1879d736086da0994c75ef7"
 
 [metadata.files]
 asgiref = [
@@ -107,6 +118,10 @@ django = [
 django-environ = [
     {file = "django-environ-0.4.5.tar.gz", hash = "sha256:6c9d87660142608f63ec7d5ce5564c49b603ea8ff25da595fd6098f6dc82afde"},
     {file = "django_environ-0.4.5-py2.py3-none-any.whl", hash = "sha256:c57b3c11ec1f319d9474e3e5a79134f40174b17c7cc024bbb2fad84646b120c4"},
+]
+django-serverside-datatable = [
+    {file = "django_serverside_datatable-0.1.1-py3-none-any.whl", hash = "sha256:7771d83420b6083ad76e42678e31c3fdc6365533c1f41519f6b95505e0b82797"},
+    {file = "django_serverside_datatable-0.1.1.tar.gz", hash = "sha256:bf6d3476022fba24cac140f5e4de72260e779d4b0254e9c46ecfcd8c69f71e8e"},
 ]
 gunicorn = [
     {file = "gunicorn-20.1.0-py3-none-any.whl", hash = "sha256:9dcc4547dbb1cb284accfb15ab5667a0e5d1881cc443e0677b4882a4067a807e"},

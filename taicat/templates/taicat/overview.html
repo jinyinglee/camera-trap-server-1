@@ -1,0 +1,55 @@
+{% extends 'base/base.html' %}
+{% block head %}
+    <style>
+        .clickable-row {
+            cursor: pointer;
+        }
+    </style>
+{% endblock head %}
+{% block body %}
+    <div class="row">
+        <!-- <div class="col-3">
+            <div class="row" style="margin-bottom: 10px">
+                <h4>篩選條件</h4>
+            </div>
+        </div> -->
+        <!-- <div class="col-9"> -->
+            <div class="row" style="margin-bottom: 10px">
+                <h4>我的計畫</h4>
+            </div>
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <td style="width: 35%">計畫名稱</td>
+                    <td style="width: 15%">資料起始年份</td>
+                    <td style="width: 20%">委託單位</td>
+                    <td style="width: 10%">樣區數量</td>
+                    <td style="width: 10%">相機位置數</td>
+                    <td style="width: 10%">資料量</td>
+                </tr>
+                </thead>
+                <tbody>
+                {% for tuples in row %}
+                    <tr class='clickable-row' data-href="{% url 'project_detail' tuples.0 %}">
+                        {% for t in tuples %}
+                            {% if not forloop.first %}
+                                <td>{{ t }}</td>
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        <!-- </div> -->
+    </div>
+{% endblock body %} {% block script %}
+    <script>
+        // Shorthand for $( document ).ready()
+        $(function () {
+            $(".clickable-row").click(function () {
+                console.log($(this).data("href"));
+                window.location = $(this).data("href");
+            });
+        });
+    </script>
+{% endblock script %}
