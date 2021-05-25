@@ -39,8 +39,8 @@ services:
       - POSTGRES_PASSWORD=example
       - POSTGRES_DB=cameratrap
       - PGDATA=/var/lib/postgresql/data/pgdata
-    env_file:
-      - .env
+    #env_file:
+    #  - .env
 #  redis:
 #    image: redis:6-alpine
 #    restart: always

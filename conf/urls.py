@@ -21,4 +21,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('base.urls')),
     path('', include('taicat.urls')),
+    path('api/client/v1/', include('taicat.client_urls')),
 ]
