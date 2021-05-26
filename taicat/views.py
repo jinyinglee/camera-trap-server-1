@@ -21,25 +21,27 @@ def data(request):
     sa = requests.get('sa')
 
     with connection.cursor() as cursor:
-        query = """with base_request as ( \
+        query = """with base_request as ( 
                  SELECT 
-                        sa.name AS saname, d.name AS dname, i.filename, to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, \
-                        i.annotation -> 'species' AS species, i.annotation -> 'lifestage' AS lifestage , i.id FROM taicat_deployment d \
-                        JOIN taicat_deployment_study_areas dsa ON dsa.deployment_id = d.id \
-                        JOIN taicat_studyarea sa ON sa.id = dsa.studyarea_id \
-                        JOIN taicat_image i ON i.deployment_id = d.id \
-                        WHERE d.project_id= {} AND i.datetime BETWEEN '{}' AND '{}' \
-                        ORDER BY i.created, i.filename)\
-                select row_to_json(t) from ( \
-                    select 1 as draw, \
-                    ( select array_to_json(array_agg(row_to_json(u)))\
-                        from (select * from base_request) u\
+                        sa.name AS saname, d.name AS dname, i.filename, to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
+                        i.annotation -> 'species' AS species, i.annotation -> 'lifestage' AS lifestage, i.annotation -> 'sex' AS sex, i.annotation -> 'antler' AS antler,
+                        i.annotation -> 'remarks' AS remarks, i.annotation -> 'animal_id' AS animal_id,
+                        i.id FROM taicat_deployment d 
+                        JOIN taicat_deployment_study_areas dsa ON dsa.deployment_id = d.id 
+                        JOIN taicat_studyarea sa ON sa.id = dsa.studyarea_id 
+                        JOIN taicat_image i ON i.deployment_id = d.id 
+                        WHERE d.project_id= {} AND i.datetime BETWEEN '{}' AND '{}' 
+                        ORDER BY i.created, i.filename)
+                select row_to_json(t) from ( 
+                    select 1 as draw, 
+                    ( select array_to_json(array_agg(row_to_json(u)))
+                        from (select * from base_request) u
                     ) as data) t;"""   
         cursor.execute(query.format(pk, start_date, end_date))
         image_info = cursor.fetchall()
         image_info = image_info[0][0]
         data = image_info['data']
-    
+
     if data is not None:
         if species != "":
             data = [i for i in data if i['species'] == species]
