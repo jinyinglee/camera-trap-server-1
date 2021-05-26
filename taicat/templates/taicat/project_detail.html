@@ -64,9 +64,9 @@
             </li>
             {% endfor %}
         </ul>
-        <!-- <h5>拍攝日期</h5>
-        <input type="text" id="amount" readonly style="border:0; width: 100%;">
-        <div id="slider-range"></div> -->
+        <h5>拍攝日期</h5>
+        <input type="text" id="date" readonly style="border:0; width: 100%; margin-bottom: 5px; text-align: center;">
+        <div id="date-slider"></div>
           
     </div>
     <div class="col-9">
@@ -110,9 +110,27 @@
 
 {% block script %}
 <script>
-    // window.speciesonclick = null;
     // datatable
     document.addEventListener("DOMContentLoaded", function (event) {
+
+    $("#date-slider").slider({
+      range: true,
+      min: new Date('{{ earliest_date }}').getTime() / 1000,
+      max: new Date('{{ latest_date }}').getTime() / 1000,
+      step: 86400,
+      values: [ new Date('{{ earliest_date }}').getTime() / 1000, new Date('{{ latest_date }}').getTime() / 1000 ],
+      slide: function( event, ui ) {
+        $("#date").val((new Date(ui.values[ 0 ] *1000).toISOString().substring(0, 10)) + " 至 " + 
+        (new Date(ui.values[1]*1000)).toISOString().substring(0, 10));
+      },
+      stop: function( event, ui ) {
+          console.log(table);
+          $("#img-table").DataTable().draw()}
+    });
+    $("#date").val((new Date($("#date-slider").slider("values",0)*1000).toISOString().substring(0, 10)) + " 至 " + 
+    (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
+
+
         let table = $("#img-table").DataTable({
             ordering: false,
             processing: false,
@@ -125,6 +143,8 @@
                     d.species = $("input[name=species-filter]:checked").val()
                     d.sa =  $("input[name=sa-filter]:checked").val()
                     d.deployment =  $("input[name=deployment-filter]:checked").val()
+                    d.start_date = (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10)
+                    d.end_date = (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10)
                 }
             }, 
             order: [[0, "asc"]], 
@@ -161,52 +181,15 @@
         table.draw();
     });
 
-    // $("#ex2").slider({
-    //     tooltip: 'always'
-    // });
+  $('input[id=date]').bind("mouseup",function() {
+    console.log($('input[id=date]'));
+  });
 
-    // $("#slider-range").slider({
-    //   range: true,
-    //   min: 0,
-    //   max: 500,
-    //   values: [ 75, 300 ],
-    //   slide: function( event, ui ) {
-    //     $( "#amount" ).val( "$" + ui.values[ 0 ] + " - $" + ui.values[ 1 ] );
-    //   }
-    // });
-    // $( "#amount" ).val( "$" + $( "#slider-range" ).slider( "values", 0 ) +
-    //   " - $" + $( "#slider-range" ).slider( "values", 1 ) );
-    $( "#slider-range" ).slider({
-      range: true,
-      min: new Date('2010-01-01').getTime() / 1000,
-      max: new Date('2014-01-01').getTime() / 1000,
-      step: 86400,
-      values: [ new Date('2013-01-01').getTime() / 1000, new Date('2013-02-01').getTime() / 1000 ],
-      slide: function( event, ui ) {
-        $( "#amount" ).val( (new Date(ui.values[ 0 ] *1000).toDateString() ) + " - " + (new Date(ui.values[ 1 ] *1000)).toDateString() );
-      }
-    });
-    $( "#amount" ).val( (new Date($( "#slider-range" ).slider( "values", 0 )*1000).toDateString()) +
-      " - " + (new Date($( "#slider-range" ).slider( "values", 1 )*1000)).toDateString());
+
 
 });
 
-// $( function() {
-//     $( "#slider-range" ).slider({
-//       range: true,
-//       min: 0,
-//       max: 500,
-//       values: [ 75, 300 ],
-//       slide: function( event, ui ) {
-//         $( "#amount" ).val( "$" + ui.values[ 0 ] + " - $" + ui.values[ 1 ] );
-//       }
-//     });
-//     $( "#amount" ).val( "$" + $( "#slider-range" ).slider( "values", 0 ) +
-//       " - $" + $( "#slider-range" ).slider( "values", 1 ) );
-//   } );
 
-    // slider
-    // https://jsfiddle.net/mwqkztn8/1/
 
 </script>
 {% endblock script %}

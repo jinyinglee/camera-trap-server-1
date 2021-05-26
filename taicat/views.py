@@ -4,15 +4,21 @@ from django.db import connection  # for executing raw SQL
 import re
 import json
 import math
+from datetime import datetime, timedelta
 
 
 def data(request):
-    pk = request.GET.get('pk')
-    _start = request.GET.get('start')
-    _length = request.GET.get('length')
-    species = request.GET.get('species')
-    deployment = request.GET.get('deployment')
-    sa = request.GET.get('sa')
+    requests = request.GET
+    pk = requests.get('pk')
+    start_date = requests.get('start_date')
+    start_date = datetime.strptime(start_date, "%Y-%m-%d")
+    end_date = requests.get('end_date')
+    end_date = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+    _start = requests.get('start')
+    _length = requests.get('length')
+    species = requests.get('species')
+    deployment = requests.get('deployment')
+    sa = requests.get('sa')
 
     with connection.cursor() as cursor:
         query = """with base_request as ( \
@@ -22,17 +28,19 @@ def data(request):
                         JOIN taicat_deployment_study_areas dsa ON dsa.deployment_id = d.id \
                         JOIN taicat_studyarea sa ON sa.id = dsa.studyarea_id \
                         JOIN taicat_image i ON i.deployment_id = d.id \
-                        WHERE d.project_id= {} \
+                        WHERE d.project_id= {} AND i.datetime BETWEEN '{}' AND '{}' \
                         ORDER BY i.created, i.filename)\
                 select row_to_json(t) from ( \
                     select 1 as draw, \
                     ( select array_to_json(array_agg(row_to_json(u)))\
                         from (select * from base_request) u\
                     ) as data) t;"""   
-        cursor.execute(query.format(pk))
+        cursor.execute(query.format(pk, start_date, end_date))
         image_info = cursor.fetchall()
         image_info = image_info[0][0]
         data = image_info['data']
+    
+    if data is not None:
         if species != "":
             data = [i for i in data if i['species'] == species]
         if sa != "":
@@ -40,34 +48,43 @@ def data(request):
         if deployment != "":
             data = [i for i in data if i['dname'] == deployment]
 
-    recordsTotal = len(data)
-    recordsFiltered = len(data)
+        recordsTotal = len(data)
+        recordsFiltered = len(data)
 
-    for i in range(len(data)):
-        if data[i]['species'] is not None:
-            data[i]['species'] = re.sub(r'^"|"$', '', data[i]['species'])
-        else:
-            data[i]['species'] = ''
-        if data[i]['lifestage'] is not None:
-            data[i]['lifestage'] = re.sub(r'^"|"$', '', data[i]['lifestage'])
-        else:
-            data[i]['lifestage'] = ''
-        data[i]['id'] =  """<img class="img lazy" style="height: 200px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}.jpg" />""".format(data[i]['id'])
+        for i in range(len(data)):
+            if data[i]['species'] is not None:
+                data[i]['species'] = re.sub(r'^"|"$', '', data[i]['species'])
+            else:
+                data[i]['species'] = ''
+            if data[i]['lifestage'] is not None:
+                data[i]['lifestage'] = re.sub(r'^"|"$', '', data[i]['lifestage'])
+            else:
+                data[i]['lifestage'] = ''
+            data[i]['id'] =  """<img class="img lazy" style="height: 200px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}.jpg" />""".format(data[i]['id'])
 
-    if _start and _length:
-        start = int(_start)
-        length = int(_length)
-        page = math.ceil(start / length) + 1
-        per_page = length
-        data = data[start:start + length]
+        if _start and _length:
+            start = int(_start)
+            length = int(_length)
+            page = math.ceil(start / length) + 1
+            per_page = length
+            data = data[start:start + length]
 
-    response = {
-        'data': data,
-        'page': page,  # [opcional]
-        'per_page': per_page,  # [opcional]
-        'recordsTotal': recordsTotal,
-        'recordsFiltered': recordsFiltered,
-    }
+        response = {
+            'data': data,
+            'page': page, 
+            'per_page': per_page, 
+            'recordsTotal': recordsTotal,
+            'recordsFiltered': recordsFiltered,
+        }
+    
+    else:
+        response = {
+            'data': [],
+            'page': 0, 
+            'per_page': 0,
+            'recordsTotal': 0,
+            'recordsFiltered': 0,
+        }
 
     return HttpResponse(json.dumps(response), content_type='application/json')
     
@@ -100,12 +117,17 @@ def project_detail(request, pk):
         project_info = cursor.fetchone()
     project_info = list(project_info)
 
-    studyarea = StudyArea.objects.filter(project_id=pk).values('name').exclude(name=[None, '']).distinct() 
-    deployment = Deployment.objects.filter(project_id=pk).values('name','id').exclude(name=[None, '']).distinct() 
+    studyarea = StudyArea.objects.filter(project_id=pk).values('name').exclude(name=[None, '']).distinct().order_by('name') 
+    deployment = Deployment.objects.filter(project_id=pk).values('name','id').exclude(name=[None, '']).distinct().order_by('name') 
 
     deployment_list = [i['id'] for i in deployment]
-    species = Image.objects.filter(deployment_id__in=deployment_list).values('annotation__species').exclude(annotation__species__in=[None, '']).distinct()  # add exclude
+    species = Image.objects.filter(deployment_id__in=deployment_list).values('annotation__species').exclude(annotation__species__in=[None, '']).distinct().order_by('annotation__species') 
+
+    latest_date = Image.objects.latest('datetime').datetime.strftime("%Y-%m-%d")
+    earliest_date = Image.objects.earliest('datetime').datetime.strftime("%Y-%m-%d")
+
 
     return render(request, 'taicat/project_detail.html',
                 {'project_info': project_info, 'species': species, 'pk': pk,
-                'studyarea':studyarea, 'deployment':deployment})
+                'studyarea':studyarea, 'deployment':deployment,
+                'earliest_date': earliest_date, 'latest_date':latest_date})
