@@ -127,7 +127,7 @@ def overview(request):
                         EXTRACT (year from taicat_project.start_date)::int, \
                         taicat_project.funding_agency, COUNT(DISTINCT(taicat_studyarea.name)) AS num_studyarea, \
                         COUNT(DISTINCT(taicat_deployment.name)) AS num_deployment, \
-                        COUNT(taicat_image.id) AS num_image \
+                        COUNT(DISTINCT(taicat_image.id)) AS num_image \
                         FROM taicat_studyarea \
                         RIGHT JOIN taicat_project ON taicat_project.id = taicat_studyarea.project_id \
                         JOIN taicat_deployment ON taicat_deployment.project_id = taicat_project.id \
