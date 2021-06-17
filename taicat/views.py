@@ -58,7 +58,7 @@ def data(request):
                         JOIN taicat_deployment d ON d.id = i.deployment_id
                         JOIN taicat_deployment_study_areas dsa ON dsa.deployment_id = d.id 
                         JOIN taicat_studyarea sa ON sa.id = dsa.studyarea_id 
-                        WHERE i.id > 423 AND d.project_id= {} AND i.datetime BETWEEN '{}' AND '{}' 
+                        WHERE i.id > 426 AND d.project_id= {} AND i.datetime BETWEEN '{}' AND '{}' 
                         ORDER BY i.created, i.filename)
                 select row_to_json(t) from ( 
                     select 1 as draw, 
@@ -79,7 +79,7 @@ def data(request):
                         JOIN taicat_deployment_study_areas dsa ON dsa.deployment_id = d.id 
                         JOIN taicat_studyarea sa ON sa.id = dsa.studyarea_id 
                         JOIN taicat_image i ON i.deployment_id = d.id 
-                        WHERE i.id < 423 AND d.project_id= {} AND i.datetime BETWEEN '{}' AND '{}' 
+                        WHERE i.id < 427 AND d.project_id= {} AND i.datetime BETWEEN '{}' AND '{}' 
                         ORDER BY i.created, i.filename)
                 select row_to_json(t) from ( 
                     select 1 as draw, 
@@ -111,7 +111,6 @@ def data(request):
         recordsFiltered = len(data)
 
         for i in range(len(data)):
-            print(i, data[i])
             if data[i]['species'] is not None:
                 data[i]['species'] = re.sub(r'^"|"$', '', data[i]['species'])
             else:
