@@ -22,7 +22,28 @@ def data(request):
 
     with connection.cursor() as cursor:
         query = """with base_request as ( 
-                 SELECT 
+                    SELECT 
+                        sa.name AS saname, d.name AS dname, i.filename, to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
+                        i.annotation -> 'species' AS species, i.annotation -> 'lifestage' AS lifestage, i.annotation -> 'sex' AS sex, i.annotation -> 'antler' AS antler,
+                        i.annotation -> 'remarks' AS remarks, i.annotation -> 'animal_id' AS animal_id,
+                        i.id FROM taicat_image i
+                        JOIN taicat_deployment d ON d.id = i.deployment_id
+                        JOIN taicat_deployment_study_areas dsa ON dsa.deployment_id = d.id 
+                        JOIN taicat_studyarea sa ON sa.id = dsa.studyarea_id 
+                        WHERE i.annotation = '[]'::jsonb AND d.project_id= {} AND i.datetime BETWEEN '{}' AND '{}' 
+                        ORDER BY i.created, i.filename)
+                select row_to_json(t) from ( 
+                    select 1 as draw, 
+                    ( select array_to_json(array_agg(row_to_json(u)))
+                        from (select * from base_request) u
+                    ) as data) t;"""
+        cursor.execute(query.format(pk, start_date, end_date))
+        image_info = cursor.fetchall()
+        data_0 = image_info[0][0]['data']
+
+    with connection.cursor() as cursor:
+        query = """with base_request as ( 
+                    SELECT 
                         sa.name AS saname, d.name AS dname, i.filename, to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
                         x.*,
                         i.id FROM taicat_image i
@@ -35,7 +56,7 @@ def data(request):
                                 , animal_id text
                                 ) 
                         JOIN taicat_deployment d ON d.id = i.deployment_id
-                       JOIN taicat_deployment_study_areas dsa ON dsa.deployment_id = d.id 
+                        JOIN taicat_deployment_study_areas dsa ON dsa.deployment_id = d.id 
                         JOIN taicat_studyarea sa ON sa.id = dsa.studyarea_id 
                         WHERE i.id > 426 AND d.project_id= {} AND i.datetime BETWEEN '{}' AND '{}' 
                         ORDER BY i.created, i.filename)
@@ -50,7 +71,7 @@ def data(request):
 
     with connection.cursor() as cursor:
         query = """with base_request as ( 
-                 SELECT 
+                    SELECT 
                         sa.name AS saname, d.name AS dname, i.filename, to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
                         i.annotation -> 'species' AS species, i.annotation -> 'lifestage' AS lifestage, i.annotation -> 'sex' AS sex, i.annotation -> 'antler' AS antler,
                         i.annotation -> 'remarks' AS remarks, i.annotation -> 'animal_id' AS animal_id,
@@ -73,12 +94,18 @@ def data(request):
     if data is not None:
         if data_1 is not None:
             data = data + data_1
+        if data_0 is not None:
+            data = data + data_0
         if species != "":
             data = [i for i in data if i['species'] == species]
         if sa != "":
             data = [i for i in data if i['saname'] == sa]
         if deployment != "":
             data = [i for i in data if i['dname'] == deployment]
+
+        def sortFunction(value):
+            return value["id"]
+        data = sorted(data, key=sortFunction)
 
         recordsTotal = len(data)
         recordsFiltered = len(data)
