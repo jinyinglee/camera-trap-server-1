@@ -91,11 +91,16 @@ def data(request):
         image_info = image_info[0][0]
         data = image_info['data']
 
+    if data is None:
+        data = []
+    if data_1 is None:
+        data_1 = []
+    if data_0 is None:
+        data_0 = []
+
+    data = data + data_0 + data_1
+
     if data is not None:
-        if data_1 is not None:
-            data = data + data_1
-        if data_0 is not None:
-            data = data + data_0
         if species != "":
             data = [i for i in data if i['species'] == species]
         if sa != "":
