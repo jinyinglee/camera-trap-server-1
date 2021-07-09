@@ -1,14 +1,34 @@
 {% extends 'base/base.html' %}
-{% block head %}
+{% block style %}
     <style>
         .clickable-row {
             cursor: pointer;
         }
-    </style>
-{% endblock head %}
-{% block body %}
-<div id="main" class="container">
 
+        .table {
+            padding: 1% 0;
+        }
+          
+        .nav-link {
+            color: gray;
+        }
+
+        .nav-link:hover {
+            color: lightgrey;
+        }
+
+        .page-item.active .page-link {
+            background-color: rgb(228, 224, 224) !important;
+            border: 1px solid rgb(228, 224, 224) ;
+        }
+        .page-link {
+            color: black !important;
+        }
+        
+    </style>
+{% endblock style %}
+{% block body %}
+<div class="container content">
     <div class="row">
         <!-- <div class="col-3">
             <div class="row" style="margin-bottom: 10px">
@@ -17,31 +37,71 @@
         </div> -->
         <!-- <div class="col-9"> -->
             <div class="row" style="margin-bottom: 10px">
-                <h4>我的計畫</h4>
+                <h4 class="page-title">計畫總覽</h4>
             </div>
-            <table class="table table-striped">
-                <thead>
-                <tr>
-                    <td style="width: 35%">計畫名稱</td>
-                    <td style="width: 15%">資料起始年份</td>
-                    <td style="width: 20%">委託單位</td>
-                    <td style="width: 10%">樣區數量</td>
-                    <td style="width: 10%">相機位置數</td>
-                    <td style="width: 10%">資料量</td>
-                </tr>
-                </thead>
-                <tbody>
-                {% for tuples in row %}
-                    <tr class='clickable-row' data-href="{% url 'project_detail' tuples.0 %}">
-                        {% for t in tuples %}
-                            {% if not forloop.first %}
-                                <td>{{ t }}</td>
-                            {% endif %}
+            <ul class="nav nav-tabs" id="myTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="myproject-tab" data-bs-toggle="tab" data-bs-target="#myproject" type="button" role="tab" aria-controls="myproject" aria-selected="true">我的計畫</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="allproject-tab" data-bs-toggle="tab" data-bs-target="#allproject" type="button" role="tab" aria-controls="allproject" aria-selected="false">所有計畫</button>
+                </li>
+                <li class="nav-item ms-auto">
+                    <a class="btn btn-orange" href="{% url 'create_project' %}">新增計畫</a>
+                </li>
+              </ul>
+              <div class="tab-content" id="myTabContent" style="background-color: white; padding: 2%">
+                <div class="tab-pane fade show active" id="myproject" role="tabpanel" aria-labelledby="myproject-tab">
+                    <table class="table table-hover bg-white" id="myproject-table" style="width: 100%;">
+                        <thead>
+                        <tr>
+                            <td style="width: 35%">計畫名稱</td>
+                            <td style="width: 15%">資料起始年份</td>
+                            <td style="width: 20%">委託單位</td>
+                            <td style="width: 10%">樣區數量</td>
+                            <td style="width: 10%">相機位置數</td>
+                            <td style="width: 10%">資料量</td>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for tuples in row %}
+                            <tr class='clickable-row' data-href="{% url 'project_detail' tuples.0 %}">
+                                {% for t in tuples %}
+                                    {% if not forloop.first %}
+                                        <td>{{ t }}</td>
+                                    {% endif %}
+                                {% endfor %}
+                            </tr>
                         {% endfor %}
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="tab-pane fade" id="allproject" role="tabpanel" aria-labelledby="allproject-tab">
+                    <table class="table table-hover bg-white" id="allproject-table" style="width: 100%;">
+                        <thead>
+                        <tr>
+                            <td style="width: 35%">計畫名稱</td>
+                            <td style="width: 15%">資料起始年份</td>
+                            <td style="width: 20%">委託單位</td>
+                            <td style="width: 10%">樣區數量</td>
+                            <td style="width: 10%">相機位置數</td>
+                            <td style="width: 10%">資料量</td>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <!-- {% for tuples in row %}
+                            <tr class='clickable-row' data-href="{% url 'project_detail' tuples.0 %}">
+                                {% for t in tuples %}
+                                    {% if not forloop.first %}
+                                        <td>{{ t }}</td>
+                                    {% endif %}
+                                {% endfor %}
+                            </tr>
+                        {% endfor %} -->
+                        </tbody>
+                    </table>
+                </div>
+              </div>
         <!-- </div> -->
     </div>
     </div>
@@ -54,5 +114,28 @@
                 window.location = $(this).data("href");
             });
         });
+
+        // datatable
+        let language_settings = {
+            "decimal":        "",
+            "emptyTable":     "查無資料",
+            "info":           "共 _TOTAL_ 筆",
+            "infoEmpty":      "共 0 筆",
+            "infoFiltered":   "",
+            "infoPostFix":    "",
+            "thousands":      ",",
+            "lengthMenu":     "每頁顯示 _MENU_ 筆",
+            "loadingRecords": "載入中...",
+            "processing":     "處理中...",
+            "search":         "查詢🔍",
+            "zeroRecords":    "查無符合資料",
+            "paginate": {
+                "next":       "下一頁",
+                "previous":   "上一頁"
+            }
+        };
+
+        $('#myproject-table').DataTable({"language": language_settings});
+        $('#allproject-table').DataTable({"language": language_settings});
     </script>
 {% endblock script %}

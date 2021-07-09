@@ -1,14 +1,120 @@
 {% extends 'base/base.html' %}
+{% block style %}
+{% load static %} 
+<style>
+
+.banner {
+    background-image: url('{% static "image/banner.png" %}');   
+    background-size:     cover;                    
+    background-repeat:   no-repeat;
+    background-position: center center;
+    height: 680px;
+    align-items: baseline;
+    justify-content: center;
+    display: flex;
+    flex-direction: column 
+}
+</style>
+{% endblock style %}
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+  integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+  crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+  integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+  crossorigin=""></script>
+{% endblock head %}
 
 {% block body %}
-<div id="main" class="container">
-
-<div class=row style="margin-top: 100px">
-    <h2>臺灣自動相機資訊系統</h2>
-    <h2>Taiwan Camera Trap Information System</h2>
-    <a class="btn btn-success" style="width: 30%; margin-left: 10px" href="{% url 'overview' %}">
-    START!
-    </a>
-</div>
-</div>
+    <div class="container-fluid">
+        <div class="row banner">
+                <div style="padding-left: 15%;">
+                    <h1 style="color: white;">臺灣自動相機資訊系統</h1>
+                    <h1 style="color: white;">Taiwan Camera Trap Information System</h1>
+                    <a class="btn btn-orange" style="font-size: 24px; width: 50%; margin-left: 10px; " href="{% url 'overview' %}">
+                    START!
+                    </a>
+                </div>
+        </div>
+    </div>
+    <div class="container content">
+        <div class="row intro-section">
+            <div class="col-xs-12 col-sm-12 col-md-6">
+                <h3>資料成長數</h3>
+            </div>
+            <div class="col-xs-12 col-sm-12 col-md-6 text-right mt-5 pt-3">
+                    <h2 class="text-green">
+                      <h1>自動相機資料庫</h1>
+                      共享的資料平台
+                    </h2>
+                    <p class="desp pl-5 text-left">
+                      Camera Trap提供研究人員自動相機影像統一倉儲、管理、
+                      查詢及分析的便利性，透過公開資源的共享，與其他專業人士交流、探索生態與開創更多研究可能性。
+                    </p>
+            </div>
+            <!-- MAP -->
+            <!-- <div class="col-xs-12 col-sm-12 col-md-6">
+                <h6>點擊地圖區塊進行資料探索</h6>
+                <div id="map" style="height: 600px; width: 100%;"></div>
+            </div>
+            <div class="col-xs-12 col-sm-12 col-md-6 text-right mt-5 pt-3">
+                <h2 id="click-county"></h2>
+                <ul style="list-style: none;">
+                    <li><span id="click-no-proj"></span></li>
+                    <li><span id="click-no-img"></span></li>
+                </ul>
+            </div> -->
+        </div>
+    </div>
 {% endblock body %}
+
+{% block script %} 
+<script>
+    /*
+let map = L.map('map').setView([23.5, 121.2],7);
+L.tileLayer('https://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map);
+
+function onEachFeature(feature, layer) {
+    layer.on({
+        mouseover: e => {
+            e.target.setStyle({
+                fillColor: 'green',
+            });
+        },
+        mouseout: e => {
+            e.target.setStyle({
+                fillColor: '#7C9C2D',
+            });
+        },
+        click: e => {
+            $('#click-county').html(e.target.feature.properties.COUNTYNAME);
+            $.ajax({
+                data: {"city": e.target.feature.properties.COUNTYNAME},
+                dataType: "json",
+                url: "{% url 'stat_county' %}",
+                success: function(data) {
+                    $('#click-no-proj').html(`計畫總數：${data.no_proj}`);
+                    $('#click-no-img').html(`影像總數：${data.no_img}`);
+            }})
+        },
+    })
+}
+
+function polystyle(feature) {
+    return {
+        fillColor: '#7C9C2D',
+        weight: 1.2,
+        color: 'white', 
+    };
+}
+
+
+$.getJSON("https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json",function(ret){
+    L.geoJSON(ret, {
+        onEachFeature: onEachFeature, style: polystyle}).addTo(map);
+    })
+*/
+</script>
+{% endblock script %}

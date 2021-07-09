@@ -7,6 +7,9 @@ import math
 from datetime import datetime, timedelta
 
 
+def create_project(request):
+    return render(request, 'taicat/create_project.html')
+
 def data(request):
     requests = request.GET
     pk = requests.get('pk')
