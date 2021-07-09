@@ -25,7 +25,7 @@ def data(request):
                     SELECT 
                         sa.name AS saname, d.name AS dname, i.filename, to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
                         i.annotation -> 'species' AS species, i.annotation -> 'lifestage' AS lifestage, i.annotation -> 'sex' AS sex, i.annotation -> 'antler' AS antler,
-                        i.annotation -> 'remarks' AS remarks, i.annotation -> 'animal_id' AS animal_id,
+                        i.annotation -> 'remarks' AS remarks, i.annotation -> 'animal_id' AS animal_id, i.file_url, 
                         i.id FROM taicat_image i
                         JOIN taicat_deployment d ON d.id = i.deployment_id
                         JOIN taicat_deployment_study_areas dsa ON dsa.deployment_id = d.id 
@@ -45,7 +45,7 @@ def data(request):
         query = """with base_request as ( 
                     SELECT 
                         sa.name AS saname, d.name AS dname, i.filename, to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
-                        x.*,
+                        x.*, i.file_url, 
                         i.id FROM taicat_image i
                         CROSS JOIN LATERAL
                         json_to_recordset(i.annotation::json) x 
@@ -74,7 +74,7 @@ def data(request):
                     SELECT 
                         sa.name AS saname, d.name AS dname, i.filename, to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
                         i.annotation -> 'species' AS species, i.annotation -> 'lifestage' AS lifestage, i.annotation -> 'sex' AS sex, i.annotation -> 'antler' AS antler,
-                        i.annotation -> 'remarks' AS remarks, i.annotation -> 'animal_id' AS animal_id,
+                        i.annotation -> 'remarks' AS remarks, i.annotation -> 'animal_id' AS animal_id, i.file_url, 
                         i.id FROM taicat_deployment d 
                         JOIN taicat_deployment_study_areas dsa ON dsa.deployment_id = d.id 
                         JOIN taicat_studyarea sa ON sa.id = dsa.studyarea_id 
@@ -124,7 +124,8 @@ def data(request):
                 data[i]['lifestage'] = re.sub(r'^"|"$', '', data[i]['lifestage'])
             else:
                 data[i]['lifestage'] = ''
-            data[i]['id'] =  """<img class="img lazy" style="height: 200px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}.jpg" />""".format(data[i]['id'])
+            # data[i]['id'] =  """<img class="img lazy" style="height: 200px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}.jpg" />""".format(data[i]['id'])
+            data[i]['file_url'] =  """<img class="img lazy" style="height: 200px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}" />""".format(data[i]['file_url'])
 
         if _start and _length:
             start = int(_start)
