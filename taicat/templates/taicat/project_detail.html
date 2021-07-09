@@ -4,12 +4,10 @@
 {% endblock title %}
 {% block head %}
 {% endblock head %}
-{% block style %}
-{% endblock style %}
 {% block body %}
-<div id="main" class="container-fluid">
+<div class="container-fluid content">
 <div class="row">
-    <div class="col-2">
+    <div class="col-2" >
         <h4>篩選條件</h4>
         <h5 style="margin: 10px 0">物種</h5>
         <ul style="list-style: none">
@@ -25,7 +23,6 @@
                 <input class="filter" type="radio" name="species-filter" value="{{ i.annotation__species }}">
                     {{ i.annotation__species }}
                 </label>
-
             </li>
             {% endfor %}
         </ul>
@@ -66,13 +63,13 @@
             {% endfor %}
         </ul>
         <h5>拍攝日期</h5>
-        <input type="text" id="date" readonly style="border:0; width: 100%; margin-bottom: 5px; text-align: center;">
+        <input type="text" id="date" readonly style="border:0; width: 100%; margin-bottom: 5px; text-align: center; background-color: #f7f7f7">
         <div id="date-slider"></div>
           
     </div>
     <div class="col-9">
         <h4>{{ project_info.0 }}</h4>
-        <table class="table table-striped" style="margin-bottom: 20px">
+        <table class="table bg-white" style="margin-bottom: 20px">
             <tr>
                 <td>委辦單位</td>
                 <td>{{ project_info.1 }}</td>
@@ -91,7 +88,7 @@
             </tr>
         </table>
         <h4>影像列表</h4>
-        <table class="table" id="img-table">
+        <table class="table bg-white" id="img-table">
             <thead class="thead-light">
                 <tr>
                     <td>樣區</td>
