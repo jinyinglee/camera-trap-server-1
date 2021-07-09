@@ -4,11 +4,25 @@ from .models import (
     Project,
     StudyArea,
     Deployment,
+    Organization,
+    Contact,
 )
+
+@admin.register(Organization)
+class ProjectAdmin(admin.ModelAdmin):
+    model = Organization
+
+    filter_horizontal = ('projects',)
+
+@admin.register(Contact)
+class ProjectAdmin(admin.ModelAdmin):
+    model = Contact
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
     model = Project
+
+    filter_horizontal = ('members',)
 
 @admin.register(StudyArea)
 class ProjectAdmin(admin.ModelAdmin):

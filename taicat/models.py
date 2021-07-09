@@ -1,18 +1,30 @@
-# This is an auto-generated Django model module.
-# You'll have to do the following manually to clean this up:
-#   * Rearrange models' order
-#   * Make sure each model has one field with primary_key=True
-#   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
-#   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
-# Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
 
 
 class Contact(models.Model):
-    name = models.CharField(max_length=1000)
-    email = models.CharField(max_length=1000)
-    role = models.CharField(max_length=1000)
 
+    ROLE_CHOICES = (
+        ('system_admin', '系統管理員'),
+        ('organization_admin', '計畫總管理人'),
+        ('project_admin', '個別計畫承辦人'),
+        ('uploader', '資料上傳者'),
+        ('general', '一般使用者'),
+    )
+    name = models.CharField(max_length=1000)
+    email = models.CharField(max_length=1000, blank=True, null=True)
+    orcid = models.CharField(max_length=1000, blank=True, null=True)
+    role = models.CharField(max_length=1000, choices=ROLE_CHOICES, null=True, blank=True)
+    organization = models.ForeignKey('Organization', on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return '<Contact {}> {}'.format(self.id, self.name)
+
+class Organization(models.Model):
+    name = models.CharField(max_length=1000)
+    projects = models.ManyToManyField('Project')
+
+    def __str__(self):
+        return '<Organization {}> {}'.format(self.id, self.name)
 
 class Project(models.Model):
 
@@ -36,7 +48,7 @@ class Project(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     source_data = models.JSONField(default=dict, blank=True)
     mode = models.CharField(max_length=4, blank=True, null=True)
-
+    members = models.ManyToManyField('Contact', )
     def __str__(self):
         return '<Project {}>'.format(self.name)
 
