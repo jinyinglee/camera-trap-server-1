@@ -55,11 +55,16 @@
       }
 
       .title-dark {
-        color: #198754;
+        /*color: #198754;*/
+        color: rgb(37, 116, 85);
       }
 
       .title-light {
         color: #7C9C2D
+      }
+
+      .backgroud-dark {
+        background-color: rgb(37, 116, 85);
       }
 
       .description {
@@ -166,7 +171,7 @@
               <li class="nav-item">
                 <a class="nav-link" href="#">資料篩選計算</a>
               </li>
-              <li class="nav-item">
+              <!-- <li class="nav-item">
                 <a class="nav-link" href="#">上傳紀錄</a>
               </li>
               <li class="nav-item dropdown">
@@ -180,7 +185,7 @@
                   <li><a class="dropdown-item" href="#">聯絡我們</a></li>
                   <li><a class="dropdown-item" href="#">隱私權政策</a></li>
                 </ul>
-              </li>
+              </li> -->
             </ul>
           </div>
           <div class="navbar-nav">
@@ -316,6 +321,12 @@
           </div>
         </div>
     </footer>
+    <script>
+      $(document).ready(function() {
+        $('li.active').removeClass('active');
+        $('a[href="' + location.pathname + '"]').closest('.nav-link').addClass('active'); 
+      });
+    </script>
     {% block script %} {% endblock script %}
   </body>
 </html>
