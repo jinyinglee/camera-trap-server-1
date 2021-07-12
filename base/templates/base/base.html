@@ -31,6 +31,19 @@
         margin: 40px auto;
       }
 
+      .image {
+        text-align: center
+      }
+
+      img.image {
+        width: 222px;
+        margin: 0 auto;
+      }
+
+      .text-green {
+        color: green;
+      }
+
       .btn-orange {
         background-color: darkorange; 
         color: white
@@ -41,9 +54,28 @@
         color: white
       }
 
-      .page-title {
-        color: #006A58;
+      .title-dark {
+        color: #198754;
       }
+
+      .title-light {
+        color: #7C9C2D
+      }
+
+      .description {
+        font-size: 24px;
+        margin: 0;
+        color: gray;
+        font-weight: 400;
+      }
+
+      hr {
+        border: 0;
+        border-top: 3px solid green;
+        width: 170px;
+        margin: 5px auto;
+      }
+
       /* footer */
       footer .container{
         padding: 40px 0;
@@ -117,7 +149,7 @@
 
   <body class="d-flex flex-column min-vh-100">
       <nav class="navbar navbar-expand-lg navbar-dark" style="background: linear-gradient(to right, #006A58, #9ccc65);">
-        <div class="container-fluid">
+        <div class="container">
           <a class="navbar-brand" href="{% url 'home' %}"> 
             <img src="{% static 'icon/logo@2x.png' %}" width="200" height="auto" alt="">
           </a>
@@ -132,7 +164,7 @@
                 <a class="nav-link" href="{% url 'overview' %}">計畫總覽</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link" href="#">篩選與計算</a>
+                <a class="nav-link" href="#">資料篩選計算</a>
               </li>
               <li class="nav-item">
                 <a class="nav-link" href="#">上傳紀錄</a>
