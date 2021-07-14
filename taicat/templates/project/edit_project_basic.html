@@ -18,16 +18,23 @@
             <nav class="py-2 mb-4">
                 <ul class="nav flex-column">
                     <li class="nav-item">
-                        <a class="nav-link" href="#"> 基本資訊 </a>
+                        <a class="nav-link" href="{% url 'edit_project_basic' pk %}">
+                            <i class="fa fa-xs fa-circle px-2 py-auto status" value='tets'></i> 基本資訊 
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#"> 相機位置管理 </a>
+                        <a class="nav-link" href="{% url 'edit_project_deployment' pk %}">
+                            <i class="fa fa-xs fa-circle px-2 py-auto status"></i> 相機位置管理 
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#"> 計畫成員 </a>
+                        <a class="nav-link" href="{% url 'edit_project_members' pk %}">
+                            <i class="fa fa-xs fa-circle px-2 py-auto status"></i> 計畫成員 </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#"> 創用CC授權 </a>
+                        <a class="nav-link" href="{% url 'edit_project_license' pk %}">
+                            <i class="fa fa-xs fa-circle px-2 py-auto status"></i> 創用CC授權 
+                        </a>
                     </li>
                 </ul>
             </nav>
@@ -41,3 +48,13 @@
     </div>
 </div>
 {% endblock body %}
+{% block script %}
+<script>
+    $(function () {
+        $('a.nav-link.active').css('color', 'rgb(37, 116, 85)');
+        console.log($('a.nav-link.active').closest('.status'));
+        $('a.nav-link.active').closest("i").removeClass('fa-circle');
+        $('a.nav-link.active').closest('i').addClass('fa-pencil');
+    })
+</script>
+{% endblock script %}

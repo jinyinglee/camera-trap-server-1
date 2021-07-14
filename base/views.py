@@ -7,13 +7,33 @@ from django.db.models import Count, Window, F, Sum, Min
 from django.db.models.functions import ExtractYear
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
 
+from decimal import Decimal
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return json.JSONEncoder.default(self, obj)
 
 def home(request):
-    deployment_points = Deployment.objects.filter(longitude__isnull=False, latitude__isnull=False).only("longitude", "latitude", "project__name")
+
+    # species_data = Image.objects.filter(annotation__species__in=species_list).annotate(name=KeyTextTransform('species', 'annotation')).order_by('name').annotate(c=Count('name')).distinct().order_by('c').values('name','c')
+
+    return render(request, 'base/home.html')
+
+
+def get_home_data(request):
+    with connection.cursor() as cursor:
+        query =  """SELECT d.longitude, d.latitude, p.name FROM taicat_deployment d 
+                    JOIN taicat_project p ON p.id = d.project_id 
+                    WHERE d.longitude IS NOT NULL;
+                    """
+        cursor.execute(query)
+        deployment_points = cursor.fetchall()
 
     with connection.cursor() as cursor:
         query =  """WITH data AS
-                    (SELECT EXTRACT (year FROM datetime) as year, (COUNT(id) OVER (ORDER BY datetime))::numeric / 10000 count FROM taicat_image)
+                    (SELECT EXTRACT (year FROM datetime) as year, (COUNT(id) OVER (ORDER BY datetime)) count FROM taicat_image)
                     SELECT g.year,
                     (SELECT count
                     FROM data
@@ -69,11 +89,10 @@ def home(request):
     species_list = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠']
     species_data = [ x for x in species_data if x[1] in species_list ]
 
-    # species_data = Image.objects.filter(annotation__species__in=species_list).annotate(name=KeyTextTransform('species', 'annotation')).order_by('name').annotate(c=Count('name')).distinct().order_by('c').values('name','c')
+    response = {'data_growth_image': data_growth_image, 'data_growth_deployment':data_growth_deployment,
+     'deployment_points': deployment_points, 'species_data': species_data}
 
-    return render(request, 'base/home.html', {'data_growth_image': data_growth_image, 'data_growth_deployment':data_growth_deployment,
-     'deployment_points': deployment_points, 'species_data': species_data})
-
+    return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
 
 def get_deployment_points(request):
     response = {}
