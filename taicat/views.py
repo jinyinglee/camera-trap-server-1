@@ -14,7 +14,61 @@ def create_project(request):
 
 def edit_project_basic(request, pk):
     project = Project.objects.filter(pk=pk)
-    return render(request, 'project/edit_project_basic.html', {'project': project})
+    return render(request, 'project/edit_project_basic.html', {'project': project, 'pk': pk})
+
+
+def edit_project_license(request, pk):
+    project = Project.objects.filter(pk=pk)
+    return render(request, 'project/edit_project_basic.html', {'project': project, 'pk': pk})
+
+
+def edit_project_members(request, pk):
+    project = Project.objects.filter(pk=pk)
+    return render(request, 'project/edit_project_basic.html', {'project': project, 'pk': pk})
+
+
+def edit_project_deployment(request, pk):
+    project = Project.objects.filter(pk=pk)
+    return render(request, 'project/edit_project_basic.html', {'project': project, 'pk': pk})
+
+
+def project_overview(request):
+
+    with connection.cursor() as cursor:
+        cursor.execute('SELECT taicat_project.id, taicat_project.name, \
+                        EXTRACT (year from taicat_project.start_date)::int, \
+                        taicat_project.funding_agency, COUNT(DISTINCT(taicat_studyarea.name)) AS num_studyarea, \
+                        COUNT(DISTINCT(taicat_deployment.name)) AS num_deployment, \
+                        COUNT(DISTINCT(taicat_image.id)) AS num_image \
+                        FROM taicat_studyarea \
+                        RIGHT JOIN taicat_project ON taicat_project.id = taicat_studyarea.project_id \
+                        JOIN taicat_deployment ON taicat_deployment.project_id = taicat_project.id \
+                        RIGHT JOIN taicat_image ON taicat_image.deployment_id = taicat_deployment.id \
+                        GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id '
+                       'ORDER BY taicat_project.created DESC;')
+        row = cursor.fetchall()
+    
+    with connection.cursor() as cursor:
+        query =  """with base_request as ( 
+                    SELECT 
+                        x.*, 
+                        i.id FROM taicat_image i
+                        CROSS JOIN LATERAL
+                        json_to_recordset(i.annotation::json) x 
+                                ( species text
+                                ) 
+                        WHERE i.id > 426  )
+                select count(id), species from base_request
+                group by species;
+                """
+        cursor.execute(query)
+        species_data = cursor.fetchall()
+
+    species_list = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠']
+    species_data = [ x for x in species_data if x[1] in species_list ]
+
+    return render(request, 'project/project_overview.html', {'row': row, 'species_data':species_data})
+
 
 
 def data(request):
@@ -163,27 +217,6 @@ def data(request):
 
     return HttpResponse(json.dumps(response), content_type='application/json')
     
-
-def overview(request):
-
-    with connection.cursor() as cursor:
-        cursor.execute('SELECT taicat_project.id, taicat_project.name, \
-                        EXTRACT (year from taicat_project.start_date)::int, \
-                        taicat_project.funding_agency, COUNT(DISTINCT(taicat_studyarea.name)) AS num_studyarea, \
-                        COUNT(DISTINCT(taicat_deployment.name)) AS num_deployment, \
-                        COUNT(DISTINCT(taicat_image.id)) AS num_image \
-                        FROM taicat_studyarea \
-                        RIGHT JOIN taicat_project ON taicat_project.id = taicat_studyarea.project_id \
-                        JOIN taicat_deployment ON taicat_deployment.project_id = taicat_project.id \
-                        RIGHT JOIN taicat_image ON taicat_image.deployment_id = taicat_deployment.id \
-                        GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id '
-                       'ORDER BY taicat_project.created DESC;')
-        row = cursor.fetchall()
-    
-    species_list = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠']
-    species_data = Image.objects.filter(species__in=species_list).values('species').annotate(count=Count('species')).distinct().order_by('count')
-    return render(request, 'project/overview.html', {'row': row, 'species_data':species_data})
-
 
 def project_detail(request, pk):
     with connection.cursor() as cursor:

@@ -42,7 +42,7 @@
                     <h1 style="color: white; font-size: 60px">臺灣自動相機資訊系統</h1>
                     <h1 style="color: white;">Taiwan Camera Trap Information System</h1>
                     <br> 
-                    <a class="btn btn-orange" style="font-size: 24px; width: 20%;" href="{% url 'overview' %}">
+                    <a class="btn btn-orange" style="font-size: 24px; width: 20%;" href="{% url 'project_overview' %}">
                     開始使用
                     </a>
                 </div>
@@ -123,14 +123,59 @@
             </div>
         </div>
         <div class="row pt-2">
-            <a class="btn btn-orange mx-auto" style="width: 50%; font-size: 28px;">立即開始使用</a>
+            <a class="btn btn-orange mx-auto" style="width: 50%; font-size: 28px;" href="{% url 'project_overview' %}">立即開始使用</a>
         </div>
     </div>
 {% endblock body %}
 
 {% block script %} 
 <script>
-    // plot
+    $(function(){
+        // get data by ajax
+        $.ajax({
+                    url: "{% url 'get_home_data' %}",
+                    success: function(data) {
+
+                        // map
+                        data.deployment_points.forEach(i => 
+                        
+                                    marker = new L.marker([i[1], i[0]], {icon:fontAwesomeIcon})
+                                    .bindPopup(i[2])
+                                    .on('mouseover', function (e) {
+                                        this.openPopup();
+                                    })
+                                    .on('mouseout', function (e) {
+                                        this.closePopup();
+                                    })
+                                    .addTo(map)  
+                         );
+
+
+                        // plot                         
+                        data_growth_year = []
+                        data.data_growth_image.forEach(i => 
+                            data_growth_year.push(i[0])
+                            );
+
+                        data_growth_image_count = []
+                        data.data_growth_image.forEach(i => 
+                            data_growth_image_count.push(i[1]/10000)
+                            );
+
+                        data_growth_deployment_count = []
+                        data.data_growth_deployment.forEach(i => 
+                            data_growth_deployment_count.push(i[1])
+                            );
+                        
+                        species_data_name = []
+                        data.species_data.forEach(i => 
+                            species_data_name.push(i[1])
+                            );
+                        species_data_count = []
+                        data.species_data.forEach(i => 
+                            species_data_count.push(i[0]/10000)
+                            );
+
     Highcharts.chart('data_growth', {
         chart: {
             marginTop: 40,
@@ -140,7 +185,7 @@
         credits: {enabled: false},    
         title: { text: ''},
         xAxis: [{
-            categories: [{% for i in data_growth_image %}'{{ i.0 }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+            categories: data_growth_year,
             crosshair: true
         }],
         legend: {                    
@@ -198,14 +243,14 @@
             name: '照片累積張數(萬)',
             type: 'column',
             yAxis: 1,
-            data: [{% for i in data_growth_image %}{{ i.1 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            data: data_growth_image_count,
             tooltip: {
             },
             color: '#AECC82'
         }, {
             name: '相機位置數',
             type: 'spline',
-            data: [{% for i in data_growth_deployment %}{{ i.1 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            data: data_growth_deployment_count,
             tooltip: {
             },
             marker: {
@@ -265,7 +310,7 @@
         credits: {enabled: false},    
         title: { text: ''},
         xAxis: {
-            categories: [{% for i in species_data %}'{{ i.1 }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+            categories: species_data_name,
             title: {
                 text: null,
                 style: {
@@ -296,13 +341,13 @@
         },
         tooltip: {
             pointFormatter: function() {
-                var string = this.series.name + ': ' + this.y + '張<br>';
+                var string = this.series.name + ': ' + this.y + '<br>';
                 return string;
               }          
         },
         series: [{
             name: '照片累積張數(萬)',
-            data: [{% for i in species_data %}{{ i.0 }}/10000{% if not forloop.last %}, {% endif %}{% endfor %}],
+            data: species_data_count,
             color: '#AECC82'
         }],
         legend: {
@@ -313,6 +358,16 @@
         },
         
     });
+
+                        
+
+                }
+                })
+
+    })
+
+
+    // plot
 
     // map
     const fontAwesomeIcon = L.divIcon({
@@ -327,17 +382,7 @@
         attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    {% for i in deployment_points %}
-        marker = new L.marker([{{i.latitude}}, {{i.longitude}}], {icon:fontAwesomeIcon})
-                .bindPopup("{{i.project.name}}")
-                .on('mouseover', function (e) {
-                    this.openPopup();
-                })
-                .on('mouseout', function (e) {
-                    this.closePopup();
-                })
-                .addTo(map);  
-    {% endfor %}
+
 
     /*function onEachFeature(feature, layer) {
         layer.on({
