@@ -1,0 +1,62 @@
+{% extends 'base/base.html' %}
+{% block style %}
+<style>
+    textarea, input {
+        border: 1px solid #cccccc;
+    }
+
+</style>
+{% endblock %}
+{% block body %}
+<div class="container content">
+    <div class="row" style="margin-bottom: 10px">
+        <h4 class="title-dark">新增計畫</h4>     
+    </div>
+    <div class="row">
+        <div class="bg-white shadow px-0 pb-5 mx-2">
+            <p class="backgroud-dark text-white fw-bold px-3 py-2">計畫基本資訊</p>        
+            <div class="row py-3">
+                <div class="col-2 text-end"><span class="required">*</span>計畫名稱：</div>
+                <div class="col-4"><input type="text" style="width: 100%;" placeholder="請輸入計畫名稱"></div>
+            </div>
+            <div class="row py-3">
+                <div class="col-2 text-end">計畫關鍵字：</div>
+                <div class="col-4"><input type="text" style="width: 100%;" placeholder="請輸入計畫關鍵字"></div>
+                <div class="col-1 my-auto">
+                    <i class="fa fa-info-circle text-green " style="font-size: 1.4em;" data-bs-toggle="tooltip" data-bs-placement="right" title="關鍵字請輸入與其他同類型計畫共有之文字，以利於同類型計畫搜尋篩選用，例如調查方式相同的多年期計畫因時空關係有不同計畫名稱時，即建議使用相同關鍵字"></i>
+                </div>
+            </div>
+            <div class="row py-3">
+                <div class="col-2 text-end">委辦單位：</div>
+                <div class="col-4"><input type="text" style="width: 100%;" placeholder="請輸入委辦單位"></div>
+            </div>
+            <div class="row py-3">
+                <div class="col-2 text-end"><span class="required">*</span>計畫主持人：</div>
+                <div class="col-4"><input type="text" style="width: 100%;" placeholder="請輸入計畫主持人"></div>
+            </div>
+            <div class="row py-3">
+                <div class="col-2 text-end"><span class="required">*</span>計畫時間：</div>
+                <div class="col-4 d-flex justify-content-between"><input type="date" style="width: 45%;" value={% now "o-m-d" %}> 至 <input type="date" style="width: 45%;" value={% now "o-m-d" %}> </div>
+            </div>
+            <div class="row py-3">
+                <div class="col-2 text-end">計畫地區：</div>
+                <div class="col-4"><input type="text" style="width: 100%;" placeholder=""></div>
+            </div>
+            <div class="row py-3">
+                <div class="col-2 text-end">計畫摘要：</div>
+                <div class="col-4"><textarea style="width: 100%;" placeholder="請簡單描述計畫目的"></textarea></div>
+            </div>
+            <div class="row py-3">
+                <div class="col-2 text-end">備註：</div>
+                <div class="col-4"><textarea style="width: 100%;" placeholder="您可以輸入任何補註資料"></textarea></div>
+            </div>
+        </div>
+    </div>
+    <div class="row mt-3 px-0">
+        <div class="text-end px-0">
+            <a class="btn btn-outline-success">取消</a>
+            <a class="btn btn-outline-success">下一步</a>
+        </div>
+    </div>
+</div>
+{% endblock body %}

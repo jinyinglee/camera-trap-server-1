@@ -29,16 +29,28 @@
 {% endblock style %}
 {% block body %}
 <div class="container content">
+    <div class="row" style="margin-bottom: 10px">
+            <h4 class="title-dark">計畫總覽</h4>
+    </div>
     <div class="row">
-        <!-- <div class="col-3">
-            <div class="row" style="margin-bottom: 10px">
-                <h4>篩選條件</h4>
+        <div class="col-2">
+            <div class="row">
+                <h6>篩選條件</h6>
+                <p class="my-1">物種</p>
+                <ul style="list-style: none">
+                    {% for i in species_data %}
+                    <li>
+                        <label class="form-check-label">
+                        <input class="filter" type="checkbox" name="species-filter" value="{{ i.species }}">
+                            {{ i.species }} ({{i.count}})
+                        </label>
+                    </li>
+                    {% endfor %}
+                </ul>
+
             </div>
-        </div> -->
-        <!-- <div class="col-9"> -->
-            <div class="row" style="margin-bottom: 10px">
-                <h4 class="title-dark">計畫總覽</h4>
-            </div>
+        </div>
+        <div class="col-10">
             <ul class="nav nav-tabs" id="myTab" role="tablist">
                 <li class="nav-item" role="presentation">
                   <button class="nav-link active" id="myproject-tab" data-bs-toggle="tab" data-bs-target="#myproject" type="button" role="tab" aria-controls="myproject" aria-selected="true">我的計畫</button>
@@ -102,7 +114,7 @@
                     </table>
                 </div>
               </div>
-        <!-- </div> -->
+        </div>
     </div>
     </div>
 {% endblock body %} {% block script %}
@@ -110,9 +122,18 @@
         // Shorthand for $( document ).ready()
         $(function () {
             $(".clickable-row").click(function () {
-                console.log($(this).data("href"));
+                //console.log($(this).data("href"));
                 window.location = $(this).data("href");
             });
+
+
+            $("[name=species-filter]").click(function(){
+                let speciesArray = [];
+                $("[name=species-filter]:checked").each(function(){
+                    speciesArray.push($(this).val());
+                });
+                // ajax here
+            })
         });
 
         // datatable
