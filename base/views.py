@@ -50,9 +50,26 @@ def home(request):
         cursor.execute(query)
         data_growth_deployment = cursor.fetchall()
 
+    with connection.cursor() as cursor:
+        query =  """with base_request as ( 
+                    SELECT 
+                        x.*, 
+                        i.id FROM taicat_image i
+                        CROSS JOIN LATERAL
+                        json_to_recordset(i.annotation::json) x 
+                                ( species text
+                                ) 
+                        WHERE i.id > 426  )
+                select count(id), species from base_request
+                group by species;
+                """
+        cursor.execute(query)
+        species_data = cursor.fetchall()
 
     species_list = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠']
-    species_data = Image.objects.filter(annotation__species__in=species_list).annotate(name=KeyTextTransform('species', 'annotation')).order_by('name').annotate(c=Count('name')).distinct().order_by('c').values('name','c')
+    species_data = [ x for x in species_data if x[1] in species_list ]
+
+    # species_data = Image.objects.filter(annotation__species__in=species_list).annotate(name=KeyTextTransform('species', 'annotation')).order_by('name').annotate(c=Count('name')).distinct().order_by('c').values('name','c')
 
     return render(request, 'base/home.html', {'data_growth_image': data_growth_image, 'data_growth_deployment':data_growth_deployment,
      'deployment_points': deployment_points, 'species_data': species_data})

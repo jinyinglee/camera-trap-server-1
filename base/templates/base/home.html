@@ -265,7 +265,7 @@
         credits: {enabled: false},    
         title: { text: ''},
         xAxis: {
-            categories: [{% for i in species_data %}'{{ i.name }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+            categories: [{% for i in species_data %}'{{ i.1 }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
             title: {
                 text: null,
                 style: {
@@ -302,7 +302,7 @@
         },
         series: [{
             name: '照片累積張數(萬)',
-            data: [{% for i in species_data %}{{ i.c }}/10000{% if not forloop.last %}, {% endif %}{% endfor %}],
+            data: [{% for i in species_data %}{{ i.0 }}/10000{% if not forloop.last %}, {% endif %}{% endfor %}],
             color: '#AECC82'
         }],
         legend: {
