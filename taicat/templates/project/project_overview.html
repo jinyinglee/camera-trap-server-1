@@ -38,11 +38,17 @@
                 <h6>篩選條件</h6>
                 <p class="my-1">物種</p>
                 <ul style="list-style: none">
+                <li>
+                    <label class="form-check-label">
+                        <input class="filter" type="checkbox" checked onClick="toggle(this)">
+                            全選
+                    </label>
+                </li>
                     {% for i in species_data %}
                     <li>
                         <label class="form-check-label">
-                        <input class="filter" type="checkbox" name="species-filter" value="{{ i.species }}">
-                            {{ i.species }} ({{i.count}})
+                        <input class="filter" checked type="checkbox" name="species-filter" value="{{ i.1 }}">
+                            {{ i.1 }} ({{i.0}})
                         </label>
                     </li>
                     {% endfor %}
@@ -127,14 +133,24 @@
             });
 
 
-            $("[name=species-filter]").click(function(){
+            $(".filter").click(function(){
+                check_list = $("[name=species-filter]:checked");
                 let speciesArray = [];
-                $("[name=species-filter]:checked").each(function(){
-                    speciesArray.push($(this).val());
+                check_list.each(function(){
+                    speciesArray.push($(this).val()); 
                 });
                 // ajax here
+                
             })
         });
+
+            // select all species
+        function toggle(source) {
+            checkboxes = document.getElementsByName('species-filter');
+            for(var i=0, n=checkboxes.length;i<n;i++) {
+                checkboxes[i].checked = source.checked;
+            }
+            }
 
         // datatable
         let language_settings = {
