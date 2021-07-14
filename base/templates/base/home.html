@@ -55,7 +55,7 @@
         <div class="row">
             <!-- MAP -->
             <div class="col-xs-12 col-sm-12 col-md-6">
-                <!-- <h6>點擊地圖區塊進行資料探索</h6> -->
+                <h6 class="title-light">資料分布</h6>
                 <div id="map" style="height: 600px; width: 80%;"></div>
             </div>
             <!-- <div class="col-xs-12 col-sm-12 col-md-6 text-right mt-5 pt-3">
@@ -109,7 +109,7 @@
                 </div>
                 <div class="content text-center">
                 <h2 class="title-dark">資料處理</h2>
-                <p class="description">線上辨識物種、標註及分析</p>
+                <p class="description">辨識物種、標註及分析</p>
                 </div>
             </div>
             <div class="col-xs-12 col-sm-12 col-md-4">
@@ -140,7 +140,7 @@
         credits: {enabled: false},    
         title: { text: ''},
         xAxis: [{
-            categories: ['2016', '2017', '2018', '2019', '2020', '2021'],
+            categories: [{% for i in data_growth_image %}'{{ i.0 }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
             crosshair: true
         }],
         legend: {                    
@@ -150,6 +150,7 @@
             }
         },
         yAxis: [{ // Primary yAxis
+            allowDecimals: false,
             labels: {
                 format: '{value}',
                 style: {
@@ -170,6 +171,7 @@
             opposite: true
     
         }, { // Secondary yAxis
+            allowDecimals: false,
             gridLineWidth: 0,
             title: {
                 align: 'high',
@@ -196,14 +198,14 @@
             name: '照片累積張數(萬)',
             type: 'column',
             yAxis: 1,
-            data: [49.9, 71.5, 106.4, 129.2, 144.0, 176.0],
+            data: [{% for i in data_growth_image %}{{ i.1 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
             tooltip: {
             },
             color: '#AECC82'
         }, {
             name: '相機位置數',
             type: 'spline',
-            data: [7.0, 6.9, 9.5, 14.5, 18.2, 21.5],
+            data: [{% for i in data_growth_deployment %}{{ i.1 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
             tooltip: {
             },
             marker: {
@@ -263,7 +265,7 @@
         credits: {enabled: false},    
         title: { text: ''},
         xAxis: {
-            categories: ['山羌', '野豬', '水鹿', '白鼻心', '黑熊'],
+            categories: [{% for i in species_data %}'{{ i.name }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
             title: {
                 text: null,
                 style: {
@@ -276,6 +278,7 @@
                 }}
         },
         yAxis: {
+            allowDecimals: false,
             min: 0,
             title: {
                 text: '照片累積張數(萬)',
@@ -293,13 +296,13 @@
         },
         tooltip: {
             pointFormatter: function() {
-                var string = this.series.name + ': ' + this.y*10000 + '張<br>';
+                var string = this.series.name + ': ' + this.y + '張<br>';
                 return string;
               }          
         },
         series: [{
             name: '照片累積張數(萬)',
-            data: [1.07, 2, 2.5, 3.1, 6.35],
+            data: [{% for i in species_data %}{{ i.c }}/10000{% if not forloop.last %}, {% endif %}{% endfor %}],
             color: '#AECC82'
         }],
         legend: {
@@ -311,16 +314,32 @@
         
     });
 
-        
-
     // map
+    const fontAwesomeIcon = L.divIcon({
+    html: '<i class="fa fa-circle" style="color: darkorange; opacity: 0.5"></i>',
+    iconSize: [0.5, 0.5],
+    className: 'myDivIcon'
+    });
+
 
     let map = L.map('map').setView([23.5, 121.2],7);
     L.tileLayer('https://{s}.tile.osm.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    function onEachFeature(feature, layer) {
+    {% for i in deployment_points %}
+        marker = new L.marker([{{i.latitude}}, {{i.longitude}}], {icon:fontAwesomeIcon})
+                .bindPopup("{{i.project.name}}")
+                .on('mouseover', function (e) {
+                    this.openPopup();
+                })
+                .on('mouseout', function (e) {
+                    this.closePopup();
+                })
+                .addTo(map);  
+    {% endfor %}
+
+    /*function onEachFeature(feature, layer) {
         layer.on({
             mouseover: e => {
                 e.target.setStyle({
@@ -332,7 +351,7 @@
                     fillColor: '#7C9C2D',
                 });
             },
-            /*click: e => {
+            click: e => {
                 $('#click-county').html(e.target.feature.properties.COUNTYNAME);
                 $.ajax({
                     data: {"city": e.target.feature.properties.COUNTYNAME},
@@ -343,9 +362,9 @@
                         $('#click-no-img').html(`影像總數：${data.no_img}`);
                 }})
             },
-            */
+            
         })
-    }
+    }*/
 
     function polystyle(feature) {
         return {
@@ -356,8 +375,8 @@
     }
 
     $.getJSON("https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json",function(ret){
-        L.geoJSON(ret, {
-            onEachFeature: onEachFeature, style: polystyle}).addTo(map);
+        //L.geoJSON(ret, {onEachFeature: onEachFeature, style: polystyle}).addTo(map);
+        L.geoJSON(ret, {style: polystyle}).addTo(map);
         })
 
 </script>

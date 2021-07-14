@@ -5,10 +5,17 @@ import re
 import json
 import math
 from datetime import datetime, timedelta
+from django.db.models import Count, Window, F, Sum, Min
 
 
 def create_project(request):
-    return render(request, 'taicat/create_project.html')
+    return render(request, 'project/create_project.html')
+
+
+def edit_project_basic(request, pk):
+    project = Project.objects.filter(pk=pk)
+    return render(request, 'project/edit_project_basic.html', {'project': project})
+
 
 def data(request):
     requests = request.GET
@@ -158,6 +165,7 @@ def data(request):
     
 
 def overview(request):
+
     with connection.cursor() as cursor:
         cursor.execute('SELECT taicat_project.id, taicat_project.name, \
                         EXTRACT (year from taicat_project.start_date)::int, \
@@ -171,8 +179,10 @@ def overview(request):
                         GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id '
                        'ORDER BY taicat_project.created DESC;')
         row = cursor.fetchall()
-
-    return render(request, 'taicat/overview.html', {'row': row})
+    
+    species_list = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠']
+    species_data = Image.objects.filter(species__in=species_list).values('species').annotate(count=Count('species')).distinct().order_by('count')
+    return render(request, 'project/overview.html', {'row': row, 'species_data':species_data})
 
 
 def project_detail(request, pk):
@@ -195,7 +205,7 @@ def project_detail(request, pk):
     earliest_date = Image.objects.earliest('datetime').datetime.strftime("%Y-%m-%d")
 
 
-    return render(request, 'taicat/project_detail.html',
+    return render(request, 'project/project_detail.html',
                 {'project_info': project_info, 'species': species, 'pk': pk,
                 'studyarea':studyarea, 'deployment':deployment,
                 'earliest_date': earliest_date, 'latest_date':latest_date})
