@@ -6,7 +6,13 @@ from .models import (
     Deployment,
     Organization,
     Contact,
+    ProjectMember
 )
+
+@admin.register(ProjectMember)
+class ProjectAdmin(admin.ModelAdmin):
+    model = ProjectMember
+
 
 @admin.register(Organization)
 class ProjectAdmin(admin.ModelAdmin):
@@ -22,7 +28,7 @@ class ProjectAdmin(admin.ModelAdmin):
 class ProjectAdmin(admin.ModelAdmin):
     model = Project
 
-    filter_horizontal = ('members',)
+    #filter_horizontal = ('members',)
 
 @admin.register(StudyArea)
 class ProjectAdmin(admin.ModelAdmin):
@@ -31,3 +37,4 @@ class ProjectAdmin(admin.ModelAdmin):
 @admin.register(Deployment)
 class ProjectAdmin(admin.ModelAdmin):
     model = Deployment
+
