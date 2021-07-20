@@ -1,13 +1,17 @@
 from django.http import response
-from django.shortcuts import render, HttpResponse
+from django.shortcuts import render, HttpResponse, redirect
 import json
 from django.db import connection
-from taicat.models import Deployment, Image
+from taicat.models import Deployment, Image, Contact
 from django.db.models import Count, Window, F, Sum, Min
 from django.db.models.functions import ExtractYear
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
+from django.template import loader
+import requests
+from django.contrib import messages
 
 from decimal import Decimal
+
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -15,8 +19,70 @@ class DecimalEncoder(json.JSONEncoder):
             return float(obj)
         return json.JSONEncoder.default(self, obj)
 
-def home(request):
 
+def get_auth_callback(request):
+    original_page_url = request.GET.get('next')
+    authorization_code = request.GET.get('code')
+    data = {'client_id': 'APP-F6POVPAP5L1JOUN1',
+            'client_secret': '20acec15-f58b-4653-9695-5e9d2878b673',
+            'grant_type': 'authorization_code',
+            'code': authorization_code}
+    token_url = 'https://orcid.org/oauth/token'
+
+    r = requests.post(token_url, data = data)
+    results = r.json()
+    orcid = results['orcid']
+    name = results['name']
+
+    # check if orcid exists in db
+    if Contact.objects.filter(orcid=orcid).exists():
+    # if exists, update login status
+        name = Contact.objects.filter(orcid=orcid).values('name').first()['name']
+    else:
+    # if not, create one
+        Contact.objects.create(name=name, orcid=orcid)
+
+    request.session["is_login"] = True
+    request.session["name"] = name
+    request.session["orcid"] = orcid
+
+    return redirect(original_page_url)
+
+
+
+def logout(request):
+    request.session["is_login"] = False
+    request.session["name"] = None
+    request.session["orcid"] = None
+    return redirect('home')
+
+
+
+def personal_info(request):
+    ## login required
+    is_login = request.session.get('is_login', False)
+
+    if is_login:
+        info = Contact.objects.filter(orcid=request.session["orcid"]).values().first()
+        return render(request, 'base/personal_info.html', {'info': info})
+    else: 
+        return render(request, 'base/personal_info.html')
+
+
+def update_personal_info(request):
+    if request.method == 'POST':
+        orcid = request.session.get('orcid')
+        name = request.POST.get('name')
+        email = request.POST.get('email')
+        Contact.objects.filter(orcid=orcid).update(name=name, email=email)
+
+    return redirect(personal_info)
+
+
+
+def home(request):
+    if request:
+        print(request.session['name'], request.session['is_login'])
     # species_data = Image.objects.filter(annotation__species__in=species_list).annotate(name=KeyTextTransform('species', 'annotation')).order_by('name').annotate(c=Count('name')).distinct().order_by('c').values('name','c')
 
     return render(request, 'base/home.html')
