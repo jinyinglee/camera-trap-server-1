@@ -17,9 +17,6 @@
           integrity="sha384-wEmeIV1mKuiNpC+IOBjI7aAzPcEZeedi5yW5f2yOq55WWLwNGmvvx4Um1vskeMj0"
           crossorigin="anonymous"/>
     <link href="https://cdn.datatables.net/1.10.24/css/dataTables.bootstrap5.min.css"  rel="stylesheet"/>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-p34f1UUtsS3wqzfto5wAAmdvj+osOnFyQFpp4Ua3gs/ZVWx6oOypYoCJhGGScy+8"
-            crossorigin="anonymous"></script>
     <script src="https://kit.fontawesome.com/b8e586964f.js" crossorigin="anonymous"></script>
     {% block head %}{% endblock head %}
     <style type="text/css">
@@ -211,12 +208,60 @@
           </div>
           <div class="navbar-nav">
             <div class="nav-item">
-              <a class="btn btn-orange">登入</a>
+              <!-- Button trigger modal -->
+              {% if not request.session.is_login %}
+              <a class="btn btn-orange" data-bs-toggle="modal" data-bs-target="#loginModal">登入</a>
+              {% else %}
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  {{ request.session.name }}
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                  <li><a class="dropdown-item" href="{% url 'personal_info' %}">設定</a></li>
+                  <li><a class="dropdown-item" href="{% url 'logout' %}">登出</a></li>
+                </ul>
+              </li>
+
+              {% endif %}
             </div>
           </div>
         </div>
       </nav>
-        {% block body %} {% endblock body %}
+      {% block body %} {% endblock body %}
+
+      <!-- Modal -->
+      <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title title-dark" id="loginModalLabel">登入
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+          <p>請使用您的 ORCID 帳號登入：</p>
+          <div class="my-3">
+            <a class="btn btn-light w-100" href="https://orcid.org/oauth/authorize?client_id=APP-F6POVPAP5L1JOUN1&response_type=code&scope=/authenticate&redirect_uri=https://127.0.0.1:8000/callback/orcid/auth?next={{ request.path }}">
+                使用 ORCID 帳號登入
+            </a>
+          </div>
+          <div class="text-gray">
+            還沒有帳號？
+            <a href="https://orcid.org/register" class="text-green" target="_blank" >
+              前往
+              <i class="icon align-baseline icon-orcid-text"></i> 網頁註冊
+            </a>
+          </div>
+          <hr class="mt-5" />
+          <div class="text-center">
+            當您登入系統，即代表您同意我們的
+            <a href="/help/privacy" class="text-green">隱私權保護政策</a>
+          </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     <footer class="text-center text-lg-start mt-auto" style="background: #2E432B;">
         <div class="container">
           <div class="row">
@@ -342,6 +387,10 @@
           </div>
         </div>
     </footer>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-p34f1UUtsS3wqzfto5wAAmdvj+osOnFyQFpp4Ua3gs/ZVWx6oOypYoCJhGGScy+8"
+            crossorigin="anonymous"></script>
+
     <script>
       $(document).ready(function() {
         $('li.active').removeClass('active');
@@ -353,6 +402,40 @@
       var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
       return new bootstrap.Tooltip(tooltipTriggerEl)
       })
+
+      // login
+      /*
+      URL=https://sandbox.orcid.org/oauth/token
+  HEADER: Accept: application/json
+  METHOD: POST
+  DATA: 
+    client_id=[Your public API client ID]
+    client_secret=[Your public API secret]
+    grant_type=client_credentials
+    scope=/read-public
+    */
+    function getAuth(){
+       $.ajax({
+        url: ' https://orcid.org/oauth/authorize',
+        // dataType: 'json',
+        data: {
+            "client_id": "APP-F6POVPAP5L1JOUN1",
+            "response_type": 'code',
+            "scope": '/authenticate',
+        },
+        
+          headers: {
+              "accept": "application/json",
+          },
+        type: 'get',
+        jsonp: "callback",
+        dataType: 'jsonp',
+        success: function(data){
+          console.log(data)
+        },
+      })
+    }
+
     </script>
     {% block script %} {% endblock script %}
   </body>
