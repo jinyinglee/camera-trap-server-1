@@ -1,23 +1,33 @@
 from django.db import models
+from django.utils import timezone
 
 
 class Contact(models.Model):
-
-    ROLE_CHOICES = (
-        ('system_admin', '系統管理員'),
-        ('organization_admin', '計畫總管理人'),
-        ('project_admin', '個別計畫承辦人'),
-        ('uploader', '資料上傳者'),
-        ('general', '一般使用者'),
-    )
     name = models.CharField(max_length=1000)
     email = models.CharField(max_length=1000, blank=True, null=True)
-    orcid = models.CharField(max_length=1000, blank=True, null=True)
-    role = models.CharField(max_length=1000, choices=ROLE_CHOICES, null=True, blank=True)
+    orcid = models.CharField(max_length=1000, blank=True, null=True, unique=True)
     organization = models.ForeignKey('Organization', on_delete=models.SET_NULL, null=True, blank=True)
+    # is_login = models.BooleanField('登入狀態', default=True) 
+    is_organization_admin = models.BooleanField('是否為計畫總管理人', default=False) 
+    # is_forestry_bureau = models.BooleanField('是否能進入林務局管考系統', default=False) 
+    is_system_admin = models.BooleanField('是否為系統管理員', default=False)
 
     def __str__(self):
         return '<Contact {}> {}'.format(self.id, self.name)
+
+
+class ProjectMember(models.Model):
+    ROLE_CHOICES = (
+        #('system_admin', '系統管理員'),
+        #('organization_admin', '計畫總管理人'),
+        ('project_admin', '個別計畫承辦人'),
+        ('uploader', '資料上傳者'),
+        #('general', '一般使用者'),
+    )
+    projects = models.ForeignKey('Project', on_delete=models.SET_NULL, null=True, blank=True)
+    members = models.ForeignKey('Contact', on_delete=models.SET_NULL, null=True, blank=True)
+    role = models.CharField(max_length=1000, choices=ROLE_CHOICES, null=True, blank=True)
+
 
 class Organization(models.Model):
     name = models.CharField(max_length=1000)
@@ -27,28 +37,36 @@ class Organization(models.Model):
         return '<Organization {}> {}'.format(self.id, self.name)
 
 class Project(models.Model):
-
     # projectName
-    name = models.CharField('計劃名稱', max_length=1000)
+    name = models.CharField('計畫名稱', max_length=1000)
 
-    #OrganizationName
     # projectObjectives
-    description = models.TextField(default='', blank=True)
-
-    start_date = models.DateField('計劃時間-開始', null=True, blank=True)
-    end_date = models.DateField('計劃時間-結束', null=True, blank=True)
+    description = models.TextField('計畫摘要', default='', blank=True)
+    short_title = models.CharField('計畫簡稱', max_length=1000, blank=True, null=True)
+    keyword = models.CharField('計畫關鍵字', max_length=1000, blank=True, null=True)
+    start_date = models.DateField('計畫時間-開始', null=True, blank=True)
+    end_date = models.DateField('計畫時間-結束', null=True, blank=True)
 
     ## Project People
-    #principalInvestigator
-    principal_investigator = models.CharField('計劃主持人', max_length=1000, blank=True, null=True)
-    funding_agency = models.CharField(max_length=1000, blank=True, null=True)
-    region = models.CharField(max_length=1000, blank=True, null=True)
-    note = models.CharField(max_length=1000, blank=True, null=True)
-    #publishDate
+    executive_unit = models.CharField('執行單位', max_length=100, blank=True, null=True)
+    code = models.CharField('計畫編號', max_length=100, blank=True, null=True)
+    principal_investigator = models.CharField('計畫主持人', max_length=1000, blank=True, null=True)
+    funding_agency = models.CharField('委辦單位', max_length=100, blank=True, null=True)
+    region = models.CharField('計畫地區', max_length=1000, null=True, blank=True)
+    note = models.CharField('備註', max_length=1000, blank=True, null=True)
     created = models.DateTimeField(auto_now_add=True)
     source_data = models.JSONField(default=dict, blank=True)
     mode = models.CharField(max_length=4, blank=True, null=True)
-    members = models.ManyToManyField('Contact', )
+    #members = models.ManyToManyField('Contact', )
+
+    ## License
+    publish_time = models.DateField('公開日期', null=True, blank=True)
+    interpretive_data_license = models.CharField('詮釋資料', max_length=10, blank=True, null=True)
+    identification_information_license = models.CharField('鑑定資訊', max_length=10, blank=True, null=True)
+    video_material_license = models.CharField('影像資料', max_length=10, blank=True, null=True)
+
+    # OrganizationName
+
     def __str__(self):
         return '<Project {}>'.format(self.name)
 
