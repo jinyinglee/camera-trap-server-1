@@ -13,8 +13,8 @@ class Contact(models.Model):
     is_system_admin = models.BooleanField('是否為系統管理員', default=False)
 
     def __str__(self):
-        return '<Contact {}> {}'.format(self.id, self.name)
-
+        return '<Contact {}> {}'.format(self.id, self.name)  
+    
 
 class ProjectMember(models.Model):
     ROLE_CHOICES = (
@@ -24,8 +24,8 @@ class ProjectMember(models.Model):
         ('uploader', '資料上傳者'),
         #('general', '一般使用者'),
     )
-    projects = models.ForeignKey('Project', on_delete=models.SET_NULL, null=True, blank=True)
-    members = models.ForeignKey('Contact', on_delete=models.SET_NULL, null=True, blank=True)
+    project = models.ForeignKey('Project', on_delete=models.SET_NULL, null=True, blank=True)
+    member = models.ForeignKey('Contact', on_delete=models.SET_NULL, null=True, blank=True)
     role = models.CharField(max_length=1000, choices=ROLE_CHOICES, null=True, blank=True)
 
 
@@ -37,17 +37,22 @@ class Organization(models.Model):
         return '<Organization {}> {}'.format(self.id, self.name)
 
 class Project(models.Model):
-    # projectName
+    MODE_CHOICES = (
+        ('test', '測試'),
+        ('official', '正式'),
+    )
+
+    # Project Name
     name = models.CharField('計畫名稱', max_length=1000)
 
-    # projectObjectives
+    # Project Objectives
     description = models.TextField('計畫摘要', default='', blank=True)
     short_title = models.CharField('計畫簡稱', max_length=1000, blank=True, null=True)
     keyword = models.CharField('計畫關鍵字', max_length=1000, blank=True, null=True)
     start_date = models.DateField('計畫時間-開始', null=True, blank=True)
     end_date = models.DateField('計畫時間-結束', null=True, blank=True)
 
-    ## Project People
+    # Project People
     executive_unit = models.CharField('執行單位', max_length=100, blank=True, null=True)
     code = models.CharField('計畫編號', max_length=100, blank=True, null=True)
     principal_investigator = models.CharField('計畫主持人', max_length=1000, blank=True, null=True)
@@ -56,11 +61,11 @@ class Project(models.Model):
     note = models.CharField('備註', max_length=1000, blank=True, null=True)
     created = models.DateTimeField(auto_now_add=True)
     source_data = models.JSONField(default=dict, blank=True)
-    mode = models.CharField(max_length=4, blank=True, null=True)
+    mode = models.CharField(max_length=8, blank=True, null=True, default='official', choices=MODE_CHOICES)
     #members = models.ManyToManyField('Contact', )
 
-    ## License
-    publish_time = models.DateField('公開日期', null=True, blank=True)
+    # License
+    publish_date = models.DateField('公開日期', null=True, blank=True)
     interpretive_data_license = models.CharField('詮釋資料', max_length=10, blank=True, null=True)
     identification_information_license = models.CharField('鑑定資訊', max_length=10, blank=True, null=True)
     video_material_license = models.CharField('影像資料', max_length=10, blank=True, null=True)
@@ -120,19 +125,29 @@ class Deployment(models.Model):
         ('6', 'Wildlife Damag'),
     )
 
+    GEODETIC_DATUM_CHOICES = (
+        ('TWD97', 'TWD97'),
+        ('WGS84', 'WGS84'),
+    )    
+
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
     #cameraDeploymentBeginDateTime
     #cameraDeploymentEndDateTime
-    longitude = models.DecimalField(decimal_places=8, max_digits=11, null=True, blank=True)
-    latitude = models.DecimalField(decimal_places=8, max_digits=10, null=True, blank=True)
+    longitude = models.DecimalField(decimal_places=8, max_digits=20, null=True, blank=True)
+    latitude = models.DecimalField(decimal_places=8, max_digits=20, null=True, blank=True)
     altitude = models.SmallIntegerField(null=True, blank=True)
     #deploymentLocationID
     name = models.CharField(max_length=1000)
     #cameraStatus
     camera_status = models.CharField(max_length=4, default='1', choices=CAMERA_STATUS_CHOICES)
-    study_areas = models.ManyToManyField(StudyArea, blank=True)
+    study_area = models.ForeignKey(StudyArea, on_delete=models.SET_NULL, null=True)
     created = models.DateTimeField(auto_now_add=True)
     source_data = models.JSONField(default=dict, blank=True)
+
+    geodetic_datum = models.CharField(max_length=10, default='TWD97', choices=GEODETIC_DATUM_CHOICES)
+    landcover = models.CharField('土地覆蓋類型', max_length=1000, blank=True, null=True)
+    vegetation = models.CharField('植被類型', max_length=1000, blank=True, null=True)
+    verbatim_locality = models.CharField(max_length=1000, blank=True, null=True)
 
 
 class Image(models.Model):
