@@ -37,14 +37,18 @@ def get_auth_callback(request):
     # check if orcid exists in db
     if Contact.objects.filter(orcid=orcid).exists():
     # if exists, update login status
-        name = Contact.objects.filter(orcid=orcid).values('name').first()['name']
+        info = Contact.objects.filter(orcid=orcid).values('name','id').first()
+        name = info['name']
+        id = info['id']
     else:
     # if not, create one
-        Contact.objects.create(name=name, orcid=orcid)
+        new_user = Contact.objects.create(name=name, orcid=orcid)
+        id = new_user.id
 
     request.session["is_login"] = True
     request.session["name"] = name
     request.session["orcid"] = orcid
+    request.session["id"] = id
 
     return redirect(original_page_url)
 
@@ -54,6 +58,7 @@ def logout(request):
     request.session["is_login"] = False
     request.session["name"] = None
     request.session["orcid"] = None
+    request.session["id"] = None
     return redirect('home')
 
 
@@ -62,6 +67,13 @@ def personal_info(request):
     ## login required
     is_login = request.session.get('is_login', False)
 
+    if request.method == 'POST':
+        orcid = request.session.get('orcid')
+        name = request.POST.get('name')
+        email = request.POST.get('email')
+        Contact.objects.filter(orcid=orcid).update(name=name, email=email)
+        request.session["name"] = name
+
     if is_login:
         info = Contact.objects.filter(orcid=request.session["orcid"]).values().first()
         return render(request, 'base/personal_info.html', {'info': info})
@@ -69,22 +81,7 @@ def personal_info(request):
         return render(request, 'base/personal_info.html')
 
 
-def update_personal_info(request):
-    if request.method == 'POST':
-        orcid = request.session.get('orcid')
-        name = request.POST.get('name')
-        email = request.POST.get('email')
-        Contact.objects.filter(orcid=orcid).update(name=name, email=email)
-
-    return redirect(personal_info)
-
-
-
 def home(request):
-    if request:
-        print(request.session['name'], request.session['is_login'])
-    # species_data = Image.objects.filter(annotation__species__in=species_list).annotate(name=KeyTextTransform('species', 'annotation')).order_by('name').annotate(c=Count('name')).distinct().order_by('c').values('name','c')
-
     return render(request, 'base/home.html')
 
 
