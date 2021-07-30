@@ -1,0 +1,183 @@
+{% extends 'base/base.html' %}
+{% block head %}
+{% load static %}
+{% endblock head %}
+{% block style %}
+<style>
+        .nav-link {
+            color: gray;
+        }
+
+        .nav-link:hover {
+            color: lightgrey;
+        } 
+
+        .list-unstyled img {
+            padding: 0 10px
+        }
+</style>
+{% endblock style %}
+{% block body %}
+<form id="editProjectLicense" novalidate action="{% url 'edit_project_license' pk %}" method="post">
+{% csrf_token %}
+
+<div class="container content">
+    <div class="row" style="margin-bottom: 10px">
+        <div class="col-2">
+            <h4 class="title-dark">計畫管理</h4>
+            <nav class="py-2 mb-4">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'edit_project_basic' pk %}">
+                            <i class="fa fa-xs fa-circle px-2 py-auto"></i> 基本資訊 
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'edit_project_deployment' pk %}">
+                            <i class="fa fa-xs fa-circle px-2 py-auto"></i> 相機位置管理 
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'edit_project_members' pk %}">
+                            <i class="fa fa-xs fa-circle px-2 py-auto"></i> 計畫成員 </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" style="color: rgb(37, 116, 85)" href="{% url 'edit_project_license' pk %}">
+                            <i class="fa fa-xs fa-pencil px-2 py-auto"></i> 創用CC授權 
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>         
+        <div class="col-10">
+            <div class="bg-white shadow px-0 pb-5 mx-2">
+                <p class="backgroud-dark text-white fw-bold px-3 py-2">創用CC授權許可</p>
+                                <div class="row py-3">
+                    <div class="col-10 mx-auto">
+                        <p>
+                            授權計畫內的詮釋資料、鑑定資訊與影像資訊讓其他遵守授權條款的用戶不必向您詢問許可，即能合法使用其中資料。「Camera
+                            Trap 監測資料管理平台」使用您的創用 CC
+                            授權內容，來與像是全球生物多樣性資訊機構（GBIF），一個專門編輯發佈全球生物多樣化訊息之國際政府間組織如此般的資料合作者共享內容。
+                            了解<a href="http://creativecommons.tw/" target="_blank">創用 CC 授權內容</a>。
+                        </p>
+                        <br>
+                        <b>詮釋資料：</b>
+                        <ul class="list-unstyled">
+                            <li class="py-3">
+                                <label class="form-check-label">             
+                                <input type="radio" name="interpretive_data_license" value="cc0">
+                                <img src="{% static 'image/cc-0.png' %}" height="40px" srcset="{% static 'image/cc-0@2x.png' %}">
+                                無著作權 (CC0)
+                                </label>
+                            </li>
+                            <li class="py-3">
+                                <label class="form-check-label">             
+                                <input type="radio" name="interpretive_data_license" value="by">
+                                <img src="{% static 'image/cc-1.png' %}" height="40px" srcset="{% static 'image/cc-1@2x.png' %}">
+                                姓名標示
+                                </label>
+                            </li>
+                            <li class="py-3">
+                                <label class="form-check-label">             
+                                <input type="radio" name="interpretive_data_license" value="by-nc" >
+                                <img src="{% static 'image/cc-2.png' %}" height="40px" srcset="{% static 'image/cc-2@2x.png' %}">
+                                姓名標示－非商業性
+                                </label>
+                            </li>
+                        </ul>
+                        <b>鑑定資訊：</b>
+                        <ul class="list-unstyled">
+                            <li class="py-3">
+                                <label class="form-check-label">             
+                                <input type="radio" name="identification_information_license" value="by">
+                                <img src="{% static 'image/cc-1.png' %}" height="40px" srcset="{% static 'image/cc-1@2x.png' %}">
+                                姓名標示
+                                </label>
+                            </li>
+                        </ul>
+                        <b>影像資料：</b>
+                        <ul class="list-unstyled">
+                            <li class="py-3">
+                                <label class="form-check-label">             
+                                <input type="radio" name="video_material_license" value="cc0">
+                                <img src="{% static 'image/cc-0.png' %}" height="40px" srcset="{% static 'image/cc-0@2x.png' %}">
+                                無著作權 (CC0)
+                                </label>
+                            </li>
+                            <li class="py-3">
+                                <label class="form-check-label">             
+                                <input type="radio" name="video_material_license" value="by">
+                                <img src="{% static 'image/cc-1.png' %}" height="40px" srcset="{% static 'image/cc-1@2x.png' %}">
+                                姓名標示
+                                </label>
+                            </li>
+                            <li class="py-3">
+                                <label class="form-check-label">             
+                                <input type="radio" name="video_material_license" value="by-nc" >
+                                <img src="{% static 'image/cc-2.png' %}" height="40px" srcset="{% static 'image/cc-2@2x.png' %}">
+                                姓名標示－非商業性
+                                </label>
+                            </li>
+                        </ul>
+                        <div class="row py-3">
+                            <div class="align-items-center d-flex flex-row col-sm-8 col-lg-6" style="display: inline">
+                                <div><span class="required">*</span><b>公開日期：</b></div><input type="text" class="datepicker_publish form-control" name="publish_date" style="width: 50%;" value="{{ project.publish_date|date:'o-m-d' }}">
+                            </div>
+                            <p class="text-gray fs-6 pt-1">計畫內的詮釋資料將會直接公開，鑑定資訊、影像資料的公開日期之上限為計畫結束時間的5年內。</p>
+                        </div>
+                    </div>
+                </div>          
+            </div>
+            <div class="row mt-3 px-2">
+                <div class="text-end px-0">
+                    <a class="btn btn-outline-success" href="{% url 'project_detail' pk %}">取消</a>
+                    <a class="btn btn-orange" onClick="submitForm()">儲存設定</a>
+                </div>
+            </div>
+        </div>     
+    </div>
+</div>
+{% endblock body %}
+{% block script %}
+<script>
+    $(document).ready(function() {
+        $(".datepicker_publish").datepicker({ 
+            dateFormat: "yy-mm-dd", 
+            defaultDate: "+5y",
+            });
+
+        // precheck license
+        $('[name="interpretive_data_license"][value="{{ project.interpretive_data_license }}"]').attr("checked", "checked");
+        $('[name="identification_information_license"][value="{{ project.identification_information_license }}"]').attr("checked", "checked");
+        $('[name="video_material_license"][value="{{ project.video_material_license }}"]').attr("checked", "checked");
+
+    })
+
+// validation
+function submitForm(){  
+      // publish_date
+      let publish_date = $('[name="publish_date"]');
+
+        if (publish_date.val()==''){
+            publish_date.addClass("is-invalid").addClass("was-validated");
+        } else {
+            try {
+                date = $.datepicker.parseDate('yy-mm-dd', publish_date.val());
+                publish_date.removeClass("is-invalid").removeClass("was-validated").removeAttr("id", "invalid");
+            } catch (error) {
+                publish_date.addClass("is-invalid").addClass("was-validated");
+            }
+        }
+
+    if(!$('.is-invalid').length){
+        $('#editProjectLicense').submit()
+    } else {
+        $('.is-invalid').first().attr('id', 'invalid');
+        window.location.href = "#invalid"
+        window.location.hash = "#invalid"
+    }
+  }
+
+
+</script>
+{% endblock script %}

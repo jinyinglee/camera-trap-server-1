@@ -55,7 +55,7 @@ services:
       #- ../basdb-volumes/media:/basdb-volumes/media
     command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
     links:
-            - django:django
+      - django:django
   certbot:
     image: certbot/certbot
     volumes:

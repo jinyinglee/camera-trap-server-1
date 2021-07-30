@@ -33,7 +33,6 @@
                 <input class="filter" type="radio" name="sa-filter" value="" checked>
                   全部
                 </label>
-
             </li>
             {% for i in studyarea %}
             <li>
@@ -68,7 +67,17 @@
           
     </div>
     <div class="col-9">
-        <h4>{{ project_info.0 }}</h4>
+        {% comment %} <h4>{{ project_info.0 }}</h4> {% endcomment %}
+
+            <ul class="nav mb-2">
+                <li>
+                  <a><h4>{{ project_info.0 }}</h4></a>
+                </li>
+                <li class="ms-auto">
+                    <a class="btn btn-outline-success" href="{% url 'edit_project_basic' pk %}"><i class="fa fa-xs fa-pencil"></i> 計畫管理</a>
+                </li>
+            </ul>
+
         <table class="table bg-white" style="margin-bottom: 20px">
             <tr>
                 <td>委辦單位</td>

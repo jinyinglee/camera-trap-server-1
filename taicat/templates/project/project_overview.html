@@ -28,94 +28,115 @@
     </style>
 {% endblock style %}
 {% block body %}
+{% csrf_token %}
 <div class="container content">
     <div class="row" style="margin-bottom: 10px">
-            <h4 class="title-dark">計畫總覽</h4>
+            <h4 class="title-dark p-0">計畫總覽</h4>
     </div>
     <div class="row">
-        <div class="col-2">
+        <div class="col-2 bg-white">
             <div class="row">
-                <h6>篩選條件</h6>
-                <p class="my-1">物種</p>
-                <ul style="list-style: none">
-                <li>
-                    <label class="form-check-label">
-                        <input class="filter" type="checkbox" checked onClick="toggle(this)">
-                            全選
-                    </label>
-                </li>
-                    {% for i in species_data %}
-                    <li>
+                <p class="mt-3">篩選條件</p>
+                <hr style='margin: auto; width: 90%'>
+                <p class="mt-3 mb-1 d-flex justify-content-between">
+                    <strong>物種</strong> 
+                    <button style="font-size: 14px" onClick="clear()">清除 －</button>
+                </p>
+                <ul id="species-list" style="list-style: none">
+                    {% for i in public_species_data %}
+                    <li class="public-species">
                         <label class="form-check-label">
-                        <input class="filter" checked type="checkbox" name="species-filter" value="{{ i.1 }}">
+                        <input class="filter"  type="radio" group="species" name="species-filter" value="{{ i.1 }}">
+                            {{ i.1 }} ({{i.0}})
+                        </label>
+                    </li>
+                    {% endfor %}
+                    {% for i in my_species_data %}
+                    <li class="my-species d-none">
+                        <label class="form-check-label">
+                        <input class="filter"  type="radio" group="species" name="species-filter" value="{{ i.1 }}">
                             {{ i.1 }} ({{i.0}})
                         </label>
                     </li>
                     {% endfor %}
                 </ul>
-
             </div>
         </div>
         <div class="col-10">
             <ul class="nav nav-tabs" id="myTab" role="tablist">
                 <li class="nav-item" role="presentation">
-                  <button class="nav-link active" id="myproject-tab" data-bs-toggle="tab" data-bs-target="#myproject" type="button" role="tab" aria-controls="myproject" aria-selected="true">我的計畫</button>
+                  <button class="nav-link active" id="publicproject-tab" data-bs-toggle="tab" data-bs-target="#publicproject" type="button" role="tab" aria-controls="publicproject" aria-selected="false">公開計畫</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                  <button class="nav-link" id="allproject-tab" data-bs-toggle="tab" data-bs-target="#allproject" type="button" role="tab" aria-controls="allproject" aria-selected="false">所有計畫</button>
+                  <button class="nav-link" id="myproject-tab" data-bs-toggle="tab" data-bs-target="#myproject" type="button" role="tab" aria-controls="myproject" aria-selected="true">我的計畫</button>
                 </li>
                 <li class="nav-item ms-auto">
                     <a class="btn btn-orange" href="{% url 'create_project' %}">新增計畫</a>
                 </li>
-              </ul>
+            </ul>
               <div class="tab-content" id="myTabContent" style="background-color: white; padding: 2%">
-                <div class="tab-pane fade show active" id="myproject" role="tabpanel" aria-labelledby="myproject-tab">
+                <div class="tab-pane fade" id="myproject" role="tabpanel" aria-labelledby="myproject-tab">
+                    {% if request.session.is_login == True %}
                     <table class="table table-hover bg-white" id="myproject-table" style="width: 100%;">
                         <thead>
                         <tr>
-                            <td style="width: 35%">計畫名稱</td>
-                            <td style="width: 15%">資料起始年份</td>
-                            <td style="width: 20%">委託單位</td>
+                            <td style="width: 33%">計畫名稱</td>
+                            <td style="width: 12%">計畫關鍵字</td>
+                            <td style="width: 10%">資料起始年份</td>
+                            <td style="width: 15%">委託單位</td>
                             <td style="width: 10%">樣區數量</td>
                             <td style="width: 10%">相機位置數</td>
                             <td style="width: 10%">資料量</td>
                         </tr>
                         </thead>
-                        <tbody>
-                        {% for tuples in row %}
+                        <tbody id="myproject-tbody">
+                        {% for tuples in my_project %}
                             <tr class='clickable-row' data-href="{% url 'project_detail' tuples.0 %}">
                                 {% for t in tuples %}
                                     {% if not forloop.first %}
-                                        <td>{{ t }}</td>
+                                        {% if t == None %}
+                                            <td></td>
+                                        {% else %}
+                                            <td>{{ t }}</td>
+                                        {% endif %}
                                     {% endif %}
                                 {% endfor %}
                             </tr>
                         {% endfor %}
                         </tbody>
                     </table>
+                    {% else %}
+                    請先登入後查看您的計畫
+                    {% endif %}
+
                 </div>
-                <div class="tab-pane fade" id="allproject" role="tabpanel" aria-labelledby="allproject-tab">
-                    <table class="table table-hover bg-white" id="allproject-table" style="width: 100%;">
+                <div class="tab-pane fade show active" id="publicproject" role="tabpanel" aria-labelledby="publicproject-tab">
+                    <table class="table table-hover bg-white" id="publicproject-table" style="width: 100%;">
                         <thead>
-                        <tr>
-                            <td style="width: 35%">計畫名稱</td>
-                            <td style="width: 15%">資料起始年份</td>
-                            <td style="width: 20%">委託單位</td>
-                            <td style="width: 10%">樣區數量</td>
-                            <td style="width: 10%">相機位置數</td>
-                            <td style="width: 10%">資料量</td>
-                        </tr>
+                            <tr>
+                                <td style="width: 33%">計畫名稱</td>
+                                <td style="width: 12%">計畫關鍵字</td>
+                                <td style="width: 10%">起始年份</td>
+                                <td style="width: 15%">委託單位</td>
+                                <td style="width: 10%">樣區數量</td>
+                                <td style="width: 10%">相機位置數</td>
+                                <td style="width: 10%">資料量</td>
+                            </tr>
                         </thead>
-                        <tbody>
-                        <!-- {% for tuples in row %}
+                        <tbody id="publicproject-tbody">
+                        {% for tuples in public_project %}
                             <tr class='clickable-row' data-href="{% url 'project_detail' tuples.0 %}">
                                 {% for t in tuples %}
                                     {% if not forloop.first %}
-                                        <td>{{ t }}</td>
+                                        {% if t == None %}
+                                            <td></td>
+                                        {% else %}
+                                            <td>{{ t }}</td>
+                                        {% endif %}
                                     {% endif %}
                                 {% endfor %}
                             </tr>
-                        {% endfor %} -->
+                        {% endfor %}
                         </tbody>
                     </table>
                 </div>
@@ -125,32 +146,143 @@
     </div>
 {% endblock body %} {% block script %}
     <script>
-        // Shorthand for $( document ).ready()
+        var $crf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
+
         $(function () {
-            $(".clickable-row").click(function () {
-                //console.log($(this).data("href"));
+
+            // speices filter list
+            $('#publicproject-tab').on('click', function(){
+                $('.public-species').removeClass('d-none')
+                $('.my-species').addClass('d-none')
+            })
+
+            $('#myproject-tab').on('click', function(){
+                $('.my-species').removeClass('d-none')
+                $('.public-species').addClass('d-none')
+            })
+
+            // clickable datatable
+            $("#myproject-table").on("click", ".clickable-row", function(){
+                window.location = $(this).data("href");            
+                });
+
+            $("#publicproject-table").on("click", ".clickable-row", function(){
                 window.location = $(this).data("href");
             });
 
-
+            // filter data by species
             $(".filter").click(function(){
                 check_list = $("[name=species-filter]:checked");
+
                 let speciesArray = [];
                 check_list.each(function(){
                     speciesArray.push($(this).val()); 
                 });
-                // ajax here
-                
+                if (speciesArray.length){
+                    // current table
+                    table_id = $('.col-10 .active').attr('aria-controls')
+
+                    $.ajax({
+                        type: 'POST',
+                        url: "{% url 'update_datatable' %}",
+                        data: {'table_id': table_id, 'species': speciesArray},
+                        headers:{"X-CSRFToken": $crf_token},
+                        success: function (response) {
+                            // reset table
+                            $('#'+table_id+'-table').DataTable().destroy()
+                            $('#'+table_id+'-tbody').html('')
+                            let i;
+                            for (i = 0; i < response.length; i++) {
+                            $('#'+table_id+'-tbody').append(`
+                                <tr class='clickable-row' data-href="details/${response[i][0]}/">
+                                    <td>${response[i][1]}</td>
+                                    <td>${response[i][2]}</td>
+                                    <td>${response[i][3]}</td>
+                                    <td>${response[i][4]}</td>
+                                    <td>${response[i][5]}</td>
+                                    <td>${response[i][6]}</td>
+                                    <td>${response[i][7]}</td>
+                                </tr>`)
+                            }
+                            $('#'+table_id+'-table').DataTable({"language": language_settings});
+
+                        },
+                    })
+                }
             })
+
         });
 
-            // select all species
-        function toggle(source) {
-            checkboxes = document.getElementsByName('species-filter');
-            for(var i=0, n=checkboxes.length;i<n;i++) {
-                checkboxes[i].checked = source.checked;
+        function clear(){
+            // reset table
+            $('#species-list').html(`
+                    {% for i in public_species_data %}
+                    <li class="public-species">
+                        <label class="form-check-label">
+                        <input class="filter"  type="radio" group="species" name="species-filter" value="{{ i.1 }}" onClick="Others()">
+                            {{ i.1 }} ({{i.0}})
+                        </label>
+                    </li>
+                    {% endfor %}
+                    {% for i in my_species_data %}
+                    <li class="my-species d-none">
+                        <label class="form-check-label">
+                        <input class="filter"  type="radio" group="species" name="species-filter" value="{{ i.1 }}" onClick="Others()">
+                            {{ i.1 }} ({{i.0}})
+                        </label>
+                    </li>
+                    {% endfor %}
+            `)
+
+            $('#myproject-table').DataTable().destroy();
+            $('#publicproject-table').DataTable().destroy();
+
+            $('#myproject-tbody').html(
+                `{% for tuples in my_project %}
+                    <tr class='clickable-row' data-href="{% url 'project_detail' tuples.0 %}">
+                        {% for t in tuples %}
+                            {% if not forloop.first %}
+                                {% if t == None %}
+                                    <td></td>
+                                {% else %}
+                                    <td>{{ t }}</td>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                {% endfor %}`
+            )
+
+            $('#publicproject-tbody').html(
+                `{% for tuples in public_project %}
+                    <tr class='clickable-row' data-href="{% url 'project_detail' tuples.0 %}">
+                        {% for t in tuples %}
+                            {% if not forloop.first %}
+                                {% if t == None %}
+                                    <td></td>
+                                {% else %}
+                                    <td>{{ t }}</td>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                {% endfor %}`
+            )
+
+            $('#myproject-table').DataTable({"language": language_settings});
+            $('#publicproject-table').DataTable({"language": language_settings});
+
+            // filter
+            table_id = $('.col-10 .active').attr('aria-controls')
+            if (table_id == 'myproject'){
+                $('.my-species').removeClass('d-none')
+                $('.public-species').addClass('d-none')
+            } else {
+                $('.my-species').addClass('d-none')
+                $('.public-species').removeClass('d-none')
             }
-            }
+
+        }
 
         // datatable
         let language_settings = {
@@ -173,6 +305,8 @@
         };
 
         $('#myproject-table').DataTable({"language": language_settings});
-        $('#allproject-table').DataTable({"language": language_settings});
+        $('#publicproject-table').DataTable({"language": language_settings});
+
+
     </script>
 {% endblock script %}
