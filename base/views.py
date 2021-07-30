@@ -40,10 +40,19 @@ def get_auth_callback(request):
         info = Contact.objects.filter(orcid=orcid).values('name','id').first()
         name = info['name']
         id = info['id']
+        request.session["first_login"] = False
     else:
     # if not, create one
         new_user = Contact.objects.create(name=name, orcid=orcid)
         id = new_user.id
+        # redirect to set email
+        request.session["is_login"] = True
+        request.session["name"] = name
+        request.session["orcid"] = orcid
+        request.session["id"] = id
+        request.session["first_login"] = True
+
+        return redirect(personal_info)
 
     request.session["is_login"] = True
     request.session["name"] = name
@@ -66,8 +75,10 @@ def logout(request):
 def personal_info(request):
     ## login required
     is_login = request.session.get('is_login', False)
+    first_login = request.session.get('first_login', False)
 
     if request.method == 'POST':
+        first_login = False
         orcid = request.session.get('orcid')
         name = request.POST.get('name')
         email = request.POST.get('email')
@@ -76,8 +87,9 @@ def personal_info(request):
 
     if is_login:
         info = Contact.objects.filter(orcid=request.session["orcid"]).values().first()
-        return render(request, 'base/personal_info.html', {'info': info})
+        return render(request, 'base/personal_info.html', {'info': info, 'first_login': first_login})
     else: 
+        messages.error(request, '請先登入')
         return render(request, 'base/personal_info.html')
 
 
