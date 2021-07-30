@@ -23,6 +23,24 @@ city_list = ['基隆市','嘉義市','台北市','嘉義縣','新北市','台南
             '苗栗縣','花蓮縣','台中市','宜蘭縣','彰化縣','澎湖縣',
             '南投縣','金門縣','雲林縣',	'連江縣']
 
+species_list = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠']
+
+
+def check_if_authorized(request, pk):
+    is_authorized = False
+    member_id=request.session.get('id', None)
+    if member_id:
+        # check project_member (project_admin)
+        if ProjectMember.objects.filter(member_id=member_id, role="project_admin", project_id=pk):
+            is_authorized = True
+        else:
+            # check organization_admin
+            if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
+            if if_organization_admin:
+                organization_id = if_organization_admin.values('organization').first()['organization']
+                if Organization.objects.filter(id=organization_id,projects=pk):
+                    is_authorized = True
+    return is_authorized
 
 def create_project(request):
     if request.method == "POST":
@@ -45,87 +63,111 @@ def create_project(request):
 
 
 def edit_project_basic(request, pk):
-    if request.method == "POST":
-        region_list = request.POST.getlist('region')
-        region = {'region': ",".join(region_list)}
+    is_authorized = check_if_authorized(request, pk)
 
-        data = dict(request.POST.items())
-        data.pop('csrfmiddlewaretoken')
-        data.update(region)
+    if is_authorized:
+        if request.method == "POST":
+            region_list = request.POST.getlist('region')
+            region = {'region': ",".join(region_list)}
 
-        project = Project.objects.filter(id=pk).update(**data)
+            data = dict(request.POST.items())
+            data.pop('csrfmiddlewaretoken')
+            data.update(region)
 
-    project = Project.objects.filter(id=pk).values().first()
-    print(project['region'])
-    if project['region'] not in  ['', None, []]:
-        region = {'region': project['region'].split(',')}
-        project.update(region)
-    return render(request, 'project/edit_project_basic.html', {'project': project, 'pk': pk,  'city_list':city_list})
+            project = Project.objects.filter(id=pk).update(**data)
+
+        project = Project.objects.filter(id=pk).values().first()
+        if project['region'] not in  ['', None, []]:
+            region = {'region': project['region'].split(',')}
+            project.update(region)
+
+        return render(request, 'project/edit_project_basic.html', {'project': project, 'pk': pk,  'city_list': city_list, 'is_authorized': is_authorized})
+    else:
+        messages.error(request, '您的權限不足')
+        return render(request, 'project/edit_project_basic.html', {'pk': pk,'is_authorized': is_authorized})
 
 
 def edit_project_license(request, pk):
-    if request.method == "POST":
-        data = dict(request.POST.items())
-        data.pop('csrfmiddlewaretoken')
+    is_authorized = check_if_authorized(request, pk)
 
-        project = Project.objects.filter(id=pk).update(**data)
+    if is_authorized:
 
-    project = Project.objects.filter(id=pk).values("publish_date","interpretive_data_license","identification_information_license","video_material_license").first()
-    return render(request, 'project/edit_project_license.html', {'project': project, 'pk': pk})
+        if request.method == "POST":
+            data = dict(request.POST.items())
+            data.pop('csrfmiddlewaretoken')
+
+            project = Project.objects.filter(id=pk).update(**data)
+
+        project = Project.objects.filter(id=pk).values("publish_date","interpretive_data_license","identification_information_license","video_material_license").first()
+        return render(request, 'project/edit_project_license.html', {'project': project, 'pk': pk, 'is_authorized': is_authorized})
+    else:
+        messages.error(request, '您的權限不足')
+        return render(request, 'project/edit_project_basic.html', {'pk': pk,'is_authorized': is_authorized})
 
 
 def edit_project_members(request, pk):
+    is_authorized = check_if_authorized(request, pk)
 
-    # organization_admin
-    # if project in organization
-    organization_admin = [] # incase there is no one
-    organization_id = Organization.objects.filter(projects=pk).values('id')
-    for i in organization_id:
-        temp = list(Contact.objects.filter(organization=i['id'], is_organization_admin=True).all().values('name','email'))
-        organization_admin.extend(temp)
-    
-
-    # other members
-    members = ProjectMember.objects.filter(project_id=pk).all()
-    if request.method == "POST":
-        data = dict(request.POST.items())
-        # Add member
-        if data['action'] == 'add':
-            member = Contact.objects.filter(Q(email=data['contact_query'])|Q(orcid=data['contact_query'])).first()
-            if member:            
-                # check: if not exists, create
-                if not ProjectMember.objects.filter(member_id=member.id): 
-                    ProjectMember.objects.create(role=data['role'],member_id=member.id,project_id=pk)
-                # check: if exists, update
+    if is_authorized:
+        # organization_admin
+        # if project in organization
+        organization_admin = [] # incase there is no one
+        organization_id = Organization.objects.filter(projects=pk).values('id')
+        for i in organization_id:
+            temp = list(Contact.objects.filter(organization=i['id'], is_organization_admin=True).all().values('name','email'))
+            organization_admin.extend(temp)
+        
+        # other members
+        members = ProjectMember.objects.filter(project_id=pk).all()
+        if request.method == "POST":
+            data = dict(request.POST.items())
+            # Add member
+            if data['action'] == 'add':
+                member = Contact.objects.filter(Q(email=data['contact_query'])|Q(orcid=data['contact_query'])).first()
+                if member:            
+                    # check: if not exists, create
+                    if not ProjectMember.objects.filter(member_id=member.id): 
+                        ProjectMember.objects.create(role=data['role'],member_id=member.id,project_id=pk)
+                    # check: if exists, update
+                    else:
+                        ProjectMember.objects.filter(member_id=member.id).update(role=data['role'])
+                    messages.success(request, '新增成功')
                 else:
-                    ProjectMember.objects.filter(member_id=member.id).update(role=data['role'])
-                messages.success(request, '新增成功')
+                    messages.error(request, '查無使用者')
+
+            # Edit member
+            elif data['action'] == 'edit':
+                data.pop('action')
+                data.pop('csrfmiddlewaretoken')
+                for i in data:
+                    ProjectMember.objects.filter(member_id=i).update(role=data[i])
+                messages.success(request, '儲存成功')
+            # Remove member
             else:
-                messages.error(request, '查無使用者')
-
-        # Edit member
-        elif data['action'] == 'edit':
-            data.pop('action')
-            data.pop('csrfmiddlewaretoken')
-            for i in data:
-                ProjectMember.objects.filter(member_id=i).update(role=data[i])
-            messages.success(request, '儲存成功')
-        # Remove member
-        else:
-            ProjectMember.objects.filter(member_id=data['memberid']).delete()
-            messages.success(request, '移除成功')
+                ProjectMember.objects.filter(member_id=data['memberid']).delete()
+                messages.success(request, '移除成功')
 
 
-    return render(request, 'project/edit_project_members.html', {'members': members, 'pk': pk, 
-                                                                'organization_admin':organization_admin})
+        return render(request, 'project/edit_project_members.html', {'members': members, 'pk': pk, 
+                                                                    'organization_admin':organization_admin,
+                                                                    'is_authorized': is_authorized})
+    else:
+        messages.error(request, '您的權限不足')
+        return render(request, 'project/edit_project_basic.html', {'pk': pk,'is_authorized': is_authorized})
 
 
 def edit_project_deployment(request, pk):
-    project = Project.objects.filter(id=pk)
-    study_area = StudyArea.objects.filter(project_id=pk)
+    is_authorized = check_if_authorized(request, pk)
 
-    return render(request, 'project/edit_project_deployment.html', {'project': project, 'pk': pk, 
-                'study_area': study_area})
+    if is_authorized:
+        project = Project.objects.filter(id=pk)
+        study_area = StudyArea.objects.filter(project_id=pk)
+
+        return render(request, 'project/edit_project_deployment.html', {'project': project, 'pk': pk, 
+                    'study_area': study_area, 'is_authorized': is_authorized})
+    else:
+        messages.error(request, '您的權限不足')
+        return render(request, 'project/edit_project_basic.html', {'pk': pk,'is_authorized': is_authorized})
 
 
 def get_deployment(request):
@@ -276,8 +318,8 @@ def project_overview(request):
         cursor.execute(query)
         public_species_data = cursor.fetchall()
 
-    species_list = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠']
     public_species_data = [ x for x in public_species_data if x[1] in species_list ]
+    my_species_data = [ x for x in my_species_data if x[1] in species_list ]
 
     return render(request, 'project/project_overview.html', {'public_project': public_project, 'my_project': my_project, 
                                                             'public_species_data':public_species_data, 'my_species_data':my_species_data})
