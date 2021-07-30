@@ -23,6 +23,7 @@ city_list = ['基隆市','嘉義市','台北市','嘉義縣','新北市','台南
             '苗栗縣','花蓮縣','台中市','宜蘭縣','彰化縣','澎湖縣',
             '南投縣','金門縣','雲林縣',	'連江縣']
 
+species_list = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠']
 
 def create_project(request):
     if request.method == "POST":
@@ -276,8 +277,8 @@ def project_overview(request):
         cursor.execute(query)
         public_species_data = cursor.fetchall()
 
-    species_list = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠']
     public_species_data = [ x for x in public_species_data if x[1] in species_list ]
+    my_species_data = [ x for x in my_species_data if x[1] in species_list ]
 
     return render(request, 'project/project_overview.html', {'public_project': public_project, 'my_project': my_project, 
                                                             'public_species_data':public_species_data, 'my_species_data':my_species_data})
