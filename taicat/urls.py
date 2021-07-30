@@ -9,5 +9,9 @@ urlpatterns = [
     path('project/edit/members/<pk>/', views.edit_project_members, name='edit_project_members'),
     path('project/edit/license/<pk>/', views.edit_project_license, name='edit_project_license'),
     path('project/details/<pk>/', views.project_detail, name='project_detail'),
-    path('api/data', views.data, name='data')
+    path('api/data', views.data, name='data'),
+    path('api/update_datatable', views.update_datatable, name='update_datatable'),
+    path('api/deployment/', views.get_deployment, name='deployment'),
+    path('api/add_studyarea', views.add_studyarea, name='add_studyarea'),
+    path('api/add_deployment', views.add_deployment, name='add_deployment')
 ]
