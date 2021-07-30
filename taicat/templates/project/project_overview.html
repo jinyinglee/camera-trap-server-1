@@ -83,7 +83,7 @@
                             <td style="width: 33%">計畫名稱</td>
                             <td style="width: 12%">計畫關鍵字</td>
                             <td style="width: 10%">資料起始年份</td>
-                            <td style="width: 15%">委託單位</td>
+                            <td style="width: 15%">委辦單位</td>
                             <td style="width: 10%">樣區數量</td>
                             <td style="width: 10%">相機位置數</td>
                             <td style="width: 10%">資料量</td>
@@ -117,7 +117,7 @@
                                 <td style="width: 33%">計畫名稱</td>
                                 <td style="width: 12%">計畫關鍵字</td>
                                 <td style="width: 10%">起始年份</td>
-                                <td style="width: 15%">委託單位</td>
+                                <td style="width: 15%">委辦單位</td>
                                 <td style="width: 10%">樣區數量</td>
                                 <td style="width: 10%">相機位置數</td>
                                 <td style="width: 10%">資料量</td>
@@ -194,6 +194,15 @@
                             $('#'+table_id+'-tbody').html('')
                             let i;
                             for (i = 0; i < response.length; i++) {
+                                // keyword & funding agency
+                                if (response[i][2] == 'None'){
+                                    response[i][2] = ''
+                                }
+
+                                if (response[i][4] == 'None'){
+                                    response[i][4] = ''
+                                }
+
                             $('#'+table_id+'-tbody').append(`
                                 <tr class='clickable-row' data-href="details/${response[i][0]}/">
                                     <td>${response[i][1]}</td>
