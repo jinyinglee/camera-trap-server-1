@@ -40,7 +40,7 @@
                 <hr style='margin: auto; width: 90%'>
                 <p class="mt-3 mb-1 d-flex justify-content-between">
                     <strong>物種</strong> 
-                    <button style="font-size: 14px" onClick="clear()">清除 －</button>
+                    <button style="font-size: 14px" onClick="Clear()">清除 －</button>
                 </p>
                 <ul id="species-list" style="list-style: none">
                     {% for i in public_species_data %}
@@ -171,7 +171,8 @@
             });
 
             // filter data by species
-            $(".filter").click(function(){
+            $("#species-list").on("click", ".filter", function(){
+
                 check_list = $("[name=species-filter]:checked");
 
                 let speciesArray = [];
@@ -213,13 +214,13 @@
 
         });
 
-        function clear(){
+        function Clear(){
             // reset table
             $('#species-list').html(`
                     {% for i in public_species_data %}
                     <li class="public-species">
                         <label class="form-check-label">
-                        <input class="filter"  type="radio" group="species" name="species-filter" value="{{ i.1 }}" onClick="Others()">
+                        <input class="filter"  type="radio" group="species" name="species-filter" value="{{ i.1 }}">
                             {{ i.1 }} ({{i.0}})
                         </label>
                     </li>
@@ -227,7 +228,7 @@
                     {% for i in my_species_data %}
                     <li class="my-species d-none">
                         <label class="form-check-label">
-                        <input class="filter"  type="radio" group="species" name="species-filter" value="{{ i.1 }}" onClick="Others()">
+                        <input class="filter"  type="radio" group="species" name="species-filter" value="{{ i.1 }}">
                             {{ i.1 }} ({{i.0}})
                         </label>
                     </li>
