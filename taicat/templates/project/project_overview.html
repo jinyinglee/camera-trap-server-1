@@ -94,7 +94,7 @@
                             <tr class='clickable-row' data-href="{% url 'project_detail' tuples.0 %}">
                                 {% for t in tuples %}
                                     {% if not forloop.first %}
-                                        {% if t == None %}
+                                        {% if t == 'None' %}
                                             <td></td>
                                         {% else %}
                                             <td>{{ t }}</td>
