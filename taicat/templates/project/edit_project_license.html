@@ -18,6 +18,7 @@
 </style>
 {% endblock style %}
 {% block body %}
+{% if is_authorized %}
 <form id="editProjectLicense" novalidate action="{% url 'edit_project_license' pk %}" method="post">
 {% csrf_token %}
 
@@ -137,6 +138,10 @@
         </div>     
     </div>
 </div>
+{% else %}
+<div class="container">
+<a class="btn btn-outline-success" onClick="goBack()">回上一頁</a></div>
+{% endif %}
 {% endblock body %}
 {% block script %}
 <script>
