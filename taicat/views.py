@@ -30,8 +30,11 @@ def check_if_authorized(request, pk):
     is_authorized = False
     member_id=request.session.get('id', None)
     if member_id:
+        # check system_admin
+        if Contact.objects.filter(id=member_id, is_system_admin=True):
+            is_authorized = True
         # check project_member (project_admin)
-        if ProjectMember.objects.filter(member_id=member_id, role="project_admin", project_id=pk):
+        elif ProjectMember.objects.filter(member_id=member_id, role="project_admin", project_id=pk):
             is_authorized = True
         else:
             # check organization_admin
@@ -564,12 +567,13 @@ def data(request):
 
 def project_detail(request, pk):
     with connection.cursor() as cursor:
-        query = "SELECT name, funding_agency, source_data -> 'code', " \
+        query = "SELECT name, funding_agency, code, " \
                 "principal_investigator, " \
                 "to_char(start_date, 'YYYY-MM-DD'), " \
                 "to_char(end_date, 'YYYY-MM-DD') FROM taicat_project WHERE id={}"
         cursor.execute(query.format(pk))
         project_info = cursor.fetchone()
+    print(project_info)
     project_info = list(project_info)
 
     studyarea = StudyArea.objects.filter(project_id=pk).values('name').exclude(name=[None, '']).distinct().order_by('name') 
