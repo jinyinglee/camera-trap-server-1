@@ -152,6 +152,9 @@
     </div>
 </div>
 </form>
+{% else %}
+<div class="container">
+<a class="btn btn-outline-success" onClick="goBack()">回上一頁</a></div>
 {% endif %}
 {% endblock body %}
 {% block script %}
@@ -170,6 +173,11 @@
     $('.selectpicker').selectpicker('val', {{ project.region|safe }}); 
 
   });
+
+  function goBack() {
+  window.history.back();
+}
+
 
   // validation
     function submitForm(){  
