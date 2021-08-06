@@ -164,7 +164,6 @@ class Image(models.Model):
         ('time-lapse', 'Timelapse'),
     )
 
-
     deployment = models.ForeignKey(Deployment, on_delete=models.SET_NULL, null=True)
     file_url = models.CharField(max_length=1000, null=True)
     filename = models.CharField(max_length=1000) # first file if is_sequence
@@ -187,3 +186,5 @@ class Image(models.Model):
     annotation = models.JSONField(default=dict, blank=True)
     memo = models.TextField(default='', blank=True)
     image_hash = models.TextField(default='', blank=True)
+    exif = models.JSONField(default=dict, blank=True)
+
