@@ -6,7 +6,10 @@
 #MAKEFLAGS += --no-builtin-rules
 
 dev-up:
-	docker-compose up
+	docker-compose up -d
+
+dev-down:
+	docker-compose down
 
 dev-build:
 	docker-compose bulid
