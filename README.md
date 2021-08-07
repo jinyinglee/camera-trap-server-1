@@ -16,3 +16,4 @@ NOTES:
 1. Open port 443 on EC2
 2. Link nginx to django in docker config otherwise nginx cannot find correct upstream
 3. Make sure to check if data path & docker-compose yml filename in `init-letsencrypt.sh` are correct
+4. When developinglocally by docker, https (provided by nginx) will not be available, so login through ORCID will fail.
