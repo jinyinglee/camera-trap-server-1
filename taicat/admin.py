@@ -15,13 +15,13 @@ class ProjectAdmin(admin.ModelAdmin):
 
 
 @admin.register(Organization)
-class ProjectAdmin(admin.ModelAdmin):
+class OrganizationAdmin(admin.ModelAdmin):
     model = Organization
 
     filter_horizontal = ('projects',)
 
 @admin.register(Contact)
-class ProjectAdmin(admin.ModelAdmin):
+class ContactAdmin(admin.ModelAdmin):
     model = Contact
 
 @admin.register(Project)
@@ -31,10 +31,11 @@ class ProjectAdmin(admin.ModelAdmin):
     #filter_horizontal = ('members',)
 
 @admin.register(StudyArea)
-class ProjectAdmin(admin.ModelAdmin):
+class StudyAreaAdmin(admin.ModelAdmin):
     model = StudyArea
+    list_display = ('name', 'project')
 
 @admin.register(Deployment)
-class ProjectAdmin(admin.ModelAdmin):
+class DeploymentAdmin(admin.ModelAdmin):
     model = Deployment
-
+    list_display = ('name', 'project', 'study_area')
