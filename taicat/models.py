@@ -100,7 +100,8 @@ class StudyArea(models.Model):
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True, related_name='studyareas')
     created = models.DateTimeField(auto_now_add=True)
-
+    def __str__(self):
+        return f'<StudyArea {self.name}>'
 # Survey
 '''The Survey level includes information on different surveys completed within the same
 Project or Study Area. In some cases, a Project or Study Area will consist of more than one
@@ -128,7 +129,7 @@ class Deployment(models.Model):
     GEODETIC_DATUM_CHOICES = (
         ('TWD97', 'TWD97'),
         ('WGS84', 'WGS84'),
-    )    
+    )
 
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
     #cameraDeploymentBeginDateTime
@@ -149,6 +150,8 @@ class Deployment(models.Model):
     vegetation = models.CharField('植被類型', max_length=1000, blank=True, null=True)
     verbatim_locality = models.CharField(max_length=1000, blank=True, null=True)
 
+    def __str__(self):
+        return f'<Deployment {self.name}>'
 
 class Image(models.Model):
     '''if is_sequence, ex: 5 Images, set last 4 Images's is_sequence to True (wouldn't  count)'''

@@ -69,6 +69,7 @@ def post_image_annotation(request):
     ret = {}
     if request.method == 'POST':
         data = json.loads(request.body)
+
         deployment = Deployment.objects.get(pk=data['deployment_id'])
         if deployment:
             res = {}
@@ -76,6 +77,9 @@ def post_image_annotation(request):
             utc_tz = pytz.timezone(settings.TIME_ZONE)
 
             for i in data['image_list']:
+                # prevent json load error
+                exif_str = i[9].replace('\\u0000', '') if i[9] else '{}'
+                exif = json.loads(exif_str)
                 anno = json.loads(i[7]) if i[7] else '{}'
                 if i[11]:
                     img = Image.objects.get(pk=i[11])
@@ -89,7 +93,8 @@ def post_image_annotation(request):
                         source_data=i,
                         image_hash=i[6],
                         annotation=anno,
-                        memo=data['key']
+                        memo=data['key'],
+                        exif=exif,
                     )
                 img.save()
                 res[i[0]] = img.id
