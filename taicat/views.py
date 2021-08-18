@@ -536,7 +536,10 @@ def data(request):
             else:
                 data[i]['lifestage'] = ''
             # data[i]['id'] =  """<img class="img lazy" style="height: 200px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}.jpg" />""".format(data[i]['id'])
-            data[i]['file_url'] =  """<img class="img lazy" style="height: 200px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}" />""".format(data[i]['file_url'])
+            file_url = data[i].get('file_url', '')
+            if not file_url:
+                file_url = f'{i}-m.jpg'
+            data[i]['file_url'] =  """<img class="img lazy" style="height: 200px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}" />""".format(file_url)
 
         if _start and _length:
             start = int(_start)
