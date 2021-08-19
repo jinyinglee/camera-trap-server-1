@@ -119,13 +119,22 @@
                                     <td style="width: 20%">{{ i.member.name }}</td>
                                     <td style="width: 35%">{{ i.member.email }}</td>
                                     <td style="width: 35%">
-                                        <select class="selectpicker form-control" data-width="100%" data-style="btn-new" name="{{ i.member_id }}" id="{{ i.member_id }}">
-                                            <option value="project_admin">個別計畫承辦人</option>
-                                            <option value="uploader">資料上傳者</option>
-                                        </select>
+                                    <!-- disable change current user's (self) permission  -->
+                                    {% if request.session.name == i.member.name %}
+                                    <select class="selectpicker form-control" data-width="100%" data-style="btn-new" name="{{ i.member_id }}" id="{{ i.member_id }}" disabled>
+                                    {% else %}
+                                    <select class="selectpicker form-control" data-width="100%" data-style="btn-new" name="{{ i.member_id }}" id="{{ i.member_id }}">
+                                    {% endif %}
+                                        <option value="project_admin">個別計畫承辦人</option>
+                                        <option value="uploader">資料上傳者</option>
+                                    </select>
                                     </td>
                                     <td style="width: 10%" class="text-center">
-                                        <a class="btn btn-outline-secondary remove" data-id="{{ i.member_id }}" data-bs-toggle="modal" data-bs-target="#removeModal">移除</a>
+                                    {% if request.session.name == i.member.name  %}
+                                    <button class="btn btn-outline-secondary" disabled>移除</button>
+                                    {% else %}
+                                    <a class="btn btn-outline-secondary remove" data-id="{{ i.member_id }}" data-bs-toggle="modal" data-bs-target="#removeModal">移除</a>
+                                    {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}
