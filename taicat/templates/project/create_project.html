@@ -44,9 +44,10 @@
 </style>
 {% endblock %}
 {% block body %}
-<form id="createProjectForm" novalidate action="{% url 'create_project' %}" method="post">
+{% if request.session.is_login %}
 {% csrf_token %}
 <div class="container content">
+<form id="createProjectForm" novalidate action="{% url 'create_project' %}" method="post">
     <div class="row" style="margin-bottom: 10px">
         <h4 class="title-dark">新增計畫</h4>     
     </div>
@@ -214,8 +215,17 @@
             </div>
         </div>
     </div>
-</div>
 </form>
+{% else %}
+<div class="container content">
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        請先登入再新增計畫
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <a class="btn btn-outline-success" href="{% url 'project_overview' %}">回上一頁</a>
+
+{% endif %}
+</div>
 {% endblock body %}
 
 {% block script %}
