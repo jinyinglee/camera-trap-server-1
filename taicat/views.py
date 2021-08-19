@@ -45,7 +45,7 @@ def check_if_authorized(request, pk):
                     is_authorized = True
     return is_authorized
 
-def create_project(request):
+def create_project(request):    
     if request.method == "POST":
         region_list = request.POST.getlist('region')
         region = {'region': ",".join(region_list)}
@@ -129,11 +129,11 @@ def edit_project_members(request, pk):
                 member = Contact.objects.filter(Q(email=data['contact_query'])|Q(orcid=data['contact_query'])).first()
                 if member:            
                     # check: if not exists, create
-                    if not ProjectMember.objects.filter(member_id=member.id): 
-                        ProjectMember.objects.create(role=data['role'],member_id=member.id,project_id=pk)
+                    if not ProjectMember.objects.filter(member_id=member.id, project_id=pk): 
+                        ProjectMember.objects.create(role=data['role'], member_id=member.id, project_id=pk)
                     # check: if exists, update
                     else:
-                        ProjectMember.objects.filter(member_id=member.id).update(role=data['role'])
+                        ProjectMember.objects.filter(member_id=member.id, project_id=pk).update(role=data['role'])
                     messages.success(request, '新增成功')
                 else:
                     messages.error(request, '查無使用者')
@@ -143,13 +143,12 @@ def edit_project_members(request, pk):
                 data.pop('action')
                 data.pop('csrfmiddlewaretoken')
                 for i in data:
-                    ProjectMember.objects.filter(member_id=i).update(role=data[i])
+                    ProjectMember.objects.filter(member_id=i, project_id=pk).update(role=data[i])
                 messages.success(request, '儲存成功')
             # Remove member
             else:
-                ProjectMember.objects.filter(member_id=data['memberid']).delete()
+                ProjectMember.objects.filter(member_id=data['memberid'], project_id=pk).delete()
                 messages.success(request, '移除成功')
-
 
         return render(request, 'project/edit_project_members.html', {'members': members, 'pk': pk, 
                                                                     'organization_admin':organization_admin,
@@ -593,3 +592,4 @@ def project_detail(request, pk):
                 {'project_info': project_info, 'species': species, 'pk': pk,
                 'studyarea':studyarea, 'deployment':deployment,
                 'earliest_date': earliest_date, 'latest_date':latest_date})
+
