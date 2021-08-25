@@ -20,13 +20,13 @@
 
 {% if request.session.is_login == True %}
     <div class="row" style="margin-bottom: 10px">
-        <h4 class="title-dark">設定</h4>     
+        <h4 class="title-dark">帳號設定</h4>     
     </div>
     <form action="{% url 'personal_info' %}" class="needs-validation" novalidate method="post">
     {% csrf_token %}
         <div class="row">
             <div class="bg-white shadow px-0 pb-5 mx-2">
-                <p class="backgroud-dark text-white fw-bold px-3 py-2">帳號設定</p>        
+                <p class="backgroud-dark text-white fw-bold px-3 py-2">個人資訊</p>        
                 <div class="row py-3">
                     <div class="col-2 my-auto text-end"><span class="required">*</span>帳號連結：</div>
                     <div class="col-4">

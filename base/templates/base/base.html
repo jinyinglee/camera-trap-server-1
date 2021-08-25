@@ -222,8 +222,11 @@
                   {{ request.session.name }}
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                  <li><a class="dropdown-item" href="{% url 'personal_info' %}">設定</a></li>
+                  <li><a class="dropdown-item" href="{% url 'personal_info' %}">帳號設定</a></li>
                   <li><a class="dropdown-item" href="{% url 'create_project' %}">新增計畫</a></li>
+                  {% if request.session.name in '系統管理員,計畫總管理人'  %}
+                  <li><a class="dropdown-item" href="{% url 'set_permission' %}">權限管理</a></li>
+                  {% endif %}
                   <li><a class="dropdown-item" href="{% url 'logout' %}">登出</a></li>
                 </ul>
               </li>
@@ -258,6 +261,19 @@
           <div class="my-3">
             <a class="btn btn-light w-100" onClick="getAuth()">
                 使用 ORCID 帳號登入
+            </a>
+            ＊測試用登入＊<br>
+            <a class="btn btn-light" href="{% url 'login_for_test' %}?role=計畫總管理人&next={{ request.path }}">
+                計畫總管理人
+            </a>
+            <a class="btn btn-light" href="{% url 'login_for_test' %}?role=個別計畫承辦人&next={{ request.path }}">
+                計畫承辦人
+            </a>
+            <a class="btn btn-light" href="{% url 'login_for_test' %}?role=資料上傳者&next={{ request.path }}">
+                資料上傳者
+            </a>
+            <a class="btn btn-light" href="{% url 'login_for_test' %}?role=系統管理員&next={{ request.path }}">
+                系統管理員
             </a>
           </div>
           <div class="text-gray">
