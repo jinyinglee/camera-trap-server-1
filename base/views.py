@@ -20,6 +20,22 @@ class DecimalEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
+def login_for_test(request):
+    next = request.GET.get('next')
+    role = request.GET.get('role')
+    print(next, role)
+    info = Contact.objects.filter(name=role).values('name','id').first()
+    request.session["is_login"] = True
+    request.session["name"] = role
+    request.session["orcid"] = ''
+    request.session["id"] = info['id']
+    request.session["first_login"] = False
+
+    return redirect(next)
+
+def set_permission(request):
+    return render(request, 'base/permission.html')
+
 def get_auth_callback(request):
     original_page_url = request.GET.get('next')
     authorization_code = request.GET.get('code')

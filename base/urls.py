@@ -9,5 +9,6 @@ urlpatterns = [
     path('api/get_home_data', views.get_home_data, name='get_home_data'),
     path('callback/orcid/auth', views.get_auth_callback, name='get_auth_callback'),
     # path('callback/orcid/authcode', views.get_auth_code, name='get_auth_code')
-
+    path('test/login', views.login_for_test, name='login_for_test'),
+    path('permission', views.set_permission, name='set_permission'),
 ]
