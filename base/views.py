@@ -2,14 +2,13 @@ from django.http import response
 from django.shortcuts import render, HttpResponse, redirect
 import json
 from django.db import connection
-from taicat.models import Deployment, Image, Contact
-from django.db.models import Count, Window, F, Sum, Min
+from taicat.models import Deployment, Image, Contact, Organization, Project
+from django.db.models import Count, Window, F, Sum, Min, Q
 from django.db.models.functions import ExtractYear
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.template import loader
 import requests
 from django.contrib import messages
-
 from decimal import Decimal
 
 
@@ -18,6 +17,13 @@ class DecimalEncoder(json.JSONEncoder):
         if isinstance(obj, Decimal):
             return float(obj)
         return json.JSONEncoder.default(self, obj)
+
+def add_org_admin(request):
+    if request.method == 'POST':
+        print('hi')
+        for i in request.POST:
+            print(i)
+        redirect(set_permission)
 
 
 def login_for_test(request):
@@ -34,7 +40,58 @@ def login_for_test(request):
     return redirect(next)
 
 def set_permission(request):
-    return render(request, 'base/permission.html')
+    is_authorized = False
+    user_id = request.session.get('id', None)
+    # check permission
+    # if Contact.objects.filter(id=user_id).filter(Q(is_organization_admin=True) | Q(is_system_admin=True)):
+    if Contact.objects.filter(id=user_id).filter(is_system_admin=True):
+        is_authorized = True
+
+        if request.method == 'POST':
+            type = request.POST.get('type')
+            if type == 'add_admin':
+                user_id = request.POST.get('user', None)
+                org_id = request.POST.get('organization', None)
+                if user_id and org_id:
+                    Contact.objects.filter(id=user_id).update(is_organization_admin=True, organization_id=org_id)
+                    messages.success(request, '新增成功')
+            elif type == 'remove_admin':
+                user_id = request.POST.get('id', None)
+                if user_id:
+                    Contact.objects.filter(id=user_id).update(is_organization_admin=False)
+                    messages.success(request, '移除成功')
+            elif type == 'remove_project':
+                relation_id = request.POST.get('id', None)
+                if relation_id:
+                    Organization.projects.through.objects.filter(id=relation_id).delete()
+                    messages.success(request, '移除成功')
+            else:
+                project_id = request.POST.get('project', None)
+                org_id = request.POST.get('organization', None)
+                try:
+                    Organization.objects.get(id=org_id).projects.add(Project.objects.get(id=project_id))
+                    messages.success(request, '新增成功')
+                except:
+                    messages.error(request, '新增失敗')
+        member_list = Contact.objects.all().values('name','email','id')
+        org_list = Organization.objects.all()
+        project_list = Project.objects.all().values('name', 'id')
+
+        org_project_list = []
+        org_project_set = Organization.projects.through.objects.all()
+        for i in org_project_set:
+            tmp = {'organization_name': i.organization.name, 'relation_id': i.id, 
+                    'project_name': i.project.name}
+            org_project_list.append(tmp)
+
+        org_admin_list = Contact.objects.filter(is_organization_admin=True).values('organization__name','id','name', 'email')
+
+        return render(request, 'base/permission.html', {'member_list': member_list, 'org_project_list': org_project_list,
+                      'is_authorized': is_authorized, 'org_list': org_list, 'project_list': project_list, 'org_admin_list': org_admin_list})
+    else:
+        messages.error(request, '您的權限不足')
+        return render(request, 'base/permission.html', {'is_authorized': is_authorized})
+
 
 def get_auth_callback(request):
     original_page_url = request.GET.get('next')

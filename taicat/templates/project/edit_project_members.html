@@ -154,25 +154,25 @@
     </div>
 </div>
 
-    <!-- Modal -->
-    <div class="modal fade" id="removeModal" tabindex="-1" aria-labelledby="removeModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-body">
-                    <h4>確定移除？</h4>
-                    <form id="removeProjectMember" novalidate action="{% url 'edit_project_members' pk %}" method="post">
-                    {% csrf_token %}
-                    <input type="hidden" name="memberid" id="memberid" value="">
-                    <input type="hidden" name="action" value="remove">
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
-                    <a class="btn btn-danger" onClick="$('#removeProjectMember').submit()">移除</a>
-                </div>
+<!-- Modal -->
+<div class="modal fade" id="removeModal" tabindex="-1" aria-labelledby="removeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-body">
+                <h4>確定移除？</h4>
+                <form id="removeProjectMember" novalidate action="{% url 'edit_project_members' pk %}" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="memberid" id="memberid" value="">
+                <input type="hidden" name="action" value="remove">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <a class="btn btn-danger" onClick="$('#removeProjectMember').submit()">移除</a>
             </div>
         </div>
     </div>
+</div>
 {% else %}
 <div class="container">
 <a class="btn btn-outline-success" onClick="goBack()">回上一頁</a></div>
@@ -198,13 +198,10 @@ $( function() {
     }
 
 
-    // pass variable to modal
+// pass variable to modal
 $(document).on("click", ".remove", function () {
      var memberid = $(this).data('id');
      $(".modal-body #memberid").val( memberid );
-     // As pointed out in comments, 
-     // it is unnecessary to have to manually call the modal.
-     // $('#addBookDialog').modal('show');
 });
 </script>
 {% endblock script %}
