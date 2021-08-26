@@ -247,6 +247,7 @@ def project_overview(request):
     # my project    
     project_list = []
     member_id=request.session.get('id', None)
+    print('member_id', member_id)
     if member_id:
         # 1. select from project_member table
         with connection.cursor() as cursor:
