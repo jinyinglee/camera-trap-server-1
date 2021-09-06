@@ -9,13 +9,10 @@
     <script src="https://code.jquery.com/jquery-3.5.1.js"></script> 
     <link rel="stylesheet" href="{% static 'jquery-ui-1.12.1/jquery-ui.css' %}">
     <script src="{% static 'jquery-ui-1.12.1/jquery-ui.js' %}"></script>
-    <link href="https://cdn.datatables.net/1.10.24/css/jquery.dataTables.min.css" />
-    <script type="text/javascript" src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
-    <script type="text/javascript" src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap5.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css"
-          rel="stylesheet"
-          integrity="sha384-wEmeIV1mKuiNpC+IOBjI7aAzPcEZeedi5yW5f2yOq55WWLwNGmvvx4Um1vskeMj0"
-          crossorigin="anonymous"/>
+    <link href="https://cdn.datatables.net/1.11.0/css/jquery.dataTables.min.css" />
+    <script type="text/javascript" src="https://cdn.datatables.net/1.11.0/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/1.11.0/js/dataTables.bootstrap5.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-wEmeIV1mKuiNpC+IOBjI7aAzPcEZeedi5yW5f2yOq55WWLwNGmvvx4Um1vskeMj0" crossorigin="anonymous"/>
     <link href="https://cdn.datatables.net/1.10.24/css/dataTables.bootstrap5.min.css"  rel="stylesheet"/>
     <script src="https://kit.fontawesome.com/b8e586964f.js" crossorigin="anonymous"></script>
     {% block head %}{% endblock head %}
@@ -174,6 +171,52 @@
         height: 30px;
         text-decoration: none;
       }
+
+    .icon {
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    .icon-phone-gray {
+      background-image: url("{% static 'icon/icons-sa4ae1ae68a.png' %}");
+      background-position: 0 -878px;
+      background-repeat: no-repeat;
+      overflow: hidden;
+      display: inline-block;
+      height: 18px;
+      width: 18px;
+    }
+    @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 2dppx) {
+      .icon-phone-gray {
+        background-repeat: no-repeat;
+        background-image: url("{% static 'icon/icons-2x-sb27373e813.png' %}");
+        background-size: 53px 1401px;
+        background-position: 0 -823px;
+        height: 19px;
+        width: 19px;
+      }
+    }
+
+    .icon-mail-gray {
+      background-image: url("{% static 'icon/icons-sa4ae1ae68a.png' %}");
+      background-position: 0 -774px;
+      background-repeat: no-repeat;
+      overflow: hidden;
+      display: inline-block;
+      height: 18px;
+      width: 18px;
+    }
+    @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 2dppx) {
+      .icon-mail-gray {
+        background-repeat: no-repeat;
+        background-image: url("{% static 'icon/icons-2x-sb27373e813.png' %}");
+        background-size: 53px 1401px;
+        background-position: 0 -725px;
+        height: 19px;
+        width: 19px;
+      }
+    }
+
     </style>
     {% block style %}{% endblock style %}
   </head>
