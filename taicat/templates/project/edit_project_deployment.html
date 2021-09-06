@@ -64,6 +64,9 @@
     -moz-appearance: textfield;
     }
 
+    #deployment-list {
+        min-height: 540px;
+    }
 </style>
 {% endblock style %}
 {% block body %}
@@ -80,21 +83,22 @@
                 <ul class="nav flex-column">
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'edit_project_basic' pk %}">
-                            <i class="fa fa-xs fa-circle px-2 py-auto"></i> 基本資訊 
+                            <i class="icon fa fa-xs fa-circle px-2 py-auto"></i> 基本資訊 
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link active" style="color: rgb(37, 116, 85)" href="{% url 'edit_project_deployment' pk %}">
-                            <i class="fa fa-xs fa-pencil px-2 py-auto"></i> 相機位置管理 
+                            <i class="icon fa fa-xs fa-pencil px-2 py-auto"></i> 相機位置管理 
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'edit_project_members' pk %}">
-                            <i class="fa fa-xs fa-circle px-2 py-auto"></i> 計畫成員 </a>
+                            <i class="icon fa fa-xs fa-circle px-2 py-auto"></i> 計畫成員 </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'edit_project_license' pk %}">
-                            <i class="fa fa-xs fa-circle px-2 py-auto"></i> 創用CC授權 
+                            <i class="icon fa fa-xs fa-circle px-2 py-auto"></i> 
+                            <span>創用CC授權</span>
                         </a>
                     </li>
                 </ul>
@@ -171,7 +175,7 @@
                     <div id="initial-content" class="text-center">
                             <img
                             src="{% static 'image/empty-site.png' %}"
-                            width="45%"
+                            height='450px'
                             style="padding-top: 10%; padding-bottom: 5%"
                             srcset="{% static 'image/empty-site@2x.png' %}"
                             />

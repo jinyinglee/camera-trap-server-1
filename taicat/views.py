@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from django.db.models import Count, Window, F, Sum, Min, Q
 from django.contrib import messages
 from django.core import serializers
+import pandas as pd
 
 from decimal import Decimal
 
@@ -223,7 +224,6 @@ def add_studyarea(request):
         return HttpResponse(json.dumps(data), content_type='application/json')
 
 
-
 def project_overview(request):
     public_project = []
     my_project = []
@@ -422,7 +422,7 @@ def update_datatable(request):
 
 
 def data(request):
-    requests = request.GET
+    requests = request.POST
     pk = requests.get('pk')
     start_date = requests.get('start_date')
     start_date = datetime.strptime(start_date, "%Y-%m-%d")
@@ -437,40 +437,17 @@ def data(request):
     with connection.cursor() as cursor:
         query = """with base_request as ( 
                     SELECT 
-                        sa.name AS saname, d.name AS dname, i.filename, to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
-                        i.annotation -> 'species' AS species, i.annotation -> 'lifestage' AS lifestage, i.annotation -> 'sex' AS sex, i.annotation -> 'antler' AS antler,
-                        i.annotation -> 'remarks' AS remarks, i.annotation -> 'animal_id' AS animal_id, i.file_url, 
-                        i.id FROM taicat_image i
-                        JOIN taicat_deployment d ON d.id = i.deployment_id
-                        JOIN taicat_studyarea sa ON sa.id = d.study_area_id 
-                        WHERE i.annotation = '[]'::jsonb AND d.project_id= {} AND i.datetime BETWEEN '{}' AND '{}' 
-                        ORDER BY i.created, i.filename)
-                select row_to_json(t) from ( 
-                    select 1 as draw, 
-                    ( select array_to_json(array_agg(row_to_json(u)))
-                        from (select * from base_request) u
-                    ) as data) t;"""
-        cursor.execute(query.format(pk, start_date, end_date))
-        image_info = cursor.fetchall()
-        data_0 = image_info[0][0]['data']
-
-    with connection.cursor() as cursor:
-        query = """with base_request as ( 
-                    SELECT 
-                        sa.name AS saname, d.name AS dname, i.filename, to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
+                        sa.name AS saname, d.name AS dname, i.filename, 
+                        to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
                         x.*, i.file_url, 
                         i.id FROM taicat_image i
                         CROSS JOIN LATERAL
                         json_to_recordset(i.annotation::json) x 
-                                ( species text, lifestage text
-                                , sex text
-                                , antler text
-                                , remarks text
-                                , animal_id text
-                                ) 
+                                ( species text, lifestage text , sex text, 
+                                  antler text, remarks text, animal_id text ) 
                         JOIN taicat_deployment d ON d.id = i.deployment_id
                         JOIN taicat_studyarea sa ON sa.id = d.study_area_id 
-                        WHERE i.id > 426 AND d.project_id= {} AND i.datetime BETWEEN '{}' AND '{}' 
+                        WHERE d.project_id= {} AND i.datetime BETWEEN '{}' AND '{}' 
                         ORDER BY i.created, i.filename)
                 select row_to_json(t) from ( 
                     select 1 as draw, 
@@ -479,39 +456,9 @@ def data(request):
                     ) as data) t;"""
         cursor.execute(query.format(pk, start_date, end_date))
         image_info = cursor.fetchall()
-        data_1 = image_info[0][0]['data']
+        data = image_info[0][0]['data']
 
-    with connection.cursor() as cursor:
-        query = """with base_request as ( 
-                    SELECT 
-                        sa.name AS saname, d.name AS dname, i.filename, to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
-                        i.annotation -> 'species' AS species, i.annotation -> 'lifestage' AS lifestage, i.annotation -> 'sex' AS sex, i.annotation -> 'antler' AS antler,
-                        i.annotation -> 'remarks' AS remarks, i.annotation -> 'animal_id' AS animal_id, i.file_url, 
-                        i.id FROM taicat_deployment d 
-                        JOIN taicat_studyarea sa ON sa.id = d.study_area_id 
-                        JOIN taicat_image i ON i.deployment_id = d.id 
-                        WHERE i.id < 427 AND d.project_id= {} AND i.datetime BETWEEN '{}' AND '{}' 
-                        ORDER BY i.created, i.filename)
-                select row_to_json(t) from ( 
-                    select 1 as draw, 
-                    ( select array_to_json(array_agg(row_to_json(u)))
-                        from (select * from base_request) u
-                    ) as data) t;"""   
-        cursor.execute(query.format(pk, start_date, end_date))
-        image_info = cursor.fetchall()
-        image_info = image_info[0][0]
-        data = image_info['data']
-
-    if data is None:
-        data = []
-    if data_1 is None:
-        data_1 = []
-    if data_0 is None:
-        data_0 = []
-
-    data = data + data_0 + data_1
-
-    if data is not None:
+    if data:
         if species != "":
             data = [i for i in data if i['species'] == species]
         if sa != "":
@@ -527,19 +474,25 @@ def data(request):
         recordsFiltered = len(data)
 
         for i in range(len(data)):
-            if data[i]['species'] is not None:
+            if data[i]['species']:
                 data[i]['species'] = re.sub(r'^"|"$', '', data[i]['species'])
             else:
                 data[i]['species'] = ''
-            if data[i]['lifestage'] is not None:
+            if data[i]['lifestage']:
                 data[i]['lifestage'] = re.sub(r'^"|"$', '', data[i]['lifestage'])
             else:
                 data[i]['lifestage'] = ''
-            # data[i]['id'] =  """<img class="img lazy" style="height: 200px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}.jpg" />""".format(data[i]['id'])
             file_url = data[i].get('file_url', '')
             if not file_url:
                 file_url = f"{data[i]['id']}-m.jpg"
             data[i]['file_url'] =  """<img class="img lazy" style="height: 200px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}" />""".format(file_url)
+
+        # add group_id if more than one annotation in a image
+        if data:
+            df = pd.DataFrame(data)
+            group_id = df.groupby('id').cumcount()
+            for i in range(len(data)):
+                data[i].update({'group_id': str(group_id[i])})
 
         if _start and _length:
             start = int(_start)
@@ -576,21 +529,66 @@ def project_detail(request, pk):
                 "to_char(end_date, 'YYYY-MM-DD') FROM taicat_project WHERE id={}"
         cursor.execute(query.format(pk))
         project_info = cursor.fetchone()
-    print(project_info)
     project_info = list(project_info)
 
     studyarea = StudyArea.objects.filter(project_id=pk).values('name').exclude(name=[None, '']).distinct().order_by('name') 
     deployment = Deployment.objects.filter(project_id=pk).values('name','id').exclude(name=[None, '']).distinct().order_by('name') 
 
-    deployment_list = [i['id'] for i in deployment]
-    species = Image.objects.filter(deployment_id__in=deployment_list).values('annotation__species').exclude(annotation__species__in=[None, '']).distinct().order_by('annotation__species') 
+    with connection.cursor() as cursor:
+        query =  """with base_request as ( 
+                    SELECT 
+                        x.*, 
+                        i.id FROM taicat_image i
+                        CROSS JOIN LATERAL
+                        json_to_recordset(i.annotation::json) x 
+                                ( species text) 
+                        WHERE i.annotation::TEXT <> '[]' AND i.deployment_id IN (
+                            SELECT d.id FROM taicat_deployment d
+                            WHERE d.project_id = {}
+                        ) )
+                select count(id), species from base_request
+                group by species;
+                """
+        cursor.execute(query.format(pk))
+        species = cursor.fetchall()
+        species = [ x[1] for x in species]
 
     latest_date = Image.objects.latest('datetime').datetime.strftime("%Y-%m-%d")
     earliest_date = Image.objects.earliest('datetime').datetime.strftime("%Y-%m-%d")
 
+    # edit permission
+    user_id = request.session.get('id', None)
+    edit = False
+    if user_id:
+        # 系統管理員 / 個別計畫承辦人
+        if Contact.objects.filter(id=user_id, is_system_admin=True).first() or ProjectMember.objects.filter(member_id=user_id, role="project_admin", project_id=pk):
+            edit = True
+        # 計畫總管理人
+        elif Contact.objects.filter(id=user_id, is_organization_admin=True):
+            organization_id = Contact.objects.filter(id=user_id, is_organization_admin=True).values('organization').first()['organization']
+            if Organization.objects.filter(id=organization_id,projects=pk):
+                edit = True
 
     return render(request, 'project/project_detail.html',
                 {'project_info': project_info, 'species': species, 'pk': pk,
                 'studyarea':studyarea, 'deployment':deployment,
-                'earliest_date': earliest_date, 'latest_date':latest_date})
+                'earliest_date': earliest_date, 'latest_date':latest_date,
+                'edit': edit})
 
+
+def edit_image(request, pk):
+    print(request.POST)
+    print(pk)
+    response = {}
+    return HttpResponse(json.dumps(response), content_type='application/json')
+
+
+with connection.cursor() as cursor:
+    query = "SELECT annotation FROM taicat_image where id=594"
+    cursor.execute(query)
+    temp = cursor.fetchone()[0]
+
+# 沒有 1858 '[]'
+# 一個 438 '[{"sex": "", "antler": "", "remarks": "", "species": "", "animal_id": "", "lifestage": ""}]' 
+# 多個 594  '[{"sex": "", "antler": "", "remark": "", "species": "測試", "animal_id": "", "lifestage": ""}, {"sex": "", "antler": "", "remark": "", "species": "測試", "animal_id": "", "lifestage": ""}]'
+# https://stackoverflow.com/questions/18209625/how-do-i-modify-fields-inside-the-new-postgresql-json-datatype
