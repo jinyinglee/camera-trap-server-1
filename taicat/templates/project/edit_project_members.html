@@ -35,8 +35,11 @@
 <div class="container content">
     <div class="row" style="margin-bottom: 10px">
         <div class="col-2">
+            <div class="row mb-3">
+                <a class="text-gray back text-decoration-none" href="{% url 'project_detail' pk %}"><i class="fa fa-chevron-left"></i> 返回計畫首頁</a>
+            </div>
             <h4 class="title-dark">計畫管理</h4>
-            <nav class="py-2 mb-4">
+            <nav class="py-2 mb-3">
                 <ul class="nav flex-column">
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'edit_project_basic' pk %}">
