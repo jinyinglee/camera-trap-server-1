@@ -25,6 +25,14 @@
             color: black !important;
         }
         
+        /* radio style */
+        input[type="radio"] {
+            display: none
+        }
+
+        label {
+            cursor: pointer
+        }
     </style>
 {% endblock style %}
 {% block body %}
@@ -318,6 +326,12 @@
         $('#myproject-table').DataTable({"language": language_settings});
         $('#publicproject-table').DataTable({"language": language_settings});
 
+    // radio style
+    $("input[type=radio]").click( function () {
+        let group = $(this).attr('name')
+        $(`input[name=${group}]`).parent('label').children('i').remove()
+        $('<i class="fas fa-check title-dark"></i>').insertBefore(this);
+    });
 
     </script>
 {% endblock script %}

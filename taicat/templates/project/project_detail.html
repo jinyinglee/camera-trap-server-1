@@ -54,6 +54,15 @@
         padding-right: 20px;
     }
 
+    /* radio style */
+    input[type="radio"] {
+        display: none
+    }
+
+    label {
+        cursor: pointer
+    }
+
 </style>
 {% endblock head %}
 {% block body %}
@@ -67,7 +76,7 @@
                 <h4 class="title-dark p-0">{{ project_info.0 }}</h4>
                 <div>
                     <a class="btn btn-outline-success" href="{% url 'edit_project_basic' pk %}"><i class="fa fa-xs fa-pencil"></i> 計畫管理</a>
-                    <a class="btn btn-outline-success" href="{% url 'edit_project_basic' pk %}"><i class="fas fa-file-csv"></i> 下載資料</a>
+                    <a class="btn btn-outline-success" href="{% url 'edit_project_basic' pk %}"><i class="fas fa-file-csv"></i> 下載篩選資料</a>
                 </div>
             </div>
         </div>
@@ -82,10 +91,11 @@
                 <p class="mt-3 mb-1 d-flex justify-content-between">
                     <strong>物種</strong> 
                 </p>
-                <ul style="list-style: none">
-                    <li>       
-                        <label class="form-check-label">         
-                        <input class="filter all" type="radio" name="species-filter" value="" checked>
+                <ul style="list-style: none" id="species-list">
+                    <li id="species-list-all">       
+                        <label class="form-check-label">
+                        <i class="fas fa-check title-dark"></i>
+                        <input id="species-all-option" class="filter all" type="radio" name="species-filter" value="" checked>
                         全部
                         </label>
                     </li>
@@ -102,6 +112,7 @@
                 <ul style="list-style: none">
                     <li>
                         <label class="form-check-label">             
+                        <i class="fas fa-check title-dark"></i>
                         <input class="filter all" type="radio" name="sa-filter" value="" checked>
                         全部
                         </label>
@@ -119,6 +130,7 @@
                 <ul style="list-style: none">
                     <li>
                         <label class="form-check-label">             
+                        <i class="fas fa-check title-dark"></i>
                         <input class="filter all" type="radio" name="deployment-filter" value="" checked>
                         全部
                         </label>
@@ -263,11 +275,13 @@
                     </div>
                 </div>
                 <input type="hidden" id="edit-group_id" name="group_id" value="">
+                <input type="hidden" id="edit-id" name="id" value="">
+                <input type="hidden" id="edit-page_info" name="page_info" value="">
                 </form>
             </div>
             <div class="modal-footer">
                 <a class="btn btn-outline-success" data-bs-dismiss="modal">取消</a>
-                <a class="btn btn-orange" onClick="submitEdit()">儲存</a>
+                <a class="btn btn-orange edit-submit" >儲存</a>
             </div>
         </div>
     </div>
@@ -279,7 +293,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta2/dist/js/bootstrap-select.min.js"></script>
 <script>
 // autocomplete
-var species = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠', '無法辨識', '空拍', '工作照', '測試', '台灣山鷓鴣', '台灣竹雞', '黑長尾雉', '藍腹鷴', '黑冠麻鷺', '環頸雉', '山鷸', '灰林鴿', '金背鳩', '珠頸斑鳩', '翠翼鳩', '黃痣藪眉', '台灣噪眉', '台灣紫嘯鶇', '虎鶇', '白眉鶇', '白腹鶇', '赤腹鶇', '白頭鶇']
+var species = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠', '無法辨識', '空拍', '工作照', '測試', '台灣山鷓鴣', '台灣竹雞', '黑長尾雉', '藍腹鷴', '黑冠麻鷺', '環頸雉', '山鷸', '灰林鴿', '金背鳩', '珠頸斑鳩', '翠翼鳩', '黃痣藪眉', '台灣噪眉', '台灣紫嘯鶇', '虎鶇', '白眉鶇', '白腹鶇', '赤腹鶇', '白頭鶇'].sort()
 var antler = ['初茸','茸角一尖','茸角一岔二尖','茸角二岔三尖','茸角三岔四尖','硬角一尖','硬角一岔二尖','硬角二岔三尖','硬角三岔四尖','解角']
 var sex = ['雄性','雌性','無法判定']
 var lifestage = ['成體','亞成體','幼體','無法判定']
@@ -382,7 +396,7 @@ $(document).ready(function() {
         processing: false,
         serverSide: true,
         searching: false,
-        //scrollX: true,
+        //scrollY: "50%",
         "initComplete": function (settings, json) {  
             $("#img-table").wrap("<div style='overflow:auto; width:100%;position:relative;'></div>");            
         },
@@ -466,36 +480,82 @@ $(document).ready(function() {
     });
 
     // set permission: 計畫總管理人/個別計畫承辦人/系統管理員
-    {% if edit %}
         $('#img-table').on('click', 'tbody tr', function () {
         var row = table.row($(this)).data();
-        $('#edit-species').val(row['species'])
-        $('#edit-animal_id').val(row['animal_id'])
-        $('#edit-lifestage').val(row['lifestage'])
-        $('#edit-sex').val(row['sex'])
-        $('#edit-remarks').val(row['remarks'])
-        $('#edit-group_id').val(row['group_id'])
-        $('#edit-image').html(row['file_url'])
-        $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
         $('#edit-studyarea').html(row['saname'])
         $('#edit-deployment').html(row['dname'])
         $('#edit-filename').html(row['filename'])
         $('#edit-datetime').html(row['datetime'])
+        $('#edit-species').val(row['species'])
+        $('#edit-lifestage').val(row['lifestage'])
+        $('#edit-sex').val(row['sex'])
+        $('#edit-antler').val(row['antler'])
+        $('#edit-animal_id').val(row['animal_id'])
+        $('#edit-remarks').val(row['remarks'])
+        $('#edit-group_id').val(row['group_id'])
+        $('#edit-id').val(row['id'])
+        $('#edit-image').html(row['file_url'])
+        $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
         $('#editModal').modal('show');
+
+        // disable edit 
+        {% if not edit %}
+        $('.modal-content input').attr('disabled', 'disabled')
+        $('.modal-footer').remove()
+        {% endif %}
         });
-    {% endif %}
+
+        $('.edit-submit').on('click', function() {
+            $.ajax({
+                data: $('#editForm').serialize(),
+                type: "POST",
+                url: "{% url 'edit_image' pk %}",
+                success: function(data) {
+                    $('#editModal').modal('hide');
+                    table.draw(false); // stay in same page
+                    // update filter //
+                    current_species = $("input[name=species-filter]:checked").val()
+                    $('#species-list-all').nextAll('li').remove();
+                    for (let i = 0; i < data['species'].length; i++) {
+                     $('#species-list').append(
+                        `
+                        <li>
+                        <label class="form-check-label">
+                        <input class="filter" type="radio" name="species-filter" value="${data['species'][i]}">
+                            ${data['species'][i]}
+                        </label>
+                        </li>
+                        `
+                     )
+                    }
+                    if (current_species==''){
+                        $('#species-all-option').prop('checked', true);
+                    } else {
+                        $(`input[name=species-filter][value=${current_species}]`).attr("checked",true);
+                        $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=species-filter][value=${current_species}]`));
+                        }
+                        
+                    $('.filter').on('click', function() {
+                        table.draw();
+                    });
+
+                    $("input[type=radio]").click( function () {
+                        let group = $(this).attr('name')
+                        $(`input[name=${group}]`).parent('label').children('i').remove()
+                        $('<i class="fas fa-check title-dark"></i>').insertBefore(this);
+                    });
+            }})
+        });
+
+    // radio style
+    $("input[type=radio]").click( function () {
+        let group = $(this).attr('name')
+        $(`input[name=${group}]`).parent('label').children('i').remove()
+        $('<i class="fas fa-check title-dark"></i>').insertBefore(this);
+    });
 
 });
 
 
-function submitEdit(){        
-    $.ajax({
-        data: $('#editForm').serialize(),
-        type: "POST",
-        url: "{% url 'edit_image' pk %}",
-        success: function(data) {
-            console.log(data);
-    }})
-}
 </script>
 {% endblock script %}
