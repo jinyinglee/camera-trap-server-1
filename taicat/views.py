@@ -459,16 +459,23 @@ def data(request):
         data = image_info[0][0]['data']
 
     if data:
+        def sortFunction(value):
+            return value["id"]
+        data = sorted(data, key=sortFunction)
+
+        # add group_id if more than one annotation in a image
+        if data:
+            df = pd.DataFrame(data)
+            group_id = df.groupby('id').cumcount()
+            for i in range(len(data)):
+                data[i].update({'group_id': str(group_id[i])})
+
         if species != "":
             data = [i for i in data if i['species'] == species]
         if sa != "":
             data = [i for i in data if i['saname'] == sa]
         if deployment != "":
             data = [i for i in data if i['dname'] == deployment]
-
-        def sortFunction(value):
-            return value["id"]
-        data = sorted(data, key=sortFunction)
 
         recordsTotal = len(data)
         recordsFiltered = len(data)
@@ -485,15 +492,9 @@ def data(request):
             file_url = data[i].get('file_url', '')
             if not file_url:
                 file_url = f"{data[i]['id']}-m.jpg"
-            data[i]['file_url'] =  """<img class="img lazy" style="height: 200px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}" />""".format(file_url)
+            data[i]['file_url'] =  """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}" />""".format(file_url)
 
-        # add group_id if more than one annotation in a image
-        if data:
-            df = pd.DataFrame(data)
-            group_id = df.groupby('id').cumcount()
-            for i in range(len(data)):
-                data[i].update({'group_id': str(group_id[i])})
-
+        
         if _start and _length:
             start = int(_start)
             length = int(_length)
@@ -551,7 +552,8 @@ def project_detail(request, pk):
                 """
         cursor.execute(query.format(pk))
         species = cursor.fetchall()
-        species = [ x[1] for x in species]
+        species = [x[1] for x in species if x[1] is not None and x[1] is not '' ] 
+        species.sort()
 
     latest_date = Image.objects.latest('datetime').datetime.strftime("%Y-%m-%d")
     earliest_date = Image.objects.earliest('datetime').datetime.strftime("%Y-%m-%d")
@@ -577,18 +579,57 @@ def project_detail(request, pk):
 
 
 def edit_image(request, pk):
-    print(request.POST)
-    print(pk)
-    response = {}
+    # get original annotation first
+    requests = request.POST
+    image_id = requests.get('id')
+    anno = Image.objects.get(id=image_id).annotation
+    group_id = int(requests.get('group_id'))
+    print(image_id, group_id, anno)
+    species = requests.get('species')
+    lifestage = requests.get('lifestage')
+    sex = requests.get('sex')
+    antler = requests.get('antler')
+    animal_id = requests.get('animal_id')
+    remarks = requests.get('remarks')
+    anno[group_id] = {'species': species, 'lifestage': lifestage, 'sex': sex, 'antler': antler,
+                            'animal_id': animal_id, 'remarks': remarks}
+    print(anno)
+    # write back to db
+    obj = Image.objects.get(id=image_id)
+    obj.annotation = anno
+    obj.save()
+
+    # Image.objects.filter(id=image_id).update(annotation=anno)
+
+    # update filter species options
+    with connection.cursor() as cursor:
+        query =  """with base_request as ( 
+                    SELECT 
+                        x.*, 
+                        i.id FROM taicat_image i
+                        CROSS JOIN LATERAL
+                        json_to_recordset(i.annotation::json) x 
+                                ( species text) 
+                        WHERE i.annotation::TEXT <> '[]' AND i.deployment_id IN (
+                            SELECT d.id FROM taicat_deployment d
+                            WHERE d.project_id = {}
+                        ) )
+                select count(id), species from base_request
+                group by species;
+                """
+        cursor.execute(query.format(pk))
+        species = cursor.fetchall()
+        species = [x[1] for x in species if x[1] is not None and x[1] != '' ] 
+        species.sort()
+
+    response = {'species': species}
     return HttpResponse(json.dumps(response), content_type='application/json')
 
-
-with connection.cursor() as cursor:
-    query = "SELECT annotation FROM taicat_image where id=594"
-    cursor.execute(query)
-    temp = cursor.fetchone()[0]
 
 # 沒有 1858 '[]'
 # 一個 438 '[{"sex": "", "antler": "", "remarks": "", "species": "", "animal_id": "", "lifestage": ""}]' 
 # 多個 594  '[{"sex": "", "antler": "", "remark": "", "species": "測試", "animal_id": "", "lifestage": ""}, {"sex": "", "antler": "", "remark": "", "species": "測試", "animal_id": "", "lifestage": ""}]'
 # https://stackoverflow.com/questions/18209625/how-do-i-modify-fields-inside-the-new-postgresql-json-datatype
+
+
+# {'csrfmiddlewaretoken': ['HoiFb8PydonkysxWoRQNgudj98YGpa6iQ0QR66g6lgnnkCphT1Nil7sLBTYxdWad'], 'species': ['測試'], 'lifestage': [''], 'sex': [''], 'antler': [''], 'animal_id': [''], 'remarks': ['C'], 'group_id': ['0'], 'id': ['429']}
