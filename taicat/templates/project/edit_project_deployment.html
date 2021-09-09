@@ -67,6 +67,7 @@
     #deployment-list {
         min-height: 540px;
     }
+
 </style>
 {% endblock style %}
 {% block body %}
@@ -116,12 +117,11 @@
                             <li id="{{ i.id }}" onClick="selectStudyArea({{ i.id }})" data-bs-toggle="collapse" href="#collapse_{{ i.id }}" role="button" aria-expanded="false" aria-controls="collapse_{{ i.id }}">
                                 <span style="font-size: 10px; display: inline-block">●</span> <div style="display: inline-block" class="studyarea-name">{{ i.name }}</div>
                             </li>
-                            <div class="collapse" id="collapse_{{ i.id }}">
-                                <li>
-                                    <input id="collapse_{{ i.id }}_add" data-parent="{{ i.id }}" class="addSubStudyArea border-0 shadow-none form-control bg-light" style="width: 90%;" type="text" placeholder=" + 新增子樣區"> 
+                            <div class="collapse d-none" id="collapse_{{ i.id }}">
+                            <!-- 新增子樣區 -->
+                            <!-- <li><input id="collapse_{{ i.id }}_add" data-parent="{{ i.id }}" class="addSubStudyArea border-0 shadow-none form-control bg-light" style="width: 90%;" type="text" placeholder=" + 新增子樣區"> 
                                     <div class="invalid-feedback addSubStudyArea-feedback" id="addSubStudyArea-feedback">
-                                    </div>
-                                </li>
+                                    </div></li>-->
                             </div>
                             {% endif %}
                         {% endfor %}
@@ -213,7 +213,9 @@ $( function() {
             $("#collapse_{{ i.parent_id }}").prepend(`<li data-parent="{{ i.parent_id }}" id="{{ i.id }}" onClick="selectStudyArea({{ i.id }})">
                 <span style="font-size: 10px; display: inline-block">●</span> <div style="display: inline-block" class="substudyarea-name">{{ i.name }}</div>
             </li>`);
-        
+            $("#collapse_{{ i.parent_id }}").removeClass('d-none');
+        //{% else %}
+        //    $("#collapse_{{ i.id }}").remove()
         {% endif %}
     {% endfor %}
 
@@ -352,7 +354,7 @@ function addDepolymentSubmit(){
 function selectStudyArea(id){
     // clear previous select
     $('#deployment').html('')
-    $('.title-dark').removeClass("title-dark");
+    $('#studyarea-list .title-dark').removeClass("title-dark");
     $('#deployment-list').removeClass("d-none");
     $('#initial-content').addClass("d-none");
 
@@ -417,15 +419,12 @@ $("#addStudyArea").keypress(function(e){
   code = (e.keyCode ? e.keyCode : e.which);
 
   if (code == 13)
-
   {
         let name = $(this).val();
         name_list = []
         $('#studyarea-list div.studyarea-name').each(function(){
             name_list.push($(this).text());
         });
-
-
         if (name=='' ){
             $('#addStudyArea-feedback').html('請輸入樣區名稱');
             $(this).addClass("is-invalid").addClass("was-validated");
@@ -446,9 +445,12 @@ $("#addStudyArea").keypress(function(e){
                                         <span style="font-size: 10px">●</span> ${name}
                                             </li>
                                     <div class="collapse" id="collapse_${new_id}">
-                                            <li>
+                                        <!-- 新增子樣區 -->
+                                        <!--
+                                        <li>
                                             <input id="collapse_${new_id}_add" class="border-0 shadow-none form-control bg-light" style="width: 90%;" type="text" placeholder=" + 新增子樣區"> 
                                         </li>
+                                        -->
                                     </div>`)     
 
                 $('#addStudyArea').val('');
