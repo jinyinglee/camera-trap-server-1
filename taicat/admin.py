@@ -6,7 +6,8 @@ from .models import (
     Deployment,
     Organization,
     Contact,
-    ProjectMember
+    ProjectMember,
+    Image,
 )
 
 @admin.register(ProjectMember)
@@ -39,3 +40,10 @@ class StudyAreaAdmin(admin.ModelAdmin):
 class DeploymentAdmin(admin.ModelAdmin):
     model = Deployment
     list_display = ('name', 'project', 'study_area')
+
+@admin.register(Image)
+class ImageAdmin(admin.ModelAdmin):
+    model = Image
+    list_filter = ('deployment', 'memo')
+    list_display = ('filename', 'datetime', 'created', 'deployment', 'memo')
+    search_fields = ('filename', )
