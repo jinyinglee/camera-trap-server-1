@@ -45,5 +45,5 @@ class DeploymentAdmin(admin.ModelAdmin):
 class ImageAdmin(admin.ModelAdmin):
     model = Image
     list_filter = ('deployment', 'memo')
-    list_display = ('filename', 'datetime', 'deployment', 'memo')
+    list_display = ('filename', 'datetime', 'created', 'deployment', 'memo')
     search_fields = ('filename', )
