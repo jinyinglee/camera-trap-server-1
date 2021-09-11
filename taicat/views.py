@@ -1,3 +1,4 @@
+from django.db.models.fields import PositiveBigIntegerField
 from django.http import response
 from django.shortcuts import redirect, render, HttpResponse
 from .models import *
@@ -10,6 +11,7 @@ from django.db.models import Count, Window, F, Sum, Min, Q
 from django.contrib import messages
 from django.core import serializers
 import pandas as pd
+from django.utils.http import urlquote
 
 from decimal import Decimal
 
@@ -25,6 +27,9 @@ city_list = ['基隆市','嘉義市','台北市','嘉義縣','新北市','台南
             '南投縣','金門縣','雲林縣',	'連江縣']
 
 species_list = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠']
+
+def sortFunction(value):
+    return value["id"]
 
 
 def check_if_authorized(request, pk):
@@ -247,7 +252,6 @@ def project_overview(request):
     # my project    
     project_list = []
     member_id=request.session.get('id', None)
-    print('member_id', member_id)
     if member_id:
         # 1. select from project_member table
         with connection.cursor() as cursor:
@@ -298,9 +302,6 @@ def project_overview(request):
                             """
                     cursor.execute(query.format(project_list))
                     my_species_data = cursor.fetchall()
-
-
-    # "RIGHT JOIN" when upload to server
 
     with connection.cursor() as cursor:
         query =  """with base_request as ( 
@@ -425,57 +426,69 @@ def data(request):
     requests = request.POST
     pk = requests.get('pk')
     start_date = requests.get('start_date')
-    start_date = datetime.strptime(start_date, "%Y-%m-%d")
     end_date = requests.get('end_date')
-    end_date = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+    data_filter = ''
+    if start_date and end_date:
+        start_date = datetime.strptime(start_date, "%Y-%m-%d")
+        end_date = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+        data_filter = "AND i.datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
     _start = requests.get('start')
     _length = requests.get('length')
     species = requests.get('species')
-    deployment = requests.get('deployment')
+    conditions = ''
+    deployment = requests.getlist('deployment[]')
     sa = requests.get('sa')
+    if sa:
+        conditions += f' AND sa.id = {sa}'
+        if deployment:
+            if 'all' not in deployment:
+                x = [int(i) for i in deployment]
+                x = str(x).replace('[','(').replace(']',')')
+                conditions += f' AND d.id IN {x}'
+        else:
+            conditions = 'AND d.id IS NULL'
 
     with connection.cursor() as cursor:
         query = """with base_request as ( 
                     SELECT 
                         sa.name AS saname, d.name AS dname, i.filename, 
                         to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
-                        x.*, i.file_url, 
-                        i.id FROM taicat_image i
+                        sa.parent_id AS saparent,
+                        x.*, i.file_url, i.id
+                        FROM taicat_image i
                         CROSS JOIN LATERAL
                         json_to_recordset(i.annotation::json) x 
                                 ( species text, lifestage text , sex text, 
-                                  antler text, remarks text, animal_id text ) 
+                                    antler text, remarks text, animal_id text ) 
                         JOIN taicat_deployment d ON d.id = i.deployment_id
                         JOIN taicat_studyarea sa ON sa.id = d.study_area_id 
-                        WHERE d.project_id= {} AND i.datetime BETWEEN '{}' AND '{}' 
+                        WHERE d.project_id = {} {} {}
                         ORDER BY i.created, i.filename)
                 select row_to_json(t) from ( 
                     select 1 as draw, 
                     ( select array_to_json(array_agg(row_to_json(u)))
                         from (select * from base_request) u
                     ) as data) t;"""
-        cursor.execute(query.format(pk, start_date, end_date))
+        cursor.execute(query.format(pk, data_filter, conditions))
         image_info = cursor.fetchall()
         data = image_info[0][0]['data']
 
     if data:
-        def sortFunction(value):
-            return value["id"]
         data = sorted(data, key=sortFunction)
+        # add group_id (there may be more than one annotation in an image)
+        df = pd.DataFrame(data)
+        group_id = df.groupby('id').cumcount()
+        for i in range(len(data)):
+            data[i].update({'group_id': str(group_id[i])})
+            # add sub-studyarea if exists
+            if StudyArea.objects.filter(id=data[i]['saparent']):
+                parent_saname = StudyArea.objects.get(id=data[i]['saparent']).name
+                current_name = data[i]['saname']
+                data[i].update({'saname': f"{current_name}_{parent_saname}"})
 
-        # add group_id if more than one annotation in a image
-        if data:
-            df = pd.DataFrame(data)
-            group_id = df.groupby('id').cumcount()
-            for i in range(len(data)):
-                data[i].update({'group_id': str(group_id[i])})
-
+        # filter species
         if species != "":
             data = [i for i in data if i['species'] == species]
-        if sa != "":
-            data = [i for i in data if i['saname'] == sa]
-        if deployment != "":
-            data = [i for i in data if i['dname'] == deployment]
 
         recordsTotal = len(data)
         recordsFiltered = len(data)
@@ -493,7 +506,6 @@ def data(request):
             if not file_url:
                 file_url = f"{data[i]['id']}-m.jpg"
             data[i]['file_url'] =  """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}" />""".format(file_url)
-
         
         if _start and _length:
             start = int(_start)
@@ -523,6 +535,7 @@ def data(request):
     
 
 def project_detail(request, pk):
+    is_authorized = check_if_authorized(request, pk)
     with connection.cursor() as cursor:
         query = "SELECT name, funding_agency, code, " \
                 "principal_investigator, " \
@@ -532,8 +545,8 @@ def project_detail(request, pk):
         project_info = cursor.fetchone()
     project_info = list(project_info)
 
-    studyarea = StudyArea.objects.filter(project_id=pk).values('name').exclude(name=[None, '']).distinct().order_by('name') 
-    deployment = Deployment.objects.filter(project_id=pk).values('name','id').exclude(name=[None, '']).distinct().order_by('name') 
+    # deployment = Deployment.objects.filter(project_id=pk).values('name','id').exclude(name=[None, '']).distinct().order_by('name') 
+    deployment = Deployment.objects.filter(project_id=pk)
 
     with connection.cursor() as cursor:
         query =  """with base_request as ( 
@@ -552,11 +565,15 @@ def project_detail(request, pk):
                 """
         cursor.execute(query.format(pk))
         species = cursor.fetchall()
-        species = [x[1] for x in species if x[1] is not None and x[1] is not '' ] 
+        species = [x[1] for x in species if x[1] is not None and x[1] != '' ] 
         species.sort()
 
-    latest_date = Image.objects.latest('datetime').datetime.strftime("%Y-%m-%d")
-    earliest_date = Image.objects.earliest('datetime').datetime.strftime("%Y-%m-%d")
+    image_objects = Image.objects.filter(deployment__project__id=pk)
+    if image_objects:
+        latest_date = image_objects.latest('datetime').datetime.strftime("%Y-%m-%d")
+        earliest_date = image_objects.earliest('datetime').datetime.strftime("%Y-%m-%d")
+    else:
+        latest_date, earliest_date = None, None
 
     # edit permission
     user_id = request.session.get('id', None)
@@ -570,12 +587,14 @@ def project_detail(request, pk):
             organization_id = Contact.objects.filter(id=user_id, is_organization_admin=True).values('organization').first()['organization']
             if Organization.objects.filter(id=organization_id,projects=pk):
                 edit = True
+    
+    study_area = StudyArea.objects.filter(project_id=pk)
 
     return render(request, 'project/project_detail.html',
                 {'project_info': project_info, 'species': species, 'pk': pk,
-                'studyarea':studyarea, 'deployment':deployment,
+                'study_area':study_area, 'deployment':deployment,
                 'earliest_date': earliest_date, 'latest_date':latest_date,
-                'edit': edit})
+                'edit': edit, 'is_authorized': is_authorized})
 
 
 def edit_image(request, pk):
@@ -584,7 +603,6 @@ def edit_image(request, pk):
     image_id = requests.get('id')
     anno = Image.objects.get(id=image_id).annotation
     group_id = int(requests.get('group_id'))
-    print(image_id, group_id, anno)
     species = requests.get('species')
     lifestage = requests.get('lifestage')
     sex = requests.get('sex')
@@ -593,13 +611,10 @@ def edit_image(request, pk):
     remarks = requests.get('remarks')
     anno[group_id] = {'species': species, 'lifestage': lifestage, 'sex': sex, 'antler': antler,
                             'animal_id': animal_id, 'remarks': remarks}
-    print(anno)
     # write back to db
     obj = Image.objects.get(id=image_id)
     obj.annotation = anno
     obj.save()
-
-    # Image.objects.filter(id=image_id).update(annotation=anno)
 
     # update filter species options
     with connection.cursor() as cursor:
@@ -626,10 +641,85 @@ def edit_image(request, pk):
     return HttpResponse(json.dumps(response), content_type='application/json')
 
 
-# 沒有 1858 '[]'
-# 一個 438 '[{"sex": "", "antler": "", "remarks": "", "species": "", "animal_id": "", "lifestage": ""}]' 
-# 多個 594  '[{"sex": "", "antler": "", "remark": "", "species": "測試", "animal_id": "", "lifestage": ""}, {"sex": "", "antler": "", "remark": "", "species": "測試", "animal_id": "", "lifestage": ""}]'
-# https://stackoverflow.com/questions/18209625/how-do-i-modify-fields-inside-the-new-postgresql-json-datatype
+def download(request, pk):
+    requests = request.POST
+    start_date = requests.get('start_date')
+    end_date = requests.get('end_date')
+    data_filter = ''
+    if start_date and end_date:
+        start_date = datetime.strptime(start_date, "%Y-%m-%d")
+        end_date = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+        data_filter = "AND i.datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
+    species = requests.get('species-filter')
+    conditions = ''
+    deployment = requests.getlist('deployment[]')
+    sa = requests.get('sa')
+    if sa:
+        conditions += f' AND sa.id = {sa}'
+        if deployment:
+            if 'all' not in deployment:
+                x = [int(i) for i in deployment]
+                x = str(x).replace('[','(').replace(']',')')
+                conditions += f' AND d.id IN {x}'
+        else:
+            conditions = 'AND d.id IS NULL'
 
+    with connection.cursor() as cursor:
+        query = """with base_request as ( 
+                    SELECT 
+                        sa.name AS saname, d.name AS dname, i.filename, 
+                        to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
+                        x.*, i.file_url, 
+                        sa.parent_id AS saparent,
+                        i.id FROM taicat_image i
+                        CROSS JOIN LATERAL
+                        json_to_recordset(i.annotation::json) x 
+                                ( species text, lifestage text , sex text, 
+                                    antler text, remarks text, animal_id text ) 
+                        JOIN taicat_deployment d ON d.id = i.deployment_id
+                        JOIN taicat_studyarea sa ON sa.id = d.study_area_id 
+                        WHERE d.project_id= {} {} {}
+                        ORDER BY i.created, i.filename)
+                select row_to_json(t) from ( 
+                    select 1 as draw, 
+                    ( select array_to_json(array_agg(row_to_json(u)))
+                        from (select * from base_request) u
+                    ) as data) t;"""
+        cursor.execute(query.format(pk, data_filter, conditions))
+        image_info = cursor.fetchall()
+        data = image_info[0][0]['data']
 
-# {'csrfmiddlewaretoken': ['HoiFb8PydonkysxWoRQNgudj98YGpa6iQ0QR66g6lgnnkCphT1Nil7sLBTYxdWad'], 'species': ['測試'], 'lifestage': [''], 'sex': [''], 'antler': [''], 'animal_id': [''], 'remarks': ['C'], 'group_id': ['0'], 'id': ['429']}
+    if data:
+        data = sorted(data, key=sortFunction)
+        if species != "":
+            data = [i for i in data if i['species'] == species]
+        # add sub-studyarea if exists
+        for i in range(len(data)):
+            data[i].update({'subsaname': None})
+            if StudyArea.objects.filter(id=data[i]['saparent']):
+                parent_saname = StudyArea.objects.get(id=data[i]['saparent']).name
+                saname = data[i]['saname']
+                data[i].update({'saname': parent_saname})
+                data[i].update({'subsaname': saname})
+        df = pd.DataFrame(data)
+        df['計畫名稱'] = Project.objects.get(id=pk).name
+        df['計畫ID'] = pk
+        # rename
+        df = df.rename(columns={'saname':'樣區', 'dname':'相機位置', 'filename':'檔名', 'datetime':'拍攝時間', 'species':'物種',
+            'lifestage':'年齡', 'sex':'性別', 'antler':'角況', 'remarks':'備註', 'animal_id':'個體ID', 'id':'影像ID',
+            'subsaname':'子樣區'})
+        # subset and change column order
+        cols = ['計畫ID','計畫名稱','影像ID','樣區','子樣區','相機位置','檔名','拍攝時間','物種','年齡','性別','角況','個體ID','備註']
+        df = df[cols]
+        # df = df[df.columns.intersection(cols)]
+    else:
+        df = pd.DataFrame() # no data
+
+    n = f'download_{datetime.now().strftime("%Y-%m-%d")}.xlsx'
+    
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] =  'attachment; filename={}'.format(urlquote(n))                                  
+    df.to_excel(response, index=False)
+
+    return response
+    
