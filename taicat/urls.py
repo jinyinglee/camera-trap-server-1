@@ -15,5 +15,6 @@ urlpatterns = [
     path('api/add_studyarea', views.add_studyarea, name='add_studyarea'),
     path('api/add_deployment', views.add_deployment, name='add_deployment'),
     path('api/edit_image/<pk>', views.edit_image, name='edit_image'),
-    path('download/<pk>', views.download, name='download')
+    path('download/<pk>', views.download_request, name='download'),
+   path('download/data/<uidb64>/<token>', views.download_data, name='download_data'),
 ]

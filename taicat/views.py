@@ -12,8 +12,15 @@ from django.contrib import messages
 from django.core import serializers
 import pandas as pd
 from django.utils.http import urlquote
-
 from decimal import Decimal
+from django.core.mail import EmailMessage
+from django.contrib.sites.shortcuts import get_current_site
+from django.template.loader import render_to_string
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.utils.encoding import force_bytes, force_str, force_text, DjangoUnicodeDecodeError
+from base.utils import generate_token
+from django.conf import settings
+import threading
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -645,7 +652,7 @@ def edit_image(request, pk):
     return HttpResponse(json.dumps(response), content_type='application/json')
 
 
-def download(request, pk):
+def download_request(request, pk):
     requests = request.POST
     start_date = requests.get('start_date')
     end_date = requests.get('end_date')
@@ -727,3 +734,53 @@ def download(request, pk):
 
     return response
     
+
+# send download link
+
+class EmailThread(threading.Thread):
+
+    def __init__(self, email):
+        self.email = email
+        threading.Thread.__init__(self)
+
+    def run(self):
+        self.email.send()
+
+
+def send_verification_email(user, request):
+    current_site = get_current_site(request)  # the domain user is on
+
+    email_subject = '[生物多樣性資料庫共通查詢系統] 驗證您的帳號'
+    email_body = render_to_string('account/verification.html',{
+        'user': user,
+        'domain': current_site,
+        'uid': urlsafe_base64_encode(force_bytes(user.pk)), # encrypt userid for security
+        'token': generate_token.make_token(user)
+    })
+
+    email = EmailMessage(subject=email_subject, body=email_body, from_email=settings.EMAIL_FROM_USER,
+    to=[user.username])
+
+    EmailThread(email).start()
+
+
+
+def download_data(request, uidb64, token):
+    try:
+        uid = force_text(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+
+    except Exception as e:
+        user = None
+
+    if user and generate_token.check_token(user, token):
+        user.is_email_verified = True
+        user.is_active = True
+        user.save()
+
+        messages.add_message(request, messages.SUCCESS,
+                            '驗證成功！請立即設定您的密碼')
+        login(request, user, backend='account.views.registerBackend') 
+        return redirect(reverse('personal_info'))
+
+    return render(request, 'account/verification-fail.html', {"user": user})
