@@ -371,15 +371,27 @@
                 <table class="table table-borderless">
                     <tr>
                         <td class="px-3">委辦單位</td>
+                        {% if project_info.1 != None and project_info.1 != 'None' %}
                         <td class="text-gray">{{ project_info.1 }}</td>
+                        {% else %}
+                        <td></td>
+                        {% endif %}
                     </tr>
                     <tr>
                         <td class="px-3">計畫編號</td>
+                        {% if project_info.1 != None and project_info.2 != 'None' %}
                         <td class="text-gray">{{ project_info.2 }}</td>
+                        {% else %}
+                        <td></td>
+                        {% endif %}
                     </tr>
                     <tr>
                         <td class="px-3">計畫主持人</td>
+                        {% if project_info.1 != None and project_info.3 != 'None' %}
                         <td class="text-gray">{{ project_info.3 }}</td>
+                        {% else %}
+                        <td></td>
+                        {% endif %}
                     </tr>
                     <tr>
                         <td class="px-3">計畫時間</td>
