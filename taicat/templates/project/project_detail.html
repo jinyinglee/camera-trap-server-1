@@ -11,8 +11,8 @@
         content: '';
         position: absolute;
         width: 100%;
-        min-height: 100px;
-        height: 30%;
+        min-height: 150px;
+        height: 150px;
         left: 0;
         right: 0;
         margin: auto;
@@ -25,11 +25,11 @@
     .dataTables_wrapper .dataTables_processing:after {
         content:'處理中';
         position: absolute;
-        top: 0;
+        top: 160px;
         bottom: 0;
         left: 0;
         right: 0;
-        color: gray;
+        color: black;
         width: 100px;
         height: 20px;
         margin: auto;
@@ -185,7 +185,7 @@
                         {% for i in species %}
                         <li>
                             <label class="form-check-label w-100">
-                            <input class="filter" type="radio" name="species-filter" value="{{ i }}">
+                            <input class="filter" type="radio" name="species-filter" value="{{ i.1 }}">
                                 {{ i.1 }} ({{i.0}})
                             </label>
                         </li>
@@ -676,7 +676,7 @@ $(document).ready(function() {
                         `
                         <li>
                         <label class="form-check-label">
-                        <input class="filter" type="radio" name="species-filter" value="${data['species'][i]}">
+                        <input class="filter" type="radio" name="species-filter" value="${data['species'][i][1]}">
                             ${data['species'][i][1]} (${data['species'][i][0]})
                         </label>
                         </li>
