@@ -323,7 +323,9 @@ def project_overview(request):
         public_species_data = cursor.fetchall()
 
     public_species_data = [ x for x in public_species_data if x[1] in species_list ]
+    public_species_data.sort()
     my_species_data = [ x for x in my_species_data if x[1] in species_list ]
+    my_species_data.sort()
 
     return render(request, 'project/project_overview.html', {'public_project': public_project, 'my_project': my_project, 
                                                             'public_species_data':public_species_data, 'my_species_data':my_species_data})
@@ -332,10 +334,14 @@ def update_datatable(request):
     if request.method == 'POST':
         table_id = request.POST.get('table_id')
         species = request.POST.getlist('species[]')
+        if species != ['']:
+            species = str(species).replace('[', '(').replace(']',')')
+            species = f"where species in {species}"
+        else:
+            species = ''
         project_list = []           
         if table_id == 'publicproject':
             with connection.cursor() as cursor:
-                species = str(species).replace('[', '(').replace(']',')')
                 query =  """with base_request as ( 
                             SELECT 
                                 x.*, 
@@ -348,12 +354,11 @@ def update_datatable(request):
                                     JOIN taicat_project p ON p.id = d.project_id
                                     WHERE CURRENT_DATE >= p.publish_date OR p.end_date < now() - '5 years' :: interval 
                                 ) )
-                        select distinct(project_id) from taicat_deployment where id in (select distinct(deployment_id) from base_request where species in {});
+                        select distinct(project_id) from taicat_deployment where id in (select distinct(deployment_id) from base_request {});
                         """
                 cursor.execute(query.format(species))
                 temp = cursor.fetchall()
                 for i in temp:
-                    print(i[0])
                     project_list += [i[0]]
 
         else:
@@ -391,14 +396,12 @@ def update_datatable(request):
                                             SELECT d.id FROM taicat_deployment d
                                             WHERE d.project_id IN {} 
                                         ) )
-                                select distinct(project_id) from taicat_deployment where id in (select distinct(deployment_id) from base_request where species in {});
+                                select distinct(project_id) from taicat_deployment where id in (select distinct(deployment_id) from base_request {});
                                 """
                         cursor.execute(query.format(my_project_list,species))
                         temp = cursor.fetchall()
                         for i in temp:
-                            print(i[0])
                             project_list += [i[0]]
-
         
         if project_list:
             project_list = str(project_list).replace('[', '(').replace(']',')')
@@ -418,7 +421,7 @@ def update_datatable(request):
                                 ORDER BY taicat_project.created DESC;"
                 cursor.execute(query.format(project_list))
                 project = cursor.fetchall()
-
+                
     return HttpResponse(json.dumps(project), content_type='application/json')
 
 
@@ -565,8 +568,8 @@ def project_detail(request, pk):
                 """
         cursor.execute(query.format(pk))
         species = cursor.fetchall()
-        species = [x[1] for x in species if x[1] is not None and x[1] != '' ] 
-        species.sort()
+        species = [x for x in species if x[1] is not None and x[1] != '' ] 
+        species.sort(key = lambda x: x[1])
 
     image_objects = Image.objects.filter(deployment__project__id=pk)
     if image_objects:
@@ -634,8 +637,9 @@ def edit_image(request, pk):
                 """
         cursor.execute(query.format(pk))
         species = cursor.fetchall()
-        species = [x[1] for x in species if x[1] is not None and x[1] != '' ] 
-        species.sort()
+        species = [x for x in species if x[1] is not None and x[1] != '' ] 
+        species.sort(key = lambda x: x[1])
+
 
     response = {'species': species}
     return HttpResponse(json.dumps(response), content_type='application/json')

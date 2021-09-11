@@ -186,7 +186,7 @@
                         <li>
                             <label class="form-check-label w-100">
                             <input class="filter" type="radio" name="species-filter" value="{{ i }}">
-                                {{ i }}
+                                {{ i.1 }} ({{i.0}})
                             </label>
                         </li>
                         {% endfor %}
@@ -609,8 +609,13 @@ $(document).ready(function() {
     });
     
     $('.clear').on('click', function() {
+        $('input[type=radio]').prop('checked', false);
         $('input[type=radio].all').prop('checked', true);
         $('input[type=checkbox].filter').prop('checked', false);
+        // radio
+        $('.fa-check').remove()
+        $('<i class="fas fa-check title-dark"></i>').insertBefore($("input[type=radio].all"))
+
         {% if earliest_date != None %}
         $("#date-slider").slider({
         range: true,
@@ -625,8 +630,8 @@ $(document).ready(function() {
         });
         $("#date-content").html((new Date($("#date-slider").slider("values",0)*1000).toISOString().substring(0, 10)) + "至" + 
         (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
-        $($.fn.dataTable.tables( true ) ).DataTable().columns.adjust().draw();        
         {% endif %}
+        //$($.fn.dataTable.tables( true ) ).DataTable().columns.adjust().draw();        
     });
 
     // set permission: 計畫總管理人/個別計畫承辦人/系統管理員
@@ -672,7 +677,7 @@ $(document).ready(function() {
                         <li>
                         <label class="form-check-label">
                         <input class="filter" type="radio" name="species-filter" value="${data['species'][i]}">
-                            ${data['species'][i]}
+                            ${data['species'][i][1]} (${data['species'][i][0]})
                         </label>
                         </li>
                         `
