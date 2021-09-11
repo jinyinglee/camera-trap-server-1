@@ -17,6 +17,43 @@
     <script src="https://kit.fontawesome.com/b8e586964f.js" crossorigin="anonymous"></script>
     {% block head %}{% endblock head %}
     <style type="text/css">
+
+    /* loader */
+
+
+.loading{
+  min-height: 400px}
+
+  .loading:before{
+    content: '';
+    position: absolute;
+    top: -110px;
+    bottom: 0;
+    width: 100%;
+    height: 400px;
+    left: 0;
+    right: 0;
+    margin: auto;
+    background: url("{% static  'icon/Leaves-1.8s-200px.gif' %}") no-repeat center;
+    background-size: 150px;
+    z-index: 1099
+    }
+
+  .loading:after {
+    content: "資料讀取中";
+    position: absolute;
+    top: 70px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    color: gray;
+    width: 100px;
+    height: 20px;
+    margin: auto;
+    z-index: 1199;
+    text-align: center;
+  }
+
       html, body {
         height: 100%;
         background: #f7f7f7;

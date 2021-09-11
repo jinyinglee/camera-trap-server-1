@@ -6,10 +6,38 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta2/dist/css/bootstrap-select.min.css">
 {% load static %}
 <style>
-    /* data table */
-    .dataTables_length {
-        text-align: right;
+    /* datatable loader */
+    .dataTables_wrapper .dataTables_processing {
+        content: '';
+        position: absolute;
+        width: 100%;
+        min-height: 100px;
+        height: 30%;
+        left: 0;
+        right: 0;
+        margin: auto;
+        background: url("{% static  'icon/Leaves-1.8s-200px.gif' %}") no-repeat center;
+        background-size: 150px;
+        z-index: 1099;
+        border: 0
     }
+
+    .dataTables_wrapper .dataTables_processing:after {
+        content:'處理中';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        color: gray;
+        width: 100px;
+        height: 20px;
+        margin: auto;
+        z-index: 1199;
+        text-align: center;
+    }
+
+    /* datatable page button */
     .page-item.active .page-link {
         background-color: rgb(228, 224, 224) !important;
         border: 1px solid rgb(228, 224, 224) ;
@@ -63,116 +91,158 @@
         cursor: pointer
     }
 
+    /* window size */
+
+    .header {
+        height: 70px
+    }
+
+    .remain.col-2{
+        overflow-y: scroll;
+        height:calc(100vh - 126px);
+        background-color: yellow;
+        }
+
+
+    .remain.col-10{
+        position: relative;
+        height:calc(100vh - 126px);
+    }
+
+    footer {
+        display: none
+    }
+    
+    /* studyarea */
+    .studyarea-list-area ul {
+        padding: 0;
+        list-style: none;
+    }
+
+   .studyarea-list-area li {
+        padding: 15px 0 ;
+        cursor: pointer
+    }
+
+    /* sub studyarea */
+    .collapse > li {
+        margin-left: 10%
+    }
+
+    .collapse-s > li {
+        margin-left: 20%
+    }
+
+    /* font small */
+    .font-sm {
+        font-size: 15px
+    }
+
 </style>
 {% endblock head %}
 {% block body %}
-<div class="container content">
-    <div class="row mb-2">
+<div class="container box">
+    <div class="row pb-2 pt-4 header overflow-auto">
         <div class="col-2">
             <a class="text-gray back text-decoration-none align-middle" href="{% url 'project_overview' %}"><i class="fa fa-chevron-left"></i> 返回計畫總覽</a>
         </div>
         <div class="col-10">
             <div class="d-flex justify-content-between align-items-center">
-                <h4 class="title-dark p-0">{{ project_info.0 }}</h4>
-                <div>
+                <h4 class="title-dark p-0">{{ project_info.0 }} <i class="fa fa-info-circle" style="cursor: pointer" data-bs-toggle="modal" data-bs-target="#infoModal"></i></h4>
+                <div> 
+                {% if is_authorized %}
                     <a class="btn btn-outline-success" href="{% url 'edit_project_basic' pk %}"><i class="fa fa-xs fa-pencil"></i> 計畫管理</a>
-                    <a class="btn btn-outline-success" href="{% url 'edit_project_basic' pk %}"><i class="fas fa-file-csv"></i> 下載篩選資料</a>
+                {% endif %}
+                    <a class="btn btn-outline-success download"><i class="fas fa-file-csv"></i> 下載篩選資料</a>
                 </div>
             </div>
         </div>
     </div>
     <div class="row">
-        <div class="col-2 bg-white shadow-sm">
-            <div class="row">
-                <p class="mt-3 d-flex justify-content-between">篩選條件
-                    <button style="font-size: 14px" class="btn btn-light p-0 clear">清除 －</button>
-                </p>
-                <hr style='margin: auto; width: 90%'>
-                <p class="mt-3 mb-1 d-flex justify-content-between">
-                    <strong>物種</strong> 
-                </p>
-                <ul style="list-style: none" id="species-list">
-                    <li id="species-list-all">       
-                        <label class="form-check-label">
-                        <i class="fas fa-check title-dark"></i>
-                        <input id="species-all-option" class="filter all" type="radio" name="species-filter" value="" checked>
-                        全部
-                        </label>
-                    </li>
-                    {% for i in species %}
-                    <li>
-                        <label class="form-check-label">
-                        <input class="filter" type="radio" name="species-filter" value="{{ i }}">
-                            {{ i }}
-                        </label>
-                    </li>
-                    {% endfor %}
-                </ul>
-                <p class="mb-1"><strong>樣區</strong></p>
-                <ul style="list-style: none">
-                    <li>
-                        <label class="form-check-label">             
-                        <i class="fas fa-check title-dark"></i>
-                        <input class="filter all" type="radio" name="sa-filter" value="" checked>
-                        全部
-                        </label>
-                    </li>
-                    {% for i in studyarea %}
-                    <li>
-                        <label class="form-check-label">
-                        <input class="filter" type="radio" name="sa-filter" value="{{ i.name }}">
-                            {{ i.name }}
-                        </label>
-                    </li>
-                    {% endfor %}
-                </ul>
-                <p class="mb-1"><strong>相機位置</strong></p>
-                <ul style="list-style: none">
-                    <li>
-                        <label class="form-check-label">             
-                        <i class="fas fa-check title-dark"></i>
-                        <input class="filter all" type="radio" name="deployment-filter" value="" checked>
-                        全部
-                        </label>
-                    </li>
-                    {% for i in deployment %}
-                    <li>
-                        <label class="form-check-label">
-                        <input class="filter" type="radio" name="deployment-filter" value="{{ i.name }}">
-                            {{ i.name }}
-                        </label>
-                    </li>
-                    {% endfor %}
-                </ul>
-                <p class="mb-1"><strong>拍攝日期</strong></p>
-                <input type="text" class="mx-auto w-100 text-center mb-1 border-0" id="date" readonly>
-                <div id="date-slider" class="w-75 mx-auto mb-5"></div>
-            </div>
+        <div class="col-2 bg-white shadow-sm remain">
+            <form action="{% url 'download' pk %}" method="post" id="downloadForm">
+            {% csrf_token %}
+                <div class="row">
+                    <div class="mt-3 d-flex justify-content-between">
+                        <p>篩選條件</p>
+                        <div>
+                        <button type="button" style="font-size: 14px" class="btn btn-orange py-0 px-1 select">篩選</button>
+                        <button type="button" style="font-size: 14px" class="btn btn-light border-secondary py-0 px-1 clear">清除</button>
+                        </div>
+                    </div>
+                    <hr style='margin: auto; width: 90%'>
+                    <p class="mt-3 mb-1 d-flex justify-content-between">
+                        <strong>物種</strong> 
+                    </p>
+                    <ul style="list-style: none" id="species-list" class="font-sm">
+                        <li id="species-list-all">       
+                            <label class="form-check-label">
+                            <i class="fas fa-check title-dark"></i>
+                            <input id="species-all-option" class="filter all" type="radio" name="species-filter" value="" checked>
+                            全部
+                            </label>
+                        </li>
+                        {% for i in species %}
+                        <li>
+                            <label class="form-check-label w-100">
+                            <input class="filter" type="radio" name="species-filter" value="{{ i }}">
+                                {{ i.1 }} ({{i.0}})
+                            </label>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <p class="mb-1"><strong>樣區 / 相機位置</strong></p>
+                    <input type="hidden" id="checkbox-all-unchecked" value="false">
+                    <ul style="list-style: none" id="studyarea-list" class="font-sm">
+                        <li>
+                            <label class="form-check-label">             
+                            <i class="fas fa-check title-dark"></i>
+                            <input class="filter all" type="radio" name="sa-filter" value="" checked>
+                            全部
+                            </label>
+                        </li>
+                        {% for i in study_area %}
+                            {% if i.parent_id == None %}
+                            <li>
+                                <label class="form-check-label w-100">
+                                <input class="filter studyarea-name" type="radio" name="sa-filter" value="{{ i.id }}" 
+                                       id="{{ i.id }}" data-bs-toggle="collapse" href="#collapse_{{ i.id }}" role="button" 
+                                       aria-expanded="false" aria-controls="collapse_{{ i.id }}">
+                                    {{ i.name }}
+                                </label>
+                            </li>
+                            <div class="collapse" id="collapse_{{ i.id }}">
+                                {% if i.deployment_set.all != None %}
+                                    <li>
+                                        <label class="form-check-label w-auto">
+                                            <input class="filter all" type="checkbox" name="d-filter" value="all" data-parent-radio="{{ i.id }}">
+                                                全部
+                                        </label>
+                                    </li>
+                                    {% for j in i.deployment_set.all %}
+                                    <li>
+                                        <label class="form-check-label w-auto">
+                                            <input class="filter" type="checkbox" name="d-filter" value="{{ j.id }}" data-parent-radio="{{ i.id }}">
+                                                {{ j.name }}
+                                        </label>
+                                    </li>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                    <p class="mb-1"><strong>拍攝日期</strong></p>
+                    <p id="date-content" class="font-sm"></p>
+                    <input type="text" class="d-none" id="date" readonly>
+                    <div id="date-slider" class="w-75 mx-auto mb-5"></div>
+                </div>
+            <input type="hidden" name="start_date" value="">
+            <input type="hidden" name="end_date" value="">
+            </form>
         </div>
-        <div class="col-10">
-            <table class="table bg-white table-borderless shadow-sm">
-                <tr>
-                    <td class="px-3">委辦單位</td>
-                    <td class="text-gray">{{ project_info.1 }}</td>
-                </tr>
-                <tr>
-                    <td class="px-3">計畫編號</td>
-                    <td class="text-gray">{{ project_info.2 }}</td>
-                </tr>
-                <tr>
-                    <td class="px-3">計畫主持人</td>
-                    <td class="text-gray">{{ project_info.3 }}</td>
-                </tr>
-                <tr>
-                    <td class="px-3">計畫時間</td>
-                    <td class="text-gray">{{ project_info.4 }} 至 {{ project_info.5 }}</td>
-                </tr>
-                <tr>
-                    <td class="px-3">相機樣點運作及缺失比例</td>
-                    <td><a class="oversight text-green text-decoration-none" href="">查看</a></td>
-                </tr>
-            </table>
-            <table class="table table-borderless w-100 px-3" id="img-table">
+        <div class="col-10 remain">
+            <table class="table table-borderless w-100 px-3 h-100" id="img-table">
                 <thead class="fw-bold title-dark">
                     <tr>
                         <td>樣區</td>
@@ -195,7 +265,7 @@
     </div>
 </div>
 
-<!-- Modal -->
+<!-- Edit Modal -->
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -287,6 +357,45 @@
     </div>
 </div>
 
+
+
+<!-- Info Modal -->
+<div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title title-dark">計畫基本資訊</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td class="px-3">委辦單位</td>
+                        <td class="text-gray">{{ project_info.1 }}</td>
+                    </tr>
+                    <tr>
+                        <td class="px-3">計畫編號</td>
+                        <td class="text-gray">{{ project_info.2 }}</td>
+                    </tr>
+                    <tr>
+                        <td class="px-3">計畫主持人</td>
+                        <td class="text-gray">{{ project_info.3 }}</td>
+                    </tr>
+                    <tr>
+                        <td class="px-3">計畫時間</td>
+                        <td class="text-gray">{{ project_info.4 }} 至 {{ project_info.5 }}</td>
+                    </tr>
+                    <tr>
+                        <td class="px-3">相機樣點運作及缺失比例</td>
+                        <td><a class="oversight text-green text-decoration-none" href="">查看</a></td>
+                    </tr>
+                </table> 
+            </div>
+        </div>
+    </div>
+</div>
+
+
 {% endblock body %}
 
 {% block script %}
@@ -356,10 +465,9 @@ let language_settings = {
     "infoFiltered":   "",
     "infoPostFix":    "",
     "thousands":      ",",
-    "lengthMenu":     "每頁顯示 _MENU_ 筆",
+    "lengthMenu":     `每頁顯示 _MENU_ 筆`,
     "loadingRecords": "載入中...",
-    "processing":     "處理中...",
-    "search":         "查詢🔍",
+    "processing":     "",
     "zeroRecords":    "查無符合資料",
     "paginate": {
         "next":       "下一頁",
@@ -367,8 +475,44 @@ let language_settings = {
     }
 };
 
+
 $(document).ready(function() {
-    // date
+
+    /* sub studyarea */
+    {% for i in study_area %}
+        {% if i.parent_id != None %}
+            $("#collapse_{{ i.parent_id }}").append(`
+            <li>
+                <label class="form-check-label">
+                    <input class="filter" type="radio" name="sa-filter" value="{{ i.id }}"  data-parent="{{ i.parent_id }}" id="{{ i.id }}" data-bs-toggle="collapse" 
+                           href="#collapse_s_{{ i.id }}" role="button" aria-expanded="false" aria-controls="collapse_s_{{ i.id }}">
+                        - {{ i.name }}
+                </label>
+            </li>
+            <div class="collapse collapse-s" id="collapse_s_{{ i.id }}">
+            {% if i.deployment_set.all != None %}
+            <li>
+                <label class="form-check-label w-auto">
+                    <input class="filter all" type="checkbox" name="d-filter" value="all" data-parent-radio="{{ i.id }}">
+                        全部
+                </label>
+            </li>
+            {% for j in i.deployment_set.all %}
+                <li>
+                    <label class="form-check-label w-100">
+                        <input class="filter" type="checkbox" name="d-filter" value="{{ j.id }}" data-parent-radio="{{ i.id }}">
+                            {{ j.name }}
+                    </label>
+                </li>
+                {% endfor %}
+            {% endif %}
+            </div>            
+            `);
+        {% endif %}
+    {% endfor %}
+
+    // date slider
+    {% if earliest_date != None %}
     $("#date-slider").slider({
       range: true,
       min: new Date('{{ earliest_date }}').getTime() / 1000,
@@ -376,30 +520,28 @@ $(document).ready(function() {
       step: 86400,
       values: [ new Date('{{ earliest_date }}').getTime() / 1000, new Date('{{ latest_date }}').getTime() / 1000 ],
       slide: function( event, ui ) {
-        $("#date").val((new Date(ui.values[ 0 ] *1000).toISOString().substring(0, 10)) + "至" + 
-        (new Date(ui.values[1]*1000)).toISOString().substring(0, 10));
+        $('#date-content').html((new Date(ui.values[ 0 ] *1000).toISOString().substring(0, 10)) + "至" + 
+        (new Date(ui.values[1]*1000)).toISOString().substring(0, 10))
       },
-      stop: function( event, ui ) {
-          console.log(table);
-          $("#img-table").DataTable().draw()}
     });
-    $("#date").val((new Date($("#date-slider").slider("values",0)*1000).toISOString().substring(0, 10)) + "至" + 
+    $("#date-content").html((new Date($("#date-slider").slider("values",0)*1000).toISOString().substring(0, 10)) + "至" + 
     (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
+    {% endif %}
 
     // initalize datatable
     let table = $("#img-table").DataTable({
-        dom:"<'row bg-gray'<'col-6'><'col-6 mb-2'l>>" +
+        dom:"<'row px-3 pt-3'<'col-sm-12 col-md-5'l>>" +
             "<'row'<'col-sm-12'tr>>" +
             "<'row p-3'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
         language: language_settings,
         ordering: false,
-        processing: false,
+        processing: true,
         serverSide: true,
         searching: false,
-        //scrollY: "50%",
-        "initComplete": function (settings, json) {  
-            $("#img-table").wrap("<div style='overflow:auto; width:100%;position:relative;'></div>");            
-        },
+        scrollY: 100,
+        scrollResize: true,
+        scrollX: true,
+        scrollCollapse: true,
         ajax: {
             type: "POST",
             url: "{% url 'data' %}",
@@ -408,29 +550,35 @@ $(document).ready(function() {
                 d.pk = "{{ pk }}";
                 d.species = $("input[name=species-filter]:checked").val()
                 d.sa =  $("input[name=sa-filter]:checked").val()
-                d.deployment =  $("input[name=deployment-filter]:checked").val()
+                {% if earliest_date != None %}
                 d.start_date = (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10)
                 d.end_date = (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10)
-            }
+                {% endif %}
+                d.deployment =  $('input[name="d-filter"]:checked').map(function(){return $(this).val();}).get();
+            },
+
         }, 
         order: [[0, "asc"]], 
         drawCallback:function(){
-        // lazy loading for images
-        var watcher = new IntersectionObserver(onEnterView);
-        var lazyImages = document.querySelectorAll("img.lazy");
-        for (let image of lazyImages) {
-            watcher.observe(image); // 開始監視
-        }
-
-        function onEnterView(entries, observer) {
-            for (let entry of entries) {
-                if (entry.isIntersecting) {
-                    var img = entry.target;
-                    img.setAttribute("src", img.dataset.src);
-                    observer.unobserve(img); 
+            // lazy loading for images
+            var watcher = new IntersectionObserver(onEnterView);
+            var lazyImages = document.querySelectorAll("img.lazy");
+            for (let image of lazyImages) {
+                watcher.observe(image); // 開始監視
+            }
+            function onEnterView(entries, observer) {
+                for (let entry of entries) {
+                    if (entry.isIntersecting) {
+                        var img = entry.target;
+                        img.setAttribute("src", img.dataset.src);
+                        observer.unobserve(img); 
+                    }
                 }
             }
-        }
+            // adjust columns after 1000 ms
+            setTimeout(function(){
+                $.fn.dataTable.tables( { visible: false, api: true } ).columns.adjust();
+            }, 1000);
         },
         columns: [
                     {data: "saname"},
@@ -449,34 +597,41 @@ $(document).ready(function() {
                 ], 
         columnDefs: [ 
             {
-                "targets": [ 11,12 ],
+                "targets": [ 11,12 ], // hidden columns
                 "visible": false
             }
         ],
     });
 
-    $('.filter').on('click', function() {
-        table.draw();
+    // submit select
+    $('.select').on('click', function() {
+        $($.fn.dataTable.tables( true ) ).DataTable().columns.adjust().draw();
     });
-
+    
     $('.clear').on('click', function() {
-        $('.all').prop('checked', true);
+        $('input[type=radio]').prop('checked', false);
+        $('input[type=radio].all').prop('checked', true);
+        $('input[type=checkbox].filter').prop('checked', false);
+        // radio
+        $('.fa-check').remove()
+        $('<i class="fas fa-check title-dark"></i>').insertBefore($("input[type=radio].all"))
+
+        {% if earliest_date != None %}
         $("#date-slider").slider({
-            range: true,
-            min: new Date('{{ earliest_date }}').getTime() / 1000,
-            max: new Date('{{ latest_date }}').getTime() / 1000,
-            step: 86400,
-            values: [ new Date('{{ earliest_date }}').getTime() / 1000, new Date('{{ latest_date }}').getTime() / 1000 ],
-            slide: function( event, ui ) {
-                $("#date").val((new Date(ui.values[ 0 ] *1000).toISOString().substring(0, 10)) + "至" + 
-                (new Date(ui.values[1]*1000)).toISOString().substring(0, 10));
-            },
-            stop: function( event, ui ) {
-                $("#img-table").DataTable().draw()}
+        range: true,
+        min: new Date('{{ earliest_date }}').getTime() / 1000,
+        max: new Date('{{ latest_date }}').getTime() / 1000,
+        step: 86400,
+        values: [ new Date('{{ earliest_date }}').getTime() / 1000, new Date('{{ latest_date }}').getTime() / 1000 ],
+        slide: function( event, ui ) {
+            $('#date-content').html((new Date(ui.values[ 0 ] *1000).toISOString().substring(0, 10)) + "至" + 
+            (new Date(ui.values[1]*1000)).toISOString().substring(0, 10))
+        },
         });
-        $("#date").val((new Date($("#date-slider").slider("values",0)*1000).toISOString().substring(0, 10)) + "至" + 
+        $("#date-content").html((new Date($("#date-slider").slider("values",0)*1000).toISOString().substring(0, 10)) + "至" + 
         (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
-        table.draw();
+        {% endif %}
+        //$($.fn.dataTable.tables( true ) ).DataTable().columns.adjust().draw();        
     });
 
     // set permission: 計畫總管理人/個別計畫承辦人/系統管理員
@@ -522,7 +677,7 @@ $(document).ready(function() {
                         <li>
                         <label class="form-check-label">
                         <input class="filter" type="radio" name="species-filter" value="${data['species'][i]}">
-                            ${data['species'][i]}
+                            ${data['species'][i][1]} (${data['species'][i][0]})
                         </label>
                         </li>
                         `
@@ -534,10 +689,6 @@ $(document).ready(function() {
                         $(`input[name=species-filter][value=${current_species}]`).attr("checked",true);
                         $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=species-filter][value=${current_species}]`));
                         }
-                        
-                    $('.filter').on('click', function() {
-                        table.draw();
-                    });
 
                     $("input[type=radio]").click( function () {
                         let group = $(this).attr('name')
@@ -547,15 +698,229 @@ $(document).ready(function() {
             }})
         });
 
-    // radio style
-    $("input[type=radio]").click( function () {
-        let group = $(this).attr('name')
-        $(`input[name=${group}]`).parent('label').children('i').remove()
-        $('<i class="fas fa-check title-dark"></i>').insertBefore(this);
+    // download
+    $('.download').on('click', function(){
+        {% if earliest_date != None %}
+        $("input[name=start_date]").val((new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10));
+        $("input[name=end_date]").val((new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
+        {% endif %}
+        $('#downloadForm').submit()
+    })
+
+
+    // radio style for species
+    $("input[name=species-filter]").click( function () {
+        $(`input[name=species-filter]`).parent('label').children('i').remove()
+        $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=species-filter]:checked`));
     });
+
+    // radio style for studyarea & cameralocation
+    $("input[name=sa-filter]").click( function () {
+        $(`input[type=checkbox].filter`).prop('checked', false);
+        let radio_group = $(`input[name=sa-filter]:checked`).val();
+        if (radio_group){
+            $(`input[data-parent-radio=${radio_group}]`).prop('checked', true);
+            }
+        $(`input[name=sa-filter]`).parent('label').children('i').remove()
+        $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=sa-filter]:checked`));
+    });
+
+    // radio style for studyarea & cameralocation: checkbox toggle
+    $("input[type=checkbox].filter.all").click (function(){
+        let parent_radio = $(this).data('parent-radio')
+
+        // uncheck other checkbox group
+        $(`input[type=checkbox]:not([data-parent-radio=${parent_radio}])`).prop('checked', false)
+
+        if( $(this).is(':checked') ) {
+            $(`input[data-parent-radio=${parent_radio}][type=checkbox]`).prop('checked', true)
+        } else {
+            $(`input[data-parent-radio=${parent_radio}][type=checkbox]`).prop('checked', false)
+        } 
+        // radio
+        $(`input[name=sa-filter]`).parent('label').children('i').remove()
+        $(`input[name=sa-filter]:checked`).prop('checked', false)
+        $(`input[name=sa-filter][id=${parent_radio}]`).prop('checked', true)
+        $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=sa-filter][id=${parent_radio}]`));
+    })
+
+    // if other checkbox checked, uncheck 'all'
+    $("input[type=checkbox].filter:not(.all)").click (function(){
+        let parent_radio = $(this).data('parent-radio')
+        // uncheck other checkbox group
+        $(`input[type=checkbox]:not([data-parent-radio=${parent_radio}])`).prop('checked', false)
+        // uncheck all
+        $(`input[data-parent-radio=${parent_radio}][type=checkbox].all`).prop('checked', false)
+        // radio
+        $(`input[name=sa-filter]`).parent('label').children('i').remove()
+        $(`input[name=sa-filter]:checked`).prop('checked', false)
+        $(`input[name=sa-filter][id=${parent_radio}]`).prop('checked', true)
+        $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=sa-filter][id=${parent_radio}]`));
+    })
+
+
+$('#img-table')
+    .on( 'processing.dt', function ( e, settings, processing ) {
+        console.log('hi')
+        $('#processingIndicator').css( 'display', processing ? 'block' : 'none' );
+    } )
+    .dataTable();
 
 });
 
+
+
+
+//  datatable automatically fits window height
+(function( factory ){
+	if ( typeof define === 'function' && define.amd ) {
+		// AMD
+		define( ['jquery', 'datatables.net'], function ( $ ) {
+			return factory( $, window, document );
+		} );
+	}
+	else if ( typeof exports === 'object' ) {
+		// CommonJS
+		module.exports = function (root, $) {
+			if ( ! root ) {
+				root = window;
+			}
+
+			if ( ! $ || ! $.fn.dataTable ) {
+				$ = require('datatables.net')(root, $).$;
+			}
+
+			return factory( $, root, root.document );
+		};
+	}
+	else {
+		// Browser
+		factory( jQuery, window, document );
+	}
+}(function( $, window, document, undefined ) {
+'use strict';
+
+
+var ScrollResize = function ( dt )
+{
+	var that = this;
+	var table = dt.table();
+
+	this.s = {
+		dt:        dt,
+		host:      $(table.container()).parent(),
+		header:    $(table.header()),
+		footer:    $(table.footer()),
+		body:      $(table.body()),
+		container: $(table.container()),
+		table:     $(table.node())
+	};
+
+	var host = this.s.host;
+	if ( host.css('position') === 'static' ) {
+		host.css( 'position', 'relative' );
+	}
+
+	dt.on( 'draw', function () {
+		that._size();
+	} );
+
+	this._attach();
+	this._size();
+};
+
+
+ScrollResize.prototype = {
+	_size: function ()
+	{
+		var settings = this.s;
+		var dt = settings.dt;
+		var t = dt.table();
+		var offsetTop = $( settings.table ).offset().top;
+		var availableHeight = settings.host.height();
+		var scrollBody = $('div.dataTables_scrollBody', t.container());
+
+		// Subtract the height of the header, footer and the elements
+		// surrounding the table
+		availableHeight -= offsetTop;
+		availableHeight -= settings.container.height() - ( offsetTop + scrollBody.height() );
+
+		$('div.dataTables_scrollBody', t.container()).css( {
+			maxHeight: availableHeight,
+			height: availableHeight
+		} );
+
+		if ( dt.fixedColumns ) {
+			dt.fixedColumns().relayout();
+		}
+	},
+
+	_attach: function () {
+		// There is no `resize` event for elements, so to trigger this effect,
+		// create an empty HTML document using an <iframe> which will issue a
+		// resize event inside itself when the document resizes. Since it is
+		// 100% x 100% that will occur whenever the host element is resized.
+		var that = this;
+		var obj = $('<iframe/>')
+			.css( {
+				position: 'absolute',
+				top: 0,
+				left: 0,
+				height: '100%',
+				width: '100%',
+				zIndex: -1,
+				border: 0
+			} )
+			.attr( 'frameBorder', '0' )
+			.attr( 'src', 'about:blank' );
+
+		obj[0].onload = function () {
+			var body = this.contentDocument.body;
+			var height = body.offsetHeight;
+			var contentDoc = this.contentDocument;
+			var defaultView = contentDoc.defaultView || contentDoc.parentWindow;
+
+			defaultView.onresize = function () {
+				// Three methods to get the iframe height, to keep all browsers happy
+				var newHeight = body.clientHeight || body.offsetHeight;
+				var docClientHeight = contentDoc.documentElement.clientHeight;
+
+				if ( ! newHeight && docClientHeight ) {
+					newHeight = docClientHeight;
+				}
+
+				if ( newHeight !== height ) {
+					height = newHeight;
+
+					that._size();
+				}
+			};
+		};
+
+		obj
+			.appendTo( this.s.host )
+			.attr( 'data', 'about:blank' );
+	}
+};
+
+$.fn.dataTable.ScrollResize = ScrollResize;
+$.fn.DataTable.ScrollResize = ScrollResize;
+
+// Automatic initialisation listener
+$(document).on( 'init.dt', function ( e, settings ) {
+	if ( e.namespace !== 'dt' ) {
+		return;
+	}
+
+	var api = new $.fn.dataTable.Api( settings );
+
+	if ( settings.oInit.scrollResize || $.fn.dataTable.defaults.scrollResize ) {
+		new ScrollResize( api );
+	}
+} );
+
+
+}));
 
 </script>
 {% endblock script %}
