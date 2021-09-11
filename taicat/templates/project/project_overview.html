@@ -44,26 +44,46 @@
     <div class="row">
         <div class="col-2 bg-white">
             <div class="row">
-                <p class="mt-3 d-flex justify-content-between">篩選條件
-                    <button style="font-size: 14px" class="btn btn-light p-0" onClick="Clear()">清除 －</button>
-                </p>
+                    <div class="mt-3 d-flex justify-content-between">
+                        <p>篩選條件</p>
+                        <div>
+                        <button type="button" style="font-size: 14px" class="btn btn-orange py-0 px-1 select">篩選</button>
+                        <button type="button" style="font-size: 14px" class="btn btn-light border-secondary py-0 px-1 clear">清除</button>
+                        </div>
+                    </div>
+
                 <hr style='margin: auto; width: 90%'>
                 <p class="mt-3 mb-1">
                     <strong>物種</strong> 
                 </p>
                 <ul id="species-list" style="list-style: none">
-                    {% for i in public_species_data %}
+                    <li class="public-species">       
+                            <label class="form-check-label">
+                            <i class="fas fa-check title-dark"></i>
+                            <input class="filter all publicproject" type="radio" name="species-filter" value="" checked>
+                            全部
+                            </label>
+                    </li>
+                    <li  class="my-species d-none">       
+                            <label class="form-check-label">
+                            <i class="fas fa-check title-dark"></i>
+                            <input class="filter all myproject" type="radio" name="species-filter" value="" checked>
+                            全部
+                    </label>
+                    </li>
+                    {% for i in public_species_data %}   
                     <li class="public-species">
                         <label class="form-check-label">
-                        <input class="filter"  type="radio" group="species" name="species-filter" value="{{ i.1 }}">
+                        <input class="filter publicproject" type="radio" group="species" name="species-filter" value="{{ i.1 }}">
                             {{ i.1 }} ({{i.0}})
                         </label>
                     </li>
                     {% endfor %}
+
                     {% for i in my_species_data %}
                     <li class="my-species d-none">
                         <label class="form-check-label">
-                        <input class="filter"  type="radio" group="species" name="species-filter" value="{{ i.1 }}">
+                        <input class="filter myproject" type="radio" group="species" name="species-filter" value="{{ i.1 }}">
                             {{ i.1 }} ({{i.0}})
                         </label>
                     </li>
@@ -89,13 +109,13 @@
                     <table class="table table-hover bg-white" id="myproject-table" style="width: 100%;">
                         <thead>
                         <tr>
-                            <td style="width: 33%">計畫名稱</td>
-                            <td style="width: 12%">計畫關鍵字</td>
-                            <td style="width: 10%">資料起始年份</td>
-                            <td style="width: 15%">委辦單位</td>
-                            <td style="width: 10%">樣區數量</td>
-                            <td style="width: 10%">相機位置數</td>
-                            <td style="width: 10%">資料量</td>
+                            <td>計畫名稱</td>
+                            <td>計畫關鍵字</td>
+                            <td>起始年份</td>
+                            <td>委辦單位</td>
+                            <td>樣區數量</td>
+                            <td>相機位置數</td>
+                            <td>資料量</td>
                         </tr>
                         </thead>
                         <tbody id="myproject-tbody">
@@ -123,13 +143,13 @@
                     <table class="table table-hover bg-white" id="publicproject-table" style="width: 100%;">
                         <thead>
                             <tr>
-                                <td style="width: 33%">計畫名稱</td>
-                                <td style="width: 12%">計畫關鍵字</td>
-                                <td style="width: 10%">起始年份</td>
-                                <td style="width: 15%">委辦單位</td>
-                                <td style="width: 10%">樣區數量</td>
-                                <td style="width: 10%">相機位置數</td>
-                                <td style="width: 10%">資料量</td>
+                                <td>計畫名稱</td>
+                                <td>計畫關鍵字</td>
+                                <td>起始年份</td>
+                                <td>委辦單位</td>
+                                <td>樣區數量</td>
+                                <td>相機位置數</td>
+                                <td>資料量</td>
                             </tr>
                         </thead>
                         <tbody id="publicproject-tbody">
@@ -180,18 +200,15 @@
             });
 
             // filter data by species
-            $("#species-list").on("click", ".filter", function(){
-
-                check_list = $("[name=species-filter]:checked");
-
+            $(".select").on("click", function(){
+                // current table
+                let table_id = $('.col-10 .active').attr('aria-controls')
+                let check_list = $(`[name=species-filter].${table_id}:checked`);
                 let speciesArray = [];
                 check_list.each(function(){
                     speciesArray.push($(this).val()); 
                 });
                 if (speciesArray.length){
-                    // current table
-                    table_id = $('.col-10 .active').attr('aria-controls')
-
                     $.ajax({
                         type: 'POST',
                         url: "{% url 'update_datatable' %}",
@@ -232,36 +249,18 @@
 
         });
 
-        function Clear(){
+        $('.clear').on('click', function(){
             // reset table
-            $('#species-list').html(`
-                    {% for i in public_species_data %}
-                    <li class="public-species">
-                        <label class="form-check-label">
-                        <input class="filter"  type="radio" group="species" name="species-filter" value="{{ i.1 }}">
-                            {{ i.1 }} ({{i.0}})
-                        </label>
-                    </li>
-                    {% endfor %}
-                    {% for i in my_species_data %}
-                    <li class="my-species d-none">
-                        <label class="form-check-label">
-                        <input class="filter"  type="radio" group="species" name="species-filter" value="{{ i.1 }}">
-                            {{ i.1 }} ({{i.0}})
-                        </label>
-                    </li>
-                    {% endfor %}
-            `)
-
-            $('#myproject-table').DataTable().destroy();
-            $('#publicproject-table').DataTable().destroy();
+            
+           $('#myproject-table').DataTable().destroy();
+           $('#publicproject-table').DataTable().destroy();
 
             $('#myproject-tbody').html(
                 `{% for tuples in my_project %}
                     <tr class='clickable-row' data-href="{% url 'project_detail' tuples.0 %}">
                         {% for t in tuples %}
                             {% if not forloop.first %}
-                                {% if t == None %}
+                                {% if t == 'None' or t == None  %}
                                     <td></td>
                                 {% else %}
                                     <td>{{ t }}</td>
@@ -277,7 +276,7 @@
                     <tr class='clickable-row' data-href="{% url 'project_detail' tuples.0 %}">
                         {% for t in tuples %}
                             {% if not forloop.first %}
-                                {% if t == None %}
+                                {% if t == 'None' or t == None %}
                                     <td></td>
                                 {% else %}
                                     <td>{{ t }}</td>
@@ -287,12 +286,21 @@
                     </tr>
                 {% endfor %}`
             )
+            
 
-            $('#myproject-table').DataTable({"language": language_settings});
-            $('#publicproject-table').DataTable({"language": language_settings});
-
+            $('#myproject-table').DataTable({
+            language: language_settings,                       
+            columnDefs: column_defs,
+            fixedColumns: true,
+        })
+            $('#publicproject-table').DataTable({
+            language: language_settings,                       
+            columnDefs: column_defs,
+            fixedColumns: true,
+        })
+            
             // filter
-            table_id = $('.col-10 .active').attr('aria-controls')
+            let table_id = $('.col-10 .active').attr('aria-controls')
             if (table_id == 'myproject'){
                 $('.my-species').removeClass('d-none')
                 $('.public-species').addClass('d-none')
@@ -301,7 +309,14 @@
                 $('.public-species').removeClass('d-none')
             }
 
-        }
+            // reset radio
+            $('input[type=radio]').prop('checked', false);
+            $('input[type=radio].all').prop('checked', true);
+
+            // radio
+            $('.fa-check').remove()
+            $('<i class="fas fa-check title-dark"></i>').insertBefore($("input[type=radio].all"))
+        })
 
         // datatable
         let language_settings = {
@@ -323,13 +338,33 @@
             }
         };
 
-        $('#myproject-table').DataTable({"language": language_settings});
-        $('#publicproject-table').DataTable({"language": language_settings});
+        let column_defs = [
+                      { width: "33%", targets: 0 },       
+                      { width: "12%", targets: 1 },
+                      { width: "10%", targets: 2 },
+                      { width: "15%", targets: 3 },
+                      { width: "10%", targets: 4 },
+                      { width: "10%", targets: 5 },
+                      { width: "10%", targets: 6 },
+                      ]
+
+        let myproject_table = $('#myproject-table').DataTable({
+            language: language_settings,                       
+            columnDefs: column_defs,
+            fixedColumns: true,
+        });
+
+        let publicproject_table = $('#publicproject-table').DataTable({
+            language: language_settings,                       
+            columnDefs: column_defs,
+            fixedColumns: true,
+        });
 
     // radio style
     $("input[type=radio]").click( function () {
         let group = $(this).attr('name')
-        $(`input[name=${group}]`).parent('label').children('i').remove()
+        let table_id = $('.col-10 .active').attr('aria-controls')
+        $(`input[name=${group}].${table_id}`).parent('label').children('i').remove()
         $('<i class="fas fa-check title-dark"></i>').insertBefore(this);
     });
 
