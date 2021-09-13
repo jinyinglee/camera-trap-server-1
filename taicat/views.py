@@ -464,7 +464,7 @@ def data(request):
                         sa.name AS saname, d.name AS dname, i.filename, 
                         to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
                         sa.parent_id AS saparent,
-                        x.*, i.file_url, i.id
+                        x.*, i.file_url, i.id, i.from_mongo 
                         FROM taicat_image i
                         CROSS JOIN LATERAL
                         json_to_recordset(i.annotation::json) x 
@@ -515,8 +515,13 @@ def data(request):
             file_url = data[i].get('file_url', '')
             if not file_url:
                 file_url = f"{data[i]['id']}-m.jpg"
-            data[i]['file_url'] =  """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}" />""".format(file_url)
-        
+            if not data[i]['from_mongo']: 
+                # new data
+                data[i]['file_url'] =  """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}" />""".format(file_url)
+            else:
+                # old data
+                data[i]['file_url'] =  """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://camera-trap-api.s3.ap-northeast-1.amazonaws.com/annotation-images/{}" />""".format(file_url)
+
         if _start and _length:
             start = int(_start)
             length = int(_length)
