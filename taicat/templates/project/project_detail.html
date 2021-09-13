@@ -770,14 +770,6 @@ $(document).ready(function() {
         $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=sa-filter][id=${parent_radio}]`));
     })
 
-
-$('#img-table')
-    .on( 'processing.dt', function ( e, settings, processing ) {
-        console.log('hi')
-        $('#processingIndicator').css( 'display', processing ? 'block' : 'none' );
-    } )
-    .dataTable();
-
 });
 
 

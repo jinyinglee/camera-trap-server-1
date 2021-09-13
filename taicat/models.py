@@ -190,4 +190,5 @@ class Image(models.Model):
     memo = models.TextField(default='', blank=True)
     image_hash = models.TextField(default='', blank=True)
     exif = models.JSONField(default=dict, blank=True)
+    from_mongo = models.BooleanField(default=False, blank=True)
 
