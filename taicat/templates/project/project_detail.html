@@ -29,7 +29,7 @@
         bottom: 0;
         left: 0;
         right: 0;
-        color: black;
+        color: rgb(37, 116, 85);
         width: 100px;
         height: 20px;
         margin: auto;
@@ -371,15 +371,27 @@
                 <table class="table table-borderless">
                     <tr>
                         <td class="px-3">委辦單位</td>
+                        {% if project_info.1 != None and project_info.1 != 'None' %}
                         <td class="text-gray">{{ project_info.1 }}</td>
+                        {% else %}
+                        <td></td>
+                        {% endif %}
                     </tr>
                     <tr>
                         <td class="px-3">計畫編號</td>
+                        {% if project_info.1 != None and project_info.2 != 'None' %}
                         <td class="text-gray">{{ project_info.2 }}</td>
+                        {% else %}
+                        <td></td>
+                        {% endif %}
                     </tr>
                     <tr>
                         <td class="px-3">計畫主持人</td>
+                        {% if project_info.1 != None and project_info.3 != 'None' %}
                         <td class="text-gray">{{ project_info.3 }}</td>
+                        {% else %}
+                        <td></td>
+                        {% endif %}
                     </tr>
                     <tr>
                         <td class="px-3">計畫時間</td>
@@ -651,6 +663,8 @@ $(document).ready(function() {
         $('#edit-id').val(row['id'])
         $('#edit-image').html(row['file_url'])
         $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
+        $('#edit-image video').attr('width', '100%');
+        $('#edit-image video').attr('height', '');
         $('#editModal').modal('show');
 
         // disable edit 
@@ -757,14 +771,6 @@ $(document).ready(function() {
         $(`input[name=sa-filter][id=${parent_radio}]`).prop('checked', true)
         $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=sa-filter][id=${parent_radio}]`));
     })
-
-
-$('#img-table')
-    .on( 'processing.dt', function ( e, settings, processing ) {
-        console.log('hi')
-        $('#processingIndicator').css( 'display', processing ? 'block' : 'none' );
-    } )
-    .dataTable();
 
 });
 

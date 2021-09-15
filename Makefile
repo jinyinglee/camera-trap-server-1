@@ -20,7 +20,7 @@ prod-up:
 prod-down:
 	docker-compose -f production.yml down
 
-prod-bulid:
+prod-build:
 	docker-compose -f production.yml build
 prod-logs:
 	docker-compose -f production.yml logs -f
