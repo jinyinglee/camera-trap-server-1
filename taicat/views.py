@@ -515,13 +515,39 @@ def data(request):
             file_url = data[i].get('file_url', '')
             if not file_url:
                 file_url = f"{data[i]['id']}-m.jpg"
+            extension = file_url.split('.')[-1]
             if not data[i]['from_mongo']: 
-                # new data
-                data[i]['file_url'] =  """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}" />""".format(file_url)
+                # new data - image
+                if extension == 'jpg':
+                    data[i]['file_url'] =  """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}" />""".format(file_url)
+                # new data - video
+                else:
+                    data[i]['file_url'] =  """
+                    <video class="img lazy mx-auto d-block" controls height="100">
+                        <source src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}"
+                                type="video/webm">
+                        <source src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}"
+                                type="video/mp4">
+                        抱歉，您的瀏覽器不支援內嵌影片。
+                    </video>
+                    """.format(file_url,file_url)
             else:
-                # old data
-                data[i]['file_url'] =  """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://camera-trap-api.s3.ap-northeast-1.amazonaws.com/annotation-images/{}" />""".format(file_url)
+                # old data - image
+                if extension == 'jpg':
+                    data[i]['file_url'] =  """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-images/{}" />""".format(file_url)
+                # old data - video
+                else:
+                    data[i]['file_url'] =  """
+                    <video class="img lazy mx-auto d-block" controls height="100">
+                        <source src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-videos/{}"
+                                type="video/webm">
+                        <source src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-videos/{}"
+                                type="video/mp4">
+                        抱歉，您的瀏覽器不支援內嵌影片。
+                    </video>
+                    """.format(file_url,file_url)
 
+            ### videos: https://developer.mozilla.org/zh-CN/docs/Web/HTML/Element/video ##
         if _start and _length:
             start = int(_start)
             length = int(_length)
