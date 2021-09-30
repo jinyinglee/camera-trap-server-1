@@ -148,6 +148,16 @@ STATIC_URL = '/static/'
 STATIC_ROOT = env('STATIC_ROOT', default=default_static_dir)
 STATICFILES_DIRS = [default_static_dir,]
 
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://redis:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient"
+        },
+        "KEY_PREFIX": "basdb"
+    }
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
