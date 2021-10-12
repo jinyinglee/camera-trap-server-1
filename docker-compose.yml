@@ -41,9 +41,9 @@ services:
       - PGDATA=/var/lib/postgresql/data/pgdata
     #env_file:
     #  - .env
-#  redis:
-#    image: redis:6-alpine
-#    restart: always
+  redis:
+    image: redis:6-alpine
+    restart: always
   adminer:
     image: adminer
     restart: always
