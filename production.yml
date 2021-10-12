@@ -38,9 +38,6 @@ services:
       - POSTGRES_PASSWORD=example
       - POSTGRES_DB=cameratrap
       - PGDATA=/var/lib/postgresql/data/pgdata
-#  redis:
-#    image: redis:6-alpine
-#    restart: always
   nginx:
     image: nginx:1.19.10-alpine
     restart: always
