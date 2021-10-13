@@ -45,9 +45,9 @@
 {% endblock %}
 {% block body %}
 {% if request.session.is_login %}
-{% csrf_token %}
 <div class="container content">
 <form id="createProjectForm" novalidate action="{% url 'create_project' %}" method="post">
+{% csrf_token %}
     <div class="row" style="margin-bottom: 10px">
         <h4 class="title-dark">新增計畫</h4>     
     </div>
