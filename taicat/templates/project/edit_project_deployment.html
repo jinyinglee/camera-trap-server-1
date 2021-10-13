@@ -72,7 +72,6 @@
 {% endblock style %}
 {% block body %}
 {% if is_authorized %}
-{% csrf_token %}
 <div class="container content">
     <div class="row" style="margin-bottom: 10px">
         <div class="col-2 list">
@@ -111,6 +110,7 @@
                 <div class="row px-3">
                 <div class="col-3 me-0 studyarea-list-area">
                     <form novalidate>
+                    {% csrf_token %}
                         <ul id="studyarea-list">
                         {% for i in study_area %}
                             {% if i.parent_id == None %}
@@ -320,8 +320,6 @@ function addDepolymentSubmit(){
         $('#deployment [name="vegetation"]').each(function(){
             vegetations.push($(this).val());
         });
-
-        console.log(names, longitudes, latitudes, altitudes, landcovers, vegetations)
 
         $.ajax({
         type: 'POST',
