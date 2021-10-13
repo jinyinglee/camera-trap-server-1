@@ -91,7 +91,7 @@
                 </ul>
             </div>
         </div>
-        <div class="col-10">
+        <div class="col-10 tab-area">
             <ul class="nav nav-tabs" id="myTab" role="tablist">
                 <li class="nav-item" role="presentation">
                   <button class="nav-link active" id="publicproject-tab" data-bs-toggle="tab" data-bs-target="#publicproject" type="button" role="tab" aria-controls="publicproject" aria-selected="false">公開計畫</button>
@@ -109,6 +109,7 @@
                     <table class="table table-hover bg-white" id="myproject-table" style="width: 100%;">
                         <thead>
                         <tr>
+                            <td>ID</td>
                             <td>計畫名稱</td>
                             <td>計畫關鍵字</td>
                             <td>起始年份</td>
@@ -122,12 +123,10 @@
                         {% for tuples in my_project %}
                             <tr class='clickable-row' data-href="{% url 'project_detail' tuples.0 %}">
                                 {% for t in tuples %}
-                                    {% if not forloop.first %}
-                                        {% if t == None or t == 'None' %}
-                                            <td></td>
-                                        {% else %}
-                                            <td>{{ t }}</td>
-                                        {% endif %}
+                                    {% if t == None or t == 'None' %}
+                                        <td></td>
+                                    {% else %}
+                                        <td>{{ t }}</td>
                                     {% endif %}
                                 {% endfor %}
                             </tr>
@@ -143,6 +142,7 @@
                     <table class="table table-hover bg-white" id="publicproject-table" style="width: 100%;">
                         <thead>
                             <tr>
+                                <td>ID</td>
                                 <td>計畫名稱</td>
                                 <td>計畫關鍵字</td>
                                 <td>起始年份</td>
@@ -156,12 +156,10 @@
                         {% for tuples in public_project %}
                             <tr class='clickable-row' data-href="{% url 'project_detail' tuples.0 %}">
                                 {% for t in tuples %}
-                                    {% if not forloop.first %}
-                                        {% if t == None or t == 'None' %}
-                                            <td></td>
-                                        {% else %}
-                                            <td>{{ t }}</td>
-                                        {% endif %}
+                                    {% if t == None or t == 'None' %}
+                                        <td></td>
+                                    {% else %}
+                                        <td>{{ t }}</td>
                                     {% endif %}
                                 {% endfor %}
                             </tr>
@@ -201,6 +199,8 @@
 
             // filter data by species
             $(".select").on("click", function(){
+                // show loading
+                $('.tab-area').addClass('loading');
                 // current table
                 let table_id = $('.col-10 .active').attr('aria-controls')
                 let check_list = $(`[name=species-filter].${table_id}:checked`);
@@ -215,22 +215,24 @@
                         data: {'table_id': table_id, 'species': speciesArray},
                         headers:{"X-CSRFToken": $crf_token},
                         success: function (response) {
+                            $('.tab-area').removeClass('loading');
                             // reset table
                             $('#'+table_id+'-table').DataTable().destroy()
                             $('#'+table_id+'-tbody').html('')
                             let i;
                             for (i = 0; i < response.length; i++) {
                                 // keyword & funding agency
-                                if (response[i][2] == 'None'){
+                                if (response[i][2] == 'None' | response[i][2] == null){
                                     response[i][2] = ''
                                 }
 
-                                if (response[i][4] == 'None'){
+                                if (response[i][4] == 'None' | response[i][2] == null){
                                     response[i][4] = ''
                                 }
 
                             $('#'+table_id+'-tbody').append(`
                                 <tr class='clickable-row' data-href="details/${response[i][0]}/">
+                                    <td>${response[i][0]}</td>
                                     <td>${response[i][1]}</td>
                                     <td>${response[i][2]}</td>
                                     <td>${response[i][3]}</td>
@@ -240,7 +242,7 @@
                                     <td>${response[i][7]}</td>
                                 </tr>`)
                             }
-                            $('#'+table_id+'-table').DataTable({"language": language_settings});
+                            $('#'+table_id+'-table').DataTable({"language": language_settings, columnDefs: column_defs, order: [[ 3, "desc" ]]});
 
                         },
                     })
@@ -259,12 +261,10 @@
                 `{% for tuples in my_project %}
                     <tr class='clickable-row' data-href="{% url 'project_detail' tuples.0 %}">
                         {% for t in tuples %}
-                            {% if not forloop.first %}
-                                {% if t == None or t == 'None' %}
-                                    <td></td>
-                                {% else %}
-                                    <td>{{ t }}</td>
-                                {% endif %}
+                            {% if t == None or t == 'None' %}
+                                <td></td>
+                            {% else %}
+                                <td>{{ t }}</td>
                             {% endif %}
                         {% endfor %}
                     </tr>
@@ -275,12 +275,10 @@
                 `{% for tuples in public_project %}
                     <tr class='clickable-row' data-href="{% url 'project_detail' tuples.0 %}">
                         {% for t in tuples %}
-                            {% if not forloop.first %}
-                                {% if t == None or t == 'None' %}
-                                    <td></td>
-                                {% else %}
-                                    <td>{{ t }}</td>
-                                {% endif %}
+                            {% if t == None or t == 'None' %}
+                                <td></td>
+                            {% else %}
+                                <td>{{ t }}</td>
                             {% endif %}
                         {% endfor %}
                     </tr>
@@ -292,11 +290,13 @@
             language: language_settings,                       
             columnDefs: column_defs,
             fixedColumns: true,
+            order: [[ 3, "desc" ]]
         })
             $('#publicproject-table').DataTable({
             language: language_settings,                       
             columnDefs: column_defs,
             fixedColumns: true,
+            order: [[ 3, "desc" ]]
         })
             
             // filter
@@ -339,25 +339,28 @@
         };
 
         let column_defs = [
-                      { width: "33%", targets: 0 },       
-                      { width: "12%", targets: 1 },
-                      { width: "10%", targets: 2 },
-                      { width: "15%", targets: 3 },
-                      { width: "10%", targets: 4 },
+                      { visible: false, targets: 0 },       
+                      { width: "33%", targets: 1 },       
+                      { width: "12%", targets: 2 },
+                      { width: "10%", targets: 3 },
+                      { width: "15%", targets: 4 },
                       { width: "10%", targets: 5 },
                       { width: "10%", targets: 6 },
+                      { width: "10%", targets: 7 },
                       ]
 
         let myproject_table = $('#myproject-table').DataTable({
             language: language_settings,                       
             columnDefs: column_defs,
             fixedColumns: true,
+            order: [[ 3, "desc" ]]
         });
 
         let publicproject_table = $('#publicproject-table').DataTable({
             language: language_settings,                       
             columnDefs: column_defs,
             fixedColumns: true,
+            order: [[ 3, "desc" ]]
         });
 
     // radio style

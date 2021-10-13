@@ -21,6 +21,7 @@ from django.utils.encoding import force_bytes, force_str, force_text, DjangoUnic
 from base.utils import generate_token
 from django.conf import settings
 import threading
+import time
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -34,6 +35,26 @@ city_list = ['基隆市','嘉義市','台北市','嘉義縣','新北市','台南
             '南投縣','金門縣','雲林縣',	'連江縣']
 
 species_list = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠']
+
+
+with connection.cursor() as cursor:
+    cursor.execute("SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
+                    EXTRACT (year from taicat_project.start_date)::int, \
+                    taicat_project.funding_agency, COUNT(DISTINCT(taicat_studyarea.name)) AS num_studyarea, \
+                    COUNT(DISTINCT(taicat_deployment.name)) AS num_deployment, \
+                    COUNT(DISTINCT(taicat_image.id)) AS num_image \
+                    FROM taicat_project \
+                    LEFT JOIN taicat_studyarea ON taicat_studyarea.project_id = taicat_project.id \
+                    LEFT JOIN taicat_deployment ON taicat_deployment.project_id = taicat_project.id \
+                    LEFT JOIN taicat_image ON taicat_image.deployment_id = taicat_deployment.id \
+                    WHERE CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval \
+                    GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
+                    ORDER BY taicat_project.start_date DESC;")
+    default_public_project = cursor.fetchall()
+
+print(default_public_project)
+
+
 
 def sortFunction(value):
     return value["id"]
@@ -240,22 +261,9 @@ def project_overview(request):
     public_project = []
     my_project = []
     my_species_data = []
+    # TODO
     # 公開計畫 depend on publish_date date
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
-                        EXTRACT (year from taicat_project.start_date)::int, \
-                        taicat_project.funding_agency, COUNT(DISTINCT(taicat_studyarea.name)) AS num_studyarea, \
-                        COUNT(DISTINCT(taicat_deployment.name)) AS num_deployment, \
-                        COUNT(DISTINCT(taicat_image.id)) AS num_image \
-                        FROM taicat_project \
-                        LEFT JOIN taicat_studyarea ON taicat_studyarea.project_id = taicat_project.id \
-                        LEFT JOIN taicat_deployment ON taicat_deployment.project_id = taicat_project.id \
-                        LEFT JOIN taicat_image ON taicat_image.deployment_id = taicat_deployment.id \
-                        WHERE CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval \
-                        GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
-                        ORDER BY taicat_project.created DESC;")
-        public_project = cursor.fetchall()
-
+    public_project = default_public_project
     # my project    
     project_list = []
     member_id=request.session.get('id', None)
@@ -291,7 +299,6 @@ def project_overview(request):
                                 ORDER BY taicat_project.created DESC;'
                 cursor.execute(query.format(project_list))
                 my_project = cursor.fetchall()
-
                 with connection.cursor() as cursor:
                     query =  """with base_request as ( 
                                 SELECT 
@@ -328,7 +335,6 @@ def project_overview(request):
                 """
         cursor.execute(query)
         public_species_data = cursor.fetchall()
-
     public_species_data = [ x for x in public_species_data if x[1] in species_list ]
     public_species_data.sort()
     my_species_data = [ x for x in my_species_data if x[1] in species_list ]
@@ -488,14 +494,16 @@ def data(request):
         # add group_id (there may be more than one annotation in an image)
         df = pd.DataFrame(data)
         group_id = df.groupby('id').cumcount()
+        ssa_exist = StudyArea.objects.filter(project_id=pk, parent__isnull=False)
         for i in range(len(data)):
             data[i].update({'group_id': str(group_id[i])})
-            # add sub-studyarea if exists
-            if StudyArea.objects.filter(id=data[i]['saparent']):
-                parent_saname = StudyArea.objects.get(id=data[i]['saparent']).name
-                current_name = data[i]['saname']
-                data[i].update({'saname': f"{current_name}_{parent_saname}"})
-
+            if ssa_exist:
+                try: 
+                    parent_saname = StudyArea.objects.get(id=data[i]['saparent']).name
+                    current_name = data[i]['saname']
+                    data[i].update({'saname': f"{current_name}_{parent_saname}"})
+                except:
+                    pass
         # filter species
         if species != "":
             data = [i for i in data if i['species'] == species]
@@ -546,7 +554,6 @@ def data(request):
                         抱歉，您的瀏覽器不支援內嵌影片。
                     </video>
                     """.format(file_url,file_url)
-
             ### videos: https://developer.mozilla.org/zh-CN/docs/Web/HTML/Element/video ##
         if _start and _length:
             start = int(_start)
@@ -585,10 +592,8 @@ def project_detail(request, pk):
         cursor.execute(query.format(pk))
         project_info = cursor.fetchone()
     project_info = list(project_info)
-
     # deployment = Deployment.objects.filter(project_id=pk).values('name','id').exclude(name=[None, '']).distinct().order_by('name') 
     deployment = Deployment.objects.filter(project_id=pk)
-
     with connection.cursor() as cursor:
         query =  """with base_request as ( 
                     SELECT 
@@ -608,14 +613,14 @@ def project_detail(request, pk):
         species = cursor.fetchall()
         species = [x for x in species if x[1] is not None and x[1] != '' ] 
         species.sort(key = lambda x: x[1])
-
+    # TODO takes long time here
+    # d_list = list(Deployment.objects.filter(project_id=pk).values_list('id', flat=True))
     image_objects = Image.objects.filter(deployment__project__id=pk)
-    if image_objects:
+    if image_objects.count() > 0:
         latest_date = image_objects.latest('datetime').datetime.strftime("%Y-%m-%d")
         earliest_date = image_objects.earliest('datetime').datetime.strftime("%Y-%m-%d")
     else:
         latest_date, earliest_date = None, None
-
     # edit permission
     user_id = request.session.get('id', None)
     edit = False
@@ -628,11 +633,9 @@ def project_detail(request, pk):
             organization_id = Contact.objects.filter(id=user_id, is_organization_admin=True).values('organization').first()['organization']
             if Organization.objects.filter(id=organization_id,projects=pk):
                 edit = True
-    
     study_area = StudyArea.objects.filter(project_id=pk)
-
     return render(request, 'project/project_detail.html',
-                {'project_info': project_info, 'species': species, 'pk': pk,
+                {'project_name': len(project_info[0]),'project_info': project_info, 'species': species, 'pk': pk,
                 'study_area':study_area, 'deployment':deployment,
                 'earliest_date': earliest_date, 'latest_date':latest_date,
                 'edit': edit, 'is_authorized': is_authorized})
