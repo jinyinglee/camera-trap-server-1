@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 #from taicat import view_search
-from . import view_search
+# from . import view_search
 
 urlpatterns = [
     path('project/overview', views.project_overview, name='project_overview'),
@@ -11,7 +11,8 @@ urlpatterns = [
     path('project/edit/members/<pk>/', views.edit_project_members, name='edit_project_members'),
     path('project/edit/license/<pk>/', views.edit_project_license, name='edit_project_license'),
     path('project/details/<pk>/', views.project_detail, name='project_detail'),
-    path('search/', view_search.index, name='search'),
+    # path('search/', view_search.index, name='search'),
+    path('search/', views.create_project, name='search'),
     path('api/data', views.data, name='data'),
     path('api/update_datatable', views.update_datatable, name='update_datatable'),
     path('api/deployment/', views.get_deployment, name='deployment'),
