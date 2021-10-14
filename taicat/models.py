@@ -192,3 +192,9 @@ class Image(models.Model):
     exif = models.JSONField(default=dict, blank=True)
     from_mongo = models.BooleanField(default=False, blank=True)
 
+    @property
+    def species_list(self):
+        return [x['species'] for x in self.annotation if isinstance(x, dict) and x.get('species', '')]
+
+    class Meta:
+        ordering = ['created']
