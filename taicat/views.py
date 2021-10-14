@@ -488,11 +488,11 @@ def data(request):
     pk = requests.get('pk')
     start_date = requests.get('start_date')
     end_date = requests.get('end_date')
-    data_filter = ''
+    date_filter = ''
     if start_date and end_date:
         start_date = datetime.strptime(start_date, "%Y-%m-%d")
         end_date = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
-        data_filter = "AND i.datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
+        date_filter = "AND i.datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
     _start = requests.get('start')
     _length = requests.get('length')
     species = requests.get('species')
@@ -508,6 +508,9 @@ def data(request):
                 conditions += f' AND d.id IN {x}'
         else:
             conditions = 'AND d.id IS NULL'
+    spe_conditions = ''
+    if species:
+        spe_conditions = "AND annotation::text like '%黃鼠狼%' "
 
     with connection.cursor() as cursor:
         query = """SELECT 
@@ -517,10 +520,11 @@ def data(request):
                         FROM taicat_image i
                         JOIN taicat_deployment d ON d.id = i.deployment_id
                         JOIN taicat_studyarea sa ON sa.id = d.study_area_id 
-                        WHERE d.project_id = {} {} {}
+                        WHERE d.project_id = {} {} {} {}
                         ORDER BY i.created, i.filename;"""
-        cursor.execute(query.format(pk, data_filter, conditions))
+        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions))
         image_info = cursor.fetchall()
+
     if image_info:
         df = pd.DataFrame(image_info, columns=['saname','dname','filename','datetime','saparent','annotation','file_url','image_id','from_mongo'])
         # parse string to list
@@ -528,7 +532,18 @@ def data(request):
         # separate dictionary to columns
         df = df.explode('anno_list')
         df = pd.concat([df.drop(['anno_list'], axis=1), df['anno_list'].apply(pd.Series)], axis=1)
-        df = df.reset_index()    
+        df = df.reset_index()            
+        
+        start = int(_start)
+        length = int(_length)
+        page = math.ceil(start / length) + 1
+        per_page = length
+        recordsTotal = len(df)
+        recordsFiltered = len(df)
+        
+        # 只保留該頁顯示的比數
+        df = df[start:start + length]
+
         # add group id
         df['group_id'] = df.groupby('index').cumcount()
         ssa_exist = StudyArea.objects.filter(project_id=pk, parent__isnull=False)
@@ -541,15 +556,10 @@ def data(request):
                     df.loc[i,'saname'] = f"{current_name}_{parent_saname}"
                 except:
                     pass
-        # filter species
-        if species:
-            df = df[df['species']==species]
-        recordsTotal = len(df)
-        recordsFiltered = len(df)
 
         df = df.where(pd.notnull(df), None)
 
-        for i in range(len(df)):
+        for i in df.index:
             file_url = df.file_url[i]
             if not file_url:
                 file_url = f"{df.image_id[i]}-m.jpg"
@@ -585,13 +595,9 @@ def data(request):
                     </video>
                     """.format(file_url,file_url)
             ### videos: https://developer.mozilla.org/zh-CN/docs/Web/HTML/Element/video ##
-        if _start and _length:
-            start = int(_start)
-            length = int(_length)
-            page = math.ceil(start / length) + 1
-            per_page = length
-            data = df[start:start + length][['saname','dname','filename','datetime','species','lifestage','sex','antler','animal_id','remarks','file_url','group_id','image_id']]
-            data = data.to_dict('records')
+
+        data = df[['saname','dname','filename','datetime','species','lifestage','sex','antler','animal_id','remarks','file_url','group_id','image_id']]
+        data = data.to_dict('records')
 
         response = {
             'data': data,
