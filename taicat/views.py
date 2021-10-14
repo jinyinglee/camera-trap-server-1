@@ -1,6 +1,7 @@
 from django.db.models.fields import PositiveBigIntegerField
 from django.http import response
 from django.shortcuts import redirect, render, HttpResponse
+from pandas.core.groupby.generic import DataFrameGroupBy
 from .models import *
 from django.db import connection  # for executing raw SQL
 import re
@@ -22,6 +23,7 @@ from base.utils import generate_token
 from django.conf import settings
 import threading
 import time
+from ast import literal_eval
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -36,23 +38,22 @@ city_list = ['基隆市','嘉義市','台北市','嘉義縣','新北市','台南
 
 species_list = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠']
 
-
-with connection.cursor() as cursor:
-    cursor.execute("SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
-                    EXTRACT (year from taicat_project.start_date)::int, \
-                    taicat_project.funding_agency, COUNT(DISTINCT(taicat_studyarea.name)) AS num_studyarea, \
-                    COUNT(DISTINCT(taicat_deployment.name)) AS num_deployment, \
-                    COUNT(DISTINCT(taicat_image.id)) AS num_image \
-                    FROM taicat_project \
-                    LEFT JOIN taicat_studyarea ON taicat_studyarea.project_id = taicat_project.id \
-                    LEFT JOIN taicat_deployment ON taicat_deployment.project_id = taicat_project.id \
-                    LEFT JOIN taicat_image ON taicat_image.deployment_id = taicat_deployment.id \
-                    WHERE CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval \
-                    GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
-                    ORDER BY taicat_project.start_date DESC;")
-    default_public_project = cursor.fetchall()
+q = "SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
+                EXTRACT (year from taicat_project.start_date)::int, \
+                taicat_project.funding_agency, COUNT(DISTINCT(taicat_studyarea.name)) AS num_studyarea, \
+                COUNT(DISTINCT(taicat_deployment.name)) AS num_deployment, \
+                COUNT(DISTINCT(taicat_image.id)) AS num_image \
+                FROM taicat_project \
+                LEFT JOIN taicat_studyarea ON taicat_studyarea.project_id = taicat_project.id \
+                LEFT JOIN taicat_deployment ON taicat_deployment.project_id = taicat_project.id \
+                LEFT JOIN taicat_image ON taicat_image.deployment_id = taicat_deployment.id \
+                WHERE CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval \
+                GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
+                ORDER BY taicat_project.start_date DESC;"
 
 
+# [(319, 'bio', '', 2021, '', 0, 0, 0),(318, '開發', '', 2021, '', 0, 0, 0)]
+# project_id, project name, project keywords, start year, num_studyarea, num_deployment, num_image
 
 
 def sortFunction(value):
@@ -262,7 +263,35 @@ def project_overview(request):
     my_species_data = []
     # TODO
     # 公開計畫 depend on publish_date date
-    public_project = default_public_project
+    with connection.cursor() as cursor:
+        q = "SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
+                        EXTRACT (year from taicat_project.start_date)::int, \
+                        taicat_project.funding_agency, COUNT(DISTINCT(taicat_studyarea.name)) AS num_studyarea \
+                        FROM taicat_project \
+                        LEFT JOIN taicat_studyarea ON taicat_studyarea.project_id = taicat_project.id \
+                        WHERE CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval \
+                        GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
+                        ORDER BY taicat_project.start_date DESC;"
+        cursor.execute(q)
+        public_project_info = cursor.fetchall()
+        public_project_info = pd.DataFrame(public_project_info, columns=['id','name','keyword', 'start_year', 'funding_agency', 'num_studyarea'])
+
+    with connection.cursor() as cursor:
+        q = "SELECT \
+                        taicat_deployment.project_id, COUNT(DISTINCT(taicat_deployment.name)) AS num_deployment, \
+                        COUNT(DISTINCT(taicat_image.id)) AS num_image \
+                        FROM taicat_deployment \
+                        LEFT JOIN taicat_image ON taicat_image.deployment_id = taicat_deployment.id \
+                        GROUP BY taicat_deployment.project_id \
+                        ORDER BY taicat_deployment.project_id DESC;"
+        cursor.execute(q)   
+        public_img_info = cursor.fetchall()
+        public_img_info = pd.DataFrame(public_img_info, columns=['id','num_deployment','num_image'])
+
+    public_project = pd.merge(public_project_info,public_img_info,how='left')
+    public_project[['num_deployment', 'num_image', 'num_studyarea']] = public_project[['num_deployment', 'num_image', 'num_studyarea']].fillna(0)
+    public_project = public_project.astype({'num_deployment': 'int', 'num_image': 'int', 'num_studyarea': 'int'})
+    public_project = list(public_project.itertuples(index=False, name=None))
     # my project    
     project_list = []
     member_id=request.session.get('id', None)
@@ -282,39 +311,55 @@ def project_overview(request):
             for i in temp:
                 project_list += [i['projects']]
         if project_list:
+            project_list = str(project_list).replace('[', '(').replace(']',')')
             with connection.cursor() as cursor:
-                project_list = str(project_list).replace('[', '(').replace(']',')')
-                query = 'SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
+                q = "SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
                                 EXTRACT (year from taicat_project.start_date)::int, \
-                                taicat_project.funding_agency, COUNT(DISTINCT(taicat_studyarea.name)) AS num_studyarea, \
-                                COUNT(DISTINCT(taicat_deployment.name)) AS num_deployment, \
-                                COUNT(DISTINCT(taicat_image.id)) AS num_image \
+                                taicat_project.funding_agency, COUNT(DISTINCT(taicat_studyarea.name)) AS num_studyarea \
                                 FROM taicat_project \
                                 LEFT JOIN taicat_studyarea ON taicat_studyarea.project_id = taicat_project.id \
-                                LEFT JOIN taicat_deployment ON taicat_deployment.project_id = taicat_project.id \
-                                LEFT JOIN taicat_image ON taicat_image.deployment_id = taicat_deployment.id \
                                 WHERE taicat_project.id IN {} \
                                 GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
-                                ORDER BY taicat_project.created DESC;'
+                                ORDER BY taicat_project.start_date DESC;"
+                cursor.execute(q.format(project_list))
+                my_project_info = cursor.fetchall()
+                my_project_info = pd.DataFrame(my_project_info, columns=['id','name','keyword', 'start_year', 'funding_agency', 'num_studyarea'])
+
+            with connection.cursor() as cursor:
+                q = "SELECT \
+                                taicat_deployment.project_id, COUNT(DISTINCT(taicat_deployment.name)) AS num_deployment, \
+                                COUNT(DISTINCT(taicat_image.id)) AS num_image \
+                                FROM taicat_deployment \
+                                LEFT JOIN taicat_image ON taicat_image.deployment_id = taicat_deployment.id \
+                                WHERE taicat_deployment.project_id IN {} \
+                                GROUP BY taicat_deployment.project_id \
+                                ORDER BY taicat_deployment.project_id DESC;"
+                cursor.execute(q.format(project_list))
+                my_img_info = cursor.fetchall()
+                my_img_info = pd.DataFrame(my_img_info, columns=['id','num_deployment','num_image'])
+
+            my_project = pd.merge(my_project_info,my_img_info,how='left')
+            my_project[['num_deployment', 'num_image', 'num_studyarea']] = my_project[['num_deployment', 'num_image', 'num_studyarea']].fillna(0)
+            my_project = my_project.astype({'num_deployment': 'int', 'num_image': 'int', 'num_studyarea': 'int'})
+            my_project = list(my_project.itertuples(index=False, name=None))
+
+            with connection.cursor() as cursor:
+                query =  """with base_request as ( 
+                            SELECT 
+                                x.*, 
+                                i.id FROM taicat_image i
+                                CROSS JOIN LATERAL
+                                json_to_recordset(i.annotation::json) x 
+                                        ( species text) 
+                                WHERE i.annotation::TEXT <> '[]' AND i.deployment_id IN (
+                                    SELECT d.id FROM taicat_deployment d
+                                    WHERE d.project_id IN {}
+                                ) )
+                        select count(id), species from base_request
+                        group by species;
+                        """
                 cursor.execute(query.format(project_list))
-                my_project = cursor.fetchall()
-                with connection.cursor() as cursor:
-                    query =  """with base_request as ( 
-                                SELECT 
-                                    x.*, 
-                                    i.id FROM taicat_image i
-                                    CROSS JOIN LATERAL
-                                    json_to_recordset(i.annotation::json) x 
-                                            ( species text) 
-                                    WHERE i.annotation::TEXT <> '[]' AND i.deployment_id IN (
-                                        SELECT d.id FROM taicat_deployment d
-                                        WHERE d.project_id IN {}
-                                    ) )
-                            select count(id), species from base_request
-                            group by species;
-                            """
-                    cursor.execute(query.format(project_list))
-                    my_species_data = cursor.fetchall()
+                my_species_data = cursor.fetchall()
 
     with connection.cursor() as cursor:
         query =  """with base_request as ( 
@@ -438,6 +483,7 @@ def update_datatable(request):
 
 
 def data(request):
+    s = time.time()
     requests = request.POST
     pk = requests.get('pk')
     start_date = requests.get('start_date')
@@ -464,72 +510,57 @@ def data(request):
             conditions = 'AND d.id IS NULL'
 
     with connection.cursor() as cursor:
-        query = """with base_request as ( 
-                    SELECT 
+        query = """SELECT 
                         sa.name AS saname, d.name AS dname, i.filename, 
                         to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
-                        sa.parent_id AS saparent,
-                        x.*, i.file_url, i.id, i.from_mongo 
+                        sa.parent_id AS saparent, i.annotation, i.file_url, i.id, i.from_mongo 
                         FROM taicat_image i
-                        CROSS JOIN LATERAL
-                        json_to_recordset(i.annotation::json) x 
-                                ( species text, lifestage text , sex text, 
-                                    antler text, remarks text, animal_id text ) 
                         JOIN taicat_deployment d ON d.id = i.deployment_id
                         JOIN taicat_studyarea sa ON sa.id = d.study_area_id 
                         WHERE d.project_id = {} {} {}
-                        ORDER BY i.created, i.filename)
-                select row_to_json(t) from ( 
-                    select 1 as draw, 
-                    ( select array_to_json(array_agg(row_to_json(u)))
-                        from (select * from base_request) u
-                    ) as data) t;"""
+                        ORDER BY i.created, i.filename;"""
         cursor.execute(query.format(pk, data_filter, conditions))
         image_info = cursor.fetchall()
-        data = image_info[0][0]['data']
-
-    if data:
-        data = sorted(data, key=sortFunction)
-        # add group_id (there may be more than one annotation in an image)
-        df = pd.DataFrame(data)
-        group_id = df.groupby('id').cumcount()
+    if image_info:
+        df = pd.DataFrame(image_info, columns=['saname','dname','filename','datetime','saparent','annotation','file_url','image_id','from_mongo'])
+        # parse string to list
+        df['anno_list'] = df.annotation.apply(lambda x: literal_eval(str(x)))
+        # separate dictionary to columns
+        df = df.explode('anno_list')
+        df = pd.concat([df.drop(['anno_list'], axis=1), df['anno_list'].apply(pd.Series)], axis=1)
+        df = df.reset_index()    
+        # add group id
+        df['group_id'] = df.groupby('index').cumcount()
         ssa_exist = StudyArea.objects.filter(project_id=pk, parent__isnull=False)
-        for i in range(len(data)):
-            data[i].update({'group_id': str(group_id[i])})
-            if ssa_exist:
+        if ssa_exist.count() > 0:
+            ssa_list = list(ssa_exist.values_list('name', flat=True))
+            for i in df[df.saname.isin(ssa_list)].index:
                 try: 
-                    parent_saname = StudyArea.objects.get(id=data[i]['saparent']).name
-                    current_name = data[i]['saname']
-                    data[i].update({'saname': f"{current_name}_{parent_saname}"})
+                    parent_saname = StudyArea.objects.get(id=df.saparent[i]).name
+                    current_name = df.saname[i]
+                    df.loc[i,'saname'] = f"{current_name}_{parent_saname}"
                 except:
                     pass
         # filter species
-        if species != "":
-            data = [i for i in data if i['species'] == species]
+        if species:
+            df = df[df['species']==species]
+        recordsTotal = len(df)
+        recordsFiltered = len(df)
 
-        recordsTotal = len(data)
-        recordsFiltered = len(data)
+        df = df.where(pd.notnull(df), None)
 
-        for i in range(len(data)):
-            if data[i]['species']:
-                data[i]['species'] = re.sub(r'^"|"$', '', data[i]['species'])
-            else:
-                data[i]['species'] = ''
-            if data[i]['lifestage']:
-                data[i]['lifestage'] = re.sub(r'^"|"$', '', data[i]['lifestage'])
-            else:
-                data[i]['lifestage'] = ''
-            file_url = data[i].get('file_url', '')
+        for i in range(len(df)):
+            file_url = df.file_url[i]
             if not file_url:
-                file_url = f"{data[i]['id']}-m.jpg"
+                file_url = f"{df.image_id[i]}-m.jpg"
             extension = file_url.split('.')[-1]
-            if not data[i]['from_mongo']: 
+            if not df.from_mongo[i]: 
                 # new data - image
                 if extension == 'jpg':
-                    data[i]['file_url'] =  """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}" />""".format(file_url)
+                    df.loc[i,'file_url'] =  """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}" />""".format(file_url)
                 # new data - video
                 else:
-                    data[i]['file_url'] =  """
+                    df.loc[i, 'file_url'] =  """
                     <video class="img lazy mx-auto d-block" controls height="100">
                         <source src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}"
                                 type="video/webm">
@@ -541,10 +572,10 @@ def data(request):
             else:
                 # old data - image
                 if extension == 'jpg':
-                    data[i]['file_url'] =  """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-images/{}" />""".format(file_url)
+                    df.loc[i,'file_url'] =  """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-images/{}" />""".format(file_url)
                 # old data - video
                 else:
-                    data[i]['file_url'] =  """
+                    df.loc[i,'file_url'] =  """
                     <video class="img lazy mx-auto d-block" controls height="100">
                         <source src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-videos/{}"
                                 type="video/webm">
@@ -559,7 +590,8 @@ def data(request):
             length = int(_length)
             page = math.ceil(start / length) + 1
             per_page = length
-            data = data[start:start + length]
+            data = df[start:start + length][['saname','dname','filename','datetime','species','lifestage','sex','antler','animal_id','remarks','file_url','group_id','image_id']]
+            data = data.to_dict('records')
 
         response = {
             'data': data,
@@ -613,8 +645,6 @@ def project_detail(request, pk):
         species = [x for x in species if x[1] is not None and x[1] != '' ] 
         species = [ (x[0], x[1].replace('\\','')) for x in species]
         species.sort(key = lambda x: x[1])
-    # TODO takes long time here
-    # d_list = list(Deployment.objects.filter(project_id=pk).values_list('id', flat=True))
     image_objects = Image.objects.filter(deployment__project__id=pk)
     if image_objects.count() > 0:
         latest_date = image_objects.latest('datetime').datetime.strftime("%Y-%m-%d")
