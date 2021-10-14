@@ -29,7 +29,7 @@ class Calculation(object):
         #print(params)
 
         # use value_list for performance ?
-        self.query = Image.objects
+        self.query = Image.objects.filter()
 
         # species
         if sp := params.get('species', ''):

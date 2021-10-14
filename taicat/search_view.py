@@ -51,7 +51,7 @@ def index(request):
     elif request.method == 'POST':
         base_url = reverse('search')
         args = {}
-        #print(request.POST)
+        print(request.POST)
         if x := request.POST.get('species', ''):
             args['species'] = x
         if x := request.POST.get('project', ''):
@@ -60,7 +60,7 @@ def index(request):
             args['studyarea'] = x
         if x := request.POST.get('deployment', ''):
             args['deployment'] = x
-        if x := request.POST.get('submit', ''):
+        if x := request.POST.get('query_type', ''):
             args['query_type'] = x
         if x := request.POST.get('date_start', ''):
             args['date_start'] = x
@@ -70,7 +70,7 @@ def index(request):
             args['interval'] = x
         if x := request.POST.get('interval2', ''):
             args['interval2'] = x
-
+        #print(args, request.POST)
         if args.get('query_type', '') != 'clear':
             base_url = '{}?{}'.format(base_url, urlencode(args))
 

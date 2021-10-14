@@ -8,19 +8,36 @@ search
 
 {% block script %}
 <script>
- const btnList = document.querySelectorAll(".my-modal-up");
+ const btnList = document.querySelectorAll(".check-form");
  btnList.forEach((x)=>{
-   x.onclick = () => {
+   x.onclick = (e) => {
+     e.preventDefault();
      const modal = document.getElementById("myModal");
      const textEle = document.getElementById("my-modal-text");
+     const queryType = document.getElementById("query-type");
+     const form = document.getElementById('my-form');
      modal.style.display = "block";
-     // not working...
      //const text = (x.value == "query") ? "篩選中" : "計算中";
      //textEle.innnerHTML = `${text}...`;
+     queryType.value = x.value;
+
+     if (x.value === 'calculate') {
+       const intervalSelect = document.getElementById('interval');
+       const intervalSelect2 = document.getElementById('interval2');
+
+       if (form.checkValidity()) {
+         form.requestSubmit(); // won't process name=submit ?
+       } else {
+         form.classList.add('was-validated');
+         modal.style.display = "none";
+       }
+     } else {
+       form.requestSubmit();
+     }
    }
  });
 
- let projectStudyareas = {};
+ let projectStudyareas = null;
  const handleProjectChange = () =>{
    const projectId = document.getElementById('project').value;
    if (projectId !== '') {
@@ -43,18 +60,19 @@ search
  const handleStudyareaChange = () =>{
    const studyareaId = document.getElementById('studyarea').value;
    if (studyareaId !== '') {
-     const found = projectStudyareas.find((x)=> parseInt(x.studyarea_id, 10) === parseInt(studyareaId, 10));
-     if (found && found.deployments.length > 0) {
-       const deploymentEle = document.getElementById('deployment');
-       deploymentEle.innerHTML = '<option value="">---</option>';
-       found.deployments.forEach((x)=>{
-         const optionEle = document.createElement('option');
-         optionEle.value = x.deployment_id;
-         optionEle.innerHTML = x.name;
-         deploymentEle.appendChild(optionEle);
-       });
+     if (projectStudyareas) {
+       const found = projectStudyareas.find((x)=> parseInt(x.studyarea_id, 10) === parseInt(studyareaId, 10));
+       if (found && found.deployments.length > 0) {
+         const deploymentEle = document.getElementById('deployment');
+         deploymentEle.innerHTML = '<option value="">---</option>';
+         found.deployments.forEach((x)=>{
+           const optionEle = document.createElement('option');
+           optionEle.value = x.deployment_id;
+           optionEle.innerHTML = x.name;
+           deploymentEle.appendChild(optionEle);
+         });
+       }
      }
-
    }
  }
 
@@ -128,7 +146,7 @@ console.log('debug query:', '{{ debug_query|safe}}' );
   <div class="panel">
     <div class="panel-body">
       <h3>篩選條件</h3>
-      <form action="{% url 'search' %}" method="post" class="row g-3">
+      <form action="{% url 'search' %}" method="post" class="row g-3 needs-validation" novalidate id="my-form">
         {% csrf_token %}
         <div class="col-md-4">
           <label for="species">Species</label>
@@ -182,7 +200,7 @@ console.log('debug query:', '{{ debug_query|safe}}' );
           </select>
         </div>
     <div class="mb-3">
-      <button type="submit" class="btn btn-primary my-modal-up" name="submit" value="query">篩選</button> <button type="submit" class="btn btn-secondary" value="clear" name="submit">清除</input>
+      <button type="submit" class="btn btn-primary check-form" name="query_type" value="query">篩選</button> <button type="submit" class="btn btn-secondary" value="clear" name="submit">清除</input>
     </div>
 
        {% comment %}
@@ -259,12 +277,12 @@ console.log('debug query:', '{{ debug_query|safe}}' );
         <label for="round">回合</label>
         <select name="round" class="form-select" aria-label="選擇" id="round">
           <option value="">---</option>
-          <option value="month">月</option>
+          <option value="month" selected>月</option>
         </select>
       </div>
       <div class="col-md-3">
         <label for="interval">有效照片間隔</label>
-        <select name="interval" class="form-select" aria-label="選擇" id="interval">
+        <select name="interval" class="form-select" aria-label="選擇" id="interval" required>
           <option value="">---</option>
           <option value="2"{% if request.GET.interval == '2' %} selected{% endif %}>2 分鐘</option>
           <option value="5"{% if request.GET.interval == '5' %} selected{% endif %}>5 分鐘</option>
@@ -272,10 +290,13 @@ console.log('debug query:', '{{ debug_query|safe}}' );
           <option value="30"{% if request.GET.interval == '30' %} selected{% endif %}>30 分鐘</option>
           <option value="60"{% if request.GET.interval == '60' %} selected{% endif %}>60 分鐘</option>
         </select>
+        <div class="invalid-feedback">
+          必填欄位
+        </div>
       </div>
       <div class="col-md-3">
         <label for="interval2">目擊事件間隔</label>
-        <select name="interval2" class="form-select" aria-label="選擇" id="interval2">
+        <select name="interval2" class="form-select" aria-label="選擇" id="interval2" required>
           <option value="">---</option>
           <option value="2"{% if request.GET.interval2 == '2' %} selected{% endif %}>2 分鐘</option>
           <option value="5"{% if request.GET.interval2 == '5' %} selected{% endif %}>5 分鐘</option>
@@ -283,9 +304,13 @@ console.log('debug query:', '{{ debug_query|safe}}' );
           <option value="30"{% if request.GET.interval2 == '30' %} selected{% endif %}>30 分鐘</option>
           <option value="60"{% if request.GET.interval2 == '60' %} selected{% endif %}>60 分鐘</option>
         </select>
+        <div class="invalid-feedback">
+          必填欄位
+        </div>
       </div>
       <div class="mb-3">
-        <button type="submit" class="btn btn-danger my-modal-up" name="submit" value="calculate">計算</button>
+        <button type="submit" class="btn btn-danger check-form" name="submit" value="calculate">計算</button>
+        <input type="hidden" name="query_type" value="" id="query-type"/>
       </div>
       </form>
 
