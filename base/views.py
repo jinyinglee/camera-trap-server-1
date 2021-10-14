@@ -10,7 +10,8 @@ from django.template import loader
 import requests
 from django.contrib import messages
 from decimal import Decimal
-
+import time
+import pandas as pd
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -169,8 +170,7 @@ def personal_info(request):
 def home(request):
     return render(request, 'base/home.html')
 
-
-def get_home_data(request):
+def get_home_data():
     with connection.cursor() as cursor:
         query =  """SELECT d.longitude, d.latitude, p.name FROM taicat_deployment d 
                     JOIN taicat_project p ON p.id = d.project_id 
@@ -180,43 +180,33 @@ def get_home_data(request):
         deployment_points = cursor.fetchall()
 
     with connection.cursor() as cursor:
-        query =  """WITH data AS
-                    (SELECT EXTRACT (year FROM datetime) as year, (COUNT(id) OVER (ORDER BY datetime)) count FROM taicat_image)
-                    SELECT g.year,
-                    (SELECT count
-                    FROM data
-                    WHERE data.year <= g.year
-                    ORDER BY year DESC
-                    LIMIT 1)
-                    FROM
-                    (SELECT (generate_series (MIN(EXTRACT (year FROM datetime))::int, MAX(EXTRACT (year FROM datetime))::int)) as year 
-                    FROM taicat_image) g
-                    ORDER BY year ASC
+        query =  """SELECT EXTRACT (year FROM datetime) as year, count(id) as count 
+        FROM taicat_image
+        GROUP BY year
         """
         cursor.execute(query)
         data_growth_image = cursor.fetchall()
-
+        data_growth_image = pd.DataFrame(data_growth_image, columns=['year', 'num_image']).sort_values('year')
+        year_max, year_min = int(data_growth_image.year.min()),int(data_growth_image.year.max())
+        year_gap = pd.DataFrame([i for i in range(year_max,year_min)], columns=['year'])
+        data_growth_image = year_gap.merge(data_growth_image, how='left').fillna(0)
+        data_growth_image['cumsum'] = data_growth_image.num_image.cumsum()
+        data_growth_image = data_growth_image.drop(columns=['num_image'])
+        data_growth_image = [tuple(x) for x in data_growth_image.to_numpy()]
 
     with connection.cursor() as cursor:
-        query =  """with data_min as (with data as (
-            SELECT MIN(EXTRACT (year FROM datetime)) as year, deployment_id FROM taicat_image
-            GROUP BY deployment_id) 
-            SELECT year,
-            count(deployment_id) over (order by year asc rows between unbounded preceding and current row)
-            FROM data)
-            SELECT g.year,
-                (SELECT count
-                FROM data_min
-                WHERE data_min.year <= g.year
-                ORDER BY year DESC
-                LIMIT 1)
-                FROM
-                (SELECT (generate_series (MIN(EXTRACT (year FROM datetime))::int, MAX(EXTRACT (year FROM datetime))::int)) as year 
-                FROM taicat_image) g
-                ORDER BY year ASC;
+        query =  """
+                SELECT MIN(EXTRACT (year FROM datetime)) as year, deployment_id FROM taicat_image
+                GROUP BY deployment_id
         """
         cursor.execute(query)
         data_growth_deployment = cursor.fetchall()
+        data_growth_deployment = pd.DataFrame(data_growth_deployment, columns=['year', 'deployment_id']).sort_values('year')
+        data_growth_deployment = data_growth_deployment.groupby(['year'],as_index=False).count()
+        data_growth_deployment = year_gap.merge(data_growth_deployment, how='left').fillna(0)
+        data_growth_deployment['cumsum'] = data_growth_deployment.deployment_id.cumsum()
+        data_growth_deployment = data_growth_deployment.drop(columns=['deployment_id'])
+        data_growth_deployment = [tuple(x) for x in data_growth_deployment.to_numpy()]
 
     with connection.cursor() as cursor:
         query =  """with base_request as ( 
@@ -227,13 +217,12 @@ def get_home_data(request):
                         json_to_recordset(i.annotation::json) x 
                                 ( species text
                                 ) 
-                        WHERE i.id > 426  )
+                        )
                 select count(id), species from base_request
                 group by species;
                 """
         cursor.execute(query)
         species_data = cursor.fetchall()
-
     species_list = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠']
     species_data = [ x for x in species_data if x[1] in species_list ]
 
@@ -242,11 +231,8 @@ def get_home_data(request):
 
     return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
 
-def get_deployment_points(request):
-    response = {}
-    return HttpResponse(json.dumps(response), content_type='application/json')
 
-
+# ------ deprecated ------ #
 def stat_county(request):
     city = request.GET.get('city')
     with connection.cursor() as cursor:

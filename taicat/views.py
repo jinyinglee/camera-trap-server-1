@@ -52,7 +52,6 @@ with connection.cursor() as cursor:
                     ORDER BY taicat_project.start_date DESC;")
     default_public_project = cursor.fetchall()
 
-print(default_public_project)
 
 
 
@@ -612,6 +611,7 @@ def project_detail(request, pk):
         cursor.execute(query.format(pk))
         species = cursor.fetchall()
         species = [x for x in species if x[1] is not None and x[1] != '' ] 
+        species = [ (x[0], x[1].replace('\\','')) for x in species]
         species.sort(key = lambda x: x[1])
     # TODO takes long time here
     # d_list = list(Deployment.objects.filter(project_id=pk).values_list('id', flat=True))
@@ -633,7 +633,7 @@ def project_detail(request, pk):
             organization_id = Contact.objects.filter(id=user_id, is_organization_admin=True).values('organization').first()['organization']
             if Organization.objects.filter(id=organization_id,projects=pk):
                 edit = True
-    study_area = StudyArea.objects.filter(project_id=pk)
+    study_area = StudyArea.objects.filter(project_id=pk).order_by('name')
     return render(request, 'project/project_detail.html',
                 {'project_name': len(project_info[0]),'project_info': project_info, 'species': species, 'pk': pk,
                 'study_area':study_area, 'deployment':deployment,
