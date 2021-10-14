@@ -483,7 +483,6 @@ def update_datatable(request):
 
 
 def data(request):
-    s = time.time()
     requests = request.POST
     pk = requests.get('pk')
     start_date = requests.get('start_date')
@@ -511,7 +510,6 @@ def data(request):
     spe_conditions = ''
     if species:
         spe_conditions = "AND annotation::text like '%黃鼠狼%' "
-
     with connection.cursor() as cursor:
         query = """SELECT 
                         sa.name AS saname, d.name AS dname, i.filename, 
@@ -524,25 +522,23 @@ def data(request):
                         ORDER BY i.created, i.filename;"""
         cursor.execute(query.format(pk, date_filter, conditions, spe_conditions))
         image_info = cursor.fetchall()
-
     if image_info:
         df = pd.DataFrame(image_info, columns=['saname','dname','filename','datetime','saparent','annotation','file_url','image_id','from_mongo'])
         # parse string to list
         df['anno_list'] = df.annotation.apply(lambda x: literal_eval(str(x)))
         # separate dictionary to columns
         df = df.explode('anno_list')
-        df = pd.concat([df.drop(['anno_list'], axis=1), df['anno_list'].apply(pd.Series)], axis=1)
-        df = df.reset_index()            
-        
+        # 只保留該頁顯示的比數
         start = int(_start)
         length = int(_length)
         page = math.ceil(start / length) + 1
         per_page = length
         recordsTotal = len(df)
         recordsFiltered = len(df)
-        
-        # 只保留該頁顯示的比數
         df = df[start:start + length]
+
+        df = pd.concat([df.drop(['anno_list'], axis=1), df['anno_list'].apply(pd.Series)], axis=1)
+        df = df.reset_index()            
 
         # add group id
         df['group_id'] = df.groupby('index').cumcount()
