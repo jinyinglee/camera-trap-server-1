@@ -1,6 +1,7 @@
 from django.db.models.fields import PositiveBigIntegerField
 from django.http import response
 from django.shortcuts import redirect, render, HttpResponse
+from pandas.core.groupby.generic import DataFrameGroupBy
 from .models import *
 from django.db import connection  # for executing raw SQL
 import re
@@ -22,6 +23,7 @@ from base.utils import generate_token
 from django.conf import settings
 import threading
 import time
+from ast import literal_eval
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -481,6 +483,7 @@ def update_datatable(request):
 
 
 def data(request):
+    s = time.time()
     requests = request.POST
     pk = requests.get('pk')
     start_date = requests.get('start_date')
@@ -507,72 +510,57 @@ def data(request):
             conditions = 'AND d.id IS NULL'
 
     with connection.cursor() as cursor:
-        query = """with base_request as ( 
-                    SELECT 
+        query = """SELECT 
                         sa.name AS saname, d.name AS dname, i.filename, 
                         to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
-                        sa.parent_id AS saparent,
-                        x.*, i.file_url, i.id, i.from_mongo 
+                        sa.parent_id AS saparent, i.annotation, i.file_url, i.id, i.from_mongo 
                         FROM taicat_image i
-                        CROSS JOIN LATERAL
-                        json_to_recordset(i.annotation::json) x 
-                                ( species text, lifestage text , sex text, 
-                                    antler text, remarks text, animal_id text ) 
                         JOIN taicat_deployment d ON d.id = i.deployment_id
                         JOIN taicat_studyarea sa ON sa.id = d.study_area_id 
                         WHERE d.project_id = {} {} {}
-                        ORDER BY i.created, i.filename)
-                select row_to_json(t) from ( 
-                    select 1 as draw, 
-                    ( select array_to_json(array_agg(row_to_json(u)))
-                        from (select * from base_request) u
-                    ) as data) t;"""
+                        ORDER BY i.created, i.filename;"""
         cursor.execute(query.format(pk, data_filter, conditions))
         image_info = cursor.fetchall()
-        data = image_info[0][0]['data']
-
-    if data:
-        data = sorted(data, key=sortFunction)
-        # add group_id (there may be more than one annotation in an image)
-        df = pd.DataFrame(data)
-        group_id = df.groupby('id').cumcount()
+    if image_info:
+        df = pd.DataFrame(image_info, columns=['saname','dname','filename','datetime','saparent','annotation','file_url','image_id','from_mongo'])
+        # parse string to list
+        df['anno_list'] = df.annotation.apply(lambda x: literal_eval(str(x)))
+        # separate dictionary to columns
+        df = df.explode('anno_list')
+        df = pd.concat([df.drop(['anno_list'], axis=1), df['anno_list'].apply(pd.Series)], axis=1)
+        df = df.reset_index()    
+        # add group id
+        df['group_id'] = df.groupby('index').cumcount()
         ssa_exist = StudyArea.objects.filter(project_id=pk, parent__isnull=False)
-        for i in range(len(data)):
-            data[i].update({'group_id': str(group_id[i])})
-            if ssa_exist:
+        if ssa_exist.count() > 0:
+            ssa_list = list(ssa_exist.values_list('name', flat=True))
+            for i in df[df.saname.isin(ssa_list)].index:
                 try: 
-                    parent_saname = StudyArea.objects.get(id=data[i]['saparent']).name
-                    current_name = data[i]['saname']
-                    data[i].update({'saname': f"{current_name}_{parent_saname}"})
+                    parent_saname = StudyArea.objects.get(id=df.saparent[i]).name
+                    current_name = df.saname[i]
+                    df.loc[i,'saname'] = f"{current_name}_{parent_saname}"
                 except:
                     pass
         # filter species
-        if species != "":
-            data = [i for i in data if i['species'] == species]
+        if species:
+            df = df[df['species']==species]
+        recordsTotal = len(df)
+        recordsFiltered = len(df)
 
-        recordsTotal = len(data)
-        recordsFiltered = len(data)
+        df = df.where(pd.notnull(df), None)
 
-        for i in range(len(data)):
-            if data[i]['species']:
-                data[i]['species'] = re.sub(r'^"|"$', '', data[i]['species'])
-            else:
-                data[i]['species'] = ''
-            if data[i]['lifestage']:
-                data[i]['lifestage'] = re.sub(r'^"|"$', '', data[i]['lifestage'])
-            else:
-                data[i]['lifestage'] = ''
-            file_url = data[i].get('file_url', '')
+        for i in range(len(df)):
+            file_url = df.file_url[i]
             if not file_url:
-                file_url = f"{data[i]['id']}-m.jpg"
+                file_url = f"{df.image_id[i]}-m.jpg"
             extension = file_url.split('.')[-1]
-            if not data[i]['from_mongo']: 
+            if not df.from_mongo[i]: 
                 # new data - image
                 if extension == 'jpg':
-                    data[i]['file_url'] =  """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}" />""".format(file_url)
+                    df.loc[i,'file_url'] =  """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}" />""".format(file_url)
                 # new data - video
                 else:
-                    data[i]['file_url'] =  """
+                    df.loc[i, 'file_url'] =  """
                     <video class="img lazy mx-auto d-block" controls height="100">
                         <source src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}"
                                 type="video/webm">
@@ -584,10 +572,10 @@ def data(request):
             else:
                 # old data - image
                 if extension == 'jpg':
-                    data[i]['file_url'] =  """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-images/{}" />""".format(file_url)
+                    df.loc[i,'file_url'] =  """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-images/{}" />""".format(file_url)
                 # old data - video
                 else:
-                    data[i]['file_url'] =  """
+                    df.loc[i,'file_url'] =  """
                     <video class="img lazy mx-auto d-block" controls height="100">
                         <source src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-videos/{}"
                                 type="video/webm">
@@ -602,7 +590,8 @@ def data(request):
             length = int(_length)
             page = math.ceil(start / length) + 1
             per_page = length
-            data = data[start:start + length]
+            data = df[start:start + length][['saname','dname','filename','datetime','species','lifestage','sex','antler','animal_id','remarks','file_url','group_id','image_id']]
+            data = data.to_dict('records')
 
         response = {
             'data': data,

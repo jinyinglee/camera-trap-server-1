@@ -170,7 +170,7 @@ def personal_info(request):
 def home(request):
     return render(request, 'base/home.html')
 
-def get_home_data():
+def get_home_data(request):
     with connection.cursor() as cursor:
         query =  """SELECT d.longitude, d.latitude, p.name FROM taicat_deployment d 
                     JOIN taicat_project p ON p.id = d.project_id 
