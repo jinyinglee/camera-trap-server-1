@@ -125,10 +125,47 @@ class Calculation(object):
         else:
             return 0
 
-    def count_pod(self, query, working_hour):
-        '''捕獲回合比例
+    def find_next_month(self, year, month):
+        month2 = month + 1
+        year2 = year
+        if month2 > 12:
+            month2 = 1
+            year2 += 1
+        return (year2, month2)
+
+    def count_pod(self, year, month, working_hour):
+        '''捕獲回合比例 proportion of occasions with detections
 此項指標將每台相機於每回合（可選擇資料之時間範圍全部 或 依每月計算）中的拍攝視為一個試驗（trial），每次的試驗區分為成功（拍攝到動物，不計個體數或頻率）或不成功（未拍攝到動物）兩種結果，並計算每回合每台相機的成功機率（成功次數/試驗次數，亦即相機捕獲動物之回合數/當期回合數），再計算所有相機的平均成功機率。
         '''
+        if working_hour[0] == 0:
+            return (0,)
+
+        ym2 = self.find_next_month(year, month)
+        next_first_day = date(ym2[0], ym2[1], 1)
+        this_first_day = date(year, month, 1)
+        days_in_month = (next_first_day - this_first_day).days
+        days_no_image = 0
+        days_no_image += (working_hour[1][0].date() - this_first_day).days
+        days_no_image += (next_first_day - working_hour[1][1].date()).days
+        #print(year, month, days_in_month, working_hour[1], x, y)
+        return (days_no_image / days_in_month, (days_no_image, days_in_month))
+
+    def count_apoa(self, year, month, query):
+        '''活動機率, apparent probability of activity, APOA
+        動物在每小時當中被拍攝到的機率。此指標定義為「累計所有相機在每個小時的d 值（detection, 同上），並除以每個小時的取樣次數」。依此定義，每個小時的APOA最小值為0，最大值為1。'''
+        ym2 = self.find_next_month(year, month)
+        next_first_day = date(ym2[0], ym2[1], 1)
+        this_first_day = date(year, month, 1)
+        days_in_month = (next_first_day - this_first_day).days
+        res = {}
+        for i in range(1, days_in_month+1):
+            res[i] = [[0, 0]] * 24
+            d_in_day = 0
+            #print (year, month, i, date(year, month, i))
+            group_by_hour = query.filter(datetime__day=i).annotate(hour=Trunc('datetime', 'hour')).values('hour').annotate(hour_count=Count('*')).order_by('hour')
+            for x in group_by_hour:
+                res[i][x['hour'].hour] = [1, x['hour_count']]
+        return res
 
     def calculate(self):
         result = {
@@ -141,7 +178,7 @@ class Calculation(object):
         # default round/session by month, TODO
         for dep in self.deployment_set:
             dep_group_count = self.query.filter(deployment_id=dep['deployment']).annotate(month=Trunc('datetime', 'month')).values('month').annotate(month_count=Count('*')).order_by('month')
-            #print('#', dep['deployment'], dep['deployment__name'], dep['count'])
+            #print('#', dep['deployment'], dep['deployment__name'], dep['count'], dep)
             round_list = []
             for res_deployment_month in dep_group_count:
                 year = res_deployment_month['month'].year
@@ -155,12 +192,14 @@ class Calculation(object):
                 if month > month_range[1]:
                     month_range[1] = month
 
-                session_query = self.query.filter(deployment_id=dep['deployment']).filter(datetime__month=month) # TODO by month
+                session_query = self.query.filter(deployment_id=dep['deployment']).filter(datetime__year=year, datetime__month=month) # TODO by month
                 working_hour = self.count_working_hour(session_query)
                 image_num = self.count_image(session_query, self.calculate_params.get('interval'))
                 event_num = self.count_event(session_query, self.calculate_params.get('interval2'), working_hour[0])
-                #pod = self.count_pod(q)
-                #print('##', month, res_deployment_month['month_count'], image_num)
+                pod = self.count_pod(year, month, working_hour)
+                #print('##', year, month, res_deployment_month['month_count'], working_hour[0], image_num)
+                #apoa = self.count_apoa(year, month, session_query)
+                #print(len(apoa))
                 round_list.append({
                     'year': year,
                     'month': month,
@@ -168,6 +207,8 @@ class Calculation(object):
                     'working_hour': working_hour,
                     'image_num': image_num,
                     'event_num': event_num,
+                    'pod': pod,
+                    #'apoa': apoa,
                 })
 
             result['deployment'][dep['deployment']] = {
