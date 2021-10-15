@@ -30,7 +30,6 @@ class Calculation(object):
     def __init__(self, params):
 
         # apply filter
-        # TODO multi species, project...
         #print(params)
 
         # use value_list for performance ?
@@ -55,9 +54,8 @@ class Calculation(object):
             sa_obj = StudyArea.objects.get(pk=sa[0])
             if sa_obj:
                 dep_id_list = [x.id for x in sa_obj.deployment_set.all()]
-        elif proj := params.get('project', ''):
-            proj_id = proj[0]
-            deps = Deployment.objects.values_list('id', flat=True).filter(project_id=proj_id).all()
+        elif proj_list := params.get('project'):
+            deps = Deployment.objects.values_list('id', flat=True).filter(project_id__in=proj_list).all()
             if len(deps) == 0:
                 dep_id_list = ['-1'] # no images related to this project
             else:

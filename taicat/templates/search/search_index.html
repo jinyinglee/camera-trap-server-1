@@ -37,15 +37,18 @@ search
    }
  });
 
- let projectStudyareas = null;
+ let projectStudyareas = {% if project_deployment_list %}{{project_deployment_list|safe}}{% else %}null{% endif %};
+
  const handleProjectChange = () =>{
-   const projectId = document.getElementById('project').value;
-   if (projectId !== '') {
+   const selectedProjectList = document.getElementById('project').selectedOptions;
+   const studyareaEle = document.getElementById('studyarea');
+   studyareaEle.innerHTML = '<option value="">---</option>';
+   if (selectedProjectList.length == 1) {
+     const projectId = selectedProjectList[0].value;
      fetch(`/api/client/v1/projects/${projectId}`)
        .then((resp) => resp.json())
        .then((jsonData) => {
          //console.log(jsonData)
-         const studyareaEle = document.getElementById('studyarea');
          studyareaEle.innerHTML = '<option value="">---</option>';
          projectStudyareas = jsonData.studyareas;
          projectStudyareas.forEach((x)=>{
@@ -172,12 +175,13 @@ console.log('debug query:', '{{ debug_query|safe}}' );
         </div>
         <div class="col-md-12">
           <label for="project">計畫</label>
-          <select name="project" class="form-select" aria-label="選擇計畫" id="project" onChange="handleProjectChange()">
+          <select name="project" class="form-select" aria-label="選擇計畫" id="project" onChange="handleProjectChange()" multiple size="3">
             <option value="">---</option>
             {% for i in project_list %}
             <option value="{{ i.id }}"{% if request.GET.project|to_int == i.id|to_int %} selected{% endif %}>{{ i.name }}</option>
             {% endfor %}
           </select>
+          <small class="form-text text-muted">可按 <code>Control</code> 複選</small>
         </div>
         <div class="col-md-6">
           <label for="studyarea">樣區</label>
