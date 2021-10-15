@@ -12,7 +12,7 @@ dev-down:
 	docker-compose down
 
 dev-build:
-	docker-compose bulid
+	docker-compose build
 
 prod-up:
 	docker-compose -f production.yml up -d
