@@ -15,7 +15,7 @@ from .utils import (
 )
 
 def index(request):
-    species_list = get_species_list(True)
+    species_list = get_species_list()
     project_list = Project.objects.all()
     #print (request.GET)
     if request.method == 'GET':
@@ -41,7 +41,7 @@ def index(request):
             if len(proj_list) == 1:
                 if proj_obj := Project.objects.get(pk=proj_list[0]):
                     project_deployment_list = proj_obj.get_deployment_list()
-                    print(project_deployment_list)
+
         return render(request, 'search/search_index.html', {
             'species_list': species_list,
             'project_list': project_list,
