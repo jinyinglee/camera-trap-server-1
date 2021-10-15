@@ -51,7 +51,7 @@ def index(request):
     elif request.method == 'POST':
         base_url = reverse('search')
         args = {}
-        print(request.POST)
+
         if x := request.POST.get('species', ''):
             args['species'] = x
         if x := request.POST.get('project', ''):

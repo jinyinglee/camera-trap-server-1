@@ -139,6 +139,8 @@ console.log('debug query:', '{{ debug_query|safe}}' );
 </div>
 <!-- end The Modal -->
 
+{% include "./inc_calculate_description.html" %}
+
   <div class="row" style="margin-bottom: 10px">
     <h4 class="title-dark p-0">資料篩選計算</h4>
   </div>
@@ -311,6 +313,9 @@ console.log('debug query:', '{{ debug_query|safe}}' );
       <div class="mb-3">
         <button type="submit" class="btn btn-danger check-form" name="submit" value="calculate">計算</button>
         <input type="hidden" name="query_type" value="" id="query-type"/>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
+          計算項目的說明
+        </button>
       </div>
       </form>
 

@@ -1,6 +1,9 @@
 import collections
 from operator import itemgetter
-from datetime import datetime
+from datetime import (
+    datetime,
+    date
+)
 import logging
 
 from django.core.cache import cache
@@ -22,6 +25,8 @@ class Calculation(object):
     query = None
     object_list = []
     calculate_params = {}
+    calculate_result = None
+
     def __init__(self, params):
 
         # apply filter
@@ -122,6 +127,11 @@ class Calculation(object):
         else:
             return 0
 
+    def count_pod(self, query, working_hour):
+        '''捕獲回合比例
+此項指標將每台相機於每回合（可選擇資料之時間範圍全部 或 依每月計算）中的拍攝視為一個試驗（trial），每次的試驗區分為成功（拍攝到動物，不計個體數或頻率）或不成功（未拍攝到動物）兩種結果，並計算每回合每台相機的成功機率（成功次數/試驗次數，亦即相機捕獲動物之回合數/當期回合數），再計算所有相機的平均成功機率。
+        '''
+
     def calculate(self):
         result = {
             'deployment': {},
@@ -130,6 +140,7 @@ class Calculation(object):
         }
         year_range = [0, 0]
         month_range = [0, 0]
+        # default round/session by month, TODO
         for dep in self.deployment_set:
             dep_group_count = self.query.filter(deployment_id=dep['deployment']).annotate(month=Trunc('datetime', 'month')).values('month').annotate(month_count=Count('*')).order_by('month')
             #print('#', dep['deployment'], dep['deployment__name'], dep['count'])
@@ -146,10 +157,11 @@ class Calculation(object):
                 if month > month_range[1]:
                     month_range[1] = month
 
-                q = self.query.filter(deployment_id=dep['deployment']).filter(datetime__month=month)
-                working_hour = self.count_working_hour(q)
-                image_num = self.count_image(q, self.calculate_params.get('interval'))
-                event_num = self.count_event(q, self.calculate_params.get('interval2'), working_hour[0])
+                session_query = self.query.filter(deployment_id=dep['deployment']).filter(datetime__month=month) # TODO by month
+                working_hour = self.count_working_hour(session_query)
+                image_num = self.count_image(session_query, self.calculate_params.get('interval'))
+                event_num = self.count_event(session_query, self.calculate_params.get('interval2'), working_hour[0])
+                #pod = self.count_pod(q)
                 #print('##', month, res_deployment_month['month_count'], image_num)
                 round_list.append({
                     'year': year,
@@ -169,7 +181,9 @@ class Calculation(object):
             'year_list': list(range(year_range[0], year_range[1]+1)),
             'month_list': list(range(month_range[0], month_range[1]+1)),
         })
+        self.calculate_result = result
         return result
+
 
 def get_species_list(force_update=False):
     CACHE_KEY = 'species_list'
