@@ -15,6 +15,9 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf.urls import url
+from conf import settings
+from django.views.static import serve
 
 
 urlpatterns = [
@@ -22,4 +25,7 @@ urlpatterns = [
     path('', include('base.urls')),
     path('', include('taicat.urls')),
     path('api/client/v1/', include('taicat.client_urls')),
+    url(r'^media/(?P<path>.*)$', serve, {
+        'document_root': settings.MEDIA_ROOT,
+    }),
 ]

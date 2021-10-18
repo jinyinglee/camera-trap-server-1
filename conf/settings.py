@@ -18,12 +18,12 @@ from django.contrib.messages import constants as messages
 
 # for bootstrap alert
 MESSAGE_TAGS = {
-        messages.DEBUG: 'alert-secondary',
-        messages.INFO: 'alert-info',
-        messages.SUCCESS: 'alert-success',
-        messages.WARNING: 'alert-warning',
-        messages.ERROR: 'alert-danger',
- }
+    messages.DEBUG: 'alert-secondary',
+    messages.INFO: 'alert-info',
+    messages.SUCCESS: 'alert-success',
+    messages.WARNING: 'alert-warning',
+    messages.ERROR: 'alert-danger',
+}
 
 # Build paths inside the taicat like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -51,7 +51,7 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 # Application definition
 
 INSTALLED_APPS = [
-    #"sslserver", # for local https
+    # "sslserver", # for local https
     'base',
     'taicat',
     'django.contrib.admin',
@@ -143,10 +143,10 @@ USE_TZ = True
 # STATICFILES_DIRS = [os.path.join('static'),]
 
 # web
-default_static_dir = os.path.join(BASE_DIR, 'static')	
+default_static_dir = os.path.join(BASE_DIR, 'static')
 STATIC_URL = '/static/'
 STATIC_ROOT = env('STATIC_ROOT', default=default_static_dir)
-STATICFILES_DIRS = [default_static_dir,]
+STATICFILES_DIRS = [default_static_dir, ]
 
 CACHES = {
     "default": {
@@ -166,6 +166,19 @@ DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 
 SERIALIZATION_MODULES = {
-    "geojson": "django.contrib.gis.serializers.geojson", 
- }
+    "geojson": "django.contrib.gis.serializers.geojson",
+}
 
+# email
+EMAIL_BACKEND = 'django_ses.SESBackend'
+AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID', default='')
+AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY', default='')
+AWS_SES_REGION_NAME = env('AWS_SES_REGION_NAME', default='')
+AWS_SES_REGION_ENDPOINT = env('AWS_SES_REGION_ENDPOINT', default='')
+
+CT_SERVICE_EMAIL = env('CT_SERVICE_EMAIL', default='')
+CT_BCC_EMAIL_LIST = env('CT_BCC_EMAIL_LIST', default='')
+
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = env('MEDIA_ROOT')

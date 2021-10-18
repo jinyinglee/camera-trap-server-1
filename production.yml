@@ -14,6 +14,7 @@ services:
     volumes:
       - .:/code
       - ../ct21-volumes/static:/ct21-volumes/static
+      - ../ct21-volumes/media:/ct21-volumes/media
       - ../ct21-volumes/bucket:/bucket
     command: /srv/start
     restart: always
@@ -50,7 +51,7 @@ services:
       - ../ct21-volumes/certbot/conf:/etc/letsencrypt
       - ../ct21-volumes/certbot/www:/var/www/certbot
       #- ../basdb-volumes/media:/basdb-volumes/media
-    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+    command: '/bin/sh -c ''while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g "daemon off;"'''
     links:
       - django:django
   certbot:

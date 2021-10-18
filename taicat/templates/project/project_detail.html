@@ -157,7 +157,8 @@
                 {% if is_authorized %}
                     <a class="btn btn-outline-success" href="{% url 'edit_project_basic' pk %}"><i class="fa fa-xs fa-pencil"></i> 計畫管理</a>
                 {% endif %}
-                    <a class="btn btn-outline-success download"><i class="fas fa-file-csv"></i> 下載篩選資料</a>
+                    <a class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#downloadModal"><i class="fas fa-file-csv"></i> 下載篩選資料</a>
+                    {% comment %} <a class="btn btn-outline-success download"><i class="fas fa-file-csv"></i> 下載篩選資料</a> {% endcomment %}
                 </div>
             </div>
         </div>
@@ -166,6 +167,7 @@
         <div class="col-2 bg-white shadow-sm remain">
             <form action="{% url 'download' pk %}" method="post" id="downloadForm">
             {% csrf_token %}
+            <input type="hidden" name="email" value="">
                 <div class="row">
                     <div class="mt-3 d-flex justify-content-between">
                         <p>篩選條件</p>
@@ -412,11 +414,46 @@
 </div>
 
 
+
+<!-- Download Modal -->
+<div class="modal fade" id="downloadModal" tabindex="-1" aria-labelledby="downloadModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title title-dark">下載篩選資料</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>檔案為離線產生，處理完成後，系統會寄下載資訊到您輸入的電子郵件信箱。如未收到信件，請檢查您的郵件設定，如仍未收到信件，請聯絡我們。</p>
+                <p>請輸入您的電子郵件：</p>
+                <div class="d-flex justify-content-start">
+                    <input class="form-control w-75" type="text" id="download-email" onkeyup="ValidateEmail(this.value)">                       
+                     <svg id="email-check" xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="lightgrey" class="bi bi-check my-auto " viewBox="0 0 16 16">
+                            <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
+                    </svg>
+                    <button class="ms-1 btn btn-outline-success download">送出</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock body %}
 
 {% block script %}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta2/dist/js/bootstrap-select.min.js"></script>
 <script>
+//https://emailregex.com
+function ValidateEmail(inputText){
+    let mailformat = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/
+    if(inputText.match(mailformat)){
+        $('#email-check').attr('fill', 'green');
+        $('button.download').prop('disabled', false);
+    } else {
+        $('#email-check').attr('fill', 'lightgrey');
+        $('button.download').prop('disabled', true);
+    }
+}
+
 // autocomplete
 var species = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠', '無法辨識', '空拍', '工作照', '測試', '台灣山鷓鴣', '台灣竹雞', '黑長尾雉', '藍腹鷴', '黑冠麻鷺', '環頸雉', '山鷸', '灰林鴿', '金背鳩', '珠頸斑鳩', '翠翼鳩', '黃痣藪眉', '台灣噪眉', '台灣紫嘯鶇', '虎鶇', '白眉鶇', '白腹鶇', '赤腹鶇', '白頭鶇'].sort()
 var antler = ['初茸','茸角一尖','茸角一岔二尖','茸角二岔三尖','茸角三岔四尖','硬角一尖','硬角一岔二尖','硬角二岔三尖','硬角三岔四尖','解角']
@@ -651,7 +688,7 @@ $(document).ready(function() {
     });
 
     // set permission: 計畫總管理人/個別計畫承辦人/系統管理員
-        $('#img-table').on('click', 'tbody tr', function () {
+    $('#img-table').on('click', 'tbody tr', function () {
         var row = table.row($(this)).data();
         $('#edit-studyarea').html(row['saname'])
         $('#edit-deployment').html(row['dname'])
@@ -722,7 +759,23 @@ $(document).ready(function() {
         $("input[name=start_date]").val((new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10));
         $("input[name=end_date]").val((new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
         {% endif %}
-        $('#downloadForm').submit()
+        $("input[name=email]").val($("#download-email").val())
+        $.ajax({
+                data: $('#downloadForm').serialize(),
+                type: "POST",
+                url: "{% url 'download' pk %}",
+                success: function(){
+                    alert('請求已送出');
+                    $('#downloadModal').modal('hide')
+                },
+                error:function(){
+                    alert('未知錯誤，請聯繫管理員');
+                    $('#downloadModal').modal('hide')
+                }
+                })
+                
+        //console.log($('#downloadForm').serialize())
+        //$('#downloadForm').submit()
     })
 
 

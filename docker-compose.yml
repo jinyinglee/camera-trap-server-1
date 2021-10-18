@@ -11,6 +11,8 @@ services:
       - postgres
     volumes:
       - .:/code
+      - ../ct21-volumes/static:/ct21-volumes/static
+      - ../ct21-volumes/media:/ct21-volumes/media
       - ../ct21-volumes/bucket:/bucket
     command: /srv/start
     restart: always

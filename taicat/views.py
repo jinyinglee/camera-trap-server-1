@@ -1,5 +1,5 @@
 from django.db.models.fields import PositiveBigIntegerField
-from django.http import response
+from django.http import response, JsonResponse
 from django.shortcuts import redirect, render, HttpResponse
 from pandas.core.groupby.generic import DataFrameGroupBy
 from .models import *
@@ -25,6 +25,9 @@ import threading
 import time
 from ast import literal_eval
 import numpy as np
+from conf.settings import env
+import os
+from django.core.mail import send_mail
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -41,23 +44,6 @@ city_list = ['基隆市', '嘉義市', '台北市', '嘉義縣', '新北市', '�
 
 species_list = ['水鹿', '山羌', '獼猴', '山羊', '野豬', '鼬獾', '白鼻心', '食蟹獴', '松鼠',
                 '飛鼠', '黃喉貂', '黃鼠狼', '小黃鼠狼', '麝香貓', '黑熊', '石虎', '穿山甲', '梅花鹿', '野兔', '蝙蝠']
-
-q = "SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
-                EXTRACT (year from taicat_project.start_date)::int, \
-                taicat_project.funding_agency, COUNT(DISTINCT(taicat_studyarea.name)) AS num_studyarea, \
-                COUNT(DISTINCT(taicat_deployment.name)) AS num_deployment, \
-                COUNT(DISTINCT(taicat_image.id)) AS num_image \
-                FROM taicat_project \
-                LEFT JOIN taicat_studyarea ON taicat_studyarea.project_id = taicat_project.id \
-                LEFT JOIN taicat_deployment ON taicat_deployment.project_id = taicat_project.id \
-                LEFT JOIN taicat_image ON taicat_image.deployment_id = taicat_deployment.id \
-                WHERE CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval \
-                GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
-                ORDER BY taicat_project.start_date DESC;"
-
-
-# [(319, 'bio', '', 2021, '', 0, 0, 0),(318, '開發', '', 2021, '', 0, 0, 0)]
-# project_id, project name, project keywords, start year, num_studyarea, num_deployment, num_image
 
 
 def sortFunction(value):
@@ -114,18 +100,15 @@ def edit_project_basic(request, pk):
         if request.method == "POST":
             region_list = request.POST.getlist('region')
             region = {'region': ",".join(region_list)}
-
             data = dict(request.POST.items())
             data.pop('csrfmiddlewaretoken')
             data.update(region)
-
             project = Project.objects.filter(id=pk).update(**data)
 
         project = Project.objects.filter(id=pk).values().first()
         if project['region'] not in ['', None, []]:
             region = {'region': project['region'].split(',')}
             project.update(region)
-
         return render(request, 'project/edit_project_basic.html', {'project': project, 'pk': pk,  'city_list': city_list, 'is_authorized': is_authorized})
     else:
         messages.error(request, '您的權限不足')
@@ -136,11 +119,9 @@ def edit_project_license(request, pk):
     is_authorized = check_if_authorized(request, pk)
 
     if is_authorized:
-
         if request.method == "POST":
             data = dict(request.POST.items())
             data.pop('csrfmiddlewaretoken')
-
             project = Project.objects.filter(id=pk).update(**data)
 
         project = Project.objects.filter(id=pk).values(
@@ -350,14 +331,13 @@ def project_overview(request):
                                                'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea'])
 
             with connection.cursor() as cursor:
-                q = "SELECT \
-                                taicat_deployment.project_id, COUNT(DISTINCT(taicat_deployment.name)) AS num_deployment, \
-                                COUNT(DISTINCT(taicat_image.id)) AS num_image \
-                                FROM taicat_deployment \
-                                LEFT JOIN taicat_image ON taicat_image.deployment_id = taicat_deployment.id \
-                                WHERE taicat_deployment.project_id IN {} \
-                                GROUP BY taicat_deployment.project_id \
-                                ORDER BY taicat_deployment.project_id DESC;"
+                q = "SELECT taicat_deployment.project_id, COUNT(DISTINCT(taicat_deployment.name)) AS num_deployment, \
+                            COUNT(DISTINCT(taicat_image.id)) AS num_image \
+                            FROM taicat_deployment \
+                            LEFT JOIN taicat_image ON taicat_image.deployment_id = taicat_deployment.id \
+                            WHERE taicat_deployment.project_id IN {} \
+                            GROUP BY taicat_deployment.project_id \
+                            ORDER BY taicat_deployment.project_id DESC;"
                 cursor.execute(q.format(project_list))
                 my_img_info = cursor.fetchall()
                 my_img_info = pd.DataFrame(my_img_info, columns=[
@@ -545,38 +525,46 @@ def data(request):
             conditions = ' AND d.id IS NULL'
     spe_conditions = ''
     if species:
-        spe_conditions = f" AND annotation::text like '%{species}%' "
+        spe_conditions = f" WHERE anno ->> 'species' = '{species}' "
     with connection.cursor() as cursor:
-        query = """SELECT 
+        query = """WITH base_request as (SELECT 
                         sa.name AS saname, d.name AS dname, i.filename, 
                         to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
-                        sa.parent_id AS saparent, i.annotation, i.file_url, i.id, i.from_mongo 
+                        sa.parent_id AS saparent, anno, i.file_url, i.id, i.from_mongo 
                         FROM taicat_image i
+                        LEFT JOIN jsonb_array_elements(i.annotation::jsonb) AS anno ON true 
                         JOIN taicat_deployment d ON d.id = i.deployment_id
                         JOIN taicat_studyarea sa ON sa.id = d.study_area_id 
-                        WHERE d.project_id = {} {} {} {}
-                        ORDER BY i.created, i.filename;"""
+                        WHERE d.project_id = {} {} {} 
+                        ORDER BY i.created, i.filename)
+                        select * from base_request {};"""
         cursor.execute(query.format(
             pk, date_filter, conditions, spe_conditions))
         image_info = cursor.fetchall()
     if image_info:
         df = pd.DataFrame(image_info, columns=[
                           'saname', 'dname', 'filename', 'datetime', 'saparent', 'annotation', 'file_url', 'image_id', 'from_mongo'])
-        # parse string to list
+        # parse string to dict
         df['anno_list'] = df.annotation.apply(lambda x: literal_eval(str(x)))
-        # separate dictionary to columns
-        df = df.explode('anno_list')
-        # 只保留該頁顯示的比數
-        start = int(_start)
-        length = int(_length)
-        page = math.ceil(start / length) + 1
-        per_page = length
+
         recordsTotal = len(df)
         recordsFiltered = len(df)
-        df = df[start:start + length]
+
+        # 只保留該頁顯示的筆數
+        start = int(_start)
+        length = int(_length)
+        per_page = length
+        page = math.ceil(start / length) + 1
+
+        df = df.reset_index()
+        df = df[start:start + length]  # concat may add rows
+        # remark to remarks
+        for i in df[df.anno_list.notnull()].index:
+            if 'remark' in df.anno_list[i]:
+                df.anno_list[i]['remarks'] = df.anno_list[i].pop('remark')
 
         df = pd.concat([df.drop(['anno_list'], axis=1),
-                        df['anno_list'].apply(pd.Series)], axis=1)
+                       df['anno_list'].apply(pd.Series)], axis=1)
         df = df.reset_index()
 
         # add group id
@@ -590,7 +578,7 @@ def data(request):
                     parent_saname = StudyArea.objects.get(
                         id=df.saparent[i]).name
                     current_name = df.saname[i]
-                    df.loc[i, 'saname'] = f"{current_name}_{parent_saname}"
+                    df.loc[i, 'saname'] = f"{parent_saname}_{current_name}"
                 except:
                     pass
 
@@ -632,8 +620,7 @@ def data(request):
                     </video>
                     """.format(file_url, file_url)
             ### videos: https://developer.mozilla.org/zh-CN/docs/Web/HTML/Element/video ##
-        if 'remark' in df:
-            df = df.rename(columns={'remark': 'remarks'})
+
         cols = ['saname', 'dname', 'filename', 'datetime', 'species', 'lifestage',
                 'sex', 'antler', 'animal_id', 'remarks', 'file_url', 'group_id', 'image_id']
         data = df.reindex(df.columns.union(cols, sort=False),
@@ -768,19 +755,25 @@ def edit_image(request, pk):
 
 
 def download_request(request, pk):
+    generate_download_excel(request, pk)
+    return JsonResponse({"status": 'success'}, safe=False)
+
+
+def generate_download_excel(request, pk):
     requests = request.POST
+    email = requests.get('email', '')
     start_date = requests.get('start_date')
     end_date = requests.get('end_date')
-    data_filter = ''
+    date_filter = ''
     if start_date and end_date:
         start_date = datetime.strptime(start_date, "%Y-%m-%d")
         end_date = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
-        data_filter = "AND i.datetime BETWEEN '{}' AND '{}'".format(
+        date_filter = "AND i.datetime BETWEEN '{}' AND '{}'".format(
             start_date, end_date)
     species = requests.get('species-filter')
     conditions = ''
-    deployment = requests.getlist('deployment[]')
-    sa = requests.get('sa')
+    deployment = requests.getlist('d-filter')
+    sa = requests.get('sa-filter')
     if sa:
         conditions += f' AND sa.id = {sa}'
         if deployment:
@@ -789,68 +782,84 @@ def download_request(request, pk):
                 x = str(x).replace('[', '(').replace(']', ')')
                 conditions += f' AND d.id IN {x}'
         else:
-            conditions = 'AND d.id IS NULL'
-
+            conditions = ' AND d.id IS NULL'
+    spe_conditions = ''
+    if species:
+        spe_conditions = f" WHERE anno ->> 'species' = '{species}' "
     with connection.cursor() as cursor:
-        query = """with base_request as ( 
-                    SELECT 
+        query = """WITH base_request as (SELECT 
                         sa.name AS saname, d.name AS dname, i.filename, 
                         to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
-                        x.*, i.file_url, 
-                        sa.parent_id AS saparent,
-                        i.id FROM taicat_image i
-                        CROSS JOIN LATERAL
-                        json_to_recordset(i.annotation::json) x 
-                                ( species text, lifestage text , sex text, 
-                                    antler text, remarks text, animal_id text ) 
+                        sa.parent_id AS saparent, anno, i.file_url, i.id, i.from_mongo 
+                        FROM taicat_image i
+                        LEFT JOIN jsonb_array_elements(i.annotation::jsonb) AS anno ON true 
                         JOIN taicat_deployment d ON d.id = i.deployment_id
                         JOIN taicat_studyarea sa ON sa.id = d.study_area_id 
-                        WHERE d.project_id= {} {} {}
+                        WHERE d.project_id = {} {} {} 
                         ORDER BY i.created, i.filename)
-                select row_to_json(t) from ( 
-                    select 1 as draw, 
-                    ( select array_to_json(array_agg(row_to_json(u)))
-                        from (select * from base_request) u
-                    ) as data) t;"""
-        cursor.execute(query.format(pk, data_filter, conditions))
+                        select * from base_request {};"""
+        cursor.execute(query.format(
+            pk, date_filter, conditions, spe_conditions))
         image_info = cursor.fetchall()
-        data = image_info[0][0]['data']
 
-    if data:
-        data = sorted(data, key=sortFunction)
-        if species != "":
-            data = [i for i in data if i['species'] == species]
-        # add sub-studyarea if exists
-        for i in range(len(data)):
-            data[i].update({'subsaname': None})
-            if StudyArea.objects.filter(id=data[i]['saparent']):
-                parent_saname = StudyArea.objects.get(
-                    id=data[i]['saparent']).name
-                saname = data[i]['saname']
-                data[i].update({'saname': parent_saname})
-                data[i].update({'subsaname': saname})
-        df = pd.DataFrame(data)
+    if image_info:
+        df = pd.DataFrame(image_info, columns=[
+                          'saname', 'dname', 'filename', 'datetime', 'saparent', 'annotation', 'file_url', 'image_id', 'from_mongo'])
+        # parse string to dict
+        df['anno_list'] = df.annotation.apply(lambda x: literal_eval(str(x)))
+        for i in df[df.anno_list.notnull()].index:
+            if 'remark' in df.anno_list[i]:
+                df.anno_list[i]['remarks'] = df.anno_list[i].pop('remark')
+
+        df = pd.concat([df.drop(['anno_list'], axis=1),
+                       df['anno_list'].apply(pd.Series)], axis=1)
+        df = df.reset_index()
+        df['subsaname'] = ''
+        ssa_exist = StudyArea.objects.filter(
+            project_id=pk, parent__isnull=False)
+        if ssa_exist.count() > 0:
+            ssa_list = list(ssa_exist.values_list('name', flat=True))
+            for i in df[df.saname.isin(ssa_list)].index:
+                try:
+                    parent_saname = StudyArea.objects.get(
+                        id=df.saparent[i]).name
+                    current_name = df.saname[i]
+                    df.loc[i, 'saname'] = f"{parent_saname}"
+                    df.loc[i, 'subsaname'] = f"{current_name}"
+                except:
+                    pass
+
         df['計畫名稱'] = Project.objects.get(id=pk).name
         df['計畫ID'] = pk
         # rename
         df = df.rename(columns={'saname': '樣區', 'dname': '相機位置', 'filename': '檔名', 'datetime': '拍攝時間', 'species': '物種',
-                                'lifestage': '年齡', 'sex': '性別', 'antler': '角況', 'remarks': '備註', 'animal_id': '個體ID', 'id': '影像ID',
+                                'lifestage': '年齡', 'sex': '性別', 'antler': '角況', 'remarks': '備註', 'animal_id': '個體ID', 'image_id': '影像ID',
                                 'subsaname': '子樣區'})
         # subset and change column order
         cols = ['計畫ID', '計畫名稱', '影像ID', '樣區', '子樣區', '相機位置',
                 '檔名', '拍攝時間', '物種', '年齡', '性別', '角況', '個體ID', '備註']
+        for i in cols:
+            if i not in df:
+                df[i] = ''
         df = df[cols]
-        # df = df[df.columns.intersection(cols)]
+
     else:
         df = pd.DataFrame()  # no data
 
     n = f'download_{datetime.now().strftime("%Y-%m-%d")}.xlsx'
 
-    response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = 'attachment; filename={}'.format(
-        urlquote(n))
-    df.to_excel(response, index=False)
+    download_dir = os.path.join(settings.MEDIA_ROOT, 'download')
+    df.to_excel(os.path.join(download_dir, n), index=False)
+    download_url = request.scheme+"://" + \
+        request.META['HTTP_HOST']+settings.MEDIA_URL + \
+        os.path.join('download', n)
+
+    # send_download_email(email, download_url)
+    email_subject = '[臺灣自動相機資訊系統] 下載資料'
+    email_body = render_to_string('project/download.html', {
+        'download_url': download_url,
+    })
+    send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, [email])
 
     return response
 
@@ -867,40 +876,14 @@ class EmailThread(threading.Thread):
         self.email.send()
 
 
-def send_verification_email(user, request):
-    current_site = get_current_site(request)  # the domain user is on
+def send_download_email(email, download_url):
 
-    email_subject = '[生物多樣性資料庫共通查詢系統] 驗證您的帳號'
-    email_body = render_to_string('account/verification.html', {
-        'user': user,
-        'domain': current_site,
-        # encrypt userid for security
-        'uid': urlsafe_base64_encode(force_bytes(user.pk)),
-        'token': generate_token.make_token(user)
+    email_subject = '[臺灣自動相機資訊系統] 下載資料'
+    email_body = render_to_string('project/download.html', {
+        'download_url': download_url,
     })
 
     email = EmailMessage(subject=email_subject, body=email_body, from_email=settings.EMAIL_FROM_USER,
-                         to=[user.username])
+                         to=[email])
 
     EmailThread(email).start()
-
-
-def download_data(request, uidb64, token):
-    try:
-        uid = force_text(urlsafe_base64_decode(uidb64))
-        user = User.objects.get(pk=uid)
-
-    except Exception as e:
-        user = None
-
-    if user and generate_token.check_token(user, token):
-        user.is_email_verified = True
-        user.is_active = True
-        user.save()
-
-        messages.add_message(request, messages.SUCCESS,
-                             '驗證成功！請立即設定您的密碼')
-        login(request, user, backend='account.views.registerBackend')
-        return redirect(reverse('personal_info'))
-
-    return render(request, 'account/verification-fail.html', {"user": user})
