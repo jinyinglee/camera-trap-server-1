@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.contrib.postgres.indexes import GinIndex
 
 
 class Contact(models.Model):
@@ -232,3 +233,4 @@ class Image(models.Model):
 
     class Meta:
         ordering = ['created']
+        indexes = [GinIndex(fields=['annotation'])]

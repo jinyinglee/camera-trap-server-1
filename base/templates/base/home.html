@@ -131,9 +131,10 @@
 {% block script %} 
 <script>
     $(function(){
-        // get data by ajax
-        $.ajax({
-                    url: "{% url 'get_home_data' %}",
+
+        // get data by ajax separately
+            $.ajax({
+                    url: "{% url 'get_geo_data' %}",
                     success: function(data) {
 
                         // map
@@ -149,7 +150,12 @@
                                     .addTo(map)  
                          );
 
+}
+                })
 
+        $.ajax({
+                    url: "{% url 'get_growth_data' %}",
+                    success: function(data) {
                         // plot                         
                         data_growth_year = []
                         data.data_growth_image.forEach(i => 
@@ -165,16 +171,8 @@
                         data.data_growth_deployment.forEach(i => 
                             data_growth_deployment_count.push(i[1])
                             );
-                        
-                        species_data_name = []
-                        data.species_data.forEach(i => 
-                            species_data_name.push(i[1])
-                            );
-                        species_data_count = []
-                        data.species_data.forEach(i => 
-                            species_data_count.push(i[0]/10000)
-                            );
 
+    // plot - data_growth
     Highcharts.chart('data_growth', {
         chart: {
             marginTop: 40,
@@ -297,8 +295,26 @@
             }]
         }
     });
+                }
+                })
 
-    // plot - species
+
+
+        $.ajax({
+                    url: "{% url 'get_species_data' %}",
+                    success: function(data) {
+
+        // plot - species
+
+
+                            species_data_name = []
+                        data.species_data.forEach(i => 
+                            species_data_name.push(i[1])
+                            );
+                        species_data_count = []
+                        data.species_data.forEach(i => 
+                            species_data_count.push(i[0]/10000)
+                            );
     Highcharts.chart('species_data', {
         chart: {
             type: 'bar',
@@ -310,6 +326,7 @@
         title: { text: ''},
         xAxis: {
             categories: species_data_name,
+            tickInterval: 1,
             title: {
                 text: null,
                 style: {
@@ -357,16 +374,14 @@
         },
         
     });
+}
+                })
 
                         
-
-                }
-                })
 
     })
 
 
-    // plot
 
     // map
     const fontAwesomeIcon = L.divIcon({

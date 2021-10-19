@@ -13,11 +13,13 @@ from decimal import Decimal
 import time
 import pandas as pd
 
+
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Decimal):
             return float(obj)
         return json.JSONEncoder.default(self, obj)
+
 
 def add_org_admin(request):
     if request.method == 'POST':
@@ -31,7 +33,7 @@ def login_for_test(request):
     next = request.GET.get('next')
     role = request.GET.get('role')
     print(next, role)
-    info = Contact.objects.filter(name=role).values('name','id').first()
+    info = Contact.objects.filter(name=role).values('name', 'id').first()
     request.session["is_login"] = True
     request.session["name"] = role
     request.session["orcid"] = ''
@@ -39,6 +41,7 @@ def login_for_test(request):
     request.session["first_login"] = False
 
     return redirect(next)
+
 
 def set_permission(request):
     is_authorized = False
@@ -54,38 +57,43 @@ def set_permission(request):
                 user_id = request.POST.get('user', None)
                 org_id = request.POST.get('organization', None)
                 if user_id and org_id:
-                    Contact.objects.filter(id=user_id).update(is_organization_admin=True, organization_id=org_id)
+                    Contact.objects.filter(id=user_id).update(
+                        is_organization_admin=True, organization_id=org_id)
                     messages.success(request, '新增成功')
             elif type == 'remove_admin':
                 user_id = request.POST.get('id', None)
                 if user_id:
-                    Contact.objects.filter(id=user_id).update(is_organization_admin=False)
+                    Contact.objects.filter(id=user_id).update(
+                        is_organization_admin=False)
                     messages.success(request, '移除成功')
             elif type == 'remove_project':
                 relation_id = request.POST.get('id', None)
                 if relation_id:
-                    Organization.projects.through.objects.filter(id=relation_id).delete()
+                    Organization.projects.through.objects.filter(
+                        id=relation_id).delete()
                     messages.success(request, '移除成功')
             else:
                 project_id = request.POST.get('project', None)
                 org_id = request.POST.get('organization', None)
                 try:
-                    Organization.objects.get(id=org_id).projects.add(Project.objects.get(id=project_id))
+                    Organization.objects.get(id=org_id).projects.add(
+                        Project.objects.get(id=project_id))
                     messages.success(request, '新增成功')
                 except:
                     messages.error(request, '新增失敗')
-        member_list = Contact.objects.all().values('name','email','id')
+        member_list = Contact.objects.all().values('name', 'email', 'id')
         org_list = Organization.objects.all()
         project_list = Project.objects.all().values('name', 'id')
 
         org_project_list = []
         org_project_set = Organization.projects.through.objects.all()
         for i in org_project_set:
-            tmp = {'organization_name': i.organization.name, 'relation_id': i.id, 
-                    'project_name': i.project.name}
+            tmp = {'organization_name': i.organization.name, 'relation_id': i.id,
+                   'project_name': i.project.name}
             org_project_list.append(tmp)
 
-        org_admin_list = Contact.objects.filter(is_organization_admin=True).values('organization__name','id','name', 'email')
+        org_admin_list = Contact.objects.filter(is_organization_admin=True).values(
+            'organization__name', 'id', 'name', 'email')
 
         return render(request, 'base/permission.html', {'member_list': member_list, 'org_project_list': org_project_list,
                       'is_authorized': is_authorized, 'org_list': org_list, 'project_list': project_list, 'org_admin_list': org_admin_list})
@@ -103,20 +111,20 @@ def get_auth_callback(request):
             'code': authorization_code}
     token_url = 'https://orcid.org/oauth/token'
 
-    r = requests.post(token_url, data = data)
+    r = requests.post(token_url, data=data)
     results = r.json()
     orcid = results['orcid']
     name = results['name']
 
     # check if orcid exists in db
     if Contact.objects.filter(orcid=orcid).exists():
-    # if exists, update login status
-        info = Contact.objects.filter(orcid=orcid).values('name','id').first()
+        # if exists, update login status
+        info = Contact.objects.filter(orcid=orcid).values('name', 'id').first()
         name = info['name']
         id = info['id']
         request.session["first_login"] = False
     else:
-    # if not, create one
+        # if not, create one
         new_user = Contact.objects.create(name=name, orcid=orcid)
         id = new_user.id
         # redirect to set email
@@ -136,7 +144,6 @@ def get_auth_callback(request):
     return redirect(original_page_url)
 
 
-
 def logout(request):
     request.session["is_login"] = False
     request.session["name"] = None
@@ -145,9 +152,8 @@ def logout(request):
     return redirect('home')
 
 
-
 def personal_info(request):
-    ## login required
+    # login required
     is_login = request.session.get('is_login', False)
     first_login = request.session.get('first_login', False)
 
@@ -160,9 +166,10 @@ def personal_info(request):
         request.session["name"] = name
 
     if is_login:
-        info = Contact.objects.filter(orcid=request.session["orcid"]).values().first()
+        info = Contact.objects.filter(
+            orcid=request.session["orcid"]).values().first()
         return render(request, 'base/personal_info.html', {'info': info, 'first_login': first_login})
-    else: 
+    else:
         messages.error(request, '請先登入')
         return render(request, 'base/personal_info.html')
 
@@ -170,66 +177,85 @@ def personal_info(request):
 def home(request):
     return render(request, 'base/home.html')
 
-def get_home_data(request):
+
+def get_species_data(request):
+    # TODO
     with connection.cursor() as cursor:
-        query =  """SELECT d.longitude, d.latitude, p.name FROM taicat_deployment d 
+        query = """with b as (SELECT anno ->> 'species' as s
+                            FROM taicat_image i
+                            LEFT JOIN jsonb_array_elements(i.annotation::jsonb) AS anno ON true)
+                        select count(*), s from b group by s
+                """
+        cursor.execute(query)
+        species_data = cursor.fetchall()
+    species_list = ['水鹿', '山羌', '獼猴', '山羊', '野豬', '鼬獾', '白鼻心', '食蟹獴', '松鼠',
+                    '飛鼠', '黃喉貂', '黃鼠狼', '小黃鼠狼', '麝香貓', '黑熊', '石虎', '穿山甲', '梅花鹿', '野兔', '蝙蝠']
+    species_data = [x for x in species_data if x[1] in species_list]
+
+    response = {'species_data': species_data}
+    return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
+
+
+def get_geo_data(request):
+    s = time.time()
+    with connection.cursor() as cursor:
+        query = """SELECT d.longitude, d.latitude, p.name FROM taicat_deployment d 
                     JOIN taicat_project p ON p.id = d.project_id 
                     WHERE d.longitude IS NOT NULL;
                     """
         cursor.execute(query)
         deployment_points = cursor.fetchall()
+    response = {'deployment_points': deployment_points}
+    return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
 
+
+def get_growth_data(request):
+    # TODO
     with connection.cursor() as cursor:
-        query =  """SELECT EXTRACT (year FROM datetime) as year, count(id) as count 
+        query = """SELECT EXTRACT (year FROM datetime) as year, count(id) as count 
         FROM taicat_image
         GROUP BY year
         """
         cursor.execute(query)
         data_growth_image = cursor.fetchall()
-        data_growth_image = pd.DataFrame(data_growth_image, columns=['year', 'num_image']).sort_values('year')
-        year_max, year_min = int(data_growth_image.year.min()),int(data_growth_image.year.max())
-        year_gap = pd.DataFrame([i for i in range(year_max,year_min)], columns=['year'])
-        data_growth_image = year_gap.merge(data_growth_image, how='left').fillna(0)
+        data_growth_image = pd.DataFrame(data_growth_image, columns=[
+            'year', 'num_image']).sort_values('year')
+        year_min, year_max = int(data_growth_image.year.min()), int(
+            data_growth_image.year.max())
+        year_gap = pd.DataFrame(
+            [i for i in range(2008, year_max)], columns=['year'])
+        data_growth_image = year_gap.merge(
+            data_growth_image, how='left').fillna(0)
         data_growth_image['cumsum'] = data_growth_image.num_image.cumsum()
         data_growth_image = data_growth_image.drop(columns=['num_image'])
-        data_growth_image = [tuple(x) for x in data_growth_image.to_numpy()]
+        data_growth_image = list(
+            data_growth_image.itertuples(index=False, name=None))
 
+    # TODO
     with connection.cursor() as cursor:
-        query =  """
+        query = """
                 SELECT MIN(EXTRACT (year FROM datetime)) as year, deployment_id FROM taicat_image
                 GROUP BY deployment_id
         """
         cursor.execute(query)
         data_growth_deployment = cursor.fetchall()
-        data_growth_deployment = pd.DataFrame(data_growth_deployment, columns=['year', 'deployment_id']).sort_values('year')
-        data_growth_deployment = data_growth_deployment.groupby(['year'],as_index=False).count()
-        data_growth_deployment = year_gap.merge(data_growth_deployment, how='left').fillna(0)
-        data_growth_deployment['cumsum'] = data_growth_deployment.deployment_id.cumsum()
-        data_growth_deployment = data_growth_deployment.drop(columns=['deployment_id'])
-        data_growth_deployment = [tuple(x) for x in data_growth_deployment.to_numpy()]
+        data_growth_deployment = pd.DataFrame(data_growth_deployment, columns=[
+            'year', 'deployment_id']).sort_values('year')
+        data_growth_deployment = data_growth_deployment.groupby(
+            ['year'], as_index=False).count()
+        data_growth_deployment = year_gap.merge(
+            data_growth_deployment, how='left').fillna(0)
+        data_growth_deployment['cumsum'] = data_growth_deployment.deployment_id.cumsum(
+        )
+        data_growth_deployment = data_growth_deployment.drop(
+            columns=['deployment_id'])
+        data_growth_deployment = list(
+            data_growth_deployment.itertuples(index=False, name=None))
 
-    with connection.cursor() as cursor:
-        query =  """with base_request as ( 
-                    SELECT 
-                        x.*, 
-                        i.id FROM taicat_image i
-                        CROSS JOIN LATERAL
-                        json_to_recordset(i.annotation::json) x 
-                                ( species text
-                                ) 
-                        )
-                select count(id), species from base_request
-                group by species;
-                """
-        cursor.execute(query)
-        species_data = cursor.fetchall()
-    species_list = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠']
-    species_data = [ x for x in species_data if x[1] in species_list ]
+    response = {'data_growth_image': data_growth_image,
+                'data_growth_deployment': data_growth_deployment}
 
-    response = {'data_growth_image': data_growth_image, 'data_growth_deployment':data_growth_deployment,
-     'deployment_points': deployment_points, 'species_data': species_data}
-
-    return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
+    return HttpResponse(json.dumps(response), content_type='application/json')
 
 
 # ------ deprecated ------ #
@@ -240,8 +266,8 @@ def stat_county(request):
         FROM taicat_deployment d
          JOIN taicat_image i ON i.deployment_id = d.id 
          where d.source_data->>'city' = '{}';"""
-                
+
         cursor.execute(query.format(city))
         response = cursor.fetchone()
-    response = {"no_proj": response[0], "no_img": response[1]}       
+    response = {"no_proj": response[0], "no_img": response[1]}
     return HttpResponse(json.dumps(response), content_type='application/json')
