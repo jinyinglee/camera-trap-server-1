@@ -99,9 +99,11 @@
                 <li class="nav-item" role="presentation">
                   <button class="nav-link" id="myproject-tab" data-bs-toggle="tab" data-bs-target="#myproject" type="button" role="tab" aria-controls="myproject" aria-selected="true">我的計畫</button>
                 </li>
+                {% if is_authorized_create %}
                 <li class="nav-item ms-auto">
                     <a class="btn btn-orange" href="{% url 'create_project' %}">新增計畫</a>
                 </li>
+                {% endif %}
             </ul>
               <div class="tab-content" id="myTabContent" style="background-color: white; padding: 2%">
                 <div class="tab-pane fade" id="myproject" role="tabpanel" aria-labelledby="myproject-tab">
