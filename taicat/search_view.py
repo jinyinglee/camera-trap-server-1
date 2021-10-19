@@ -56,6 +56,8 @@ def index(request):
 
         if x := request.POST.get('species', ''):
             args['species'] = x
+        if x := request.POST.get('keyword', ''):
+            args['keyword'] = x
         if x := request.POST.getlist('project'):
             if len(x) == 1:
                 args['project'] = x[0]
