@@ -72,7 +72,24 @@ def check_if_authorized(request, pk):
     return is_authorized
 
 
+def check_if_authorized_create(request):
+    is_authorized = False
+    member_id = request.session.get('id', None)
+    if member_id:
+        if Contact.objects.filter(id=member_id, is_system_admin=True):
+            is_authorized = True
+        # 如果是任何計畫的承辦人
+        elif ProjectMember.objects.filter(member_id=member_id, role="project_admin"):
+            is_authorized = True
+        elif Contact.objects.filter(
+                id=member_id, is_organization_admin=True):
+            is_authorized = True
+    return is_authorized
+
+
 def create_project(request):
+    is_authorized_create = check_if_authorized_create(request)
+
     if request.method == "POST":
         region_list = request.POST.getlist('region')
         region = {'region': ",".join(region_list)}
@@ -90,7 +107,7 @@ def create_project(request):
 
         return redirect(edit_project_basic, project_pk)
 
-    return render(request, 'project/create_project.html', {'city_list': city_list})
+    return render(request, 'project/create_project.html', {'city_list': city_list, 'is_authorized_create': is_authorized_create})
 
 
 def edit_project_basic(request, pk):
@@ -255,6 +272,7 @@ def add_studyarea(request):
 
 
 def project_overview(request):
+    is_authorized_create = check_if_authorized_create(request)
     public_project = []
     my_project = []
     my_species_data = []
@@ -401,7 +419,7 @@ def project_overview(request):
     public_species_data.sort()
     my_species_data = [x for x in my_species_data if x[1] in species_list]
     my_species_data.sort()
-    return render(request, 'project/project_overview.html', {'public_project': public_project, 'my_project': my_project,
+    return render(request, 'project/project_overview.html', {'public_project': public_project, 'my_project': my_project, 'is_authorized_create': is_authorized_create,
                                                              'public_species_data': public_species_data, 'my_species_data': my_species_data})
 
 

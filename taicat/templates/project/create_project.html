@@ -44,7 +44,7 @@
 </style>
 {% endblock %}
 {% block body %}
-{% if request.session.is_login %}
+{% if is_authorized_create %}
 <div class="container content">
 <form id="createProjectForm" novalidate action="{% url 'create_project' %}" method="post">
 {% csrf_token %}
@@ -219,7 +219,7 @@
 {% else %}
 <div class="container content">
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        請先登入再新增計畫
+        您的權限不足
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     <a class="btn btn-outline-success" href="{% url 'project_overview' %}">回上一頁</a>

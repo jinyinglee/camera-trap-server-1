@@ -304,7 +304,6 @@
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
                   <li><a class="dropdown-item" href="{% url 'personal_info' %}">帳號設定</a></li>
-                  <li><a class="dropdown-item" href="{% url 'create_project' %}">新增計畫</a></li>
                   {% comment %} {% if request.session.name in '系統管理員,計畫總管理人'  %} {% endcomment %}
                   {% if request.session.name == '系統管理員'  %}
                   <li><a class="dropdown-item" href="{% url 'set_permission' %}">權限管理</a></li>
