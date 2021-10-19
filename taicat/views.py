@@ -272,19 +272,35 @@ def project_overview(request):
         public_project_info = cursor.fetchall()
         public_project_info = pd.DataFrame(public_project_info, columns=[
                                            'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea'])
+    with connection.cursor() as cursor:
+        q = """SELECT deployment_id,id FROM taicat_image 
+        """
+        cursor.execute(q)
+        img_by_d = cursor.fetchall()
+        img_by_d = pd.DataFrame(img_by_d, columns=['deployment_id', 'img_id']).groupby(
+            ['deployment_id']).size().reset_index().rename(columns={0: 'num_image'})
 
     with connection.cursor() as cursor:
-        q = "SELECT \
-                        taicat_deployment.project_id, COUNT(DISTINCT(taicat_deployment.name)) AS num_deployment, \
-                        COUNT(DISTINCT(taicat_image.id)) AS num_image \
-                        FROM taicat_deployment \
-                        LEFT JOIN taicat_image ON taicat_image.deployment_id = taicat_deployment.id \
-                        GROUP BY taicat_deployment.project_id \
-                        ORDER BY taicat_deployment.project_id DESC;"
+        q = """SELECT project_id, COUNT(id) FROM taicat_deployment 
+        GROUP BY project_id
+        """
         cursor.execute(q)
-        public_img_info = cursor.fetchall()
-        public_img_info = pd.DataFrame(public_img_info, columns=[
-                                       'id', 'num_deployment', 'num_image'])
+        dep_by_p = cursor.fetchall()
+        dep_by_p = pd.DataFrame(
+            dep_by_p, columns=['project_id', 'num_deployment'])
+
+    with connection.cursor() as cursor:
+        q = """SELECT project_id, id FROM taicat_deployment 
+        """
+        cursor.execute(q)
+        dep_p = cursor.fetchall()
+        dep_p = pd.DataFrame(dep_p, columns=['project_id', 'deployment_id'])
+
+    tmp = pd.merge(dep_p, img_by_d, how='right').drop(
+        columns=['deployment_id'])
+    tmp = tmp.groupby(['project_id']).sum().reset_index()
+    public_img_info = pd.merge(
+        tmp, dep_by_p, how='left').rename(columns={'project_id': 'id'})
 
     public_project = pd.merge(public_project_info, public_img_info, how='left')
     public_project[['num_deployment', 'num_image', 'num_studyarea']] = public_project[[
@@ -329,7 +345,6 @@ def project_overview(request):
                 my_project_info = cursor.fetchall()
                 my_project_info = pd.DataFrame(my_project_info, columns=[
                                                'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea'])
-
             with connection.cursor() as cursor:
                 q = "SELECT taicat_deployment.project_id, COUNT(DISTINCT(taicat_deployment.name)) AS num_deployment, \
                             COUNT(DISTINCT(taicat_image.id)) AS num_image \
@@ -342,7 +357,6 @@ def project_overview(request):
                 my_img_info = cursor.fetchall()
                 my_img_info = pd.DataFrame(my_img_info, columns=[
                                            'id', 'num_deployment', 'num_image'])
-
             my_project = pd.merge(my_project_info, my_img_info, how='left')
             my_project[['num_deployment', 'num_image', 'num_studyarea']] = my_project[[
                 'num_deployment', 'num_image', 'num_studyarea']].fillna(0)
@@ -367,22 +381,18 @@ def project_overview(request):
                         """
                 cursor.execute(query.format(project_list))
                 my_species_data = cursor.fetchall()
-
     with connection.cursor() as cursor:
-        query = """with base_request as ( 
-                    SELECT 
-                        x.*, 
-                        i.id FROM taicat_image i
-                        CROSS JOIN LATERAL
-                        json_to_recordset(i.annotation::json) x 
-                                ( species text) 
-                        WHERE i.annotation::TEXT <> '[]' AND i.deployment_id IN (
+        query = """with b as ( 
+                    SELECT anno ->> 'species' as s
+                    FROM taicat_image i 
+                    LEFT JOIN jsonb_array_elements(i.annotation::jsonb) AS anno ON true    
+                    WHERE i.annotation::TEXT <> '[]' AND i.deployment_id IN (
                             SELECT d.id FROM taicat_deployment d
                             JOIN taicat_project p ON p.id = d.project_id
                             WHERE CURRENT_DATE >= p.publish_date OR p.end_date < now() - '5 years' :: interval 
-                        ) )
-                select count(id), species from base_request
-                group by species;
+                        )
+                        )
+                select count(*), s from b group by s
                 """
         cursor.execute(query)
         public_species_data = cursor.fetchall()
@@ -391,7 +401,6 @@ def project_overview(request):
     public_species_data.sort()
     my_species_data = [x for x in my_species_data if x[1] in species_list]
     my_species_data.sort()
-
     return render(request, 'project/project_overview.html', {'public_project': public_project, 'my_project': my_project,
                                                              'public_species_data': public_species_data, 'my_species_data': my_species_data})
 
@@ -854,7 +863,6 @@ def generate_download_excel(request, pk):
         request.META['HTTP_HOST']+settings.MEDIA_URL + \
         os.path.join('download', n)
 
-    # send_download_email(email, download_url)
     email_subject = '[臺灣自動相機資訊系統] 下載資料'
     email_body = render_to_string('project/download.html', {
         'download_url': download_url,
@@ -862,28 +870,3 @@ def generate_download_excel(request, pk):
     send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, [email])
 
     return response
-
-
-# send download link
-
-class EmailThread(threading.Thread):
-
-    def __init__(self, email):
-        self.email = email
-        threading.Thread.__init__(self)
-
-    def run(self):
-        self.email.send()
-
-
-def send_download_email(email, download_url):
-
-    email_subject = '[臺灣自動相機資訊系統] 下載資料'
-    email_body = render_to_string('project/download.html', {
-        'download_url': download_url,
-    })
-
-    email = EmailMessage(subject=email_subject, body=email_body, from_email=settings.EMAIL_FROM_USER,
-                         to=[email])
-
-    EmailThread(email).start()
