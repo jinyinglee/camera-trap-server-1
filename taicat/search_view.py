@@ -15,9 +15,9 @@ from .utils import (
 )
 
 def index(request):
-    species_list = get_species_list(True)
+    species_list = get_species_list()
     project_list = Project.objects.all()
-
+    #print (request.GET)
     if request.method == 'GET':
         cal = None
         query_type = request.GET.get('query_type', '')
@@ -35,10 +35,12 @@ def index(request):
                 paginator = Paginator(objects, NUM_PER_PAGE)
                 page_obj = paginator.get_page(page)
 
+        #print (request.GET)
         project_deployment_list = None
-        if p := request.GET.get('project', ''):
-            if proj_obj := Project.objects.get(pk=p):
-                project_deployment_list = proj_obj.get_deployment_list()
+        if proj_list := request.GET.getlist('project'):
+            if len(proj_list) == 1:
+                if proj_obj := Project.objects.get(pk=proj_list[0]):
+                    project_deployment_list = proj_obj.get_deployment_list()
 
         return render(request, 'search/search_index.html', {
             'species_list': species_list,
@@ -54,8 +56,11 @@ def index(request):
 
         if x := request.POST.get('species', ''):
             args['species'] = x
-        if x := request.POST.get('project', ''):
-            args['project'] = x
+        if x := request.POST.getlist('project'):
+            if len(x) == 1:
+                args['project'] = x[0]
+            else:
+                args['project'] = x
         if x := request.POST.get('studyarea', ''):
             args['studyarea'] = x
         if x := request.POST.get('deployment', ''):
@@ -72,6 +77,6 @@ def index(request):
             args['interval2'] = x
         #print(args, request.POST)
         if args.get('query_type', '') != 'clear':
-            base_url = '{}?{}'.format(base_url, urlencode(args))
+            base_url = '{}?{}'.format(base_url, urlencode(args, True))
 
         return redirect(base_url)
