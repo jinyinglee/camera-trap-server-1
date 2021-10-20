@@ -200,6 +200,10 @@ class Image(models.Model):
     id = models.BigAutoField(primary_key=True)
     deployment = models.ForeignKey(
         Deployment, on_delete=models.SET_NULL, null=True)
+    project = models.ForeignKey(
+        Project, on_delete=models.SET_NULL, null=True)
+    studyarea = models.ForeignKey(
+        StudyArea, on_delete=models.SET_NULL, null=True)
     file_url = models.CharField(max_length=1000, null=True)
     filename = models.CharField(max_length=1000)  # first file if is_sequence
     # dateTimeCaptured
