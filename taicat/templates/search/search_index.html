@@ -173,6 +173,11 @@ console.log('debug query:', '{{ debug_query|safe}}' );
           <input type="text" class="form-control" id="date-end" name="date_end" placeholder="2017-06-30" aria-describedby="dateEndHelp"{% if request.GET.date_end %} value="{{ request.GET.date_end}}"{% endif %}>
           <small id="dateEndHelp" class="form-text text-muted">格式: YYYY-MM-DD</small>
         </div>
+        <div class="col-md-4">
+        <label for="keyword">計畫關鍵字</label>
+        <input type="text" class="form-control" id="keyword" name="keyword"{% if request.GET.keyword %} value="{{ request.GET.keyword}}"{% endif %}>
+        <small class="form-text text-muted">*keyword*，如果有輸入關鍵字就會忽略計畫下拉選單</small>
+      </div>
         <div class="col-md-12">
           <label for="project">計畫</label>
           <select name="project" class="form-select" aria-label="選擇計畫" id="project" onChange="handleProjectChange()" multiple size="3">

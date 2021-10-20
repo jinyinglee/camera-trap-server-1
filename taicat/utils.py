@@ -15,6 +15,7 @@ from django.db.models import (
 from django.db.models.functions import Trunc
 
 from taicat.models import (
+    Project,
     Image,
     StudyArea,
     Deployment,
@@ -54,12 +55,12 @@ class Calculation(object):
             sa_obj = StudyArea.objects.get(pk=sa[0])
             if sa_obj:
                 dep_id_list = [x.id for x in sa_obj.deployment_set.all()]
+        elif keyword_list := params.get('keyword'):
+            keyword = keyword_list[0]
+            proj_list = Project.objects.values_list('id', flat=True).filter(keyword__contains=keyword).all()
+            dep_id_list += self.get_deployment_list(proj_list)
         elif proj_list := params.get('project'):
-            deps = Deployment.objects.values_list('id', flat=True).filter(project_id__in=proj_list).all()
-            if len(deps) == 0:
-                dep_id_list = ['-1'] # no images related to this project
-            else:
-                dep_id_list = list(deps)
+            dep_id_list += self.get_deployment_list(proj_list)
 
         if len(dep_id_list):
             self.query = self.query.filter(deployment_id__in=dep_id_list)
@@ -71,6 +72,16 @@ class Calculation(object):
             self.calculate_params['interval2'] = int(t2[0])
 
         #print (self.query.query)
+
+    def get_deployment_list(self, proj_list):
+        dep_id_list = []
+        deps = Deployment.objects.values_list('id', flat=True).filter(project_id__in=proj_list).all()
+        if len(deps) == 0:
+            dep_id_list = ['-1'] # no images related to this project
+        else:
+            dep_id_list = list(deps)
+
+        return dep_id_list
 
     def group_by_deployment(self):
         #memo='calc-sample',
