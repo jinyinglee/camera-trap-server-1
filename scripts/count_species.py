@@ -3,7 +3,7 @@ from django.utils import timezone
 from taicat.models import Species
 from taicat.utils import get_species_list
 
-ret = get_species_list()
+ret = get_species_list(True)
 now = timezone.now()
 for i in ret['all']:
     if sp := Species.objects.filter(name=i[0]).first():
