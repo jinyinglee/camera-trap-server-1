@@ -23,7 +23,7 @@ from .utils import (
 
 def index(request):
     species_list = get_species_list()
-    project_list = Project.objects.all()
+    project_list = Project.published_objects.all() #objects.all()
     #print (request.GET)
     if request.method == 'GET':
         cal = None
@@ -38,6 +38,7 @@ def index(request):
             'next_page_number': 0,
             'previous_page_number': 0,
         }
+        to_count = ''
         if query_type:
             cal = Calculation(dict(request.GET))
             if query_type == 'calculate':
@@ -46,7 +47,6 @@ def index(request):
             elif query_type == 'query':
                 NUM_PER_PAGE = 20
                 page = 1
-                to_count = ''
                 if p:= request.GET.get('page', ''):
                     page = int(p)
 
