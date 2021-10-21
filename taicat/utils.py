@@ -52,18 +52,21 @@ class Calculation(object):
         if deps := params.get('deployment', ''):
             dep_id_list = deps
         elif sa := params.get('studyarea', ''):
-            sa_obj = StudyArea.objects.get(pk=sa[0])
-            if sa_obj:
-                dep_id_list = [x.id for x in sa_obj.deployment_set.all()]
+            self.query = self.query.filter(studyarea_id=sa[0])
+            #sa_obj = StudyArea.objects.get(pk=sa[0])
+            #if sa_obj:
+            #    dep_id_list = [x.id for x in sa_obj.deployment_set.all()]
         elif keyword_list := params.get('keyword'):
             keyword = keyword_list[0]
             proj_list = Project.objects.values_list('id', flat=True).filter(keyword__contains=keyword).all()
-            dep_id_list += self.get_deployment_list(proj_list)
+            #dep_id_list += self.get_deployment_list(proj_list)
+            self.query = self.query.filter(project_id__in=proj_list)
         elif proj_list := params.get('project'):
-            dep_id_list += self.get_deployment_list(proj_list)
+            self.query = self.query.filter(project_id__in=proj_list)
+            #dep_id_list += self.get_deployment_list(proj_list)
 
-        if len(dep_id_list):
-            self.query = self.query.filter(deployment_id__in=dep_id_list)
+        #if len(dep_id_list):
+        #    self.query = self.query.filter(deployment_id__in=dep_id_list)
 
         # calculate params
         if t1 := params.get('interval', ''):
@@ -71,6 +74,7 @@ class Calculation(object):
         if t2 := params.get('interval2', ''):
             self.calculate_params['interval2'] = int(t2[0])
 
+        self.query = self.query.order_by('id') # 差很多 !
         #print (self.query.query)
 
     def get_deployment_list(self, proj_list):
@@ -257,5 +261,4 @@ def get_species_list(force_update=False):
         counter_dict = dict(counter)
         species_list = sorted(counter_dict.items(), key=itemgetter(1), reverse=True)
         cache.set(CACHE_KEY, species_list, 86400) # 1d
-
     return species_list

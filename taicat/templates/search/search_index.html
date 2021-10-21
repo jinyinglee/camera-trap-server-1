@@ -229,13 +229,13 @@ console.log('debug query:', '{{ debug_query|safe}}' );
 
         {% if request.GET.query_type == "query" %}
         <legend>篩選結果</legend>
-          {% if page_obj.paginator.count <= 0 %}
+          {% if page_obj.count <= 0 %}
           無資料
           {% else %}
       <table class="table table-striped">
         <thead class="thead-light"><tr><th>#</th><th scope="col">計畫</th><th scope="col">樣區</th><th scope="col">相機位置</th><th scope="col">filename</th><th scope="col">datetime</th><th scope="col">species</th></tr></thead>
         <tbody>
-          {% for i in page_obj %}
+          {% for i in page_obj.items %}
           <tr>
             <th scope="row">{{ forloop.counter }}</th>
             <td>{{ i.deployment.project.name }}</td>
@@ -262,7 +262,7 @@ console.log('debug query:', '{{ debug_query|safe}}' );
       {% endcomment %}
 
       <div class="pagination mb-4">
-        <span class="mx-2"><strong>總共: {{ page_obj.paginator.count}} 筆</strong></span>
+        <span class="mx-2"><strong>總共: {{ page_obj.count }} 筆</strong></span>
         <span class="step-links">
           {% if page_obj.has_previous %}
           <a href="?page=1&{{ request.GET.urlencode|off_page }}">&laquo; 第一頁</a>
@@ -270,12 +270,12 @@ console.log('debug query:', '{{ debug_query|safe}}' );
           {% endif %}
 
           <span class="current">
-            [ {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} ]
+            [ {{ page_obj.number }} / {{ page_obj.num_pages }} ]
           </span>
 
           {% if page_obj.has_next %}
-          <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode|off_page }}">下一頁</a>
-          <a href="?page={{ page_obj.paginator.num_pages }}&{{ request.GET.urlencode|off_page }}">最後一頁 &raquo;</a>
+          <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode|off_page }}{{ to_count }}">下一頁</a>
+          <a href="?page={{ page_obj.num_pages }}&{{ request.GET.urlencode|off_page }}{{ to_count}}">最後一頁 &raquo;</a>
           {% endif %}
         </span>
       </div>
