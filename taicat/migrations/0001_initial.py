@@ -15,7 +15,8 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Contact',
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.AutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=1000)),
                 ('email', models.CharField(max_length=1000)),
                 ('role', models.CharField(max_length=1000)),
@@ -24,13 +25,18 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Project',
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.AutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=1000, verbose_name='計劃名稱')),
                 ('description', models.TextField(blank=True, default='')),
-                ('start_date', models.DateField(blank=True, null=True, verbose_name='計劃時間-開始')),
-                ('end_date', models.DateField(blank=True, null=True, verbose_name='計劃時間-結束')),
-                ('principal_investigator', models.CharField(blank=True, max_length=1000, null=True, verbose_name='計劃主持人')),
-                ('funding_agency', models.CharField(blank=True, max_length=1000, null=True)),
+                ('start_date', models.DateField(
+                    blank=True, null=True, verbose_name='計劃時間-開始')),
+                ('end_date', models.DateField(
+                    blank=True, null=True, verbose_name='計劃時間-結束')),
+                ('principal_investigator', models.CharField(
+                    blank=True, max_length=1000, null=True, verbose_name='計劃主持人')),
+                ('funding_agency', models.CharField(
+                    blank=True, max_length=1000, null=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
                 ('source_data', models.JSONField(blank=True, default=dict)),
             ],
@@ -38,45 +44,71 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='StudyArea',
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.AutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=1000)),
                 ('created', models.DateTimeField(auto_now_add=True)),
-                ('parent', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='taicat.studyarea')),
-                ('project', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='taicat.project')),
+                ('parent', models.ForeignKey(
+                    null=True, on_delete=django.db.models.deletion.CASCADE, to='taicat.studyarea')),
+                ('project', models.ForeignKey(
+                    null=True, on_delete=django.db.models.deletion.SET_NULL, to='taicat.project')),
             ],
         ),
         migrations.CreateModel(
             name='Image',
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.AutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
                 ('filename', models.CharField(max_length=1000)),
                 ('datetime', models.DateTimeField(null=True)),
-                ('photo_type', models.CharField(choices=[('start', 'Start'), ('end', 'End'), ('set-up', 'Set Up'), ('blank', 'Blank'), ('animal', 'Animal'), ('staff', 'Staff'), ('unknown', 'Unknown'), ('unidentifiable', 'Unidentifiable'), ('time-lapse', 'Timelapse')], default='animal', max_length=100)),
+                ('photo_type', models.CharField(choices=[('start', 'Start'), ('end', 'End'), ('set-up', 'Set Up'), ('blank', 'Blank'), ('animal', 'Animal'), (
+                    'staff', 'Staff'), ('unknown', 'Unknown'), ('unidentifiable', 'Unidentifiable'), ('time-lapse', 'Timelapse')], default='animal', max_length=100)),
                 ('count', models.PositiveSmallIntegerField(default=1)),
                 ('species', models.CharField(blank=True, default='', max_length=1000)),
                 ('source_data', models.JSONField(blank=True, default=dict)),
-                ('sequence_definition', models.CharField(blank=True, default='', max_length=1000)),
-                ('life_stage', models.CharField(blank=True, default='', max_length=1000)),
+                ('sequence_definition', models.CharField(
+                    blank=True, default='', max_length=1000)),
+                ('life_stage', models.CharField(
+                    blank=True, default='', max_length=1000)),
                 ('sex', models.CharField(blank=True, default='', max_length=1000)),
                 ('remarks', models.TextField(blank=True, default='')),
-                ('animal_id', models.CharField(blank=True, default='', max_length=1000)),
+                ('animal_id', models.CharField(
+                    blank=True, default='', max_length=1000)),
                 ('created', models.DateTimeField(auto_now_add=True)),
-                ('sequence', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='taicat.image')),
+                ('sequence', models.ForeignKey(blank=True, null=True,
+                 on_delete=django.db.models.deletion.SET_NULL, to='taicat.image')),
             ],
         ),
         migrations.CreateModel(
             name='Deployment',
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('longitude', models.DecimalField(blank=True, decimal_places=8, max_digits=11, null=True)),
-                ('latitude', models.DecimalField(blank=True, decimal_places=8, max_digits=10, null=True)),
+                ('id', models.AutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
+                ('longitude', models.DecimalField(blank=True,
+                 decimal_places=8, max_digits=11, null=True)),
+                ('latitude', models.DecimalField(blank=True,
+                 decimal_places=8, max_digits=10, null=True)),
                 ('altitude', models.PositiveSmallIntegerField(blank=True, null=True)),
                 ('name', models.CharField(max_length=1000)),
-                ('camera_status', models.CharField(choices=[('1', 'Camera Functioning'), ('2', 'Unknown Failure'), ('3', 'Vandalism/Theft'), ('4', 'Memory Card/Film Failure'), ('5', 'Camera Hardware Failure'), ('6', 'Wildlife Damag')], default='1', max_length=4)),
+                ('camera_status', models.CharField(choices=[('1', 'Camera Functioning'), ('2', 'Unknown Failure'), ('3', 'Vandalism/Theft'), (
+                    '4', 'Memory Card/Film Failure'), ('5', 'Camera Hardware Failure'), ('6', 'Wildlife Damag')], default='1', max_length=4)),
                 ('created', models.DateTimeField(auto_now_add=True)),
                 ('source_data', models.JSONField(blank=True, default=dict)),
-                ('project', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='taicat.project')),
-                ('study_areas', models.ManyToManyField(blank=True, related_name='deployments', to='taicat.StudyArea')),
+                ('project', models.ForeignKey(
+                    null=True, on_delete=django.db.models.deletion.SET_NULL, to='taicat.project')),
+                ('study_areas', models.ManyToManyField(blank=True,
+                 related_name='deployments', to='taicat.StudyArea')),
+            ],
+        ),
+        migrations.CreateModel(
+            name='Image_info',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
+                ('source_data', models.JSONField(blank=True, default=dict)),
+                ('exif', models.JSONField(blank=True, default=dict)),
+                ('image', models.ForeignKey(
+                    null=True, on_delete=django.db.models.deletion.SET_NULL, to='taicat.image')),
             ],
         ),
     ]

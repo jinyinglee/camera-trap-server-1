@@ -188,7 +188,7 @@ def get_species_data(request):
                     """
         cursor.execute(query)
         species_data = cursor.fetchall()
-    response = species_data
+    response = {'species_data': species_data}
     return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
 
 
