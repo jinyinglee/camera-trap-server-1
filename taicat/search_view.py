@@ -20,10 +20,13 @@ from .utils import (
     get_species_list,
     Calculation
 )
+from .views import check_if_authorized
 
 def index(request):
     species_list = get_species_list()
     project_list = Project.published_objects.all() #objects.all()
+    project_list = [p for p in project_list if check_if_authorized(request, p.id)]
+
     #print (request.GET)
     if request.method == 'GET':
         cal = None
