@@ -1,6 +1,17 @@
+from datetime import timedelta
+
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 from django.contrib.postgres.indexes import GinIndex
+
+class Species(models.Model):
+    DEFAULT_LIST = ['水鹿', '山羌', '獼猴', '山羊', '野豬', '鼬獾', '白鼻心', '食蟹獴', '松鼠',
+        '飛鼠', '黃喉貂', '黃鼠狼', '小黃鼠狼', '麝香貓', '黑熊', '石虎', '穿山甲', '梅花鹿', '野兔', '蝙蝠']
+    name = models.CharField(max_length=1000)
+    count = models.IntegerField(null=True, blank=True)
+    last_updated = models.DateTimeField(null=True)
+    status = models.CharField(max_length=4, default='', null=True, blank=True) # I: initial
 
 
 class Contact(models.Model):
@@ -42,6 +53,12 @@ class Organization(models.Model):
     def __str__(self):
         return '<Organization {}> {}'.format(self.id, self.name)
 
+class PublishedProjectManager(models.Manager):
+    def get_queryset(self):
+        today = timezone.now().date()
+        five_years_ago = today - timedelta(days=1825)
+        #5_years_ago = today - timedelta(days=1825) # 365*5
+        return super(PublishedProjectManager, self).get_queryset().filter(Q(publish_date__lte=today)|Q(end_date__lte=five_years_ago))
 
 class Project(models.Model):
     MODE_CHOICES = (
@@ -85,6 +102,8 @@ class Project(models.Model):
     video_material_license = models.CharField(
         '影像資料', max_length=10, blank=True, null=True)
 
+    objects = models.Manager()
+    published_objects = PublishedProjectManager()
     # OrganizationName
 
     def __str__(self):
