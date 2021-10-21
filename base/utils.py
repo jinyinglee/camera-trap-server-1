@@ -4,6 +4,7 @@ from django.core.cache import cache
 import time
 from django.db import connection
 from taicat.models import Image
+import pandas as pd
 
 
 class TokenGenerator(PasswordResetTokenGenerator):
