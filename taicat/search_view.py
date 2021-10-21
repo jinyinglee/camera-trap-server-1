@@ -28,7 +28,8 @@ def index(request):
     #species_list = species_list['all']
     species_list = [[sp.name, sp.count] for sp in Species.objects.filter(status='I').all()]
     project_list = Project.published_objects.all() #objects.all()
-    project_list = [p for p in project_list if check_if_authorized(request, p.id)]
+    # TODO 
+    #project_list = [p for p in project_list if check_if_authorized(request, p.id)]
 
     #print (request.GET)
     if request.method == 'GET':
@@ -69,7 +70,8 @@ def index(request):
                 #    cursor.execute(q)
                 #    foo = cursor.fetchone()
                 #    print (foo)
-                if c:= request.GET.get('count'):
+                count = request.GET.get('count', None)
+                if int(count) > 0:
                     page_obj['count'] = int(c)
                 else:
                     page_obj['count'] = cal.query.values('id').count()
