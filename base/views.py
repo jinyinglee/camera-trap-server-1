@@ -12,62 +12,8 @@ from django.contrib import messages
 from decimal import Decimal
 import time
 import pandas as pd
+from .utils import get_cache_growth_data, get_cache_species_data
 
-def count():
-    with connection.cursor() as cursor:
-        query = """SELECT EXTRACT (year FROM datetime) as year, count(id) as count 
-        FROM taicat_image
-        GROUP BY year
-        """
-        cursor.execute(query)
-        data_growth_image = cursor.fetchall()
-        data_growth_image = pd.DataFrame(data_growth_image, columns=[
-            'year', 'num_image']).sort_values('year')
-        year_min, year_max = int(data_growth_image.year.min()), int(
-            data_growth_image.year.max())
-        year_gap = pd.DataFrame(
-            [i for i in range(2008, year_max)], columns=['year'])
-        data_growth_image = year_gap.merge(
-            data_growth_image, how='left').fillna(0)
-        data_growth_image['cumsum'] = data_growth_image.num_image.cumsum()
-        data_growth_image = data_growth_image.drop(columns=['num_image'])
-        data_growth_image = list(
-            data_growth_image.itertuples(index=False, name=None))
-        print(data_growth_image)
-
-    with connection.cursor() as cursor:
-        query = """
-        SELECT MIN(EXTRACT (year FROM datetime)) as year, deployment_id FROM taicat_image
-        GROUP BY deployment_id
-        """
-        cursor.execute(query)
-        data_growth_deployment = cursor.fetchall()
-        data_growth_deployment = pd.DataFrame(data_growth_deployment, columns=[
-            'year', 'deployment_id']).sort_values('year')
-        data_growth_deployment = data_growth_deployment.groupby(
-            ['year'], as_index=False).count()
-        data_growth_deployment = year_gap.merge(
-            data_growth_deployment, how='left').fillna(0)
-        data_growth_deployment['cumsum'] = data_growth_deployment.deployment_id.cumsum(
-        )
-        data_growth_deployment = data_growth_deployment.drop(
-            columns=['deployment_id'])
-        data_growth_deployment = list(
-            data_growth_deployment.itertuples(index=False, name=None))
-        print(data_growth_deployment)
-
-    with connection.cursor() as cursor:
-        query = """with b as (SELECT anno ->> 'species' as s
-        FROM taicat_image i
-        LEFT JOIN jsonb_array_elements(i.annotation::jsonb) AS anno ON true)
-        select count(*), s from b group by s
-        """
-        cursor.execute(query)
-        species_data = cursor.fetchall()
-        species_list = ['水鹿', '山羌', '獼猴', '山羊', '野豬', '鼬獾', '白鼻心', '食蟹獴', '松鼠',
-                        '飛鼠', '黃喉貂', '黃鼠狼', '小黃鼠狼', '麝香貓', '黑熊', '石虎', '穿山甲', '梅花鹿', '野兔', '蝙蝠']
-        species_data = [x for x in species_data if x[1] in species_list]
-        print(species_data)
 #init()
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -234,17 +180,11 @@ def home(request):
 
 
 def get_species_data(request):
-    print('a')
-    s = time.time()
-
-    response = {'species_data': species_data}
-    print(time.time()-s, 's')
+    response = get_cache_species_data()
     return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
 
 
 def get_geo_data(request):
-    print('b')
-    s = time.time()
     with connection.cursor() as cursor:
         query = """SELECT d.longitude, d.latitude, p.name FROM taicat_deployment d 
                     JOIN taicat_project p ON p.id = d.project_id 
@@ -253,17 +193,11 @@ def get_geo_data(request):
         cursor.execute(query)
         deployment_points = cursor.fetchall()
     response = {'deployment_points': deployment_points}
-    print(time.time()-s, 'd')
     return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
 
 
 def get_growth_data(request):
-    print('c')
-    s = time.time()
-    response = {'data_growth_image': data_growth_image,
-                'data_growth_deployment': data_growth_deployment}
-    print(time.time()-s, 'g')
-
+    response = get_cache_growth_data()
     return HttpResponse(json.dumps(response), content_type='application/json')
 
 

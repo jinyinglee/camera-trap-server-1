@@ -234,7 +234,6 @@ class Image(models.Model):
     count = models.PositiveSmallIntegerField(default=1)
     species = models.CharField(max_length=1000, default='', blank=True)
     #taxon = models
-    source_data = models.JSONField(default=dict, blank=True)
     sequence = models.ForeignKey(
         'self', on_delete=models.SET_NULL, null=True, blank=True)  # imageid
     sequence_definition = models.CharField(
@@ -247,8 +246,10 @@ class Image(models.Model):
     annotation = models.JSONField(default=dict, blank=True)
     memo = models.TextField(default='', blank=True)
     image_hash = models.TextField(default='', blank=True)
-    exif = models.JSONField(default=dict, blank=True)
     from_mongo = models.BooleanField(default=False, blank=True)
+
+    source_data = models.JSONField(default=dict, blank=True)
+    exif = models.JSONField(default=dict, blank=True)
 
     @property
     def species_list(self):
@@ -257,3 +258,9 @@ class Image(models.Model):
     class Meta:
         ordering = ['created']
         indexes = [GinIndex(fields=['annotation'])]
+
+
+class Image_info(models.Model):
+    image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True)
+    source_data = models.JSONField(default=dict, blank=True)
+    exif = models.JSONField(default=dict, blank=True)
