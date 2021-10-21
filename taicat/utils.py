@@ -246,8 +246,9 @@ def get_species_list(force_update=False):
         return species_list
     else:
         species_list = count_all_species_list()
-        print('save', species_list)
+        #print('save', species_list)
         cache.set(CACHE_KEY, species_list, 86400) # 1d
+        return species_list
 
 def count_all_species_list():
     all_species_list = []
