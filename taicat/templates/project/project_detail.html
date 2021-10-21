@@ -274,7 +274,7 @@
 <!-- Edit Modal -->
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content">
+        <div class="modal-content edit-content">
             <div class="modal-body" id="modal-text">
                 <div class="row my-3">
                     <div class="col-12" id="edit-image">
@@ -355,7 +355,7 @@
                 <input type="hidden" id="edit-page_info" name="page_info" value="">
                 </form>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer edit-footer">
                 <a class="btn btn-outline-success" data-bs-dismiss="modal">取消</a>
                 <a class="btn btn-orange edit-submit" >儲存</a>
             </div>
@@ -710,8 +710,8 @@ $(document).ready(function() {
 
         // disable edit 
         {% if not edit %}
-        $('.modal-content input').attr('disabled', 'disabled')
-        $('.modal-footer').remove()
+        $('.edit-content input').attr('disabled', 'disabled')
+        $('.edit-footer').remove()
         {% endif %}
         });
 
