@@ -2,7 +2,7 @@ from django.http import response
 from django.shortcuts import render, HttpResponse, redirect
 import json
 from django.db import connection
-from taicat.models import Deployment, Image, Contact, Organization, Project
+from taicat.models import Deployment, Image, Contact, Organization, Project, Species
 from django.db.models import Count, Window, F, Sum, Min, Q
 from django.db.models.functions import ExtractYear
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
@@ -12,9 +12,11 @@ from django.contrib import messages
 from decimal import Decimal
 import time
 import pandas as pd
-from .utils import get_cache_growth_data, get_cache_species_data
+from .utils import get_cache_growth_data
 
-#init()
+# init()
+
+
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Decimal):
@@ -180,7 +182,13 @@ def home(request):
 
 
 def get_species_data(request):
-    response = get_cache_species_data()
+    species_data = []
+    with connection.cursor() as cursor:
+        query = """SELECT count, name from taicat_species where status = 'I'
+                    """
+        cursor.execute(query)
+        species_data = cursor.fetchall()
+    response = species_data
     return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
 
 

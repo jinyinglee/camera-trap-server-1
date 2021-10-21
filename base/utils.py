@@ -75,16 +75,17 @@ species_list = ['水鹿', '山羌', '獼猴', '山羊', '野豬', '鼬獾', '白
                 '飛鼠', '黃喉貂', '黃鼠狼', '小黃鼠狼', '麝香貓', '黑熊', '石虎', '穿山甲', '梅花鹿', '野兔', '蝙蝠']
 
 
-def get_cache_species_data():
-    species_data = cache.get('species_data')
+# def get_cache_species_data():
+#     species_data = cache.get('species_data')
 
-    if not species_data:
-        print('calculate species_data')
-        for i in species_list:
-            spe_c = Image.objects.filter(
-                annotation__contains=[{'species': i}]).count()
-            if spe_c > 0:
-                species_data += [(spe_c, i)]
-        species_data.sort(reverse=True)
-        response = {'species_data': species_data}
-    return response
+#     if not species_data:
+#         species_data = []
+#         print('calculate species_data')
+#         for i in species_list:
+#             spe_c = Image.objects.filter(
+#                 annotation__contains=[{'species': i}]).count()
+#             if spe_c > 0:
+#                 species_data += [(spe_c, i)]
+#         species_data.sort(reverse=True)
+#         response = {'species_data': species_data}
+#     return response
