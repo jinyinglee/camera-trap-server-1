@@ -241,26 +241,37 @@ class Calculation(object):
 
 def get_species_list(force_update=False):
     CACHE_KEY = 'species_list'
-    '''
     species_list = cache.get(CACHE_KEY)
     if not force_update and species_list:
         return species_list
     else:
-        sp_list = []
-        for i in Image.objects.all():
-            if alist := i.annotation:
-                for a in alist:
-                    try:
-                        if sp := a.get('species', ''):
-                            sp_list.append(sp)
-                    except:
-                        #print ('annotation load error')
-                        pass
-
-        counter = collections.Counter(sp_list)
-        counter_dict = dict(counter)
-        species_list = sorted(counter_dict.items(), key=itemgetter(1), reverse=True)
+        species_list = count_all_species_list()
+        print('save', species_list)
         cache.set(CACHE_KEY, species_list, 86400) # 1d
-    '''
-    species_list = []
-    return species_list
+
+def count_all_species_list():
+    all_species_list = []
+    ret = {}
+    for p in Project.objects.all():
+        img_list = Image.objects.values_list('annotation', flat=True).filter(project_id=p).all()
+        project_species_list = []
+        for alist in img_list:
+            for a in alist:
+                try:
+                    if sp := a.get('species', ''):
+                        project_species_list.append(sp)
+                        all_species_list.append(sp)
+                except:
+                    #print ('annotation load error')
+                    pass
+        counter = collections.Counter(project_species_list)
+        counter_dict = dict(counter)
+        project_species_list = sorted(counter_dict.items(), key=itemgetter(1), reverse=True)
+        #print(p, p.id, project_species_list, len(img_list))
+        ret[p.id] = project_species_list
+    counter_all = collections.Counter(all_species_list)
+    counter_dict_all = dict(counter_all)
+    all_species_list = sorted(counter_dict_all.items(), key=itemgetter(1), reverse=True)
+    ret['all'] = all_species_list
+
+    return ret

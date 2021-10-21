@@ -14,7 +14,8 @@ from django.db.models import (
 
 from taicat.models import (
     Image,
-    Project
+    Project,
+    Species,
 )
 from .utils import (
     get_species_list,
@@ -23,7 +24,9 @@ from .utils import (
 from .views import check_if_authorized
 
 def index(request):
-    species_list = get_species_list()
+    #species_list = get_species_list()
+    #species_list = species_list['all']
+    species_list = [[sp.name, sp.count] for sp in Species.objects.filter(status='I').all()]
     project_list = Project.published_objects.all() #objects.all()
     project_list = [p for p in project_list if check_if_authorized(request, p.id)]
 
