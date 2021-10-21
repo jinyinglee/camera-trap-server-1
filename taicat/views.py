@@ -869,6 +869,7 @@ def generate_download_excel(request, pk):
     download_url = request.scheme+"://" + \
         request.META['HTTP_HOST']+settings.MEDIA_URL + \
         os.path.join('download', n)
+    download_url = download_url.replace('http', 'https')
 
     email_subject = '[臺灣自動相機資訊系統] 下載資料'
     email_body = render_to_string('project/download.html', {
