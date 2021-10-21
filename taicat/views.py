@@ -29,6 +29,13 @@ from conf.settings import env
 import os
 from django.core.mail import send_mail
 import threading
+import string
+import random
+
+
+def randomword(length):
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for i in range(length))
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -855,7 +862,7 @@ def generate_download_excel(request, pk):
     else:
         df = pd.DataFrame()  # no data
 
-    n = f'download_{datetime.now().strftime("%Y-%m-%d")}.xlsx'
+    n = f'download_{randomword(8)}_{datetime.now().strftime("%Y-%m-%d")}.xlsx'
 
     download_dir = os.path.join(settings.MEDIA_ROOT, 'download')
     df.to_excel(os.path.join(download_dir, n), index=False)
