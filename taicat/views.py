@@ -28,6 +28,7 @@ import numpy as np
 from conf.settings import env
 import os
 from django.core.mail import send_mail
+import threading
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -487,6 +488,37 @@ def data(request):
     species = requests.get('species')
     conditions = ''
     deployment = requests.getlist('deployment[]')
+
+    sa = requests.get('sa')
+    # if sa:
+    #     if deployment:
+    #         if 'all' not in deployment:
+    #             d_list = [int(i) for i in deployment]
+    #             d_list = str(d_list).replace('[', '(').replace(']', ')')
+    #             conditions += f' AND i.deployment_id IN {d_list}'
+    #     else:
+    #         conditions += f' AND i.studyarea_id = {sa}'
+    # spe_conditions = ''
+    # if species:
+    #     spe_conditions = f" WHERE anno ->> 'species' = '{species}' "
+
+    # with connection.cursor() as cursor:
+    #     query = """WITH base_request as (SELECT
+    #                     i.studyarea_id, i.deployment_id, i.filename,
+    #                     to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime,
+    #                     anno, i.file_url, i.id
+    #                     FROM taicat_image i
+    #                     LEFT JOIN jsonb_array_elements(i.annotation::jsonb) AS anno ON true
+    #                     WHERE i.project_id = {} {} {}
+    #                     ORDER BY i.created, i.filename)
+    #                     select * from base_request {};"""
+    #     cursor.execute(query.format(
+    #         pk, date_filter, conditions, spe_conditions))
+    #     image_info = cursor.fetchall()
+    # if image_info:
+    #     df = pd.DataFrame(image_info, columns=['studyarea_id', 'deployment_id',
+    #                       'filename', 'datetime', 'annotation', 'file_url', 'image_id'])
+    deployment = requests.getlist('deployment[]')
     sa = requests.get('sa')
     if sa:
         conditions += f' AND sa.id = {sa}'
@@ -518,6 +550,10 @@ def data(request):
     if image_info:
         df = pd.DataFrame(image_info, columns=[
                           'saname', 'dname', 'filename', 'datetime', 'saparent', 'annotation', 'file_url', 'image_id', 'from_mongo'])
+        # parse string to dict
+
+        # lack sa.name AS saname, d.name AS dname, sa.parent_id AS saparent
+
         # parse string to dict
         df['anno_list'] = df.annotation.apply(lambda x: literal_eval(str(x)))
 
@@ -633,8 +669,8 @@ def project_detail(request, pk):
         cursor.execute(query.format(pk))
         project_info = cursor.fetchone()
     project_info = list(project_info)
-    # deployment = Deployment.objects.filter(project_id=pk).values('name','id').exclude(name=[None, '']).distinct().order_by('name')
     deployment = Deployment.objects.filter(project_id=pk)
+    # TODO
     with connection.cursor() as cursor:
         query = """with base_request as ( 
                     SELECT 
@@ -643,10 +679,8 @@ def project_detail(request, pk):
                         CROSS JOIN LATERAL
                         json_to_recordset(i.annotation::json) x 
                                 ( species text) 
-                        WHERE i.annotation::TEXT <> '[]' AND i.deployment_id IN (
-                            SELECT d.id FROM taicat_deployment d
-                            WHERE d.project_id = {}
-                        ) )
+                        WHERE i.annotation::TEXT <> '[]' AND i.project_id = {}
+                        )
                 select count(id), species from base_request
                 group by species;
                 """
@@ -704,6 +738,7 @@ def edit_image(request, pk):
     obj.save()
 
     # update filter species options
+    # TODO
     with connection.cursor() as cursor:
         query = """with base_request as ( 
                     SELECT 
@@ -712,10 +747,8 @@ def edit_image(request, pk):
                         CROSS JOIN LATERAL
                         json_to_recordset(i.annotation::json) x 
                                 ( species text) 
-                        WHERE i.annotation::TEXT <> '[]' AND i.deployment_id IN (
-                            SELECT d.id FROM taicat_deployment d
-                            WHERE d.project_id = {}
-                        ) )
+                        WHERE i.annotation::TEXT <> '[]' AND i.project_id = {} 
+                        )
                 select count(id), species from base_request
                 group by species;
                 """
@@ -729,7 +762,9 @@ def edit_image(request, pk):
 
 
 def download_request(request, pk):
-    generate_download_excel(request, pk)
+    task = threading.Thread(target=generate_download_excel, args=(request, pk))
+    # task.daemon = True
+    task.start()
     return JsonResponse({"status": 'success'}, safe=False)
 
 
@@ -834,4 +869,4 @@ def generate_download_excel(request, pk):
     })
     send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, [email])
 
-    return response
+    # return response
