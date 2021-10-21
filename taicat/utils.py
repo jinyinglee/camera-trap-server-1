@@ -241,7 +241,7 @@ class Calculation(object):
 
 def get_species_list(force_update=False):
     CACHE_KEY = 'species_list'
-
+    '''
     species_list = cache.get(CACHE_KEY)
     if not force_update and species_list:
         return species_list
@@ -261,4 +261,6 @@ def get_species_list(force_update=False):
         counter_dict = dict(counter)
         species_list = sorted(counter_dict.items(), key=itemgetter(1), reverse=True)
         cache.set(CACHE_KEY, species_list, 86400) # 1d
+    '''
+    species_list = []
     return species_list
