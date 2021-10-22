@@ -67,6 +67,9 @@
 
       .content {
         margin: 40px auto;
+        min-height: -o-calc(100vh - 400px); /* opera */
+        min-height: -webkit-calc(100vh - 400px); /* google, safari */
+        min-height: -moz-calc(100vh - 400px); /* firefox */
       }
 
       .image {
@@ -374,7 +377,7 @@
         </div>
       </div>
 
-    <footer class="text-center text-lg-start mt-auto" style="background: #2E432B;">
+    <footer class="text-center text-lg-start mt-auto " style="background: #2E432B;">
         <div class="container">
           <div class="row">
             <div class="col-xs-12 col-sm-12 col-md-4 text-center pt-4">
