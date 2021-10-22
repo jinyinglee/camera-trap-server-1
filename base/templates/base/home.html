@@ -411,7 +411,6 @@
                 $.ajax({
                     data: {"city": e.target.feature.properties.COUNTYNAME},
                     dataType: "json",
-                    url: "{% url 'stat_county' %}",
                     success: function(data) {
                         $('#click-no-proj').html(`計畫總數：${data.no_proj}`);
                         $('#click-no-img').html(`影像總數：${data.no_img}`);
