@@ -33,32 +33,33 @@ for i in data_growth_image.index:
     # data_growth_image = list(
     #     data_growth_image.itertuples(index=False, name=None))
 
-with connection.cursor() as cursor:
-    query = """
-            SELECT MIN(EXTRACT (year FROM datetime)) as year, deployment_id FROM taicat_image
-            GROUP BY deployment_id
-    """
-    cursor.execute(query)
-    data_growth_deployment = cursor.fetchall()
-    data_growth_deployment = pd.DataFrame(data_growth_deployment, columns=[
-        'year', 'deployment_id']).sort_values('year')
-    data_growth_deployment = data_growth_deployment.groupby(
-        ['year'], as_index=False).count()
-    data_growth_deployment = year_gap.merge(
-        data_growth_deployment, how='left').fillna(0)
-    data_growth_deployment['cumsum'] = data_growth_deployment.deployment_id.cumsum(
-    )
-    data_growth_deployment = data_growth_deployment.drop(
-        columns=['deployment_id'])
+# deprecated #
+# with connection.cursor() as cursor:
+#     query = """
+#             SELECT MIN(EXTRACT (year FROM datetime)) as year, deployment_id FROM taicat_image
+#             GROUP BY deployment_id
+#     """
+#     cursor.execute(query)
+#     data_growth_deployment = cursor.fetchall()
+#     data_growth_deployment = pd.DataFrame(data_growth_deployment, columns=[
+#         'year', 'deployment_id']).sort_values('year')
+#     data_growth_deployment = data_growth_deployment.groupby(
+#         ['year'], as_index=False).count()
+#     data_growth_deployment = year_gap.merge(
+#         data_growth_deployment, how='left').fillna(0)
+#     data_growth_deployment['cumsum'] = data_growth_deployment.deployment_id.cumsum(
+#     )
+#     data_growth_deployment = data_growth_deployment.drop(
+#         columns=['deployment_id'])
 
-for i in data_growth_deployment.index:
-    new = HomePageStat(
-        count=data_growth_deployment.loc[i, 'cumsum'],
-        year=data_growth_deployment.loc[i, 'year'],
-        type='deployment',
-        last_updated=now
-    )
-    new.save()
+# for i in data_growth_deployment.index:
+#     new = HomePageStat(
+#         count=data_growth_deployment.loc[i, 'cumsum'],
+#         year=data_growth_deployment.loc[i, 'year'],
+#         type='deployment',
+#         last_updated=now
+#     )
+#     new.save()
 
 # ---------- project ---------- #
 now = timezone.now()
