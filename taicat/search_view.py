@@ -32,8 +32,12 @@ def index(request):
     public_project_list = Project.published_objects.all()
     public_project_ids = [x.id for x in public_project_list]
     private_project_ids = Project.objects.exclude(id__in=public_project_ids).all()
-    available_project_ids = [p for p in private_project_ids if check_if_authorized(request, p.id)]
-    project_list = available_project_ids + list(public_project_list)
+    my_project_list = [p for p in private_project_ids if check_if_authorized(request, p.id)]
+    #project_list = my_project_list + list(public_project_list)
+    project_list = {
+        'public': public_project_list,
+        'my': my_project_list
+    }
 
     if request.method == 'GET':
         cal = None

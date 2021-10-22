@@ -182,9 +182,16 @@ console.log('debug query:', '{{ debug_query|safe}}' );
           <label for="project">計畫</label>
           <select name="project" class="form-select" aria-label="選擇計畫" id="project" onChange="handleProjectChange()" multiple size="3">
             <option value="">---</option>
-            {% for i in project_list %}
-            <option value="{{ i.id }}"{% if request.GET.project|to_int == i.id|to_int %} selected{% endif %}>{{ i.name }}</option>
-            {% endfor %}
+            <optgroup label="我的計劃">
+              {% for i in project_list.my %}
+              <option value="{{ i.id }}"{% if request.GET.project|to_int == i.id|to_int %} selected{% endif %}>{{ i.name }}</option>
+              {% endfor %}
+            </optgroup>
+            <optgroup label="公開計劃">
+              {% for i in project_list.public %}
+              <option value="{{ i.id }}"{% if request.GET.project|to_int == i.id|to_int %} selected{% endif %}>{{ i.name }}</option>
+              {% endfor %}
+            </optgroup>
           </select>
           <small class="form-text text-muted">可按 <code>Control</code> 複選</small>
         </div>
