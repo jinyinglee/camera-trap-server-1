@@ -180,6 +180,8 @@ def index(request):
             args['date_start'] = x
         if x := request.POST.get('date_end', ''):
             args['date_end'] = x
+        if x := request.POST.get('session', ''):
+            args['session'] = x
         if x := request.POST.get('interval', ''):
             args['interval'] = x
         if x := request.POST.get('interval2', ''):

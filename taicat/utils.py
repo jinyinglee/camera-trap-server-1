@@ -24,6 +24,7 @@ from taicat.models import (
 
 class Calculation(object):
     query = None
+    query_no_species = None
     object_list = []
     calculate_params = {}
     calculate_result = None
@@ -32,7 +33,9 @@ class Calculation(object):
 
         # apply filter
         #print(params)
-        self.query = self.make_basic_query(params, auth_project_ids)
+        self.query, self.query_no_species = self.make_basic_query(params, auth_project_ids)
+        #print (self.query.query)
+        #print (self.query_no_species.query)
         logging.debug(self.query.query)
 
         # calculate params
@@ -40,14 +43,16 @@ class Calculation(object):
             self.calculate_params['interval'] = int(t1[0])
         if t2 := params.get('interval2', ''):
             self.calculate_params['interval2'] = int(t2[0])
+        if x := params.get('session', ''):
+            self.calculate_params['session'] = x[0]
 
     def make_basic_query(self, params, auth_project_ids):
         query = Image.objects.filter()
+        species = None
 
         # species
         if sp := params.get('species', ''):
-            sp = sp[0]
-            query = query.filter(annotation__contains=[{'species': sp}])
+            species = sp[0]
 
         # time range
         if params.get('date_start', '') and params.get('date_end', ''):
@@ -84,30 +89,27 @@ class Calculation(object):
 
         query = query.filter(project_id__in=project_ids)
 
-        return query
+        query_no_species = query
+        if species:
+            query = query.filter(annotation__contains=[{'species': species}])
 
-    # DEPRICATED
-    def get_deployment_list(self, proj_list):
-        dep_id_list = []
-        deps = Deployment.objects.values_list('id', flat=True).filter(project_id__in=proj_list).all()
-        if len(deps) == 0:
-            dep_id_list = ['-1'] # no images related to this project
-        else:
-            dep_id_list = list(deps)
+        return query, query_no_species
 
-        return dep_id_list
-
-    def group_by_deployment(self):
-        self.deployment_set = self.query.values('deployment', 'deployment__name').annotate(count=Count('deployment')).order_by()
+    def group_by_deployment(self, query):
+        return query.values('deployment', 'deployment__name').annotate(count=Count('deployment')).order_by()
 
     def count_working_hour(self, query):
         '''相機工作時數
         為每台相機實際工作的時數。由使用者於行程管理中所設定的相機有效開始工作時間及結束時間的範圍相減，計算至小時。
         '''
         agg = query.aggregate(Max('datetime'), Min('datetime'))
-        diff_days = (agg['datetime__max']-agg['datetime__min']).days
-        working_hour = diff_days * 24
-        return [working_hour, [agg['datetime__min'], agg['datetime__max']]]
+        if agg['datetime__max'] and agg['datetime__min']:
+            #diff_days = (agg['datetime__max'] - agg['datetime__min']).day + 1
+            diff_days = (agg['datetime__max']-agg['datetime__min']).days + 1
+            working_hour = diff_days * 24 # 當天有照片就算工作 1 天 (24 hr)
+
+            return [working_hour, [agg['datetime__min'], agg['datetime__max']]]
+        return [0, ]
 
     def count_image(self, query, minutes):
         '''有效照片數
@@ -115,8 +117,7 @@ class Calculation(object):
         '''
         last_datetime = None
         count = 0
-        for image in query.order_by('datetime'):
-
+        for image in query.all():
             if last_datetime:
                 delta = image['datetime'] - last_datetime
                 if ((delta.days * 86400) + (delta.seconds / 3600)) > minutes * 60:
@@ -144,9 +145,9 @@ class Calculation(object):
 
         if working_hour > 0:
             event_num = count * 1.0 / working_hour
-            return event_num
+            return (count, (event_num, working_hour))
         else:
-            return 0
+            return 0, 0
 
     def find_next_month(self, year, month):
         month2 = month + 1
@@ -156,22 +157,25 @@ class Calculation(object):
             year2 += 1
         return (year2, month2)
 
-    def count_pod(self, year, month, working_hour):
+    def count_pod(self,  working_hour, year='', month=''):
         '''捕獲回合比例 proportion of occasions with detections
 此項指標將每台相機於每回合（可選擇資料之時間範圍全部 或 依每月計算）中的拍攝視為一個試驗（trial），每次的試驗區分為成功（拍攝到動物，不計個體數或頻率）或不成功（未拍攝到動物）兩種結果，並計算每回合每台相機的成功機率（成功次數/試驗次數，亦即相機捕獲動物之回合數/當期回合數），再計算所有相機的平均成功機率。
         '''
         if working_hour[0] == 0:
             return (0,)
 
-        ym2 = self.find_next_month(year, month)
-        next_first_day = date(ym2[0], ym2[1], 1)
-        this_first_day = date(year, month, 1)
-        days_in_month = (next_first_day - this_first_day).days
-        days_no_image = 0
-        days_no_image += (working_hour[1][0].date() - this_first_day).days
-        days_no_image += (next_first_day - working_hour[1][1].date()).days
-        #print(year, month, days_in_month, working_hour[1], x, y)
-        return (days_no_image / days_in_month, (days_no_image, days_in_month))
+        if year and month:
+            ym2 = self.find_next_month(year, month)
+            next_first_day = date(ym2[0], ym2[1], 1)
+            this_first_day = date(year, month, 1)
+            days_in_month = (next_first_day - this_first_day).days
+            days_no_image = 0
+            days_no_image += (working_hour[1][0].date() - this_first_day).days
+            days_no_image += (next_first_day - working_hour[1][1].date()).days
+            #print(year, month, days_in_month, working_hour[1], x, y)
+            return (days_no_image / days_in_month, (days_no_image, days_in_month))
+        else:
+            return (0, )
 
     def count_apoa(self, year, month, query):
         '''活動機率, apparent probability of activity, APOA
@@ -190,31 +194,8 @@ class Calculation(object):
                 res[i][x['hour'].hour] = [1, x['hour_count']]
         return res
 
-    def test(self):
-        self.group_by_deployment()
-        for dep in self.deployment_set:
-            dep_group_count = self.query.filter(deployment_id=dep['deployment']).annotate(month=Trunc('datetime', 'month')).values('month').annotate(month_count=Count('*')).order_by('month')
-            #print('#', dep['deployment'], dep['deployment__name'], dep['count'], dep)
-            round_list = []
-            for res_deployment_month in dep_group_count:
-                year = res_deployment_month['month'].year
-                month = res_deployment_month['month'].month
-                if year_range[0] == 0 or year < year_range[0]:
-                    year_range[0] = year
-                if year > year_range[1]:
-                    year_range[1] = year
-                if month_range[0] == 0 or month < month_range[0]:
-                    month_range[0] = month
-                if month > month_range[1]:
-                    month_range[1] = month
-
-                session_query = self.query.filter(deployment_id=dep['deployment']).filter(datetime__year=year, datetime__month=month) # TODO by month
-                working_hour = self.count_working_hour(session_query)
-                image_num = self.count_image(session_query, self.calculate_params.get('interval'))
-                event_num = self.count_event(session_query, self.calculate_params.get('interval2'), working_hour[0])
-            
     def calculate(self):
-        self.group_by_deployment()
+        deployment_set = self.group_by_deployment(self.query_no_species)
         result = {
             'deployment': {},
             'year_list': [],
@@ -222,52 +203,79 @@ class Calculation(object):
         }
         year_range = [0, 0]
         month_range = [0, 0]
-        self.query = self.query.values('datetime',)
-        # default round/session by month, TODO
-        for dep in self.deployment_set:
-            dep_group_count = self.query.filter(deployment_id=dep['deployment']).annotate(month=Trunc('datetime', 'month')).values('month').annotate(month_count=Count('*')).order_by('month')
-            #print('#', dep['deployment'], dep['deployment__name'], dep['count'], dep)
-            round_list = []
-            for res_deployment_month in dep_group_count:
-                year = res_deployment_month['month'].year
-                month = res_deployment_month['month'].month
-                if year_range[0] == 0 or year < year_range[0]:
-                    year_range[0] = year
-                if year > year_range[1]:
-                    year_range[1] = year
-                if month_range[0] == 0 or month < month_range[0]:
-                    month_range[0] = month
-                if month > month_range[1]:
-                    month_range[1] = month
+        self.query = self.query.values('datetime')
+        self.query_no_species = self.query_no_species.values('datetime')
 
-                session_query = self.query.filter(deployment_id=dep['deployment']).filter(datetime__year=year, datetime__month=month) # TODO by month
+        sess = self.calculate_params.get('session', '')
+
+        for dep in deployment_set:
+            print('#', dep['deployment'], dep['deployment__name'], dep['count'], dep)
+            sess_list = []
+            if sess == 'all':
+                session_query = self.query_no_species.filter(deployment_id=dep['deployment'])
+                session_query2 = self.query.filter(deployment_id=dep['deployment'])
                 working_hour = self.count_working_hour(session_query)
-                image_num = self.count_image(session_query, self.calculate_params.get('interval'))
-                event_num = self.count_event(session_query, self.calculate_params.get('interval2'), working_hour[0])
-                pod = self.count_pod(year, month, working_hour)
-                #print('##', year, month, res_deployment_month['month_count'], working_hour[0], image_num)
-                #apoa = self.count_apoa(year, month, session_query)
-                #print(len(apoa))
-                round_list.append({
-                    'year': year,
-                    'month': month,
-                    'count': res_deployment_month['month_count'],
+                image_num = self.count_image(session_query2, self.calculate_params.get('interval'))
+                oi3 = (image_num * 1.0 / working_hour[0]) * 1000 if image_num > 0 else 0
+                event_num = self.count_event(session_query2, self.calculate_params.get('interval2'), working_hour[0])
+                #pod = self.count_pod(working_hour)
+
+                sess_list.append({
                     'working_hour': working_hour,
                     'image_num': image_num,
+                    'oi3': oi3,
                     'event_num': event_num,
-                    'pod': pod,
-                    #'apoa': apoa,
+                    'pod': 0, #TODO
+                    'presence_absence': 0,
                 })
+            elif sess == 'month':
+                dep_group_count = self.query_no_species.filter(deployment_id=dep['deployment']).annotate(month=Trunc('datetime', 'month')).values('month').annotate(month_count=Count('*')).order_by('month')
+                for res_deployment_month in dep_group_count:
+                    year = res_deployment_month['month'].year
+                    month = res_deployment_month['month'].month
+                    if year_range[0] == 0 or year < year_range[0]:
+                        year_range[0] = year
+                    if year > year_range[1]:
+                        year_range[1] = year
+                    if month_range[0] == 0 or month < month_range[0]:
+                        month_range[0] = month
+                    if month > month_range[1]:
+                        month_range[1] = month
+
+                    session_query = self.query_no_species.filter(deployment_id=dep['deployment'], datetime__year=year, datetime__month=month)
+                    session_query2 = self.query.filter(deployment_id=dep['deployment'], datetime__year=year, datetime__month=month)
+
+                    working_hour = self.count_working_hour(session_query)
+                    image_num = self.count_image(session_query2, self.calculate_params.get('interval'))
+                    oi3 = (image_num * 1.0 / working_hour[0]) * 1000 if image_num > 0 else 0
+                    event_num = self.count_event(session_query2, self.calculate_params.get('interval2'), working_hour[0])
+                    pod = self.count_pod(working_hour, year, month)
+                    #apoa = self.count_apoa(year, month, session_query)
+                    #print(len(apoa))
+                    sess_list.append({
+                        'year': year,
+                        'month': month,
+                        #'count': res_deployment_month['month_count'],
+                        'working_hour': working_hour,
+                        'image_num': image_num,
+                        'oi3': oi3,
+                        'event_num': event_num,
+                        'pod': pod,
+                        'presence_absence': 1 if pod[0] else 0,
+                        #'apoa': apoa,
+                    })
 
             result['deployment'][dep['deployment']] = {
                 'count': dep['count'],
                 'name': dep['deployment__name'],
-                'round_list': round_list
+                'session_list': sess_list,
             }
         result.update({
             'year_list': list(range(year_range[0], year_range[1]+1)),
             'month_list': list(range(month_range[0], month_range[1]+1)),
+            'session': sess,
         })
+
         self.calculate_result = result
         return result
 
