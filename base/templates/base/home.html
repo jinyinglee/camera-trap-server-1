@@ -48,9 +48,6 @@
                 </div>
         </div>
     </div>
-
-
-
     <div class="container content">
         <div class="row">
             <!-- MAP -->
@@ -98,7 +95,7 @@
                 <div class="image">
                 <img src='{% static "image/service-1.png" %}'>
                 </div>
-                <div class="content text-center">
+                <div class=" text-center">
                 <h2 class="title-dark">資料彙整</h2>
                 <p class="description">資料雲端留存，統一管理</p>
                 </div>
@@ -107,7 +104,7 @@
                 <div class="image">
                 <img src='{% static "image/service-2.png" %}'>
                 </div>
-                <div class="content text-center">
+                <div class=" text-center">
                 <h2 class="title-dark">資料處理</h2>
                 <p class="description">辨識物種、標註及分析</p>
                 </div>
@@ -116,13 +113,13 @@
                 <div class="image">
                 <img src='{% static "image/service-3.png" %}'>
                 </div>
-                <div class="content text-center">
+                <div class=" text-center">
                 <h2 class="title-dark">資料共享</h2>
                 <p class="description">開放科學，資源共享共用</p>
                 </div>
             </div>
         </div>
-        <div class="row pt-2">
+        <div class="row pt-4">
             <a class="btn btn-orange mx-auto" style="width: 50%; font-size: 28px;" href="{% url 'project_overview' %}">立即開始使用</a>
         </div>
     </div>
@@ -133,7 +130,7 @@
     $(function(){
 
         // get data by ajax separately
-            $.ajax({
+         $.ajax({
                     url: "{% url 'get_geo_data' %}",
                     success: function(data) {
 
@@ -153,7 +150,7 @@
 }
                 })
 
-        $.ajax({
+      $.ajax({
                     url: "{% url 'get_growth_data' %}",
                     success: function(data) {
                         // plot                         
@@ -300,7 +297,7 @@
 
 
 
-        $.ajax({
+      $.ajax({
                     url: "{% url 'get_species_data' %}",
                     success: function(data) {
 
@@ -377,7 +374,6 @@
 }
                 })
 
-                        
 
     })
 
