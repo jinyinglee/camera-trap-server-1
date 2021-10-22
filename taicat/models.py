@@ -5,13 +5,15 @@ from django.db.models import Q
 from django.utils import timezone
 from django.contrib.postgres.indexes import GinIndex
 
+
 class Species(models.Model):
     DEFAULT_LIST = ['水鹿', '山羌', '獼猴', '山羊', '野豬', '鼬獾', '白鼻心', '食蟹獴', '松鼠',
-        '飛鼠', '黃喉貂', '黃鼠狼', '小黃鼠狼', '麝香貓', '黑熊', '石虎', '穿山甲', '梅花鹿', '野兔', '蝙蝠']
-    name = models.CharField(max_length=1000)
+                    '飛鼠', '黃喉貂', '黃鼠狼', '小黃鼠狼', '麝香貓', '黑熊', '石虎', '穿山甲', '梅花鹿', '野兔', '蝙蝠']
+    name = models.CharField(max_length=1000, db_index=True)
     count = models.IntegerField(null=True, blank=True)
-    last_updated = models.DateTimeField(null=True)
-    status = models.CharField(max_length=4, default='', null=True, blank=True) # I: initial
+    last_updated = models.DateTimeField(null=True, db_index=True)
+    status = models.CharField(max_length=4, default='',
+                              null=True, blank=True, db_index=True)  # I: initial
 
 
 class Contact(models.Model):
@@ -53,12 +55,14 @@ class Organization(models.Model):
     def __str__(self):
         return '<Organization {}> {}'.format(self.id, self.name)
 
+
 class PublishedProjectManager(models.Manager):
     def get_queryset(self):
         today = timezone.now().date()
         five_years_ago = today - timedelta(days=1825)
-        #5_years_ago = today - timedelta(days=1825) # 365*5
-        return super(PublishedProjectManager, self).get_queryset().filter(Q(publish_date__lte=today)|Q(end_date__lte=five_years_ago))
+        # 5_years_ago = today - timedelta(days=1825) # 365*5
+        return super(PublishedProjectManager, self).get_queryset().filter(Q(publish_date__lte=today) | Q(end_date__lte=five_years_ago))
+
 
 class Project(models.Model):
     MODE_CHOICES = (
@@ -226,7 +230,7 @@ class Image(models.Model):
     file_url = models.CharField(max_length=1000, null=True)
     filename = models.CharField(max_length=1000)  # first file if is_sequence
     # dateTimeCaptured
-    datetime = models.DateTimeField(null=True)
+    datetime = models.DateTimeField(null=True, db_index=True)
     # photoType
     photo_type = models.CharField(
         max_length=100, null=True, choices=PHOTO_TYPE_CHOICES)
@@ -242,8 +246,8 @@ class Image(models.Model):
     sex = models.CharField(max_length=1000, default='', blank=True)
     remarks = models.TextField(default='', blank=True)
     animal_id = models.CharField(max_length=1000, default='', blank=True)
-    created = models.DateTimeField(auto_now_add=True)
-    annotation = models.JSONField(default=dict, blank=True)
+    created = models.DateTimeField(auto_now_add=True, db_index=True)
+    annotation = models.JSONField(default=dict, blank=True, db_index=True)
     memo = models.TextField(default='', blank=True)
     image_hash = models.TextField(default='', blank=True)
     from_mongo = models.BooleanField(default=False, blank=True)
@@ -260,7 +264,22 @@ class Image(models.Model):
         indexes = [GinIndex(fields=['annotation'])]
 
 
-class Image_info(models.Model):
+class ImageInfo(models.Model):
     image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True)
     source_data = models.JSONField(default=dict, blank=True)
     exif = models.JSONField(default=dict, blank=True)
+
+
+class HomePageStat(models.Model):
+    count = models.IntegerField(null=True, blank=True)
+    year = models.IntegerField(null=True, blank=True)
+    last_updated = models.DateTimeField(null=True, db_index=True)
+    type = models.CharField(max_length=10, null=True, blank=True)
+
+
+class ProjectStat(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
+    num_sa = models.IntegerField(null=True, blank=True)
+    num_deployment = models.IntegerField(null=True, blank=True)
+    num_image = models.IntegerField(null=True, blank=True)
+    last_updated = models.DateTimeField(null=True, db_index=True)

@@ -2,8 +2,8 @@ from django.http import response
 from django.shortcuts import render, HttpResponse, redirect
 import json
 from django.db import connection
-from taicat.models import Deployment, Image, Contact, Organization, Project, Species
-from django.db.models import Count, Window, F, Sum, Min, Q
+from taicat.models import Deployment, HomePageStat, Image, Contact, Organization, Project, Species
+from django.db.models import Count, Window, F, Sum, Min, Q, Max
 from django.db.models.functions import ExtractYear
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.template import loader
@@ -12,9 +12,8 @@ from django.contrib import messages
 from decimal import Decimal
 import time
 import pandas as pd
-from .utils import get_cache_growth_data
-
-# init()
+from django.utils import timezone
+from datetime import datetime, timedelta
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -182,6 +181,32 @@ def home(request):
 
 
 def get_species_data(request):
+    # TODO:
+    # update if there is new image & species table not updated yet
+    now = timezone.now()
+    last_updated = Species.objects.filter(status='I').aggregate(
+        Min('last_updated'))['last_updated__min']
+    has_new = Image.objects.filter(created__gte=last_updated)
+    if has_new.exists():
+        for i in Species.DEFAULT_LIST:
+            c = Image.objects.filter(created__gte=last_updated, annotation__contains=[
+                                     {'species': i}]).count()
+            if Species.objects.filter(status='I', name=i).exists():
+                # if exist, update
+                s = Species.objects.get(status='I', name=i)
+                s.count += c
+                s.last_updated = now
+                s.save()
+            else:  # else, create new
+                if c > 0:
+                    new_s = Species(
+                        name=i,
+                        count=c,
+                        last_updated=now,
+                        status='I'
+                    )
+                    new_s.save()
+    # get data
     species_data = []
     with connection.cursor() as cursor:
         query = """SELECT count, name from taicat_species where status = 'I'
@@ -205,20 +230,92 @@ def get_geo_data(request):
 
 
 def get_growth_data(request):
-    response = get_cache_growth_data()
+
+    # TODO:
+    # update if there is new image & stat table not updated yet
+    now = timezone.now()
+    last_updated = timezone.now() - timedelta(days=10)  # pretend
+    last_updated = HomePageStat.objects.all().aggregate(
+        Min('last_updated'))['last_updated__min']
+
+    has_new = Image.objects.filter(created__gte=last_updated)
+    if has_new.exists():
+        # ------ update image --------- #
+        data_growth_image = Image.objects.filter(created__gte=last_updated).annotate(
+            year=ExtractYear('datetime')).values('year').annotate(num_image=Count('id')).order_by()
+        data_growth_image = pd.DataFrame(data_growth_image, columns=[
+            'year', 'num_image']).sort_values('year')
+        year_min, year_max = int(data_growth_image.year.min()), int(
+            data_growth_image.year.max())
+        year_gap = pd.DataFrame(
+            [i for i in range(year_min, year_max)], columns=['year'])
+        data_growth_image = year_gap.merge(
+            data_growth_image, how='left').fillna(0)
+        data_growth_image['cumsum'] = data_growth_image.num_image.cumsum()
+        data_growth_image = data_growth_image.drop(columns=['num_image'])
+        for i in data_growth_image.index:
+            row = data_growth_image.loc[i]
+            if HomePageStat.objects.filter(year=row.year, type='image').exists():
+                h = HomePageStat.objects.get(year=row.year, type='image')
+                h.count += row['cumsum']
+                h.save()
+            else:
+                new_h = HomePageStat(
+                    type='image',
+                    count=row['cumsum'],
+                    last_updated=now,
+                    year=row.year
+                )
+                new_h.save()
+    data_growth_image = list(HomePageStat.objects.filter(
+        type="image", year__gte=2008).values_list('year', 'count'))
+
+    # --------- deployment --------- #
+    year_gap = pd.DataFrame(
+        [i for i in range(2008, data_growth_image[-1][0]+1)], columns=['year'])
+
+    with connection.cursor() as cursor:
+        query = """
+        WITH req As(
+            WITH base_request AS (
+                    SELECT d.latitude, d.longitude, EXTRACT (year from taicat_project.start_date)::int AS start_year
+                    FROM taicat_deployment d
+                    JOIN taicat_project ON taicat_project.id = d.project_id 
+                    WHERE d.longitude IS NOT NULL
+                    GROUP BY start_year, d.latitude, d.longitude)
+                    SELECT MIN(start_year) as year , latitude, longitude FROM base_request
+                    GROUP BY latitude, longitude)
+            SELECT year, count(*) FROM req GROUP BY year
+        """
+        cursor.execute(query)
+        data_growth_deployment = cursor.fetchall()
+        data_growth_deployment = pd.DataFrame(data_growth_deployment, columns=[
+            'year', 'num_dep']).sort_values('year')
+        data_growth_deployment = year_gap.merge(
+            data_growth_deployment, how='left').fillna(0)
+        data_growth_deployment['cumsum'] = data_growth_deployment.num_dep.cumsum(
+        )
+        data_growth_deployment = data_growth_deployment.drop(
+            columns=['num_dep'])
+        data_growth_deployment = list(
+            data_growth_deployment.itertuples(index=False, name=None))
+
+    response = {'data_growth_image': data_growth_image,
+                'data_growth_deployment': data_growth_deployment}
+
     return HttpResponse(json.dumps(response), content_type='application/json')
 
 
 # ------ deprecated ------ #
-def stat_county(request):
-    city = request.GET.get('city')
-    with connection.cursor() as cursor:
-        query = """SELECT COUNT(DISTINCT(d.project_id)), COUNT (i.id) 
-        FROM taicat_deployment d
-         JOIN taicat_image i ON i.deployment_id = d.id 
-         where d.source_data->>'city' = '{}';"""
+# def stat_county(request):
+#     city = request.GET.get('city')
+#     with connection.cursor() as cursor:
+#         query = """SELECT COUNT(DISTINCT(d.project_id)), COUNT (i.id)
+#         FROM taicat_deployment d
+#          JOIN taicat_image i ON i.deployment_id = d.id
+#          where d.source_data->>'city' = '{}';"""
 
-        cursor.execute(query.format(city))
-        response = cursor.fetchone()
-    response = {"no_proj": response[0], "no_img": response[1]}
-    return HttpResponse(json.dumps(response), content_type='application/json')
+#         cursor.execute(query.format(city))
+#         response = cursor.fetchone()
+#     response = {"no_proj": response[0], "no_img": response[1]}
+#     return HttpResponse(json.dumps(response), content_type='application/json')
