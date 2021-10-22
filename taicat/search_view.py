@@ -27,11 +27,14 @@ def index(request):
     #species_list = get_species_list()
     #species_list = species_list['all']
     species_list = [[sp.name, sp.count] for sp in Species.objects.filter(status='I').all()]
-    project_list = Project.published_objects.all() #objects.all()
-    # TODO 
-    #project_list = [p for p in project_list if check_if_authorized(request, p.id)]
 
-    #print (request.GET)
+    # get_project_list
+    public_project_list = Project.published_objects.all()
+    public_project_ids = [x.id for x in public_project_list]
+    private_project_ids = Project.objects.exclude(id__in=public_project_ids).all()
+    available_project_ids = [p for p in private_project_ids if check_if_authorized(request, p.id)]
+    project_list = available_project_ids + list(public_project_list)
+
     if request.method == 'GET':
         cal = None
         query_type = request.GET.get('query_type', '')
