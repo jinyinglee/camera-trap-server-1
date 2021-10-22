@@ -32,7 +32,6 @@ class Calculation(object):
     def __init__(self, params, auth_project_ids=[]):
 
         # apply filter
-        #print(params)
         self.query, self.query_no_species = self.make_basic_query(params, auth_project_ids)
         #print (self.query.query)
         #print (self.query_no_species.query)
@@ -46,7 +45,7 @@ class Calculation(object):
         if x := params.get('session', ''):
             self.calculate_params['session'] = x[0]
 
-    def make_basic_query(self, params, auth_project_ids):
+    def make_basic_query(self, params, auth_project_ids=[]):
         query = Image.objects.filter()
         species = None
 
@@ -209,7 +208,7 @@ class Calculation(object):
         sess = self.calculate_params.get('session', '')
 
         for dep in deployment_set:
-            print('#', dep['deployment'], dep['deployment__name'], dep['count'], dep)
+            #print('#', dep['deployment'], dep['deployment__name'], dep['count'], dep)
             sess_list = []
             if sess == 'all':
                 session_query = self.query_no_species.filter(deployment_id=dep['deployment'])

@@ -8,7 +8,8 @@ import re
 import json
 import math
 from datetime import datetime, timedelta
-from django.db.models import Count, Window, F, Sum, Min, Q
+from django.db.models import Count, Window, F, Sum, Min, Q, Max
+from django.db.models.functions import Trunc
 from django.contrib import messages
 from django.core import serializers
 import pandas as pd
@@ -881,7 +882,45 @@ def generate_download_excel(request, pk):
     # return response
 
 def project_oversight(request, pk):
-    project = Project.objects.get(pk=pk)
-    cal = Calculation({'project':[pk]})
-    cal.test()
-    return render(request, 'project/project_oversight.html', {'project': project})
+    '''
+    相機有運作天數 / 當月天數
+    '''
+    if request.method == 'GET':
+        is_authorized = check_if_authorized(request, pk)
+        public_ids = Project.published_objects.values_list('id', flat=True).all()
+        pk = int(pk)
+        if (pk in list(public_ids)) or is_authorized:
+            project = Project.objects.get(pk=pk)
+            mn = Image.objects.filter(project_id=pk).aggregate(Max('datetime'), Min('datetime'))
+            year = request.GET.get('year')
+            year_list = []
+            if mn:
+                m = mn['datetime__max'].year
+                n = mn['datetime__min'].year
+                year_list = list(range(n, m+1))
+
+            q = Image.objects.values('datetime')
+            result = []
+            if year:
+                deps = project.get_deployment_list()
+                for sa in deps:
+                    for d in sa['deployments']:
+                        dep_id = d['deployment_id']
+                        for month in range(1, 13):
+                            q = Image.objects.values('datetime').filter(project_id=pk, deployment_id=dep_id).annotate(year=Trunc('datetime', 'year')).filter(datetime__year=year, datetime__month=month)
+                            print(q.first())
+
+                    result.append({
+                        'studyarea': sa['name'],
+                        'items': [],
+                    })
+
+                #print(q.all())
+
+            return render(request, 'project/project_oversight.html', {
+                'project': project,
+                'year_list': year_list,
+                'result': result,
+            })
+        else:
+            return ''
