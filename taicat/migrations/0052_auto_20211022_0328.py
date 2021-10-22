@@ -14,25 +14,28 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='HomePageStat',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.BigAutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
                 ('count', models.IntegerField(blank=True, null=True)),
                 ('last_updated', models.DateTimeField(null=True)),
                 ('type', models.CharField(blank=True, max_length=4, null=True)),
             ],
         ),
-        migrations.RenameModel(
-            old_name='Image_info',
-            new_name='ImageInfo',
-        ),
+        # migrations.RenameModel(
+        #     old_name='Image_info',
+        #     new_name='ImageInfo',
+        # ),
         migrations.CreateModel(
             name='ProjectStat',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.BigAutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
                 ('num_sa', models.IntegerField(blank=True, null=True)),
                 ('num_deployment', models.IntegerField(blank=True, null=True)),
                 ('num_image', models.IntegerField(blank=True, null=True)),
                 ('last_updated', models.DateTimeField(null=True)),
-                ('project', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='taicat.project')),
+                ('project', models.ForeignKey(
+                    null=True, on_delete=django.db.models.deletion.SET_NULL, to='taicat.project')),
             ],
         ),
     ]

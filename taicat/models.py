@@ -264,7 +264,7 @@ class Image(models.Model):
         indexes = [GinIndex(fields=['annotation'])]
 
 
-class ImageInfo(models.Model):
+class Image_info(models.Model):
     image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True)
     source_data = models.JSONField(default=dict, blank=True)
     exif = models.JSONField(default=dict, blank=True)
