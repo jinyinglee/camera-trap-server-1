@@ -19,13 +19,6 @@ def find_event_num(data, year, month):
             return i['event_num']
     return 0
 
-@register.filter
-def off_page(value):
-    match_list = [x.group() for x in re.finditer(r'&page=[0-9]*|page=[0-9]*', value)]
-
-    for x in match_list:
-        value = value.replace(x, '')
-    return value
 
 # for calculation
 @register.simple_tag()

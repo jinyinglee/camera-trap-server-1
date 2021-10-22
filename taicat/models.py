@@ -226,7 +226,7 @@ class Image(models.Model):
     file_url = models.CharField(max_length=1000, null=True)
     filename = models.CharField(max_length=1000)  # first file if is_sequence
     # dateTimeCaptured
-    datetime = models.DateTimeField(null=True)
+    datetime = models.DateTimeField(null=True, db_index=True)
     # photoType
     photo_type = models.CharField(
         max_length=100, null=True, choices=PHOTO_TYPE_CHOICES)

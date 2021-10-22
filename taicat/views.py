@@ -32,6 +32,8 @@ import threading
 import string
 import random
 
+from .utils import Calculation
+
 
 def randomword(length):
     letters = string.ascii_lowercase
@@ -116,7 +118,6 @@ def create_project(request):
         return redirect(edit_project_basic, project_pk)
 
     return render(request, 'project/create_project.html', {'city_list': city_list, 'is_authorized_create': is_authorized_create})
-
 
 def edit_project_basic(request, pk):
     is_authorized = check_if_authorized(request, pk)
@@ -878,3 +879,9 @@ def generate_download_excel(request, pk):
     send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, [email])
 
     # return response
+
+def project_oversight(request, pk):
+    project = Project.objects.get(pk=pk)
+    cal = Calculation({'project':[pk]})
+    cal.test()
+    return render(request, 'project/project_oversight.html', {'project': project})

@@ -16,6 +16,7 @@ urlpatterns = [
     path('project/edit/license/<pk>/',
          views.edit_project_license, name='edit_project_license'),
     path('project/details/<pk>/', views.project_detail, name='project_detail'),
+    path('project/oversight/<pk>/', views.project_oversight, name='project_oversight'),
     path('search/', search_view.index, name='search'),
     path('api/data', views.data, name='data'),
     path('api/update_datatable', views.update_datatable, name='update_datatable'),

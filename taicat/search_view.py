@@ -1,6 +1,8 @@
 import json
 import math
 import logging
+import time
+import re
 
 from django.shortcuts import render, redirect
 from django.core.paginator import Paginator
@@ -38,9 +40,10 @@ def index(request):
         'public': public_project_list,
         'my': my_project_list
     }
-
+    #print(request.GET)
     if request.method == 'GET':
         cal = None
+        start_time = time.time()
         query_type = request.GET.get('query_type', '')
         page_obj = {
             'count': 0,
@@ -52,11 +55,10 @@ def index(request):
             'next_page_number': 0,
             'previous_page_number': 0,
         }
-        to_count = ''
+
         if query_type:
             cal = Calculation(dict(request.GET))
             if query_type == 'calculate':
-                cal.group_by_deployment()
                 result = cal.calculate()
             elif query_type == 'query':
                 NUM_PER_PAGE = 20
@@ -65,23 +67,25 @@ def index(request):
                     page = int(p)
 
                 page_obj['number'] = page
-                page_obj['items'] = cal.query.all()[(page-1)*NUM_PER_PAGE:page*NUM_PER_PAGE]
+
+                # check filter params
+                qs = dict(request.GET)
+                for i in ['count', 'query_type']:
+                    if i in qs:
+                        del qs[i]
+
+                items = cal.query.order_by('-datetime').all()[(page-1)*NUM_PER_PAGE:page*NUM_PER_PAGE]
+                page_obj['items'] = items
 
                 #newest = cal.query.filter(post=OuterRef('pk')).order_by('-created_at')
                 #print(objects)
                 #subquery = str(cal.query.values('id').query)
                 #>>> Post.objects.annotate(newest_commenter_email=Subquery(newest.values('email')[:1]))
-                #with connection.cursor() as cursor:
-                #    q = f"SELECT COUNT(*) FROM ({subquery}) AS count;"
-                #    #print (q, 'uuu')
-                #    cursor.execute(q)
-                #    foo = cursor.fetchone()
-                #    print (foo)
                 count = request.GET.get('count', None)
                 if int(count) > 0:
-                    page_obj['count'] = int(c)
+                    page_obj['count'] = int(count)
                 else:
-                    page_obj['count'] = cal.query.values('id').count()
+                    page_obj['count'] = cal.query.values('id').count() # TO IMPRAVO PERFORMANCE
                     logging.debug('counting', page_obj['count'])
                     to_count = '&count={}'.format(page_obj['count'])
                 #request.GET.update({
@@ -93,35 +97,48 @@ def index(request):
                     page_obj['next_page_number'] = page + 1
                     if page > 1:
                         page_obj['has_previous'] = True
-                        page_obj['previous_page_number'] = page - 1
                 else:
                     page_obj['has_next'] = False
 
                 if page_obj['number'] == 1:
                     page_obj['has_previous'] = False
-
+                page_obj['previous_page_number'] = page - 1 if page > 1 else 1
                 #logging.debug(page_obj)
 
                 #print (objects, cal.query.count())
                 #paginator = Paginator(objects, NUM_PER_PAGE)
                 #page_obj = paginator.get_page(page)
 
-        #print (request.GET)
+        elapsed_time = time.time() - start_time
+
         project_deployment_list = None
         if proj_list := request.GET.getlist('project'):
-            if len(proj_list) == 1:
+            if len(proj_list) == 1 and proj_list[0] != '':
                 if proj_obj := Project.objects.get(pk=proj_list[0]):
                     project_deployment_list = proj_obj.get_deployment_list()
+
+        page_append = request.GET.urlencode()
+
+        ## replace count & delete page
+        if page_obj['count'] > 0:
+            m = re.match(r'count=(-1|[0-9]+)', page_append)
+            if m:
+                page_append = page_append.replace(m.group(0), 'count={}'.format(page_obj['count']))
+        match_list = [x.group() for x in re.finditer(r'&page=[0-9]*|page=[0-9]*', page_append)]
+        for x in match_list:
+            page_append = page_append.replace(x, '')
+
 
         return render(request, 'search/search_index.html', {
             'species_list': species_list,
             'project_list': project_list,
             #'page_obj': page_obj if query_type == 'query' else None,
+            'page_append': page_append,
             'page_obj': page_obj,
-            'to_count': to_count,
             'result': result if query_type == 'calculate' else None,
             'project_deployment_list': project_deployment_list,
             'debug_query': str(cal.query.query) if cal else '',
+            'elapsed_time': elapsed_time,
         })
     elif request.method == 'POST':
         base_url = reverse('search')

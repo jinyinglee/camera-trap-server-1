@@ -32,41 +32,8 @@ class Calculation(object):
 
         # apply filter
         #print(params)
-
-        # use value_list for performance ?
-        self.query = Image.objects.filter()
-
-        # species
-        if sp := params.get('species', ''):
-            sp = sp[0]
-            self.query = self.query.filter(annotation__contains=[{'species': sp}])
-
-        # time range
-        if params.get('date_start', '') and params.get('date_end', ''):
-            date_start = datetime.strptime(params['date_start'][0], '%Y-%m-%d')
-            date_end = datetime.strptime(params['date_end'][0], '%Y-%m-%d')
-            self.query = self.query.filter(datetime__range=[date_start, date_end])
-
-        # deployment scope
-        dep_id_list = []
-        if deps := params.get('deployment', ''):
-            dep_id_list = deps
-        elif sa := params.get('studyarea', ''):
-            self.query = self.query.filter(studyarea_id=sa[0])
-            #sa_obj = StudyArea.objects.get(pk=sa[0])
-            #if sa_obj:
-            #    dep_id_list = [x.id for x in sa_obj.deployment_set.all()]
-        elif keyword_list := params.get('keyword'):
-            keyword = keyword_list[0]
-            proj_list = Project.objects.values_list('id', flat=True).filter(keyword__contains=keyword).all()
-            #dep_id_list += self.get_deployment_list(proj_list)
-            self.query = self.query.filter(project_id__in=proj_list)
-        elif proj_list := params.get('project'):
-            self.query = self.query.filter(project_id__in=proj_list)
-            #dep_id_list += self.get_deployment_list(proj_list)
-
-        #if len(dep_id_list):
-        #    self.query = self.query.filter(deployment_id__in=dep_id_list)
+        self.query = self.make_basic_query(params)
+        logging.debug(self.query.query)
 
         # calculate params
         if t1 := params.get('interval', ''):
@@ -74,9 +41,45 @@ class Calculation(object):
         if t2 := params.get('interval2', ''):
             self.calculate_params['interval2'] = int(t2[0])
 
-        self.query = self.query.order_by('id') # 差很多 !
-        #print (self.query.query)
+    def make_basic_query(self, params):
+        query = Image.objects.filter()
+        # species
+        if sp := params.get('species', ''):
+            sp = sp[0]
+            query = query.filter(annotation__contains=[{'species': sp}])
 
+        # time range
+        if params.get('date_start', '') and params.get('date_end', ''):
+            date_start = datetime.strptime(params['date_start'][0], '%Y-%m-%d')
+            date_end = datetime.strptime(params['date_end'][0], '%Y-%m-%d')
+            query = query.filter(datetime__range=[date_start, date_end])
+
+        # deployment scope
+        dep_id_list = []
+        if deps := params.get('deployment', ''):
+            dep_id_list = deps
+        elif sa := params.get('studyarea', ''):
+            query = query.filter(studyarea_id=sa[0])
+            sa_obj = StudyArea.objects.get(pk=sa[0])
+            if sa_obj:
+                dep_id_list = [x.id for x in sa_obj.deployment_set.all()]
+        elif keyword_list := params.get('keyword'):
+            keyword = keyword_list[0]
+            proj_list = Project.objects.values_list('id', flat=True).filter(keyword__contains=keyword).all()
+            #dep_id_list += self.get_deployment_list(proj_list)
+            query = query.filter(project_id__in=proj_list)
+        elif proj_list := params.get('project'):
+            available_proj_list = [x for x in proj_list if x]
+            if len(available_proj_list):
+                query = query.filter(project_id__in=available_proj_list)
+            #dep_id_list += self.get_deployment_list(proj_list)
+
+        if len(dep_id_list):
+            query = query.filter(deployment_id__in=dep_id_list)
+
+        return query
+
+    # DEPRICATED
     def get_deployment_list(self, proj_list):
         dep_id_list = []
         deps = Deployment.objects.values_list('id', flat=True).filter(project_id__in=proj_list).all()
@@ -88,8 +91,6 @@ class Calculation(object):
         return dep_id_list
 
     def group_by_deployment(self):
-        #memo='calc-sample',
-        #deployment_id__in=[2610, 2611, 2612, 2613, 2614, 2615, 2616, 2617, 2618]
         self.deployment_set = self.query.values('deployment', 'deployment__name').annotate(count=Count('deployment')).order_by()
 
     def count_working_hour(self, query):
@@ -110,14 +111,14 @@ class Calculation(object):
         for image in query.order_by('datetime'):
 
             if last_datetime:
-                delta = image.datetime - last_datetime
+                delta = image['datetime'] - last_datetime
                 if ((delta.days * 86400) + (delta.seconds / 3600)) > minutes * 60:
                     count += 1
             else:
                 # 第一張有效照片, 直接加 1
                 count += 1
 
-            last_datetime = image.datetime
+            last_datetime = image['datetime']
 
         return count
 
@@ -128,11 +129,11 @@ class Calculation(object):
         last_datetime = None
         count = 0
         for image in query.order_by('datetime'):
-            delta = image.datetime - last_datetime if last_datetime else 0
+            delta = image['datetime'] - last_datetime if last_datetime else 0
             if delta:
                 if ((delta.days * 86400) + (delta.seconds / 3600)) > minutes * 60:
                     count += 1
-            last_datetime = image.datetime
+            last_datetime = image['datetime']
 
         if working_hour > 0:
             event_num = count * 1.0 / working_hour
@@ -182,7 +183,31 @@ class Calculation(object):
                 res[i][x['hour'].hour] = [1, x['hour_count']]
         return res
 
+    def test(self):
+        self.group_by_deployment()
+        for dep in self.deployment_set:
+            dep_group_count = self.query.filter(deployment_id=dep['deployment']).annotate(month=Trunc('datetime', 'month')).values('month').annotate(month_count=Count('*')).order_by('month')
+            #print('#', dep['deployment'], dep['deployment__name'], dep['count'], dep)
+            round_list = []
+            for res_deployment_month in dep_group_count:
+                year = res_deployment_month['month'].year
+                month = res_deployment_month['month'].month
+                if year_range[0] == 0 or year < year_range[0]:
+                    year_range[0] = year
+                if year > year_range[1]:
+                    year_range[1] = year
+                if month_range[0] == 0 or month < month_range[0]:
+                    month_range[0] = month
+                if month > month_range[1]:
+                    month_range[1] = month
+
+                session_query = self.query.filter(deployment_id=dep['deployment']).filter(datetime__year=year, datetime__month=month) # TODO by month
+                working_hour = self.count_working_hour(session_query)
+                image_num = self.count_image(session_query, self.calculate_params.get('interval'))
+                event_num = self.count_event(session_query, self.calculate_params.get('interval2'), working_hour[0])
+            
     def calculate(self):
+        self.group_by_deployment()
         result = {
             'deployment': {},
             'year_list': [],
@@ -190,6 +215,7 @@ class Calculation(object):
         }
         year_range = [0, 0]
         month_range = [0, 0]
+        self.query = self.query.values('datetime',)
         # default round/session by month, TODO
         for dep in self.deployment_set:
             dep_group_count = self.query.filter(deployment_id=dep['deployment']).annotate(month=Trunc('datetime', 'month')).values('month').annotate(month_count=Count('*')).order_by('month')

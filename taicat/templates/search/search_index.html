@@ -236,6 +236,7 @@ console.log('debug query:', '{{ debug_query|safe}}' );
 
         {% if request.GET.query_type == "query" %}
         <legend>篩選結果</legend>
+        <span class="text-muted">篩選時間: {{ elapsed_time|floatformat:3 }} 秒</span>
           {% if page_obj.count <= 0 %}
           無資料
           {% else %}
@@ -272,8 +273,8 @@ console.log('debug query:', '{{ debug_query|safe}}' );
         <span class="mx-2"><strong>總共: {{ page_obj.count }} 筆</strong></span>
         <span class="step-links">
           {% if page_obj.has_previous %}
-          <a href="?page=1&{{ request.GET.urlencode|off_page }}">&laquo; 第一頁</a>
-          <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode|off_page }}">上一頁</a>
+          <a href="?page=1&{{ page_append }}">&laquo; 第一頁</a>
+          <a href="?page={{ page_obj.previous_page_number }}&{{ page_append }}">上一頁</a>
           {% endif %}
 
           <span class="current">
@@ -281,8 +282,8 @@ console.log('debug query:', '{{ debug_query|safe}}' );
           </span>
 
           {% if page_obj.has_next %}
-          <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode|off_page }}{{ to_count }}">下一頁</a>
-          <a href="?page={{ page_obj.num_pages }}&{{ request.GET.urlencode|off_page }}{{ to_count}}">最後一頁 &raquo;</a>
+          <a href="?page={{ page_obj.next_page_number }}&{{ page_append }}">下一頁</a>
+          <a href="?page={{ page_obj.num_pages }}&{{ page_append }}">最後一頁 &raquo;</a>
           {% endif %}
         </span>
       </div>
@@ -347,11 +348,12 @@ console.log('debug query:', '{{ debug_query|safe}}' );
 
 {% if result %}
       <legend>計算結果</legend>
-      相機位置:
+      <span class="text-muted">計算時間: {{ elapsed_time|floatformat:3 }} 秒</span>
+      <div>相機位置:
       {% for k, v in result.deployment.items %}
       {{ v.name }}{% if not forloop.last %}, {% endif %}
       {% endfor %}
-
+      </div>
 <div class="accordion" id="accordionExample">
   <div class="accordion-item">
     <h2 class="accordion-header" id="headingOne">
