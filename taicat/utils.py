@@ -28,11 +28,11 @@ class Calculation(object):
     calculate_params = {}
     calculate_result = None
 
-    def __init__(self, params):
+    def __init__(self, params, auth_project_ids=[]):
 
         # apply filter
         #print(params)
-        self.query = self.make_basic_query(params)
+        self.query = self.make_basic_query(params, auth_project_ids)
         logging.debug(self.query.query)
 
         # calculate params
@@ -41,8 +41,9 @@ class Calculation(object):
         if t2 := params.get('interval2', ''):
             self.calculate_params['interval2'] = int(t2[0])
 
-    def make_basic_query(self, params):
+    def make_basic_query(self, params, auth_project_ids):
         query = Image.objects.filter()
+
         # species
         if sp := params.get('species', ''):
             sp = sp[0]
@@ -63,19 +64,25 @@ class Calculation(object):
             sa_obj = StudyArea.objects.get(pk=sa[0])
             if sa_obj:
                 dep_id_list = [x.id for x in sa_obj.deployment_set.all()]
-        elif keyword_list := params.get('keyword'):
+        if len(dep_id_list):
+            # TODO need check project auth
+            query = query.filter(deployment_id__in=dep_id_list)
+
+
+        # check auth project
+        project_ids = []
+        ## 選 keyword 就不管計劃
+        if keyword_list := params.get('keyword'):
             keyword = keyword_list[0]
             proj_list = Project.objects.values_list('id', flat=True).filter(keyword__contains=keyword).all()
-            #dep_id_list += self.get_deployment_list(proj_list)
-            query = query.filter(project_id__in=proj_list)
+            project_ids = list(set(auth_project_ids).intersection(set(proj_list)))
         elif proj_list := params.get('project'):
-            available_proj_list = [x for x in proj_list if x]
-            if len(available_proj_list):
-                query = query.filter(project_id__in=available_proj_list)
-            #dep_id_list += self.get_deployment_list(proj_list)
+            project_ids = [int(x) for x in proj_list if int(x) in auth_project_ids]
 
-        if len(dep_id_list):
-            query = query.filter(deployment_id__in=dep_id_list)
+        if len(project_ids) == 0:
+            project_ids = auth_project_ids
+
+        query = query.filter(project_id__in=project_ids)
 
         return query
 

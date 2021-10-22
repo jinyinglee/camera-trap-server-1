@@ -40,6 +40,8 @@ def index(request):
         'public': public_project_list,
         'my': my_project_list
     }
+    available_project_ids = [x.id for x in public_project_list] + [x.id for x in my_project_list]
+
     #print(request.GET)
     if request.method == 'GET':
         cal = None
@@ -55,11 +57,13 @@ def index(request):
             'next_page_number': 0,
             'previous_page_number': 0,
         }
-
+        calc_query = None
         if query_type:
-            cal = Calculation(dict(request.GET))
+            calc = Calculation(dict(request.GET), available_project_ids)
+            calc_query = calc.query
+
             if query_type == 'calculate':
-                result = cal.calculate()
+                result = calc.calculate()
             elif query_type == 'query':
                 NUM_PER_PAGE = 20
                 page = 1
@@ -68,14 +72,25 @@ def index(request):
 
                 page_obj['number'] = page
 
+                items = []
                 # check filter params
                 qs = dict(request.GET)
                 for i in ['count', 'query_type']:
                     if i in qs:
                         del qs[i]
+                if not qs.keys():
+                    # HACK 沒給條件 query 會超慢!
+                    with connection.cursor() as cursor:
+                        q = 'SELECT id FROM taicat_image ORDER BY datetime DESC LIMIT {}'.format(NUM_PER_PAGE);
+                        cursor.execute(q)
+                        res = cursor.fetchall()
+                        default_ids = [x[0] for x in res]
+                    calc_query = calc_query.filter(id__in=default_ids)
+                else:
+                    calc_query = calc_query.order_by('-datetime')
 
-                items = cal.query.order_by('-datetime').all()[(page-1)*NUM_PER_PAGE:page*NUM_PER_PAGE]
-                page_obj['items'] = items
+                page_obj['items'] = calc_query.all()[(page-1)*NUM_PER_PAGE:page*NUM_PER_PAGE]
+                #print(cal_query.query)
 
                 #newest = cal.query.filter(post=OuterRef('pk')).order_by('-created_at')
                 #print(objects)
@@ -85,7 +100,7 @@ def index(request):
                 if int(count) > 0:
                     page_obj['count'] = int(count)
                 else:
-                    page_obj['count'] = cal.query.values('id').count() # TO IMPRAVO PERFORMANCE
+                    page_obj['count'] = calc_query.values('id').count() # TO IMPRAVO PERFORMANCE
                     logging.debug('counting', page_obj['count'])
                     to_count = '&count={}'.format(page_obj['count'])
                 #request.GET.update({
@@ -128,7 +143,6 @@ def index(request):
         for x in match_list:
             page_append = page_append.replace(x, '')
 
-
         return render(request, 'search/search_index.html', {
             'species_list': species_list,
             'project_list': project_list,
@@ -137,7 +151,7 @@ def index(request):
             'page_obj': page_obj,
             'result': result if query_type == 'calculate' else None,
             'project_deployment_list': project_deployment_list,
-            'debug_query': str(cal.query.query) if cal else '',
+            'debug_query': str(calc_query.query) if calc_query != None else '',
             'elapsed_time': elapsed_time,
         })
     elif request.method == 'POST':
@@ -152,7 +166,8 @@ def index(request):
             args['keyword'] = x
         if x := request.POST.getlist('project'):
             if len(x) == 1:
-                args['project'] = x[0]
+                if x[0] != '':
+                    args['project'] = x[0]
             else:
                 args['project'] = x
         if x := request.POST.get('studyarea', ''):
