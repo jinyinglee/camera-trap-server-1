@@ -8,7 +8,8 @@ import re
 import json
 import math
 from datetime import datetime, timedelta
-from django.db.models import Count, Window, F, Sum, Min, Q
+from django.db.models import Count, Window, F, Sum, Min, Q, Max
+from django.db.models.functions import Trunc
 from django.contrib import messages
 from django.core import serializers
 import pandas as pd
@@ -31,6 +32,8 @@ from django.core.mail import send_mail
 import threading
 import string
 import random
+from calendar import monthrange
+from .utils import Calculation
 
 
 def randomword(length):
@@ -116,7 +119,6 @@ def create_project(request):
         return redirect(edit_project_basic, project_pk)
 
     return render(request, 'project/create_project.html', {'city_list': city_list, 'is_authorized_create': is_authorized_create})
-
 
 def edit_project_basic(request, pk):
     is_authorized = check_if_authorized(request, pk)
@@ -878,3 +880,69 @@ def generate_download_excel(request, pk):
     send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, [email])
 
     # return response
+
+def project_oversight(request, pk):
+    '''
+    相機有運作天數 / 當月天數
+    '''
+    if request.method == 'GET':
+        is_authorized = check_if_authorized(request, pk)
+        public_ids = Project.published_objects.values_list('id', flat=True).all()
+        pk = int(pk)
+        if (pk in list(public_ids)) or is_authorized:
+            project = Project.objects.get(pk=pk)
+
+            # min/max 超慢?
+            mnx = Image.objects.filter(project_id=pk).aggregate(Max('datetime'), Min('datetime'))
+            #print(mnx)
+            year = request.GET.get('year')
+            end_year = mnx['datetime__max'].year
+            start_year = mnx['datetime__min'].year
+            year_list = list(range(start_year, end_year+1))
+            #imax = Image.objects.values('datetime').filter(project_id=pk).order_by('datetime')[:1]
+            #imin = Image.objects.filter(project_id=pk).order_by('-datetime')[:1]
+            #print(imax)
+            #print(mn.first(), mn.last())
+
+            #year_list = list(range(2010, 2022))
+
+            result = []
+            if year:
+                year = int(year)
+                deps = project.get_deployment_list()
+                for sa in deps:
+                    items_d = []
+                    for d in sa['deployments']:
+                        dep_id = d['deployment_id']
+                        month_list = []
+                        for m in range(1, 13):
+                            days_in_month = monthrange(year, m)[1]
+                            month_list.append([0, [0, days_in_month]])
+                        #query = Image.objects.values('datetime').filter(project_id=pk, deployment_id=dep_id).annotate(year=Trunc('datetime', 'year')).filter(datetime__year=year).annotate(day=Trunc('datetime', 'day')).annotate(count=Count('day'))
+                        #print(query.query)
+                        with connection.cursor() as cursor:
+                            query = f"SELECT DATE_TRUNC('day', datetime) AS day FROM taicat_image WHERE deployment_id={dep_id} AND datetime BETWEEN '{year}-01-01' AND '{year}-12-31' GROUP BY day ORDER BY day;"
+                            cursor.execute(query)
+                            data = cursor.fetchall()
+                            for i in data:
+                                month_idx = i[0].month - 1
+                                month_list[month_idx][1][0] += 1
+                                month_list[month_idx][0] = month_list[month_idx][1][0] * 100.0 / month_list[month_idx][1][1]
+                        items_d.append({
+                            'name': sa['name'],
+                            'items': month_list,
+                        })
+                    result.append({
+                        'name': sa['name'],
+                        'items': items_d
+                    })
+                    #print(result)
+
+            return render(request, 'project/project_oversight.html', {
+                'project': project,
+                'year_list': year_list,
+                'month_label_list': [f'{x} 月'for x in range(1, 13)],
+                'result': result,
+            })
+        else:
+            return ''
