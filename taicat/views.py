@@ -795,7 +795,7 @@ def project_detail(request, pk):
     # TODO
     species = ProjectSpecies.objects.filter(
         project_id=pk).values_list('count', 'name').order_by('count')
-    image_objects = Image.objects.filter(deployment__project__id=pk)
+    image_objects = Image.objects.filter(project_id=pk)
     if image_objects.count() > 0:
         latest_date = image_objects.latest(
             'datetime').datetime.strftime("%Y-%m-%d")
