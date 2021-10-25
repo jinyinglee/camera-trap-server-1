@@ -34,6 +34,8 @@ import string
 import random
 from calendar import monthrange
 from .utils import Calculation
+import collections
+from operator import itemgetter
 
 
 def randomword(length):
@@ -119,6 +121,7 @@ def create_project(request):
         return redirect(edit_project_basic, project_pk)
 
     return render(request, 'project/create_project.html', {'city_list': city_list, 'is_authorized_create': is_authorized_create})
+
 
 def edit_project_basic(request, pk):
     is_authorized = check_if_authorized(request, pk)
@@ -292,34 +295,80 @@ def project_overview(request):
     with connection.cursor() as cursor:
         q = "SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
                         EXTRACT (year from taicat_project.start_date)::int, \
-                        taicat_project.funding_agency, COUNT(DISTINCT(taicat_studyarea.name)) AS num_studyarea \
+                        taicat_project.funding_agency \
                         FROM taicat_project \
-                        LEFT JOIN taicat_studyarea ON taicat_studyarea.project_id = taicat_project.id \
                         WHERE CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval \
                         GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
                         ORDER BY taicat_project.start_date DESC;"
         cursor.execute(q)
         public_project_info = cursor.fetchall()
         public_project_info = pd.DataFrame(public_project_info, columns=[
-            'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea'])
+            'id', 'name', 'keyword', 'start_year', 'funding_agency'])
 
-    # species data
-    public_species_data = []
-    for i in species_list:
-        spe_c = Image.objects.filter(
-            annotation__contains=[{'species': i}], project_id__in=list(public_project_info.id)).count()
-        if spe_c > 0:
-            public_species_data += [(spe_c, i)]
-    public_species_data.sort(reverse=True)
+    # count data
+    # update if new images
+    now = timezone.now()
+    # last_updated = timezone.now() - timedelta(days=10)  # pretend
+    last_updated = ProjectStat.objects.all().aggregate(
+        Min('last_updated'))['last_updated__min']
+    has_new = Image.objects.filter(
+        created__gte=last_updated, project_id__in=list(public_project_info.id))
+    if has_new.exists():
+        # update project stat
+        for i in public_project_info.id:
+            c = Image.objects.filter(
+                created__gte=last_updated, project_id=i).count()
+            p = ProjectStat.objects.get(project_id=i)
+            p.num_image += c
+            p.last_updated = now
+            p.save()
+            # ------update project species stat-------#
+            img_list = Image.objects.values_list(
+                'annotation', flat=True).filter(project_id=i, created__gte=last_updated).all()
+            project_species_list = []
+            for alist in img_list:
+                for a in alist:
+                    try:
+                        if sp := a.get('species', ''):
+                            project_species_list.append(sp)
+                    except:
+                        #print ('annotation load error')
+                        pass
+            counter = collections.Counter(project_species_list)
+            counter_dict = dict(counter)
+            project_species_list = sorted(
+                counter_dict.items(), key=itemgetter(1), reverse=True)
+            for k in project_species_list:
+                if ProjectSpecies.objects.filter(name=k[0], project_id=i).exists():
+                    # exist -> update
+                    p_sp = ProjectSpecies.objects.get(name=k[0], project_id=i)
+                    p_sp.count += k[1]
+                    p_sp.last_updated = now
+                    p_sp.save()
+                else:
+                    # not exitst -> create
+                    p_sp = ProjectSpecies(
+                        project_id=i,
+                        name=k[0],
+                        count=k[1],
+                        last_updated=now,
+                    )
+                    p_sp.save()
+            # ------update project species stat-------#
+    public_species_data = ProjectSpecies.objects.filter(project_id__in=list(public_project_info.id), name__in=Species.DEFAULT_LIST).values(
+        'name').annotate(total_count=Sum('count')).values_list('total_count', 'name').order_by('-total_count')
 
     public_project_info['num_image'] = 0
+    public_project_info['num_studyarea'] = 0
     public_project_info['num_deployment'] = 0
-
     for i in public_project_info.id:
-        image_c = Image.objects.filter(project_id=i).count()
+        sa_c = StudyArea.objects.filter(project_id=i).count()
         dep_c = Deployment.objects.filter(project_id=i).count()
+        img_c = ProjectStat.objects.get(project_id=i).num_image
         public_project_info.loc[public_project_info['id']
-                                == i, 'num_image'] = image_c
+                                == i, 'num_image'] = img_c
+        public_project_info.loc[public_project_info['id']
+                                == i, 'num_studyarea'] = sa_c
         public_project_info.loc[public_project_info['id']
                                 == i, 'num_deployment'] = dep_c
 
@@ -327,7 +376,9 @@ def project_overview(request):
         'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
     public_project = list(public_project.itertuples(index=False, name=None))
 
+    # ---------------我的計畫
     # my project
+    # TODO
     project_list = []
     member_id = request.session.get('id', None)
     if member_id:
@@ -348,47 +399,95 @@ def project_overview(request):
                 id=organization_id).values('projects')
             for i in temp:
                 project_list += [i['projects']]
-        print('my', project_list)
         if project_list:
             my_project_info = pd.DataFrame()
             project_list = str(project_list).replace(
                 '[', '(').replace(']', ')')
+            # -----------
             with connection.cursor() as cursor:
                 q = "SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
                                 EXTRACT (year from taicat_project.start_date)::int, \
-                                taicat_project.funding_agency, COUNT(DISTINCT(taicat_studyarea.name)) AS num_studyarea \
+                                taicat_project.funding_agency \
                                 FROM taicat_project \
-                                LEFT JOIN taicat_studyarea ON taicat_studyarea.project_id = taicat_project.id \
                                 WHERE taicat_project.id IN {} \
                                 GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
                                 ORDER BY taicat_project.start_date DESC;"
                 cursor.execute(q.format(project_list))
                 my_project_info = cursor.fetchall()
                 my_project_info = pd.DataFrame(my_project_info, columns=[
-                                               'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea'])
-            my_species_data = []
-            for i in species_list:
-                spe_c = Image.objects.filter(
-                    annotation__contains=[{'species': i}], project_id__in=list(my_project_info.id)).count()
-                if spe_c > 0:
-                    my_species_data += [(spe_c, i)]
-            my_species_data.sort(reverse=True)
+                    'id', 'name', 'keyword', 'start_year', 'funding_agency'])
+
+            # count data
+            # update if new images
+            now = timezone.now()
+            # last_updated = timezone.now() - timedelta(days=10)  # pretend
+            last_updated = ProjectStat.objects.all().aggregate(
+                Min('last_updated'))['last_updated__min']
+            has_new = Image.objects.filter(
+                created__gte=last_updated, project_id__in=list(my_project_info.id))
+            if has_new.exists():
+                # update project stat
+                for i in my_project_info.id:
+                    c = Image.objects.filter(
+                        created__gte=last_updated, project_id=i).count()
+                    p = ProjectStat.objects.get(project_id=i)
+                    p.num_image += c
+                    p.last_updated = now
+                    p.save()
+                    # ------update project species stat-------#
+                    img_list = Image.objects.values_list(
+                        'annotation', flat=True).filter(project_id=i, created__gte=last_updated).all()
+                    project_species_list = []
+                    for alist in img_list:
+                        for a in alist:
+                            try:
+                                if sp := a.get('species', ''):
+                                    project_species_list.append(sp)
+                            except:
+                                #print ('annotation load error')
+                                pass
+                    counter = collections.Counter(project_species_list)
+                    counter_dict = dict(counter)
+                    project_species_list = sorted(
+                        counter_dict.items(), key=itemgetter(1), reverse=True)
+                    for k in project_species_list:
+                        if ProjectSpecies.objects.filter(name=k[0], project_id=i).exists():
+                            # exist -> update
+                            p_sp = ProjectSpecies.objects.get(
+                                name=k[0], project_id=i)
+                            p_sp.count += k[1]
+                            p_sp.last_updated = now
+                            p_sp.save()
+                        else:
+                            # not exitst -> create
+                            p_sp = ProjectSpecies(
+                                project_id=i,
+                                name=k[0],
+                                count=k[1],
+                                last_updated=now,
+                            )
+                            p_sp.save()
+                    # ------update project species stat-------#
+            my_species_data = ProjectSpecies.objects.filter(project_id__in=list(my_project_info.id), name__in=Species.DEFAULT_LIST).values(
+                'name').annotate(total_count=Sum('count')).values_list('total_count', 'name').order_by('-total_count')
 
             my_project_info['num_image'] = 0
+            my_project_info['num_studyarea'] = 0
             my_project_info['num_deployment'] = 0
-
             for i in my_project_info.id:
-                image_c = Image.objects.filter(project_id=i).count()
+                sa_c = StudyArea.objects.filter(project_id=i).count()
                 dep_c = Deployment.objects.filter(project_id=i).count()
+                img_c = ProjectStat.objects.get(project_id=i).num_image
                 my_project_info.loc[my_project_info['id']
-                                    == i, 'num_image'] = image_c
+                                    == i, 'num_image'] = img_c
+                my_project_info.loc[my_project_info['id']
+                                    == i, 'num_studyarea'] = sa_c
                 my_project_info.loc[my_project_info['id']
                                     == i, 'num_deployment'] = dep_c
 
-            my_project_info = my_project_info[[
+            my_project = my_project_info[[
                 'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
-            my_project = list(
-                my_project_info.itertuples(index=False, name=None))
+            my_project = list(my_project.itertuples(index=False, name=None))
 
     print(time.time()-s)
     return render(request, 'project/project_overview.html', {'public_project': public_project, 'my_project': my_project, 'is_authorized_create': is_authorized_create,
@@ -405,11 +504,23 @@ def update_datatable(request):
         # if species:
         project_list = []
         if table_id == 'publicproject':
-            project_list = Image.objects.filter(annotation__contains=[
-                                                {'species': species}]).order_by('project_id').distinct('project_id')
+            with connection.cursor() as cursor:
+                q = "SELECT taicat_project.id, \
+                            EXTRACT (year from taicat_project.start_date)::int \
+                            FROM taicat_project \
+                            WHERE CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval \
+                            GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
+                            ORDER BY taicat_project.start_date DESC;"
+                cursor.execute(q)
+                public_project_info = cursor.fetchall()
+                public_project_info = pd.DataFrame(
+                    public_project_info, columns=['id', 'start_year'])
+
+            project_list = ProjectSpecies.objects.filter(name=species, project_id__in=list(
+                public_project_info.id)).order_by('project_id').distinct('project_id')
             project_list = list(
                 project_list.values_list('project_id', flat=True))
-            print('1', time.time()-s)
+            # print('1', time.time()-s)
 
         else:
             my_project_list = []
@@ -436,8 +547,8 @@ def update_datatable(request):
                 # check species
                 if my_project_list:
                     with connection.cursor() as cursor:
-                        project_list = Image.objects.filter(annotation__contains=[
-                                                            {'species': species}], project_id__in=my_project_list).order_by('project_id').distinct('project_id')
+                        project_list = ProjectSpecies.objects.filter(
+                            name=species, project_id__in=my_project_list).order_by('project_id').distinct('project_id')
                         project_list = list(
                             project_list.values_list('project_id', flat=True))
         project = []
@@ -447,25 +558,27 @@ def update_datatable(request):
             with connection.cursor() as cursor:
                 q = "SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
                                 EXTRACT (year from taicat_project.start_date)::int, \
-                                taicat_project.funding_agency, COUNT(DISTINCT(taicat_studyarea.name)) AS num_studyarea \
+                                taicat_project.funding_agency \
                                 FROM taicat_project \
-                                LEFT JOIN taicat_studyarea ON taicat_studyarea.project_id = taicat_project.id \
                                 WHERE taicat_project.id IN {} \
                                 GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
                                 ORDER BY taicat_project.start_date DESC;"
                 cursor.execute(q.format(project_list))
                 project_info = cursor.fetchall()
                 project_info = pd.DataFrame(project_info, columns=[
-                    'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea'])
+                    'id', 'name', 'keyword', 'start_year', 'funding_agency'])
 
             project_info['num_image'] = 0
             project_info['num_deployment'] = 0
 
             for i in project_info.id:
-                image_c = Image.objects.filter(project_id=i).count()
+                sa_c = StudyArea.objects.filter(project_id=i).count()
                 dep_c = Deployment.objects.filter(project_id=i).count()
+                img_c = ProjectStat.objects.get(project_id=i).num_image
                 project_info.loc[project_info['id']
-                                 == i, 'num_image'] = image_c
+                                 == i, 'num_image'] = img_c
+                project_info.loc[project_info['id']
+                                 == i, 'num_studyarea'] = sa_c
                 project_info.loc[project_info['id']
                                  == i, 'num_deployment'] = dep_c
 
@@ -680,24 +793,8 @@ def project_detail(request, pk):
     project_info = list(project_info)
     deployment = Deployment.objects.filter(project_id=pk)
     # TODO
-    with connection.cursor() as cursor:
-        query = """with base_request as ( 
-                    SELECT 
-                        x.*, 
-                        i.id FROM taicat_image i
-                        CROSS JOIN LATERAL
-                        json_to_recordset(i.annotation::json) x 
-                                ( species text) 
-                        WHERE i.annotation::TEXT <> '[]' AND i.project_id = {}
-                        )
-                select count(id), species from base_request
-                group by species;
-                """
-        cursor.execute(query.format(pk))
-        species = cursor.fetchall()
-        species = [x for x in species if x[1] is not None and x[1] != '']
-        species = [(x[0], x[1].replace('\\', '')) for x in species]
-        species.sort(key=lambda x: x[1])
+    species = ProjectSpecies.objects.filter(
+        project_id=pk).values_list('count', 'name').order_by('count')
     image_objects = Image.objects.filter(deployment__project__id=pk)
     if image_objects.count() > 0:
         latest_date = image_objects.latest(
@@ -746,8 +843,10 @@ def edit_image(request, pk):
     obj.annotation = anno
     obj.save()
 
-    # update filter species options
     # TODO
+    # update species stat
+
+    # update filter species options
     with connection.cursor() as cursor:
         query = """with base_request as ( 
                     SELECT 
@@ -881,27 +980,30 @@ def generate_download_excel(request, pk):
 
     # return response
 
+
 def project_oversight(request, pk):
     '''
     相機有運作天數 / 當月天數
     '''
     if request.method == 'GET':
         is_authorized = check_if_authorized(request, pk)
-        public_ids = Project.published_objects.values_list('id', flat=True).all()
+        public_ids = Project.published_objects.values_list(
+            'id', flat=True).all()
         pk = int(pk)
         if (pk in list(public_ids)) or is_authorized:
             project = Project.objects.get(pk=pk)
 
             # min/max 超慢?
-            mnx = Image.objects.filter(project_id=pk).aggregate(Max('datetime'), Min('datetime'))
-            #print(mnx)
+            mnx = Image.objects.filter(project_id=pk).aggregate(
+                Max('datetime'), Min('datetime'))
+            # print(mnx)
             year = request.GET.get('year')
             end_year = mnx['datetime__max'].year
             start_year = mnx['datetime__min'].year
             year_list = list(range(start_year, end_year+1))
             #imax = Image.objects.values('datetime').filter(project_id=pk).order_by('datetime')[:1]
             #imin = Image.objects.filter(project_id=pk).order_by('-datetime')[:1]
-            #print(imax)
+            # print(imax)
             #print(mn.first(), mn.last())
 
             #year_list = list(range(2010, 2022))
@@ -919,7 +1021,7 @@ def project_oversight(request, pk):
                             days_in_month = monthrange(year, m)[1]
                             month_list.append([0, [0, days_in_month]])
                         #query = Image.objects.values('datetime').filter(project_id=pk, deployment_id=dep_id).annotate(year=Trunc('datetime', 'year')).filter(datetime__year=year).annotate(day=Trunc('datetime', 'day')).annotate(count=Count('day'))
-                        #print(query.query)
+                        # print(query.query)
                         with connection.cursor() as cursor:
                             query = f"SELECT DATE_TRUNC('day', datetime) AS day FROM taicat_image WHERE deployment_id={dep_id} AND datetime BETWEEN '{year}-01-01' AND '{year}-12-31' GROUP BY day ORDER BY day;"
                             cursor.execute(query)
@@ -927,7 +1029,8 @@ def project_oversight(request, pk):
                             for i in data:
                                 month_idx = i[0].month - 1
                                 month_list[month_idx][1][0] += 1
-                                month_list[month_idx][0] = month_list[month_idx][1][0] * 100.0 / month_list[month_idx][1][1]
+                                month_list[month_idx][0] = month_list[month_idx][1][0] * \
+                                    100.0 / month_list[month_idx][1][1]
                         items_d.append({
                             'name': sa['name'],
                             'items': month_list,
@@ -936,7 +1039,7 @@ def project_oversight(request, pk):
                         'name': sa['name'],
                         'items': items_d
                     })
-                    #print(result)
+                    # print(result)
 
             return render(request, 'project/project_oversight.html', {
                 'project': project,

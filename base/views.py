@@ -234,7 +234,7 @@ def get_growth_data(request):
     # TODO:
     # update if there is new image & stat table not updated yet
     now = timezone.now()
-    last_updated = timezone.now() - timedelta(days=10)  # pretend
+    # last_updated = timezone.now() - timedelta(days=10)  # pretend
     last_updated = HomePageStat.objects.all().aggregate(
         Min('last_updated'))['last_updated__min']
 
