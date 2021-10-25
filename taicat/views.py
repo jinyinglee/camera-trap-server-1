@@ -716,7 +716,7 @@ def data(request):
 
         for i in df.index:
             file_url = df.file_url[i]
-            if not file_url:
+            if not file_url and not df.from_mongo[i]:
                 file_url = f"{df.image_id[i]}-m.jpg"
             extension = file_url.split('.')[-1]
             if not df.from_mongo[i]:
