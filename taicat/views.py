@@ -716,7 +716,7 @@ def data(request):
 
         for i in df.index:
             file_url = df.file_url[i]
-            if not file_url:
+            if not file_url and not df.from_mongo[i]:
                 file_url = f"{df.image_id[i]}-m.jpg"
             extension = file_url.split('.')[-1]
             if not df.from_mongo[i]:
@@ -795,7 +795,7 @@ def project_detail(request, pk):
     # TODO
     species = ProjectSpecies.objects.filter(
         project_id=pk).values_list('count', 'name').order_by('count')
-    image_objects = Image.objects.filter(deployment__project__id=pk)
+    image_objects = Image.objects.filter(project_id=pk)
     if image_objects.count() > 0:
         latest_date = image_objects.latest(
             'datetime').datetime.strftime("%Y-%m-%d")
