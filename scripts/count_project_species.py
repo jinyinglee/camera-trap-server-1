@@ -32,9 +32,10 @@ for i in ret.keys():
     sp_list = ret[i]
     for j in sp_list:
         # print(j[0], j[1])
-        ProjectSpecies(
+        p_sp = ProjectSpecies(
             project_id=i,
             name=j[0],
             count=j[1],
             last_updated=now,
         )
+        p_sp.save()
