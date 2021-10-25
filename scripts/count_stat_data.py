@@ -91,7 +91,6 @@ project_info = project_info[[
     'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
 
 for i in project_info.index:
-    print(i)
     new = ProjectStat(
         project_id=project_info.loc[i, 'id'],
         num_sa=project_info.loc[i, 'num_studyarea'],

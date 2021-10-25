@@ -283,3 +283,10 @@ class ProjectStat(models.Model):
     num_deployment = models.IntegerField(null=True, blank=True)
     num_image = models.IntegerField(null=True, blank=True)
     last_updated = models.DateTimeField(null=True, db_index=True)
+
+
+class ProjectSpecies(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
+    name = models.CharField(max_length=1000, db_index=True)
+    count = models.IntegerField(null=True, blank=True)
+    last_updated = models.DateTimeField(null=True, db_index=True)
