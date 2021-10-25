@@ -96,6 +96,10 @@ def post_image_annotation(request):
                         memo=data['key'],
                         exif=exif,
                     )
+                    if pid := deployment.project_id:
+                        img.project_id = pid
+                    if said := deployment.study_area_id:
+                        img.studyarea_id = said
                 img.save()
                 res[i[0]] = img.id
 
