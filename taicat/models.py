@@ -226,7 +226,7 @@ class Image(models.Model):
     project = models.ForeignKey(
         Project, on_delete=models.SET_NULL, null=True)
     studyarea = models.ForeignKey(
-        StudyArea, on_delete=models.SET_NULL, null=True)
+        StudyArea, on_delete=models.SET_NULL, null=True) # be careful, this field has no underline!
     file_url = models.CharField(max_length=1000, null=True)
     filename = models.CharField(max_length=1000)  # first file if is_sequence
     # dateTimeCaptured
