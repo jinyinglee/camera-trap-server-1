@@ -226,7 +226,7 @@ class Image(models.Model):
     project = models.ForeignKey(
         Project, on_delete=models.SET_NULL, null=True)
     studyarea = models.ForeignKey(
-        StudyArea, on_delete=models.SET_NULL, null=True) # be careful, this field has no underline!
+        StudyArea, on_delete=models.SET_NULL, null=True)  # be careful, this field has no underline!
     file_url = models.CharField(max_length=1000, null=True)
     filename = models.CharField(max_length=1000)  # first file if is_sequence
     # dateTimeCaptured
@@ -251,6 +251,7 @@ class Image(models.Model):
     memo = models.TextField(default='', blank=True)
     image_hash = models.TextField(default='', blank=True)
     from_mongo = models.BooleanField(default=False, blank=True)
+    file_path = models.TextField(default='', blank=True)
 
     source_data = models.JSONField(default=dict, blank=True)
     exif = models.JSONField(default=dict, blank=True)
