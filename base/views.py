@@ -23,6 +23,10 @@ class DecimalEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
+def policy(request):
+    return render(request, 'base/policy.html')
+
+
 def add_org_admin(request):
     if request.method == 'POST':
         print('hi')
