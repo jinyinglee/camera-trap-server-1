@@ -14,4 +14,5 @@ urlpatterns = [
     path('test/login', views.login_for_test, name='login_for_test'),
     path('permission', views.set_permission, name='set_permission'),
     path('add_org_admin', views.add_org_admin, name='add_org_admin'),
+    path('policy', views.policy, name='policy'),
 ]

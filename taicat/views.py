@@ -291,6 +291,7 @@ def project_overview(request):
     my_project = []
     my_species_data = []
     # 公開計畫 depend on publish_date date
+    # TODO: remove projects for test
     # -----------
     with connection.cursor() as cursor:
         q = "SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
@@ -315,7 +316,9 @@ def project_overview(request):
         created__gte=last_updated, project_id__in=list(public_project_info.id))
     if has_new.exists():
         # update project stat
+        # TODO: find project_id in has_new
         for i in public_project_info.id:
+            # TODO: some new projects may not in project stat
             c = Image.objects.filter(
                 created__gte=last_updated, project_id=i).count()
             p = ProjectStat.objects.get(project_id=i)
@@ -388,7 +391,8 @@ def project_overview(request):
             cursor.execute(query.format(member_id))
             temp = cursor.fetchall()
             for i in temp:
-                project_list += [i[0]]
+                if i[0]:
+                    project_list += [i[0]]
         # 2. check if the user is organization admin
         if_organization_admin = Contact.objects.filter(
             id=member_id, is_organization_admin=True)
