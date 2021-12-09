@@ -275,7 +275,7 @@
             </li>
             <!-- <li class="nav-item">
                 <a class="nav-link" href="#">上傳紀錄</a>
-              </li>
+              </li>-->
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#"
                    id="navbarDropdownMenuLink" role="button"
@@ -283,11 +283,13 @@
                   幫助
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                  <!--
                   <li><a class="dropdown-item" href="#">常見問題</a></li>
                   <li><a class="dropdown-item" href="#">聯絡我們</a></li>
-                  <li><a class="dropdown-item" href="#">隱私權政策</a></li>
+                  -->
+                  <li><a class="dropdown-item" href="{% url 'policy' %}">隱私權政策</a></li>
                 </ul>
-              </li> -->
+              </li> 
           </ul>
         </div>
         <div class="navbar-nav">
