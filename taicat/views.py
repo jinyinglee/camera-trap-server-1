@@ -291,43 +291,43 @@ def project_overview(request):
     my_project = []
     my_species_data = []
     # 公開計畫 depend on publish_date date
-    # TODO: remove projects for test
     # -----------
     with connection.cursor() as cursor:
         q = "SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
-                        EXTRACT (year from taicat_project.start_date)::int, \
-                        taicat_project.funding_agency \
-                        FROM taicat_project \
-                        WHERE CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval \
-                        GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
-                        ORDER BY taicat_project.start_date DESC;"
+                    EXTRACT (year from taicat_project.start_date)::int, \
+                    taicat_project.funding_agency \
+                    FROM taicat_project \
+                    WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval) \
+                    GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
+                    ORDER BY taicat_project.start_date DESC;"
         cursor.execute(q)
         public_project_info = cursor.fetchall()
-        public_project_info = pd.DataFrame(public_project_info, columns=[
-            'id', 'name', 'keyword', 'start_year', 'funding_agency'])
-
+        public_project_info = pd.DataFrame(public_project_info, columns=['id', 'name', 'keyword', 'start_year', 'funding_agency'])
     # count data
     # update if new images
     now = timezone.now()
-    # last_updated = timezone.now() - timedelta(days=10)  # pretend
-    last_updated = ProjectStat.objects.all().aggregate(
-        Min('last_updated'))['last_updated__min']
-    has_new = Image.objects.filter(
-        created__gte=last_updated, project_id__in=list(public_project_info.id))
+    last_updated = ProjectStat.objects.all().aggregate(Min('last_updated'))['last_updated__min']
+    has_new = Image.objects.filter(created__gte=last_updated, project_id__in=list(public_project_info.id))
     if has_new.exists():
         # update project stat
-        # TODO: find project_id in has_new
-        for i in public_project_info.id:
-            # TODO: some new projects may not in project stat
-            c = Image.objects.filter(
-                created__gte=last_updated, project_id=i).count()
-            p = ProjectStat.objects.get(project_id=i)
-            p.num_image += c
-            p.last_updated = now
-            p.save()
+        has_new_id = pd.DataFrame(has_new.order_by('project_id').values('project_id').distinct('project_id'))
+        for i in has_new_id.project_id:
+            c = Image.objects.filter(created__gte=last_updated, project_id=i).count()
+            if ProjectStat.objects.filter(project_id=i).exists():
+                p = ProjectStat.objects.get(project_id=i)
+                p.num_image += c
+                p.last_updated = now
+                p.save()
+            else:
+                p = ProjectStat(
+                    project_id=i,
+                    num_sa=StudyArea.objects.filter(project_id=i).count(),
+                    num_deployment=Deployment.objects.filter(project_id=i).count(),
+                    num_image=c,
+                    last_updated=now)
+                p.save()
             # ------update project species stat-------#
-            img_list = Image.objects.values_list(
-                'annotation', flat=True).filter(project_id=i, created__gte=last_updated).all()
+            img_list = Image.objects.values_list('annotation', flat=True).filter(project_id=i, created__gte=last_updated).all()
             project_species_list = []
             for alist in img_list:
                 for a in alist:
@@ -339,8 +339,7 @@ def project_overview(request):
                         pass
             counter = collections.Counter(project_species_list)
             counter_dict = dict(counter)
-            project_species_list = sorted(
-                counter_dict.items(), key=itemgetter(1), reverse=True)
+            project_species_list = sorted(counter_dict.items(), key=itemgetter(1), reverse=True)
             for k in project_species_list:
                 if ProjectSpecies.objects.filter(name=k[0], project_id=i).exists():
                     # exist -> update
@@ -354,8 +353,7 @@ def project_overview(request):
                         project_id=i,
                         name=k[0],
                         count=k[1],
-                        last_updated=now,
-                    )
+                        last_updated=now,)
                     p_sp.save()
             # ------update project species stat-------#
     public_species_data = ProjectSpecies.objects.filter(project_id__in=list(public_project_info.id), name__in=Species.DEFAULT_LIST).values(
@@ -368,15 +366,11 @@ def project_overview(request):
         sa_c = StudyArea.objects.filter(project_id=i).count()
         dep_c = Deployment.objects.filter(project_id=i).count()
         img_c = ProjectStat.objects.get(project_id=i).num_image
-        public_project_info.loc[public_project_info['id']
-                                == i, 'num_image'] = img_c
-        public_project_info.loc[public_project_info['id']
-                                == i, 'num_studyarea'] = sa_c
-        public_project_info.loc[public_project_info['id']
-                                == i, 'num_deployment'] = dep_c
+        public_project_info.loc[public_project_info['id'] == i, 'num_image'] = img_c
+        public_project_info.loc[public_project_info['id'] == i, 'num_studyarea'] = sa_c
+        public_project_info.loc[public_project_info['id'] == i, 'num_deployment'] = dep_c
 
-    public_project = public_project_info[[
-        'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
+    public_project = public_project_info[['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
     public_project = list(public_project.itertuples(index=False, name=None))
 
     # ---------------我的計畫
@@ -394,19 +388,15 @@ def project_overview(request):
                 if i[0]:
                     project_list += [i[0]]
         # 2. check if the user is organization admin
-        if_organization_admin = Contact.objects.filter(
-            id=member_id, is_organization_admin=True)
+        if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
         if if_organization_admin:
-            organization_id = if_organization_admin.values(
-                'organization').first()['organization']
-            temp = Organization.objects.filter(
-                id=organization_id).values('projects')
+            organization_id = if_organization_admin.values('organization').first()['organization']
+            temp = Organization.objects.filter(id=organization_id).values('projects')
             for i in temp:
                 project_list += [i['projects']]
         if project_list:
             my_project_info = pd.DataFrame()
-            project_list = str(project_list).replace(
-                '[', '(').replace(']', ')')
+            project_list = str(project_list).replace('[', '(').replace(']', ')')
             # -----------
             with connection.cursor() as cursor:
                 q = "SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
@@ -424,20 +414,26 @@ def project_overview(request):
             # count data
             # update if new images
             now = timezone.now()
-            # last_updated = timezone.now() - timedelta(days=10)  # pretend
-            last_updated = ProjectStat.objects.all().aggregate(
-                Min('last_updated'))['last_updated__min']
-            has_new = Image.objects.filter(
-                created__gte=last_updated, project_id__in=list(my_project_info.id))
+            last_updated = ProjectStat.objects.all().aggregate(Min('last_updated'))['last_updated__min']
+            has_new = Image.objects.filter(created__gte=last_updated, project_id__in=list(my_project_info.id))
             if has_new.exists():
                 # update project stat
-                for i in my_project_info.id:
-                    c = Image.objects.filter(
-                        created__gte=last_updated, project_id=i).count()
-                    p = ProjectStat.objects.get(project_id=i)
-                    p.num_image += c
-                    p.last_updated = now
-                    p.save()
+                has_new_id = pd.DataFrame(has_new.order_by('project_id').values('project_id').distinct('project_id'))
+                for i in has_new_id.project_id:
+                    c = Image.objects.filter(created__gte=last_updated, project_id=i).count()
+                    if ProjectStat.objects.filter(project_id=i).exists():
+                        p = ProjectStat.objects.get(project_id=i)
+                        p.num_image += c
+                        p.last_updated = now
+                        p.save()
+                    else:
+                        p = ProjectStat(
+                            project_id=i,
+                            num_sa=StudyArea.objects.filter(project_id=i).count(),
+                            num_deployment=Deployment.objects.filter(project_id=i).count(),
+                            num_image=c,
+                            last_updated=now)
+                        p.save()
                     # ------update project species stat-------#
                     img_list = Image.objects.values_list(
                         'annotation', flat=True).filter(project_id=i, created__gte=last_updated).all()
@@ -452,13 +448,11 @@ def project_overview(request):
                                 pass
                     counter = collections.Counter(project_species_list)
                     counter_dict = dict(counter)
-                    project_species_list = sorted(
-                        counter_dict.items(), key=itemgetter(1), reverse=True)
+                    project_species_list = sorted(counter_dict.items(), key=itemgetter(1), reverse=True)
                     for k in project_species_list:
                         if ProjectSpecies.objects.filter(name=k[0], project_id=i).exists():
                             # exist -> update
-                            p_sp = ProjectSpecies.objects.get(
-                                name=k[0], project_id=i)
+                            p_sp = ProjectSpecies.objects.get(name=k[0], project_id=i)
                             p_sp.count += k[1]
                             p_sp.last_updated = now
                             p_sp.save()
@@ -468,8 +462,7 @@ def project_overview(request):
                                 project_id=i,
                                 name=k[0],
                                 count=k[1],
-                                last_updated=now,
-                            )
+                                last_updated=now)
                             p_sp.save()
                     # ------update project species stat-------#
             my_species_data = ProjectSpecies.objects.filter(project_id__in=list(my_project_info.id), name__in=Species.DEFAULT_LIST).values(
@@ -482,15 +475,11 @@ def project_overview(request):
                 sa_c = StudyArea.objects.filter(project_id=i).count()
                 dep_c = Deployment.objects.filter(project_id=i).count()
                 img_c = ProjectStat.objects.get(project_id=i).num_image
-                my_project_info.loc[my_project_info['id']
-                                    == i, 'num_image'] = img_c
-                my_project_info.loc[my_project_info['id']
-                                    == i, 'num_studyarea'] = sa_c
-                my_project_info.loc[my_project_info['id']
-                                    == i, 'num_deployment'] = dep_c
+                my_project_info.loc[my_project_info['id'] == i, 'num_image'] = img_c
+                my_project_info.loc[my_project_info['id'] == i, 'num_studyarea'] = sa_c
+                my_project_info.loc[my_project_info['id'] == i, 'num_deployment'] = dep_c
 
-            my_project = my_project_info[[
-                'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
+            my_project = my_project_info[['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
             my_project = list(my_project.itertuples(index=False, name=None))
 
     print(time.time()-s)
@@ -512,7 +501,7 @@ def update_datatable(request):
                 q = "SELECT taicat_project.id, \
                             EXTRACT (year from taicat_project.start_date)::int \
                             FROM taicat_project \
-                            WHERE CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval \
+                            WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval) \
                             GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
                             ORDER BY taicat_project.start_date DESC;"
                 cursor.execute(q)
