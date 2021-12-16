@@ -296,8 +296,8 @@ def project_overview(request):
     has_new = Image.objects.filter(created__gte=last_updated, project_id__in=list(public_project_info.id))
     if has_new.exists():
         # update project stat
-        has_new_id = pd.DataFrame(has_new.order_by('project_id').values('project_id').distinct('project_id'))
-        for i in has_new_id.project_id:
+        # has_new_id = pd.DataFrame(has_new.order_by('project_id').values('project_id').distinct('project_id'))
+        for i in public_project_info.id:
             c = Image.objects.filter(created__gte=last_updated, project_id=i).count()
             if ProjectStat.objects.filter(project_id=i).exists():
                 p = ProjectStat.objects.get(project_id=i)
@@ -402,8 +402,8 @@ def project_overview(request):
             has_new = Image.objects.filter(created__gte=last_updated, project_id__in=list(my_project_info.id))
             if has_new.exists():
                 # update project stat
-                has_new_id = pd.DataFrame(has_new.order_by('project_id').values('project_id').distinct('project_id'))
-                for i in has_new_id.project_id:
+                # has_new_id = pd.DataFrame(has_new.order_by('project_id').values('project_id').distinct('project_id'))
+                for i in my_project_info.id:
                     c = Image.objects.filter(created__gte=last_updated, project_id=i).count()
                     if ProjectStat.objects.filter(project_id=i).exists():
                         p = ProjectStat.objects.get(project_id=i)
