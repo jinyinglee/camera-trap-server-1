@@ -604,6 +604,7 @@ def data(request):
         df = df.merge(d_names).merge(sa_names)
 
         # parse string to dict
+        df['annotation'] = df.annotation.replace('null', "''", regex=True)
         df['anno_list'] = df.annotation.apply(lambda x: literal_eval(str(x)))
 
         recordsTotal = len(df)
