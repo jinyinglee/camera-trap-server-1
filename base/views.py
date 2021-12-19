@@ -272,7 +272,7 @@ def get_growth_data(request):
                 )
                 new_h.save()
     data_growth_image = list(HomePageStat.objects.filter(
-        type="image", year__gte=2008).values_list('year', 'count'))
+        type="image", year__gte=2008).order_by('year').values_list('year', 'count'))
 
     # --------- deployment --------- #
     year_gap = pd.DataFrame(
