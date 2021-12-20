@@ -5,6 +5,7 @@ from datetime import (
     date
 )
 import logging
+from calendar import monthrange
 
 from django.core.cache import cache
 from django.db.models import (
@@ -13,13 +14,44 @@ from django.db.models import (
     Count
 )
 from django.db.models.functions import Trunc
+from django.utils.timezone import make_aware
 
 from taicat.models import (
     Project,
     Image,
     StudyArea,
     Deployment,
+    DeploymentJournal,
 )
+
+def find_deployment_working_day(year, month, dep_id=''):
+    num_month = monthrange(year, month)[1]
+    month_start = make_aware(datetime(year, month, 1))
+    month_end = make_aware(datetime(year, month, num_month))
+    month_stat = [0] * num_month
+
+    query = DeploymentJournal.objects.filter(
+        is_effective=True,
+        deployment_id=dep_id,
+        working_start__lte=month_end,
+        working_end__gte=month_start).order_by('working_start')
+
+    for i in query.all():
+        # updated
+        #print ('-------')
+        #print (i.working_start.toordinal(), i.working_end.toordinal(), dt1.toordinal(), dt2.toordinal())
+        month_stat_part = [0] * num_month
+        overlap_range = [max(i.working_start, month_start), min(i.working_end, month_end)]
+        gap_days = (overlap_range[0]-month_start).days
+        duration_days = (overlap_range[1]-overlap_range[0]).days+1
+        for index, stat in enumerate(month_stat):
+            if index >= gap_days and index < gap_days + duration_days:
+                    month_stat[index] = 1
+                    month_stat_part[index] = 1
+            #print(month_stat_part)
+
+    #print('fin',dep_id, year, month,  month_stat)
+    return month_stat
 
 
 class Calculation(object):
@@ -106,6 +138,7 @@ class Calculation(object):
             #diff_days = (agg['datetime__max'] - agg['datetime__min']).day + 1
             diff_days = (agg['datetime__max']-agg['datetime__min']).days + 1
             working_hour = diff_days * 24 # 當天有照片就算工作 1 天 (24 hr)
+            #print (working_hour, agg)
 
             return [working_hour, [agg['datetime__min'], agg['datetime__max']]]
         return [0, ]
@@ -156,23 +189,26 @@ class Calculation(object):
             year2 += 1
         return (year2, month2)
 
-    def count_pod(self,  working_hour, year='', month=''):
+    def count_pod(self,  working_day, year='', month=''):
         '''捕獲回合比例 proportion of occasions with detections
 此項指標將每台相機於每回合（可選擇資料之時間範圍全部 或 依每月計算）中的拍攝視為一個試驗（trial），每次的試驗區分為成功（拍攝到動物，不計個體數或頻率）或不成功（未拍攝到動物）兩種結果，並計算每回合每台相機的成功機率（成功次數/試驗次數，亦即相機捕獲動物之回合數/當期回合數），再計算所有相機的平均成功機率。
         '''
-        if working_hour[0] == 0:
-            return (0,)
+        #if working_hour[0] == 0:
+        #    return (0,)
 
         if year and month:
-            ym2 = self.find_next_month(year, month)
-            next_first_day = date(ym2[0], ym2[1], 1)
-            this_first_day = date(year, month, 1)
-            days_in_month = (next_first_day - this_first_day).days
-            days_no_image = 0
-            days_no_image += (working_hour[1][0].date() - this_first_day).days
-            days_no_image += (next_first_day - working_hour[1][1].date()).days
-            #print(year, month, days_in_month, working_hour[1], x, y)
+            #ym2 = self.find_next_month(year, month)
+            #next_first_day = date(ym2[0], ym2[1], 1)
+            #this_first_day = date(year, month, 1)
+            #days_in_month = (next_first_day - this_first_day).days
+            #days_no_image = 0
+            #days_no_image += (working_hour[1][0].date() - this_first_day).days
+            #days_no_image += (next_first_day - working_hour[1][1].date()).days
+            ##print(year, month, days_in_month, working_hour[1], x, y)
+            days_in_month = len(working_day)
+            days_no_image = days_in_month - sum(working_day)
             return (days_no_image / days_in_month, (days_no_image, days_in_month))
+
         else:
             return (0, )
 
@@ -243,12 +279,14 @@ class Calculation(object):
 
                     session_query = self.query_no_species.filter(deployment_id=dep['deployment'], datetime__year=year, datetime__month=month)
                     session_query2 = self.query.filter(deployment_id=dep['deployment'], datetime__year=year, datetime__month=month)
-
-                    working_hour = self.count_working_hour(session_query)
+                    working_day = find_deployment_working_day(year, month, dep['deployment'])
+                    working_hour = sum(working_day) * 24
+                    working_hour_old = self.count_working_hour(session_query)
+                    #print (working_hour2, working_hour)
                     image_num = self.count_image(session_query2, self.calculate_params.get('interval'))
-                    oi3 = (image_num * 1.0 / working_hour[0]) * 1000 if image_num > 0 else 0
-                    event_num = self.count_event(session_query2, self.calculate_params.get('interval2'), working_hour[0])
-                    pod = self.count_pod(working_hour, year, month)
+                    oi3 = (image_num * 1.0 / working_hour) * 1000 if image_num > 0 and working_hour > 0 else 0
+                    event_num = self.count_event(session_query2, self.calculate_params.get('interval2'), working_hour)
+                    pod = self.count_pod(working_day, year, month)
                     #apoa = self.count_apoa(year, month, session_query)
                     #print(len(apoa))
                     sess_list.append({
