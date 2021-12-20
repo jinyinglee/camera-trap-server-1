@@ -148,11 +148,73 @@
 {% block script %}
 <script>
 $(function () {
-  $('[data-toggle="tooltip"]').tooltip()
-})
+   $('[data-toggle="tooltip"]').tooltip()
+   $('.month-detail').click((e)=>{
+     const data = JSON.parse(e.target.dataset.detail);
+     //console.log(data);
+     $('#detail-modal-title').html(`${data[0]}年${data[1]}月 | 相機位置: ${data[2]}`);
+     $('#detail-modal-tbody').empty();
+     $('#detail-modal-list').empty();
+     $('#detail-modal-count').html(data[3]);
+     $('#detail-modal-days').html(data[4]);
+     $('#detail-modal-ratio').html((data[3] * 100.0 / data[4]).toFixed(2));
+     for (let i=0; i<data[5].length; i++) {
+       let cols = '';
+       for (let j=0; j<data[5][i].length; j++) {
+         let day = '';
+         let cls = 'table-light';
+         if (data[5][i][j] > 0) {
+           day = data[5][i][j];
+           cls = (data[6][day-1] > 0) ? 'table-success' : 'table-danger';
+         } else {
+           day = '';
+         }
+         cols += `<td class="${cls}">${day}</div></td>`;
+       }
+       $('#detail-modal-tbody').append(`<tr>${cols}</tr>`);
+     }
+     for (let i=0; i<data[7].length; i++) {
+       $('#detail-modal-list').append(`<li class="list-group-item">${data[7][i][0]} ~ ${data[7][i][1]}</li>`);
+     }
+
+   });
+ })
 </script>
 {% endblock %}
 {% block body %}
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="detail-modal-title">--</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        綠底: 有運作、紅底: 無運作
+        <table class="table">
+          <thead>
+            <tr><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th><th>日</th></tr>
+          </thead>
+          <tbody id="detail-modal-tbody">
+          </tbody>
+        </table>
+        <div>
+          行程紀錄
+          <ul class="list-group" id="detail-modal-list">
+          </ul>
+        </div>
+        <div>相機運作比例 <span id="detail-modal-ratio"></span> (相機有運作天數 <span id="detail-modal-count"></span> / 當月天數 <span id="detail-modal-days"></span>)</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- end Modal -->
+
 <div class="container box">
   <div class="row pb-2 pt-4 header overflow-auto">
         <div class="col-12">
@@ -179,9 +241,7 @@ $(function () {
       <hr>
     </div>
   </div>
-  <button type="button" class="btn btn-secondary" data-bs-toggle="tooltip" data-bs-html="true" title="<em>Tooltip</em> <u>with</u> <b>HTML</b>">
-    Tooltip with HTML
-  </button>
+
   <div class="row">
     <div class="col-12">
       <h4>每月相機運作比例</h4>
@@ -201,7 +261,7 @@ $(function () {
               <tr>
                 <th scope="row">{{ deployment.name }}</th>
                 {% for x in deployment.items %}
-                <td><span data-toggle="tooltip" data-placement="bottom" title="{{ x.1.0 }}/{{ x.1.1 }} （相機有運作天數 / 當月天數）<br/>{{ x.1.2 }}" data-bs-html="true">{{ x.0|floatformat:2 }}%</span></td>
+                <td>{#<span data-toggle="tooltip" data-placement="bottom" title="{{ x.1.0 }}/{{ x.1.1 }} （相機有運作天數 / 當月天數）<br/>{{ x.1.2 }}" data-bs-html="true">{{ x.0|floatformat:2 }}%</span>#}<button type="button" class="btn month-detail"data-bs-toggle="modal" data-bs-target="#exampleModal" data-detail="{{ x.1 }}">{{ x.0|floatformat:2 }}</button></td>
                 {% endfor %}
               </tr>
               {% endfor %}

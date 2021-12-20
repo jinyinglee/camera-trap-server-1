@@ -32,8 +32,11 @@ from django.core.mail import send_mail
 import threading
 import string
 import random
-from calendar import monthrange
-from .utils import Calculation, find_deployment_working_day
+from calendar import monthrange, monthcalendar
+from .utils import (
+    Calculation,
+    find_deployment_working_day,
+)
 import collections
 from operator import itemgetter
 
@@ -287,7 +290,7 @@ def project_overview(request):
                     FROM taicat_project \
                     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval) \
                     GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
-                    ORDER BY taicat_project.name;"
+                    ORDER BY taicat_project.start_date DESC;"
         cursor.execute(q)
         public_project_info = cursor.fetchall()
         public_project_info = pd.DataFrame(public_project_info, columns=['id', 'name', 'keyword', 'start_year', 'funding_agency'])
@@ -948,13 +951,25 @@ def project_oversight(request, pk):
                         month_list = []
                         for m in range(1, 13):
                             days_in_month = monthrange(year, m)[1]
-                            working_day = find_deployment_working_day(year, m, dep_id)
+                            ret = find_deployment_working_day(year, m, dep_id)
+                            working_day = ret[0]
                             #print(year, m, dep_id, working_day)
-                            display_day_list = ['{}:{}'.format(index+1, 'Y' if yes else 'N') for index, yes in enumerate(working_day)]
+                            #display_day_list = ['{}:{}'.format(index+1, 'Y' if yes else 'N') for index, yes in enumerate(working_day)]
+                            month_cal = monthcalendar(year, m)
                             #display_working_day_in_calendar(year, m, working_day)
                             count_working_day = sum(working_day)
+                            data = [
+                                year,
+                                m,
+                                d['name'],
+                                count_working_day,
+                                days_in_month,
+                                month_cal,
+                                working_day,
+                                ret[1],
+                            ]
                             ratio = count_working_day * 100.0 / days_in_month
-                            month_list.append([ratio, [count_working_day, days_in_month, ', '.join(display_day_list)]])
+                            month_list.append([ratio, json.dumps(data)])
                         #query = Image.objects.values('datetime').filter(project_id=pk, deployment_id=dep_id).annotate(year=Trunc('datetime', 'year')).filter(datetime__year=year).annotate(day=Trunc('datetime', 'day')).annotate(count=Count('day'))
                         # print(query.query)
 

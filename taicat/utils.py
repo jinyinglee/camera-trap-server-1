@@ -29,17 +29,30 @@ from taicat.models import (
 
 # WIP
 def display_working_day_in_calendar_html(year, month, working_day):
-    month_cal = monthcalendar(year, m)
-    s = ''
+    month_cal = monthcalendar(year, month)
+    s = '| 一 | 二 | 三 | 四 | 五 | 六 | 日 |'
+    
     for week in month_cal:
         for d in week:
-            if d > 0:
-                if working_day[d-1]:
-                    pass
+            s += f'{d}'
+    '''
+    print (month_cal)
+    s = '<table class="table"><tr><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th><th>日</th></tr>'
+    for week in month_cal:
+        s += '<tr>'
+        for d in week:
+            #if d > 0:
+            #    if working_day[d-1]:
+            #        pass
                     #s
-            else:
-                res_week.append('0')
-
+            #else:
+            #    pass
+            #    #res_week.append('0')
+            s += '<td>{}</td>'.format(d)
+        s += '</tr>'
+    s += '</table>'
+    '''
+    return s
 
 def find_deployment_working_day(year, month, dep_id=''):
     num_month = monthrange(year, month)[1]
@@ -53,6 +66,7 @@ def find_deployment_working_day(year, month, dep_id=''):
         working_start__lte=month_end,
         working_end__gte=month_start).order_by('working_start')
 
+    ret = []
     for i in query.all():
         # updated
         #print ('-------')
@@ -66,9 +80,9 @@ def find_deployment_working_day(year, month, dep_id=''):
                     month_stat[index] = 1
                     month_stat_part[index] = 1
             #print(month_stat_part)
-
+        ret.append([i.working_start.strftime('%Y-%m-%d'), i.working_end.strftime('%Y-%m-%d')])
     #print('fin',dep_id, year, month,  month_stat)
-    return month_stat
+    return month_stat, ret
 
 
 class Calculation(object):
@@ -296,7 +310,8 @@ class Calculation(object):
 
                     session_query = self.query_no_species.filter(deployment_id=dep['deployment'], datetime__year=year, datetime__month=month)
                     session_query2 = self.query.filter(deployment_id=dep['deployment'], datetime__year=year, datetime__month=month)
-                    working_day = find_deployment_working_day(year, month, dep['deployment'])
+                    ret = find_deployment_working_day(year, month, dep['deployment'])
+                    working_day = ret[0]
                     working_hour = sum(working_day) * 24
                     working_hour_old = self.count_working_hour(session_query)
                     #print (working_hour2, working_hour)
