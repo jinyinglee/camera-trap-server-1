@@ -5,7 +5,10 @@ from datetime import (
     date
 )
 import logging
-from calendar import monthrange
+from calendar import (
+    monthrange,
+    monthcalendar
+)
 
 from django.core.cache import cache
 from django.db.models import (
@@ -23,6 +26,20 @@ from taicat.models import (
     Deployment,
     DeploymentJournal,
 )
+
+# WIP
+def display_working_day_in_calendar_html(year, month, working_day):
+    month_cal = monthcalendar(year, m)
+    s = ''
+    for week in month_cal:
+        for d in week:
+            if d > 0:
+                if working_day[d-1]:
+                    pass
+                    #s
+            else:
+                res_week.append('0')
+
 
 def find_deployment_working_day(year, month, dep_id=''):
     num_month = monthrange(year, month)[1]

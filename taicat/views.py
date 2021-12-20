@@ -33,7 +33,7 @@ import threading
 import string
 import random
 from calendar import monthrange
-from .utils import Calculation
+from .utils import Calculation, find_deployment_working_day
 import collections
 from operator import itemgetter
 
@@ -948,20 +948,27 @@ def project_oversight(request, pk):
                         month_list = []
                         for m in range(1, 13):
                             days_in_month = monthrange(year, m)[1]
-                            month_list.append([0, [0, days_in_month]])
+                            working_day = find_deployment_working_day(year, m, dep_id)
+                            #print(year, m, dep_id, working_day)
+                            display_day_list = ['{}:{}'.format(index+1, 'Y' if yes else 'N') for index, yes in enumerate(working_day)]
+                            #display_working_day_in_calendar(year, m, working_day)
+                            count_working_day = sum(working_day)
+                            ratio = count_working_day * 100.0 / days_in_month
+                            month_list.append([ratio, [count_working_day, days_in_month, ', '.join(display_day_list)]])
                         #query = Image.objects.values('datetime').filter(project_id=pk, deployment_id=dep_id).annotate(year=Trunc('datetime', 'year')).filter(datetime__year=year).annotate(day=Trunc('datetime', 'day')).annotate(count=Count('day'))
                         # print(query.query)
-                        with connection.cursor() as cursor:
-                            query = f"SELECT DATE_TRUNC('day', datetime) AS day FROM taicat_image WHERE deployment_id={dep_id} AND datetime BETWEEN '{year}-01-01' AND '{year}-12-31' GROUP BY day ORDER BY day;"
-                            cursor.execute(query)
-                            data = cursor.fetchall()
-                            for i in data:
-                                month_idx = i[0].month - 1
-                                month_list[month_idx][1][0] += 1
-                                month_list[month_idx][0] = month_list[month_idx][1][0] * \
-                                    100.0 / month_list[month_idx][1][1]
+
+                        #with connection.cursor() as cursor:
+                        #    query = f"SELECT DATE_TRUNC('day', datetime) AS day FROM taicat_image WHERE deployment_id={dep_id} AND datetime BETWEEN '{year}-01-01' AND '{year}-12-31' GROUP BY day ORDER BY day;"
+                        #    cursor.execute(query)
+                        #    data = cursor.fetchall()
+                        #    for i in data:
+                        #        month_idx = i[0].month - 1
+                        #        month_list[month_idx][1][0] += 1
+                        #        month_list[month_idx][0] = month_list[month_idx][1][0] * \
+                        #            100.0 / month_list[month_idx][1][1]
                         items_d.append({
-                            'name': sa['name'],
+                            'name': d['name'],
                             'items': month_list,
                         })
                     result.append({

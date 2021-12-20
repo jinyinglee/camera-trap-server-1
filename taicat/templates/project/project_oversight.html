@@ -166,6 +166,7 @@ $(function () {
       </h4>
 
       <div>
+        <h4>年份</h4>
       {% for i in year_list %}
       {% if i|to_int == request.GET.year|to_int %}
       {{ i }}
@@ -197,7 +198,7 @@ $(function () {
               <tr>
                 <th scope="row">{{ deployment.name }}</th>
                 {% for x in deployment.items %}
-                <td><span data-toggle="tooltip" data-placement="bottom" title="{{ x.1.0 }}/{{ x.1.1 }} （相機有運作天數 / 當月天數）">{{ x.0|floatformat:2 }}%</span></td>
+                <td><span data-toggle="tooltip" data-placement="bottom" title="{{ x.1.0 }}/{{ x.1.1 }} （相機有運作天數 / 當月天數）<br/>{{ x.1.2 }}" data-bs-html="true">{{ x.0|floatformat:2 }}%</span></td>
                 {% endfor %}
               </tr>
               {% endfor %}
