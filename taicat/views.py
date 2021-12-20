@@ -287,7 +287,7 @@ def project_overview(request):
                     FROM taicat_project \
                     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval) \
                     GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
-                    ORDER BY taicat_project.start_date DESC;"
+                    ORDER BY taicat_project.name;"
         cursor.execute(q)
         public_project_info = cursor.fetchall()
         public_project_info = pd.DataFrame(public_project_info, columns=['id', 'name', 'keyword', 'start_year', 'funding_agency'])
