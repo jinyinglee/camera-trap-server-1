@@ -38,6 +38,8 @@ import collections
 from operator import itemgetter
 
 
+s3_bucket = env('S3_BUCKET', default='camera-trap-21-prod')
+
 def randomword(length):
     letters = string.ascii_lowercase
     return ''.join(random.choice(letters) for i in range(length))
@@ -646,20 +648,20 @@ def data(request):
             extension = file_url.split('.')[-1]
             if not df.from_mongo[i]:
                 # new data - image
+                # env('AWS_ACCESS_KEY_ID', default='')
                 if extension == 'jpg':
-                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}" />""".format(
-                        file_url)
+                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://{}.s3-ap-northeast-1.amazonaws.com/{}" />""".format(s3_bucket,file_url)
                 # new data - video
                 else:
                     df.loc[i, 'file_url'] = """
                     <video class="img lazy mx-auto d-block" controls height="100">
-                        <source src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}"
+                        <source src="https://{}.s3-ap-northeast-1.amazonaws.com/{}"
                                 type="video/webm">
-                        <source src="https://camera-trap-21.s3-ap-northeast-1.amazonaws.com/{}"
+                        <source src="https://{}.s3-ap-northeast-1.amazonaws.com/{}"
                                 type="video/mp4">
                         抱歉，您的瀏覽器不支援內嵌影片。
                     </video>
-                    """.format(file_url, file_url)
+                    """.format(s3_bucket, file_url, s3_bucket, file_url)
             else:
                 # old data - image
                 if extension == 'jpg':
