@@ -25,7 +25,5 @@ urlpatterns = [
     path('', include('base.urls')),
     path('', include('taicat.urls')),
     path('api/client/v1/', include('taicat.client_urls')),
-    url(r'^media/(?P<path>.*)$', serve, {
-        'document_root': settings.MEDIA_ROOT,
-    }),
+    url(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT, }),
 ]

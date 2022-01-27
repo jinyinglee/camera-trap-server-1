@@ -113,12 +113,12 @@ def create_project(request):
         project_pk = project.id
 
         # save in taicat_project_member, default as project_admin
-        ProjectMember.objects.create(
-            role='project_admin', member_id=request.session['id'], project_id=project_pk)
+        ProjectMember.objects.create(role='project_admin', member_id=request.session['id'], project_id=project_pk)
 
         return redirect(edit_project_basic, project_pk)
 
     return render(request, 'project/create_project.html', {'city_list': city_list, 'is_authorized_create': is_authorized_create})
+
 
 def edit_project_basic(request, pk):
     is_authorized = check_if_authorized(request, pk)
@@ -151,8 +151,7 @@ def edit_project_license(request, pk):
             data.pop('csrfmiddlewaretoken')
             project = Project.objects.filter(id=pk).update(**data)
 
-        project = Project.objects.filter(id=pk).values(
-            "publish_date", "interpretive_data_license", "identification_information_license", "video_material_license").first()
+        project = Project.objects.filter(id=pk).values("publish_date", "interpretive_data_license", "identification_information_license", "video_material_license").first()
         return render(request, 'project/edit_project_license.html', {'project': project, 'pk': pk, 'is_authorized': is_authorized})
     else:
         messages.error(request, '您的權限不足')
@@ -168,8 +167,7 @@ def edit_project_members(request, pk):
         organization_admin = []  # incase there is no one
         organization_id = Organization.objects.filter(projects=pk).values('id')
         for i in organization_id:
-            temp = list(Contact.objects.filter(
-                organization=i['id'], is_organization_admin=True).all().values('name', 'email'))
+            temp = list(Contact.objects.filter(organization=i['id'], is_organization_admin=True).all().values('name', 'email'))
             organization_admin.extend(temp)
 
         # other members
@@ -178,17 +176,14 @@ def edit_project_members(request, pk):
             data = dict(request.POST.items())
             # Add member
             if data['action'] == 'add':
-                member = Contact.objects.filter(
-                    Q(email=data['contact_query']) | Q(orcid=data['contact_query'])).first()
+                member = Contact.objects.filter(Q(email=data['contact_query']) | Q(orcid=data['contact_query'])).first()
                 if member:
                     # check: if not exists, create
                     if not ProjectMember.objects.filter(member_id=member.id, project_id=pk):
-                        ProjectMember.objects.create(
-                            role=data['role'], member_id=member.id, project_id=pk)
+                        ProjectMember.objects.create(role=data['role'], member_id=member.id, project_id=pk)
                     # check: if exists, update
                     else:
-                        ProjectMember.objects.filter(
-                            member_id=member.id, project_id=pk).update(role=data['role'])
+                        ProjectMember.objects.filter(member_id=member.id, project_id=pk).update(role=data['role'])
                     messages.success(request, '新增成功')
                 else:
                     messages.error(request, '查無使用者')
@@ -198,13 +193,11 @@ def edit_project_members(request, pk):
                 data.pop('action')
                 data.pop('csrfmiddlewaretoken')
                 for i in data:
-                    ProjectMember.objects.filter(
-                        member_id=i, project_id=pk).update(role=data[i])
+                    ProjectMember.objects.filter(member_id=i, project_id=pk).update(role=data[i])
                 messages.success(request, '儲存成功')
             # Remove member
             else:
-                ProjectMember.objects.filter(
-                    member_id=data['memberid'], project_id=pk).delete()
+                ProjectMember.objects.filter(member_id=data['memberid'], project_id=pk).delete()
                 messages.success(request, '移除成功')
 
         return render(request, 'project/edit_project_members.html', {'members': members, 'pk': pk,
@@ -261,9 +254,8 @@ def add_deployment(request):
             if altitudes[i] == "":
                 altitudes[i] = None
             Deployment.objects.create(project_id=project_id, study_area_id=study_area_id, geodetic_datum=geodetic_datum,
-                                      name=names[i], longitude=longitudes[i], latitude=latitudes[
-                                          i], altitude=altitudes[i], landcover=landcovers[i],
-                                      vegetation=vegetations[i])
+                                      name=names[i], longitude=longitudes[i], latitude=latitudes[i], altitude=altitudes[i],
+                                      landcover=landcovers[i], vegetation=vegetations[i])
 
         return HttpResponse(json.dumps({'d': 'done'}), content_type='application/json')
 
@@ -274,8 +266,7 @@ def add_studyarea(request):
         parent_id = request.POST.get('parent_id', None)
         name = request.POST.get('name')
 
-        s = StudyArea.objects.create(
-            name=name, project_id=project_id, parent_id=parent_id)
+        s = StudyArea.objects.create(name=name, project_id=project_id, parent_id=parent_id)
         data = {'study_area_id': s.id}
 
         return HttpResponse(json.dumps(data), content_type='application/json')
@@ -300,8 +291,7 @@ def project_overview(request):
                         ORDER BY taicat_project.start_date DESC;"
         cursor.execute(q)
         public_project_info = cursor.fetchall()
-        public_project_info = pd.DataFrame(public_project_info, columns=[
-            'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea'])
+        public_project_info = pd.DataFrame(public_project_info, columns=['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea'])
 
     # species data
     public_species_data = []
@@ -318,13 +308,10 @@ def project_overview(request):
     for i in public_project_info.id:
         image_c = Image.objects.filter(project_id=i).count()
         dep_c = Deployment.objects.filter(project_id=i).count()
-        public_project_info.loc[public_project_info['id']
-                                == i, 'num_image'] = image_c
-        public_project_info.loc[public_project_info['id']
-                                == i, 'num_deployment'] = dep_c
+        public_project_info.loc[public_project_info['id'] == i, 'num_image'] = image_c
+        public_project_info.loc[public_project_info['id'] == i, 'num_deployment'] = dep_c
 
-    public_project = public_project_info[[
-        'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
+    public_project = public_project_info[['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
     public_project = list(public_project.itertuples(index=False, name=None))
 
     # my project
@@ -339,20 +326,16 @@ def project_overview(request):
             for i in temp:
                 project_list += [i[0]]
         # 2. check if the user is organization admin
-        if_organization_admin = Contact.objects.filter(
-            id=member_id, is_organization_admin=True)
+        if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
         if if_organization_admin:
-            organization_id = if_organization_admin.values(
-                'organization').first()['organization']
-            temp = Organization.objects.filter(
-                id=organization_id).values('projects')
+            organization_id = if_organization_admin.values('organization').first()['organization']
+            temp = Organization.objects.filter(id=organization_id).values('projects')
             for i in temp:
                 project_list += [i['projects']]
         print('my', project_list)
         if project_list:
             my_project_info = pd.DataFrame()
-            project_list = str(project_list).replace(
-                '[', '(').replace(']', ')')
+            project_list = str(project_list).replace('[', '(').replace(']', ')')
             with connection.cursor() as cursor:
                 q = "SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
                                 EXTRACT (year from taicat_project.start_date)::int, \
@@ -364,12 +347,10 @@ def project_overview(request):
                                 ORDER BY taicat_project.start_date DESC;"
                 cursor.execute(q.format(project_list))
                 my_project_info = cursor.fetchall()
-                my_project_info = pd.DataFrame(my_project_info, columns=[
-                                               'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea'])
+                my_project_info = pd.DataFrame(my_project_info, columns=['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea'])
             my_species_data = []
             for i in species_list:
-                spe_c = Image.objects.filter(
-                    annotation__contains=[{'species': i}], project_id__in=list(my_project_info.id)).count()
+                spe_c = Image.objects.filter(annotation__contains=[{'species': i}], project_id__in=list(my_project_info.id)).count()
                 if spe_c > 0:
                     my_species_data += [(spe_c, i)]
             my_species_data.sort(reverse=True)
@@ -380,15 +361,11 @@ def project_overview(request):
             for i in my_project_info.id:
                 image_c = Image.objects.filter(project_id=i).count()
                 dep_c = Deployment.objects.filter(project_id=i).count()
-                my_project_info.loc[my_project_info['id']
-                                    == i, 'num_image'] = image_c
-                my_project_info.loc[my_project_info['id']
-                                    == i, 'num_deployment'] = dep_c
+                my_project_info.loc[my_project_info['id'] == i, 'num_image'] = image_c
+                my_project_info.loc[my_project_info['id'] == i, 'num_deployment'] = dep_c
 
-            my_project_info = my_project_info[[
-                'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
-            my_project = list(
-                my_project_info.itertuples(index=False, name=None))
+            my_project_info = my_project_info[['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
+            my_project = list(my_project_info.itertuples(index=False, name=None))
 
     print(time.time()-s)
     return render(request, 'project/project_overview.html', {'public_project': public_project, 'my_project': my_project, 'is_authorized_create': is_authorized_create,
@@ -405,8 +382,7 @@ def update_datatable(request):
         # if species:
         project_list = []
         if table_id == 'publicproject':
-            project_list = Image.objects.filter(annotation__contains=[
-                                                {'species': species}]).order_by('project_id').distinct('project_id')
+            project_list = Image.objects.filter(annotation__contains=[{'species': species}]).order_by('project_id').distinct('project_id')
             project_list = list(
                 project_list.values_list('project_id', flat=True))
             print('1', time.time()-s)
@@ -423,27 +399,21 @@ def update_datatable(request):
                     for i in temp:
                         my_project_list += [i[0]]
                 # 2. check if the user is organization admin
-                if_organization_admin = Contact.objects.filter(
-                    id=member_id, is_organization_admin=True)
+                if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
                 if if_organization_admin:
-                    organization_id = if_organization_admin.values(
-                        'organization').first()['organization']
-                    temp = Organization.objects.filter(
-                        id=organization_id).values('projects')
+                    organization_id = if_organization_admin.values('organization').first()['organization']
+                    temp = Organization.objects.filter(id=organization_id).values('projects')
                     for i in temp:
                         my_project_list += [i['projects']]
 
                 # check species
                 if my_project_list:
                     with connection.cursor() as cursor:
-                        project_list = Image.objects.filter(annotation__contains=[
-                                                            {'species': species}], project_id__in=my_project_list).order_by('project_id').distinct('project_id')
-                        project_list = list(
-                            project_list.values_list('project_id', flat=True))
+                        project_list = Image.objects.filter(annotation__contains=[{'species': species}], project_id__in=my_project_list).order_by('project_id').distinct('project_id')
+                        project_list = list(project_list.values_list('project_id', flat=True))
         project = []
         if project_list:
-            project_list = str(project_list).replace(
-                '[', '(').replace(']', ')')
+            project_list = str(project_list).replace('[', '(').replace(']', ')')
             with connection.cursor() as cursor:
                 q = "SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
                                 EXTRACT (year from taicat_project.start_date)::int, \
@@ -455,8 +425,7 @@ def update_datatable(request):
                                 ORDER BY taicat_project.start_date DESC;"
                 cursor.execute(q.format(project_list))
                 project_info = cursor.fetchall()
-                project_info = pd.DataFrame(project_info, columns=[
-                    'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea'])
+                project_info = pd.DataFrame(project_info, columns=['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea'])
 
             project_info['num_image'] = 0
             project_info['num_deployment'] = 0
@@ -464,15 +433,11 @@ def update_datatable(request):
             for i in project_info.id:
                 image_c = Image.objects.filter(project_id=i).count()
                 dep_c = Deployment.objects.filter(project_id=i).count()
-                project_info.loc[project_info['id']
-                                 == i, 'num_image'] = image_c
-                project_info.loc[project_info['id']
-                                 == i, 'num_deployment'] = dep_c
+                project_info.loc[project_info['id'] == i, 'num_image'] = image_c
+                project_info.loc[project_info['id'] == i, 'num_deployment'] = dep_c
 
-            project_info = project_info[[
-                'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
-            project = list(
-                project_info.itertuples(index=False, name=None))
+            project_info = project_info[['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
+            project = list(project_info.itertuples(index=False, name=None))
 
             # project_name, keyword, start_year, funding_agency, num_sa, num_dep, num_image
 
@@ -490,8 +455,7 @@ def data(request):
     if start_date and end_date:
         start_date = datetime.strptime(start_date, "%Y-%m-%d")
         end_date = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
-        date_filter = "AND i.datetime BETWEEN '{}' AND '{}'".format(
-            start_date, end_date)
+        date_filter = "AND i.datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
     _start = requests.get('start')
     _length = requests.get('length')
     species = requests.get('species')
@@ -553,12 +517,10 @@ def data(request):
                         WHERE d.project_id = {} {} {} 
                         ORDER BY i.created, i.filename)
                         select * from base_request {};"""
-        cursor.execute(query.format(
-            pk, date_filter, conditions, spe_conditions))
+        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions))
         image_info = cursor.fetchall()
     if image_info:
-        df = pd.DataFrame(image_info, columns=[
-                          'saname', 'dname', 'filename', 'datetime', 'saparent', 'annotation', 'file_url', 'image_id', 'from_mongo'])
+        df = pd.DataFrame(image_info, columns=['saname', 'dname', 'filename', 'datetime', 'saparent', 'annotation', 'file_url', 'image_id', 'from_mongo'])
         # parse string to dict
 
         # lack sa.name AS saname, d.name AS dname, sa.parent_id AS saparent
@@ -582,20 +544,17 @@ def data(request):
             if 'remark' in df.anno_list[i]:
                 df.anno_list[i]['remarks'] = df.anno_list[i].pop('remark')
 
-        df = pd.concat([df.drop(['anno_list'], axis=1),
-                       df['anno_list'].apply(pd.Series)], axis=1)
+        df = pd.concat([df.drop(['anno_list'], axis=1), df['anno_list'].apply(pd.Series)], axis=1)
         df = df.reset_index()
 
         # add group id
         df['group_id'] = df.groupby('index').cumcount()
-        ssa_exist = StudyArea.objects.filter(
-            project_id=pk, parent__isnull=False)
+        ssa_exist = StudyArea.objects.filter(project_id=pk, parent__isnull=False)
         if ssa_exist.count() > 0:
             ssa_list = list(ssa_exist.values_list('name', flat=True))
             for i in df[df.saname.isin(ssa_list)].index:
                 try:
-                    parent_saname = StudyArea.objects.get(
-                        id=df.saparent[i]).name
+                    parent_saname = StudyArea.objects.get(id=df.saparent[i]).name
                     current_name = df.saname[i]
                     df.loc[i, 'saname'] = f"{parent_saname}_{current_name}"
                 except:
@@ -715,8 +674,7 @@ def project_detail(request, pk):
             edit = True
         # 計畫總管理人
         elif Contact.objects.filter(id=user_id, is_organization_admin=True):
-            organization_id = Contact.objects.filter(
-                id=user_id, is_organization_admin=True).values('organization').first()['organization']
+            organization_id = Contact.objects.filter(id=user_id, is_organization_admin=True).values('organization').first()['organization']
             if Organization.objects.filter(id=organization_id, projects=pk):
                 edit = True
     study_area = StudyArea.objects.filter(project_id=pk).order_by('name')
@@ -821,20 +779,17 @@ def generate_download_excel(request, pk):
         image_info = cursor.fetchall()
 
     if image_info:
-        df = pd.DataFrame(image_info, columns=[
-                          'saname', 'dname', 'filename', 'datetime', 'saparent', 'annotation', 'file_url', 'image_id', 'from_mongo'])
+        df = pd.DataFrame(image_info, columns=['saname', 'dname', 'filename', 'datetime', 'saparent', 'annotation', 'file_url', 'image_id', 'from_mongo'])
         # parse string to dict
         df['anno_list'] = df.annotation.apply(lambda x: literal_eval(str(x)))
         for i in df[df.anno_list.notnull()].index:
             if 'remark' in df.anno_list[i]:
                 df.anno_list[i]['remarks'] = df.anno_list[i].pop('remark')
 
-        df = pd.concat([df.drop(['anno_list'], axis=1),
-                       df['anno_list'].apply(pd.Series)], axis=1)
+        df = pd.concat([df.drop(['anno_list'], axis=1), df['anno_list'].apply(pd.Series)], axis=1)
         df = df.reset_index()
         df['subsaname'] = ''
-        ssa_exist = StudyArea.objects.filter(
-            project_id=pk, parent__isnull=False)
+        ssa_exist = StudyArea.objects.filter(project_id=pk, parent__isnull=False)
         if ssa_exist.count() > 0:
             ssa_list = list(ssa_exist.values_list('name', flat=True))
             for i in df[df.saname.isin(ssa_list)].index:
@@ -881,6 +836,7 @@ def generate_download_excel(request, pk):
 
     # return response
 
+
 def project_oversight(request, pk):
     '''
     相機有運作天數 / 當月天數
@@ -894,14 +850,14 @@ def project_oversight(request, pk):
 
             # min/max 超慢?
             mnx = Image.objects.filter(project_id=pk).aggregate(Max('datetime'), Min('datetime'))
-            #print(mnx)
+            # print(mnx)
             year = request.GET.get('year')
             end_year = mnx['datetime__max'].year
             start_year = mnx['datetime__min'].year
             year_list = list(range(start_year, end_year+1))
             #imax = Image.objects.values('datetime').filter(project_id=pk).order_by('datetime')[:1]
             #imin = Image.objects.filter(project_id=pk).order_by('-datetime')[:1]
-            #print(imax)
+            # print(imax)
             #print(mn.first(), mn.last())
 
             #year_list = list(range(2010, 2022))
@@ -919,7 +875,7 @@ def project_oversight(request, pk):
                             days_in_month = monthrange(year, m)[1]
                             month_list.append([0, [0, days_in_month]])
                         #query = Image.objects.values('datetime').filter(project_id=pk, deployment_id=dep_id).annotate(year=Trunc('datetime', 'year')).filter(datetime__year=year).annotate(day=Trunc('datetime', 'day')).annotate(count=Count('day'))
-                        #print(query.query)
+                        # print(query.query)
                         with connection.cursor() as cursor:
                             query = f"SELECT DATE_TRUNC('day', datetime) AS day FROM taicat_image WHERE deployment_id={dep_id} AND datetime BETWEEN '{year}-01-01' AND '{year}-12-31' GROUP BY day ORDER BY day;"
                             cursor.execute(query)
@@ -936,7 +892,7 @@ def project_oversight(request, pk):
                         'name': sa['name'],
                         'items': items_d
                     })
-                    #print(result)
+                    # print(result)
 
             return render(request, 'project/project_oversight.html', {
                 'project': project,
