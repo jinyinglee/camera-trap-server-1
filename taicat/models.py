@@ -224,6 +224,7 @@ class Image(models.Model):
     # mongoDB的自填欄位
     remarks2 = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
+    last_updated = models.DateTimeField(null=True, db_index=True)
     annotation = models.JSONField(default=dict, blank=True, db_index=True)
     memo = models.TextField(default='', blank=True)
     image_hash = models.TextField(default='', blank=True)
