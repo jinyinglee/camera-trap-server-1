@@ -40,6 +40,7 @@ from operator import itemgetter
 
 s3_bucket = env('S3_BUCKET', default='camera-trap-21-prod')
 
+
 def randomword(length):
     letters = string.ascii_lowercase
     return ''.join(random.choice(letters) for i in range(length))
@@ -254,8 +255,8 @@ def add_deployment(request):
             if altitudes[i] == "":
                 altitudes[i] = None
             Deployment.objects.create(project_id=project_id, study_area_id=study_area_id, geodetic_datum=geodetic_datum,
-                                      name=names[i], longitude=longitudes[i], latitude=latitudes[i], altitude=altitudes[i], 
-                                      landcover=landcovers[i],vegetation=vegetations[i])
+                                      name=names[i], longitude=longitudes[i], latitude=latitudes[i], altitude=altitudes[i],
+                                      landcover=landcovers[i], vegetation=vegetations[i])
 
         return HttpResponse(json.dumps({'d': 'done'}), content_type='application/json')
 
@@ -272,38 +273,33 @@ def add_studyarea(request):
         return HttpResponse(json.dumps(data), content_type='application/json')
 
 
-def project_overview(request):
-    s = time.time()
-    is_authorized_create = check_if_authorized_create(request)
-    public_project = []
-    my_project = []
-    my_species_data = []
-    # 公開計畫 depend on publish_date date
-    # -----------
+def get_project_info(project_list):
     with connection.cursor() as cursor:
-        q = "SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
+        q = f"SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
                     EXTRACT (year from taicat_project.start_date)::int, \
                     taicat_project.funding_agency \
                     FROM taicat_project \
-                    WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval) \
+                    WHERE taicat_project.id IN {project_list} \
                     GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
                     ORDER BY taicat_project.name;"
         cursor.execute(q)
-        public_project_info = cursor.fetchall()
-        public_project_info = pd.DataFrame(public_project_info, columns=['id', 'name', 'keyword', 'start_year', 'funding_agency'])
+        project_info = cursor.fetchall()
+        project_info = pd.DataFrame(project_info, columns=['id', 'name', 'keyword', 'start_year', 'funding_agency'])
     # count data
     # update if new images
     now = timezone.now()
-    last_updated = ProjectStat.objects.all().aggregate(Min('last_updated'))['last_updated__min']
-    has_new = Image.objects.filter(created__gte=last_updated, project_id__in=list(public_project_info.id))
+    last_updated = ProjectStat.objects.filter(project_id__in=list(project_info.id)).aggregate(Min('last_updated'))['last_updated__min']
+    has_new = Image.objects.filter(created__gte=last_updated, project_id__in=list(project_info.id))
     if has_new.exists():
         # update project stat
-        # has_new_id = pd.DataFrame(has_new.order_by('project_id').values('project_id').distinct('project_id'))
-        for i in public_project_info.id:
-            c = Image.objects.filter(created__gte=last_updated, project_id=i).count()
+        ProjectStat.objects.filter(project_id__in=list(project_info.id)).update(last_updated=now)
+        for i in project_info.id:
+            c = Image.objects.filter(project_id=i).count()
             if ProjectStat.objects.filter(project_id=i).exists():
                 p = ProjectStat.objects.get(project_id=i)
-                p.num_image += c
+                p.num_sa = StudyArea.objects.filter(project_id=i).count()
+                p.num_deployment = Deployment.objects.filter(project_id=i).count()
+                p.num_image = c
                 p.last_updated = now
                 p.save()
             else:
@@ -315,55 +311,57 @@ def project_overview(request):
                     last_updated=now)
                 p.save()
             # ------update project species stat-------#
-            img_list = Image.objects.values_list('annotation', flat=True).filter(project_id=i, created__gte=last_updated).all()
-            project_species_list = []
-            for alist in img_list:
-                for a in alist:
-                    try:
-                        if sp := a.get('species', ''):
-                            project_species_list.append(sp)
-                    except:
-                        #print ('annotation load error')
-                        pass
-            counter = collections.Counter(project_species_list)
-            counter_dict = dict(counter)
-            project_species_list = sorted(counter_dict.items(), key=itemgetter(1), reverse=True)
-            for k in project_species_list:
-                if ProjectSpecies.objects.filter(name=k[0], project_id=i).exists():
+            query = Image.objects.filter(project_id=i, last_updated__gte=last_updated).values('species').annotate(total=Count('species')).order_by('-total')
+            for q in query:
+                if ProjectSpecies.objects.filter(name=q['species'], project_id=i).exists():
                     # exist -> update
-                    p_sp = ProjectSpecies.objects.get(name=k[0], project_id=i)
-                    p_sp.count += k[1]
+                    p_sp = ProjectSpecies.objects.get(name=q['species'], project_id=i)
+                    p_sp.count += q['total']
                     p_sp.last_updated = now
                     p_sp.save()
                 else:
                     # not exitst -> create
                     p_sp = ProjectSpecies(
                         project_id=i,
-                        name=k[0],
-                        count=k[1],
+                        name=q['species'],
+                        count=q['total'],
                         last_updated=now,)
                     p_sp.save()
             # ------update project species stat-------#
-    public_species_data = ProjectSpecies.objects.filter(project_id__in=list(public_project_info.id), name__in=Species.DEFAULT_LIST).values(
+    species_data = ProjectSpecies.objects.filter(project_id__in=list(project_info.id), name__in=Species.DEFAULT_LIST).values(
         'name').annotate(total_count=Sum('count')).values_list('total_count', 'name').order_by('-total_count')
-
-    public_project_info['num_image'] = 0
-    public_project_info['num_studyarea'] = 0
-    public_project_info['num_deployment'] = 0
-    for i in public_project_info.id:
+    project_info['num_image'] = 0
+    project_info['num_studyarea'] = 0
+    project_info['num_deployment'] = 0
+    for i in project_info.id:
         sa_c = StudyArea.objects.filter(project_id=i).count()
         dep_c = Deployment.objects.filter(project_id=i).count()
         img_c = ProjectStat.objects.get(project_id=i).num_image
-        public_project_info.loc[public_project_info['id'] == i, 'num_image'] = img_c
-        public_project_info.loc[public_project_info['id'] == i, 'num_studyarea'] = sa_c
-        public_project_info.loc[public_project_info['id'] == i, 'num_deployment'] = dep_c
+        project_info.loc[project_info['id'] == i, 'num_image'] = img_c
+        project_info.loc[project_info['id'] == i, 'num_studyarea'] = sa_c
+        project_info.loc[project_info['id'] == i, 'num_deployment'] = dep_c
+    projects = project_info[['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
+    projects = list(projects.itertuples(index=False, name=None))
+    return projects, species_data
 
-    public_project = public_project_info[['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
-    public_project = list(public_project.itertuples(index=False, name=None))
 
+def project_overview(request):
+    is_authorized_create = check_if_authorized_create(request)
+    public_project = []
+    public_species_data = []
+    # 公開計畫 depend on publish_date date
+    with connection.cursor() as cursor:
+        q = "SELECT taicat_project.id FROM taicat_project \
+            WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
+        cursor.execute(q)
+        public_project_list = [l[0] for l in cursor.fetchall()]
+    if public_project_list:
+        public_project, public_species_data = get_project_info(str(public_project_list).replace('[', '(').replace(']', ')'))
     # ---------------我的計畫
     # my project
-    project_list = []
+    my_project = []
+    my_species_data = []
+    my_project_list = []
     member_id = request.session.get('id', None)
     if member_id:
         # 1. select from project_member table
@@ -373,131 +371,35 @@ def project_overview(request):
             temp = cursor.fetchall()
             for i in temp:
                 if i[0]:
-                    project_list += [i[0]]
+                    my_project_list += [i[0]]
         # 2. check if the user is organization admin
         if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
         if if_organization_admin:
             organization_id = if_organization_admin.values('organization').first()['organization']
             temp = Organization.objects.filter(id=organization_id).values('projects')
             for i in temp:
-                project_list += [i['projects']]
-        if project_list:
-            my_project_info = pd.DataFrame()
-            project_list = str(project_list).replace('[', '(').replace(']', ')')
-            # -----------
-            with connection.cursor() as cursor:
-                q = "SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
-                                EXTRACT (year from taicat_project.start_date)::int, \
-                                taicat_project.funding_agency \
-                                FROM taicat_project \
-                                WHERE taicat_project.id IN {} \
-                                GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
-                                ORDER BY taicat_project.start_date DESC;"
-                cursor.execute(q.format(project_list))
-                my_project_info = cursor.fetchall()
-                my_project_info = pd.DataFrame(my_project_info, columns=['id', 'name', 'keyword', 'start_year', 'funding_agency'])
-
-            # count data
-            # update if new images
-            now = timezone.now()
-            last_updated = ProjectStat.objects.all().aggregate(Min('last_updated'))['last_updated__min']
-            has_new = Image.objects.filter(created__gte=last_updated, project_id__in=list(my_project_info.id))
-            if has_new.exists():
-                # update project stat
-                # has_new_id = pd.DataFrame(has_new.order_by('project_id').values('project_id').distinct('project_id'))
-                for i in my_project_info.id:
-                    c = Image.objects.filter(created__gte=last_updated, project_id=i).count()
-                    if ProjectStat.objects.filter(project_id=i).exists():
-                        p = ProjectStat.objects.get(project_id=i)
-                        p.num_image += c
-                        p.last_updated = now
-                        p.save()
-                    else:
-                        p = ProjectStat(
-                            project_id=i,
-                            num_sa=StudyArea.objects.filter(project_id=i).count(),
-                            num_deployment=Deployment.objects.filter(project_id=i).count(),
-                            num_image=c,
-                            last_updated=now)
-                        p.save()
-                    # ------update project species stat-------#
-                    img_list = Image.objects.values_list('annotation', flat=True).filter(project_id=i, created__gte=last_updated).all()
-                    project_species_list = []
-                    for alist in img_list:
-                        for a in alist:
-                            try:
-                                if sp := a.get('species', ''):
-                                    project_species_list.append(sp)
-                            except:
-                                #print ('annotation load error')
-                                pass
-                    counter = collections.Counter(project_species_list)
-                    counter_dict = dict(counter)
-                    project_species_list = sorted(counter_dict.items(), key=itemgetter(1), reverse=True)
-                    for k in project_species_list:
-                        if ProjectSpecies.objects.filter(name=k[0], project_id=i).exists():
-                            # exist -> update
-                            p_sp = ProjectSpecies.objects.get(name=k[0], project_id=i)
-                            p_sp.count += k[1]
-                            p_sp.last_updated = now
-                            p_sp.save()
-                        else:
-                            # not exitst -> create
-                            p_sp = ProjectSpecies(
-                                project_id=i,
-                                name=k[0],
-                                count=k[1],
-                                last_updated=now)
-                            p_sp.save()
-                    # ------update project species stat-------#
-            my_species_data = ProjectSpecies.objects.filter(project_id__in=list(my_project_info.id), name__in=Species.DEFAULT_LIST).values(
-                'name').annotate(total_count=Sum('count')).values_list('total_count', 'name').order_by('-total_count')
-
-            my_project_info['num_image'] = 0
-            my_project_info['num_studyarea'] = 0
-            my_project_info['num_deployment'] = 0
-            for i in my_project_info.id:
-                sa_c = StudyArea.objects.filter(project_id=i).count()
-                dep_c = Deployment.objects.filter(project_id=i).count()
-                img_c = ProjectStat.objects.get(project_id=i).num_image
-                my_project_info.loc[my_project_info['id'] == i, 'num_image'] = img_c
-                my_project_info.loc[my_project_info['id'] == i, 'num_studyarea'] = sa_c
-                my_project_info.loc[my_project_info['id'] == i, 'num_deployment'] = dep_c
-
-            my_project = my_project_info[['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
-            my_project = list(my_project.itertuples(index=False, name=None))
-
-    print(time.time()-s)
+                my_project_list += [i['projects']]
+        if my_project_list:
+            my_project, my_species_data = get_project_info(str(my_project_list).replace('[', '(').replace(']', ')'))
     return render(request, 'project/project_overview.html', {'public_project': public_project, 'my_project': my_project, 'is_authorized_create': is_authorized_create,
                                                              'public_species_data': public_species_data, 'my_species_data': my_species_data})
 
 
 def update_datatable(request):
-    s = time.time()
+    # base on species filter
     if request.method == 'POST':
         table_id = request.POST.get('table_id')
         species = request.POST.getlist('species[]')
         species = species[0]
         print(species)
-        # if species:
-        project_list = []
         if table_id == 'publicproject':
             with connection.cursor() as cursor:
-                q = "SELECT taicat_project.id, \
-                            EXTRACT (year from taicat_project.start_date)::int \
-                            FROM taicat_project \
-                            WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval) \
-                            GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
-                            ORDER BY taicat_project.start_date DESC;"
+                q = "SELECT taicat_project.id FROM taicat_project \
+                    WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
                 cursor.execute(q)
-                public_project_info = cursor.fetchall()
-                public_project_info = pd.DataFrame(
-                    public_project_info, columns=['id', 'start_year'])
-
-            project_list = ProjectSpecies.objects.filter(name=species, project_id__in=list(public_project_info.id)).order_by('project_id').distinct('project_id')
+                public_project_list = [l[0] for l in cursor.fetchall()]
+            project_list = ProjectSpecies.objects.filter(name=species, project_id__in=public_project_list).order_by('project_id').distinct('project_id')
             project_list = list(project_list.values_list('project_id', flat=True))
-            # print('1', time.time()-s)
-
         else:
             my_project_list = []
             member_id = request.session.get('id', None)
@@ -516,7 +418,6 @@ def update_datatable(request):
                     temp = Organization.objects.filter(id=organization_id).values('projects')
                     for i in temp:
                         my_project_list += [i['projects']]
-
                 # check species
                 if my_project_list:
                     with connection.cursor() as cursor:
@@ -525,36 +426,7 @@ def update_datatable(request):
         project = []
         if project_list:
             project_list = str(project_list).replace('[', '(').replace(']', ')')
-            with connection.cursor() as cursor:
-                q = "SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
-                                EXTRACT (year from taicat_project.start_date)::int, \
-                                taicat_project.funding_agency \
-                                FROM taicat_project \
-                                WHERE taicat_project.id IN {} \
-                                GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
-                                ORDER BY taicat_project.start_date DESC;"
-                cursor.execute(q.format(project_list))
-                project_info = cursor.fetchall()
-                project_info = pd.DataFrame(project_info, columns=['id', 'name', 'keyword', 'start_year', 'funding_agency'])
-
-            project_info['num_image'] = 0
-            project_info['num_deployment'] = 0
-
-            for i in project_info.id:
-                sa_c = StudyArea.objects.filter(project_id=i).count()
-                dep_c = Deployment.objects.filter(project_id=i).count()
-                img_c = ProjectStat.objects.get(project_id=i).num_image
-                project_info.loc[project_info['id'] == i, 'num_image'] = img_c
-                project_info.loc[project_info['id'] == i, 'num_studyarea'] = sa_c
-                project_info.loc[project_info['id'] == i, 'num_deployment'] = dep_c
-
-            project_info = project_info[['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
-            project = list(project_info.itertuples(index=False, name=None))
-
-            # project_name, keyword, start_year, funding_agency, num_sa, num_dep, num_image
-
-        print('2', time.time()-s)
-
+            project, _ = get_project_info(project_list)
     return HttpResponse(json.dumps(project), content_type='application/json')
 
 
@@ -601,8 +473,9 @@ def data(request):
     if image_info:
         df = pd.DataFrame(image_info, columns=['studyarea_id', 'deployment_id', 'filename', 'datetime', 'annotation', 'file_url', 'image_id', 'from_mongo'])
         # parse string to dict
-        sa_names = pd.DataFrame(StudyArea.objects.filter(id__in=df.studyarea_id.unique()).values('id','name','parent_id')).rename(columns={'id':'studyarea_id', 'name':'saname', 'parent_id':'saparent'})
-        d_names = pd.DataFrame(Deployment.objects.filter(id__in=df.deployment_id.unique()).values('id','name')).rename(columns={'id':'deployment_id', 'name':'dname'})
+        sa_names = pd.DataFrame(StudyArea.objects.filter(id__in=df.studyarea_id.unique()).values('id', 'name', 'parent_id')
+                                ).rename(columns={'id': 'studyarea_id', 'name': 'saname', 'parent_id': 'saparent'})
+        d_names = pd.DataFrame(Deployment.objects.filter(id__in=df.deployment_id.unique()).values('id', 'name')).rename(columns={'id': 'deployment_id', 'name': 'dname'})
         df = df.merge(d_names).merge(sa_names)
 
         # parse string to dict
@@ -625,7 +498,7 @@ def data(request):
             if 'remark' in df.anno_list[i]:
                 df.anno_list[i]['remarks'] = df.anno_list[i].pop('remark')
 
-        df = pd.concat([df.drop(['anno_list'], axis=1),df['anno_list'].apply(pd.Series)], axis=1)
+        df = pd.concat([df.drop(['anno_list'], axis=1), df['anno_list'].apply(pd.Series)], axis=1)
         df = df.reset_index()
 
         # add group id
@@ -650,7 +523,7 @@ def data(request):
                 # new data - image
                 # env('AWS_ACCESS_KEY_ID', default='')
                 if extension == 'jpg':
-                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://{}ap-northeast-1.amazonaws.com/{}" />""".format(s3_bucket,file_url)
+                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://{}ap-northeast-1.amazonaws.com/{}" />""".format(s3_bucket, file_url)
                 # new data - video
                 else:
                     df.loc[i, 'file_url'] = """
@@ -682,7 +555,7 @@ def data(request):
 
         cols = ['saname', 'dname', 'filename', 'datetime', 'species', 'lifestage',
                 'sex', 'antler', 'animal_id', 'remarks', 'file_url', 'group_id', 'image_id']
-        data = df.reindex(df.columns.union(cols, sort=False),axis=1, fill_value=None)
+        data = df.reindex(df.columns.union(cols, sort=False), axis=1, fill_value=None)
         data = data[cols]
         data = data.astype(object).replace(np.nan, '')
         data = data.to_dict('records')
