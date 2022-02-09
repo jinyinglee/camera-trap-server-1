@@ -262,7 +262,7 @@ class ProjectStat(models.Model):
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
     num_sa = models.IntegerField(null=True, blank=True)
     num_deployment = models.IntegerField(null=True, blank=True)
-    num_image = models.IntegerField(null=True, blank=True)
+    num_data = models.IntegerField(null=True, blank=True)
     last_updated = models.DateTimeField(null=True, db_index=True)
 
 

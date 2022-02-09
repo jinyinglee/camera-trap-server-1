@@ -299,7 +299,7 @@ def get_project_info(project_list):
                 p = ProjectStat.objects.get(project_id=i)
                 p.num_sa = StudyArea.objects.filter(project_id=i).count()
                 p.num_deployment = Deployment.objects.filter(project_id=i).count()
-                p.num_image = c
+                p.num_data = c
                 p.last_updated = now
                 p.save()
             else:
@@ -307,7 +307,7 @@ def get_project_info(project_list):
                     project_id=i,
                     num_sa=StudyArea.objects.filter(project_id=i).count(),
                     num_deployment=Deployment.objects.filter(project_id=i).count(),
-                    num_image=c,
+                    num_data=c,
                     last_updated=now)
                 p.save()
             # ------update project species stat-------#
@@ -330,17 +330,17 @@ def get_project_info(project_list):
             # ------update project species stat-------#
     species_data = ProjectSpecies.objects.filter(project_id__in=list(project_info.id), name__in=Species.DEFAULT_LIST).values(
         'name').annotate(total_count=Sum('count')).values_list('total_count', 'name').order_by('-total_count')
-    project_info['num_image'] = 0
+    project_info['num_data'] = 0
     project_info['num_studyarea'] = 0
     project_info['num_deployment'] = 0
     for i in project_info.id:
         sa_c = StudyArea.objects.filter(project_id=i).count()
         dep_c = Deployment.objects.filter(project_id=i).count()
-        img_c = ProjectStat.objects.get(project_id=i).num_image
-        project_info.loc[project_info['id'] == i, 'num_image'] = img_c
+        img_c = ProjectStat.objects.get(project_id=i).num_data
+        project_info.loc[project_info['id'] == i, 'num_data'] = img_c
         project_info.loc[project_info['id'] == i, 'num_studyarea'] = sa_c
         project_info.loc[project_info['id'] == i, 'num_deployment'] = dep_c
-    projects = project_info[['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
+    projects = project_info[['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_data']]
     projects = list(projects.itertuples(index=False, name=None))
     return projects, species_data
 
@@ -428,6 +428,47 @@ def update_datatable(request):
             project_list = str(project_list).replace('[', '(').replace(']', ')')
             project, _ = get_project_info(project_list)
     return HttpResponse(json.dumps(project), content_type='application/json')
+
+
+def project_detail(request, pk):
+    is_authorized = check_if_authorized(request, pk)
+    with connection.cursor() as cursor:
+        query = "SELECT name, funding_agency, code, " \
+                "principal_investigator, " \
+                "to_char(start_date, 'YYYY-MM-DD'), " \
+                "to_char(end_date, 'YYYY-MM-DD') FROM taicat_project WHERE id={}"
+        cursor.execute(query.format(pk))
+        project_info = cursor.fetchone()
+    project_info = list(project_info)
+    deployment = Deployment.objects.filter(project_id=pk)
+    # TODO: save latest_date & earliest_date into project stat table?
+    # TODO: update projectspecies table
+    species = ProjectSpecies.objects.filter(project_id=pk).values_list('count', 'name').order_by('count')
+    image_objects = Image.objects.filter(project_id=pk)
+    if image_objects.exists():
+        latest_date = image_objects.latest('datetime').datetime.strftime("%Y-%m-%d")
+        earliest_date = image_objects.earliest('datetime').datetime.strftime("%Y-%m-%d")
+    else:
+        latest_date, earliest_date = None, None
+    # edit permission
+    user_id = request.session.get('id', None)
+    edit = False
+    if user_id:
+        # 系統管理員 / 個別計畫承辦人
+        if Contact.objects.filter(id=user_id, is_system_admin=True).first() or ProjectMember.objects.filter(member_id=user_id, role="project_admin", project_id=pk):
+            edit = True
+        # 計畫總管理人
+        elif Contact.objects.filter(id=user_id, is_organization_admin=True):
+            organization_id = Contact.objects.filter(
+                id=user_id, is_organization_admin=True).values('organization').first()['organization']
+            if Organization.objects.filter(id=organization_id, projects=pk):
+                edit = True
+    study_area = StudyArea.objects.filter(project_id=pk).order_by('name')
+    return render(request, 'project/project_detail.html',
+                  {'project_name': len(project_info[0]), 'project_info': project_info, 'species': species, 'pk': pk,
+                   'study_area': study_area, 'deployment': deployment,
+                   'earliest_date': earliest_date, 'latest_date': latest_date,
+                   'edit': edit, 'is_authorized': is_authorized})
 
 
 def data(request):
@@ -578,46 +619,6 @@ def data(request):
         }
 
     return HttpResponse(json.dumps(response), content_type='application/json')
-
-
-def project_detail(request, pk):
-    is_authorized = check_if_authorized(request, pk)
-    with connection.cursor() as cursor:
-        query = "SELECT name, funding_agency, code, " \
-                "principal_investigator, " \
-                "to_char(start_date, 'YYYY-MM-DD'), " \
-                "to_char(end_date, 'YYYY-MM-DD') FROM taicat_project WHERE id={}"
-        cursor.execute(query.format(pk))
-        project_info = cursor.fetchone()
-    project_info = list(project_info)
-    deployment = Deployment.objects.filter(project_id=pk)
-    # TODO: save latest_date & earliest_date into project stat table?
-    species = ProjectSpecies.objects.filter(project_id=pk).values_list('count', 'name').order_by('count')
-    image_objects = Image.objects.filter(project_id=pk)
-    if image_objects.exists():
-        latest_date = image_objects.latest('datetime').datetime.strftime("%Y-%m-%d")
-        earliest_date = image_objects.earliest('datetime').datetime.strftime("%Y-%m-%d")
-    else:
-        latest_date, earliest_date = None, None
-    # edit permission
-    user_id = request.session.get('id', None)
-    edit = False
-    if user_id:
-        # 系統管理員 / 個別計畫承辦人
-        if Contact.objects.filter(id=user_id, is_system_admin=True).first() or ProjectMember.objects.filter(member_id=user_id, role="project_admin", project_id=pk):
-            edit = True
-        # 計畫總管理人
-        elif Contact.objects.filter(id=user_id, is_organization_admin=True):
-            organization_id = Contact.objects.filter(
-                id=user_id, is_organization_admin=True).values('organization').first()['organization']
-            if Organization.objects.filter(id=organization_id, projects=pk):
-                edit = True
-    study_area = StudyArea.objects.filter(project_id=pk).order_by('name')
-    return render(request, 'project/project_detail.html',
-                  {'project_name': len(project_info[0]), 'project_info': project_info, 'species': species, 'pk': pk,
-                   'study_area': study_area, 'deployment': deployment,
-                   'earliest_date': earliest_date, 'latest_date': latest_date,
-                   'edit': edit, 'is_authorized': is_authorized})
 
 
 def edit_image(request, pk):
