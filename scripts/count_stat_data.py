@@ -7,20 +7,16 @@ now = timezone.now()
 with connection.cursor() as cursor:
     query = """SELECT EXTRACT (year FROM datetime) as year, count(id) as count
     FROM taicat_image
-    GROUP BY year
-    """
+    GROUP BY year"""
     cursor.execute(query)
     data_growth_image = cursor.fetchall()
-    data_growth_image = pd.DataFrame(data_growth_image, columns=[
-        'year', 'num_image']).sort_values('year')
-    year_min, year_max = int(data_growth_image.year.min()), int(
-        data_growth_image.year.max())
-    year_gap = pd.DataFrame(
-        [i for i in range(year_min, year_max)], columns=['year'])
-    data_growth_image = year_gap.merge(
-        data_growth_image, how='left').fillna(0)
+    data_growth_image = pd.DataFrame(data_growth_image, columns=['year', 'num_image']).sort_values('year')
+    year_min, year_max = int(data_growth_image.year.min()), int(data_growth_image.year.max())
+    year_gap = pd.DataFrame([i for i in range(year_min, year_max+1)], columns=['year'])
+    data_growth_image = year_gap.merge(data_growth_image, how='left').fillna(0)
     data_growth_image['cumsum'] = data_growth_image.num_image.cumsum()
     data_growth_image = data_growth_image.drop(columns=['num_image'])
+
 
 for i in data_growth_image.index:
     new = HomePageStat(
