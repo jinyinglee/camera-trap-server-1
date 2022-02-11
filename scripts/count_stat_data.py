@@ -14,7 +14,7 @@ with connection.cursor() as cursor:
     data_growth_image = pd.DataFrame(data_growth_image, columns=[
         'year', 'num_image']).sort_values('year')
     year_min, year_max = int(data_growth_image.year.min()), int(
-        data_growth_image.year.max())
+        data_growth_image.year.max()+1)
     year_gap = pd.DataFrame(
         [i for i in range(year_min, year_max)], columns=['year'])
     data_growth_image = year_gap.merge(

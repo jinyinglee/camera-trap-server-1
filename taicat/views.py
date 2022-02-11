@@ -37,8 +37,8 @@ from .utils import Calculation
 import collections
 from operator import itemgetter
 
+s3_bucket = env('S3_BUCKET', default='camera-trap-21')
 
-s3_bucket = env('S3_BUCKET', default='camera-trap-21-prod')
 
 def randomword(length):
     letters = string.ascii_lowercase
@@ -254,8 +254,8 @@ def add_deployment(request):
             if altitudes[i] == "":
                 altitudes[i] = None
             Deployment.objects.create(project_id=project_id, study_area_id=study_area_id, geodetic_datum=geodetic_datum,
-                                      name=names[i], longitude=longitudes[i], latitude=latitudes[i], altitude=altitudes[i], 
-                                      landcover=landcovers[i],vegetation=vegetations[i])
+                                      name=names[i], longitude=longitudes[i], latitude=latitudes[i], altitude=altitudes[i],
+                                      landcover=landcovers[i], vegetation=vegetations[i])
 
         return HttpResponse(json.dumps({'d': 'done'}), content_type='application/json')
 
@@ -299,6 +299,8 @@ def project_overview(request):
     if has_new.exists():
         # update project stat
         # has_new_id = pd.DataFrame(has_new.order_by('project_id').values('project_id').distinct('project_id'))
+        ProjectStat.objects.filter(project_id__in=list(public_project_info.id)).update(last_updated=now)
+        ProjectSpecies.objects.filter(project_id__in=list(public_project_info.id)).update(last_updated=now)
         for i in public_project_info.id:
             c = Image.objects.filter(created__gte=last_updated, project_id=i).count()
             if ProjectStat.objects.filter(project_id=i).exists():
@@ -403,6 +405,8 @@ def project_overview(request):
             last_updated = ProjectStat.objects.all().aggregate(Min('last_updated'))['last_updated__min']
             has_new = Image.objects.filter(created__gte=last_updated, project_id__in=list(my_project_info.id))
             if has_new.exists():
+                ProjectStat.objects.filter(project_id__in=list(my_project_info.id)).update(last_updated=now)
+                ProjectSpecies.objects.filter(project_id__in=list(my_project_info.id)).update(last_updated=now)
                 # update project stat
                 # has_new_id = pd.DataFrame(has_new.order_by('project_id').values('project_id').distinct('project_id'))
                 for i in my_project_info.id:
@@ -601,8 +605,9 @@ def data(request):
     if image_info:
         df = pd.DataFrame(image_info, columns=['studyarea_id', 'deployment_id', 'filename', 'datetime', 'annotation', 'file_url', 'image_id', 'from_mongo'])
         # parse string to dict
-        sa_names = pd.DataFrame(StudyArea.objects.filter(id__in=df.studyarea_id.unique()).values('id','name','parent_id')).rename(columns={'id':'studyarea_id', 'name':'saname', 'parent_id':'saparent'})
-        d_names = pd.DataFrame(Deployment.objects.filter(id__in=df.deployment_id.unique()).values('id','name')).rename(columns={'id':'deployment_id', 'name':'dname'})
+        sa_names = pd.DataFrame(StudyArea.objects.filter(id__in=df.studyarea_id.unique()).values('id', 'name', 'parent_id')
+                                ).rename(columns={'id': 'studyarea_id', 'name': 'saname', 'parent_id': 'saparent'})
+        d_names = pd.DataFrame(Deployment.objects.filter(id__in=df.deployment_id.unique()).values('id', 'name')).rename(columns={'id': 'deployment_id', 'name': 'dname'})
         df = df.merge(d_names).merge(sa_names)
 
         # parse string to dict
@@ -625,7 +630,7 @@ def data(request):
             if 'remark' in df.anno_list[i]:
                 df.anno_list[i]['remarks'] = df.anno_list[i].pop('remark')
 
-        df = pd.concat([df.drop(['anno_list'], axis=1),df['anno_list'].apply(pd.Series)], axis=1)
+        df = pd.concat([df.drop(['anno_list'], axis=1), df['anno_list'].apply(pd.Series)], axis=1)
         df = df.reset_index()
 
         # add group id
@@ -641,6 +646,8 @@ def data(request):
                 except:
                     pass
 
+        # TODO if 花蓮 test -> camera-trap-21-prod; else -> camera-trap-21
+
         for i in df.index:
             file_url = df.file_url[i]
             if not file_url and not df.from_mongo[i]:
@@ -650,14 +657,14 @@ def data(request):
                 # new data - image
                 # env('AWS_ACCESS_KEY_ID', default='')
                 if extension == 'jpg':
-                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://{}ap-northeast-1.amazonaws.com/{}" />""".format(s3_bucket,file_url)
+                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://{}-ap-northeast-1.amazonaws.com/{}" />""".format(s3_bucket, file_url)
                 # new data - video
                 else:
                     df.loc[i, 'file_url'] = """
                     <video class="img lazy mx-auto d-block" controls height="100">
-                        <source src="https://{}ap-northeast-1.amazonaws.com/{}"
+                        <source src="https://{}-ap-northeast-1.amazonaws.com/{}"
                                 type="video/webm">
-                        <source src="https://{}ap-northeast-1.amazonaws.com/{}"
+                        <source src="https://{}-ap-northeast-1.amazonaws.com/{}"
                                 type="video/mp4">
                         抱歉，您的瀏覽器不支援內嵌影片。
                     </video>
@@ -682,7 +689,7 @@ def data(request):
 
         cols = ['saname', 'dname', 'filename', 'datetime', 'species', 'lifestage',
                 'sex', 'antler', 'animal_id', 'remarks', 'file_url', 'group_id', 'image_id']
-        data = df.reindex(df.columns.union(cols, sort=False),axis=1, fill_value=None)
+        data = df.reindex(df.columns.union(cols, sort=False), axis=1, fill_value=None)
         data = data[cols]
         data = data.astype(object).replace(np.nan, '')
         data = data.to_dict('records')
