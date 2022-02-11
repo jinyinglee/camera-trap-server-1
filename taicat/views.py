@@ -294,7 +294,7 @@ def project_overview(request):
     # count data
     # update if new images
     now = timezone.now()
-    last_updated = ProjectStat.objects.all().aggregate(Min('last_updated'))['last_updated__min']
+    last_updated = ProjectStat.objects.filter(project_id__in=list(public_project_info.id)).aggregate(Min('last_updated'))['last_updated__min']
     has_new = Image.objects.filter(created__gte=last_updated, project_id__in=list(public_project_info.id))
     if has_new.exists():
         # update project stat
@@ -646,7 +646,8 @@ def data(request):
                 except:
                     pass
 
-        # TODO if 花蓮 test -> camera-trap-21-prod; else -> camera-trap-21
+        # if 花蓮 test -> camera-trap-21-prod; else -> camera-trap-21
+        s3_bucket = 'camera-trap-21-prod' if pk == 330 else 'camera-trap-21'
 
         for i in df.index:
             file_url = df.file_url[i]
@@ -657,14 +658,14 @@ def data(request):
                 # new data - image
                 # env('AWS_ACCESS_KEY_ID', default='')
                 if extension == 'jpg':
-                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://{}-ap-northeast-1.amazonaws.com/{}" />""".format(s3_bucket, file_url)
+                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://{}.s3.ap-northeast-1.amazonaws.com/{}" />""".format(s3_bucket, file_url)
                 # new data - video
                 else:
                     df.loc[i, 'file_url'] = """
                     <video class="img lazy mx-auto d-block" controls height="100">
-                        <source src="https://{}-ap-northeast-1.amazonaws.com/{}"
+                        <source src="https://{}.s3.ap-northeast-1.amazonaws.com/{}"
                                 type="video/webm">
-                        <source src="https://{}-ap-northeast-1.amazonaws.com/{}"
+                        <source src="https://{}.s3.ap-northeast-1.amazonaws.com/{}"
                                 type="video/mp4">
                         抱歉，您的瀏覽器不支援內嵌影片。
                     </video>
