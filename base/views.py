@@ -63,27 +63,23 @@ def set_permission(request):
                 user_id = request.POST.get('user', None)
                 org_id = request.POST.get('organization', None)
                 if user_id and org_id:
-                    Contact.objects.filter(id=user_id).update(
-                        is_organization_admin=True, organization_id=org_id)
+                    Contact.objects.filter(id=user_id).update(is_organization_admin=True, organization_id=org_id)
                     messages.success(request, '新增成功')
             elif type == 'remove_admin':
                 user_id = request.POST.get('id', None)
                 if user_id:
-                    Contact.objects.filter(id=user_id).update(
-                        is_organization_admin=False)
+                    Contact.objects.filter(id=user_id).update(is_organization_admin=False)
                     messages.success(request, '移除成功')
             elif type == 'remove_project':
                 relation_id = request.POST.get('id', None)
                 if relation_id:
-                    Organization.projects.through.objects.filter(
-                        id=relation_id).delete()
+                    Organization.projects.through.objects.filter(id=relation_id).delete()
                     messages.success(request, '移除成功')
             else:
                 project_id = request.POST.get('project', None)
                 org_id = request.POST.get('organization', None)
                 try:
-                    Organization.objects.get(id=org_id).projects.add(
-                        Project.objects.get(id=project_id))
+                    Organization.objects.get(id=org_id).projects.add(Project.objects.get(id=project_id))
                     messages.success(request, '新增成功')
                 except:
                     messages.error(request, '新增失敗')
@@ -98,8 +94,7 @@ def set_permission(request):
                    'project_name': i.project.name}
             org_project_list.append(tmp)
 
-        org_admin_list = Contact.objects.filter(is_organization_admin=True).values(
-            'organization__name', 'id', 'name', 'email')
+        org_admin_list = Contact.objects.filter(is_organization_admin=True).values('organization__name', 'id', 'name', 'email')
 
         return render(request, 'base/permission.html', {'member_list': member_list, 'org_project_list': org_project_list,
                       'is_authorized': is_authorized, 'org_list': org_list, 'project_list': project_list, 'org_admin_list': org_admin_list})
@@ -185,16 +180,13 @@ def home(request):
 
 
 def get_species_data(request):
-    # TODO:
-    # update if there is new image & species table not updated yet
     now = timezone.now()
-    last_updated = Species.objects.filter(status='I').aggregate(
-        Min('last_updated'))['last_updated__min']
-    has_new = Image.objects.filter(created__gte=last_updated)
+    last_updated = Species.objects.filter(status='I').aggregate(Min('last_updated'))['last_updated__min']
+    has_new = Image.objects.filter(last_updated__gte=last_updated)
     if has_new.exists():
+        Species.objects.filter(status='I').update(last_updated=now)
         for i in Species.DEFAULT_LIST:
-            c = Image.objects.filter(created__gte=last_updated, annotation__contains=[
-                                     {'species': i}]).count()
+            c = Image.objects.filter(species=i, last_updated__gte=last_updated).count()
             if Species.objects.filter(status='I', name=i).exists():
                 # if exist, update
                 s = Species.objects.get(status='I', name=i)
@@ -213,8 +205,7 @@ def get_species_data(request):
     # get data
     species_data = []
     with connection.cursor() as cursor:
-        query = """SELECT count, name from taicat_species where status = 'I'
-                    """
+        query = "SELECT count, name FROM taicat_species WHERE status = 'I' ORDER BY count DESC"
         cursor.execute(query)
         species_data = cursor.fetchall()
     response = {'species_data': species_data}
@@ -223,10 +214,9 @@ def get_species_data(request):
 
 def get_geo_data(request):
     with connection.cursor() as cursor:
-        query = """SELECT d.longitude, d.latitude, p.name FROM taicat_deployment d 
+        query = """SELECT d.longitude, d.latitude, p.name, p.mode FROM taicat_deployment d 
                     JOIN taicat_project p ON p.id = d.project_id 
-                    WHERE d.longitude IS NOT NULL;
-                    """
+                    WHERE d.longitude IS NOT NULL and p.mode = 'official';"""
         cursor.execute(query)
         deployment_points = cursor.fetchall()
     response = {'deployment_points': deployment_points}
@@ -234,27 +224,17 @@ def get_geo_data(request):
 
 
 def get_growth_data(request):
-
-    # TODO:
-    # update if there is new image & stat table not updated yet
     now = timezone.now()
-    # last_updated = timezone.now() - timedelta(days=10)  # pretend
-    last_updated = HomePageStat.objects.all().aggregate(
-        Min('last_updated'))['last_updated__min']
-
+    last_updated = HomePageStat.objects.all().aggregate(Min('last_updated'))['last_updated__min']
     has_new = Image.objects.filter(created__gte=last_updated)
     if has_new.exists():
+        HomePageStat.objects.all().update(last_updated=now)
         # ------ update image --------- #
-        data_growth_image = Image.objects.filter(created__gte=last_updated).annotate(
-            year=ExtractYear('datetime')).values('year').annotate(num_image=Count('id')).order_by()
-        data_growth_image = pd.DataFrame(data_growth_image, columns=[
-            'year', 'num_image']).sort_values('year')
-        year_min, year_max = int(data_growth_image.year.min()), int(
-            data_growth_image.year.max())
-        year_gap = pd.DataFrame(
-            [i for i in range(year_min, year_max)], columns=['year'])
-        data_growth_image = year_gap.merge(
-            data_growth_image, how='left').fillna(0)
+        data_growth_image = Image.objects.filter(created__gte=last_updated).annotate(year=ExtractYear('datetime')).values('year').annotate(num_image=Count('image_uuid', distinct=True)).order_by()
+        data_growth_image = pd.DataFrame(data_growth_image, columns=['year', 'num_image']).sort_values('year')
+        year_min, year_max = int(data_growth_image.year.min()), int(data_growth_image.year.max())
+        year_gap = pd.DataFrame([i for i in range(year_min, year_max)], columns=['year'])
+        data_growth_image = year_gap.merge(data_growth_image, how='left').fillna(0)
         data_growth_image['cumsum'] = data_growth_image.num_image.cumsum()
         data_growth_image = data_growth_image.drop(columns=['num_image'])
         for i in data_growth_image.index:
@@ -268,41 +248,32 @@ def get_growth_data(request):
                     type='image',
                     count=row['cumsum'],
                     last_updated=now,
-                    year=row.year
-                )
+                    year=row.year)
                 new_h.save()
-    data_growth_image = list(HomePageStat.objects.filter(
-        type="image", year__gte=2008).order_by('year').values_list('year', 'count'))
+    data_growth_image = list(HomePageStat.objects.filter(type="image", year__gte=2008).order_by('year').values_list('year', 'count'))
 
     # --------- deployment --------- #
-    year_gap = pd.DataFrame(
-        [i for i in range(2008, data_growth_image[-1][0]+1)], columns=['year'])
-
+    year_gap = pd.DataFrame([i for i in range(2008, data_growth_image[-1][0]+1)], columns=['year'])
     with connection.cursor() as cursor:
         query = """
-        WITH req As(
-            WITH base_request AS (
-                    SELECT d.latitude, d.longitude, EXTRACT (year from taicat_project.start_date)::int AS start_year
-                    FROM taicat_deployment d
-                    JOIN taicat_project ON taicat_project.id = d.project_id 
-                    WHERE d.longitude IS NOT NULL
-                    GROUP BY start_year, d.latitude, d.longitude)
-                    SELECT MIN(start_year) as year , latitude, longitude FROM base_request
-                    GROUP BY latitude, longitude)
-            SELECT year, count(*) FROM req GROUP BY year
-        """
+                WITH req As(
+                    WITH base_request AS (
+                            SELECT d.latitude, d.longitude, EXTRACT (year from taicat_project.start_date)::int AS start_year
+                            FROM taicat_deployment d
+                            JOIN taicat_project ON taicat_project.id = d.project_id 
+                            WHERE d.longitude IS NOT NULL
+                            GROUP BY start_year, d.latitude, d.longitude)
+                            SELECT MIN(start_year) as year , latitude, longitude FROM base_request
+                            GROUP BY latitude, longitude)
+                    SELECT year, count(*) FROM req GROUP BY year
+                """
         cursor.execute(query)
         data_growth_deployment = cursor.fetchall()
-        data_growth_deployment = pd.DataFrame(data_growth_deployment, columns=[
-            'year', 'num_dep']).sort_values('year')
-        data_growth_deployment = year_gap.merge(
-            data_growth_deployment, how='left').fillna(0)
-        data_growth_deployment['cumsum'] = data_growth_deployment.num_dep.cumsum(
-        )
-        data_growth_deployment = data_growth_deployment.drop(
-            columns=['num_dep'])
-        data_growth_deployment = list(
-            data_growth_deployment.itertuples(index=False, name=None))
+        data_growth_deployment = pd.DataFrame(data_growth_deployment, columns=['year', 'num_dep']).sort_values('year')
+        data_growth_deployment = year_gap.merge(data_growth_deployment, how='left').fillna(0)
+        data_growth_deployment['cumsum'] = data_growth_deployment.num_dep.cumsum()
+        data_growth_deployment = data_growth_deployment.drop(columns=['num_dep'])
+        data_growth_deployment = list(data_growth_deployment.itertuples(index=False, name=None))
 
     response = {'data_growth_image': data_growth_image,
                 'data_growth_deployment': data_growth_deployment}

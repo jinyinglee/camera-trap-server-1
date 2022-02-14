@@ -12,17 +12,14 @@ class Species(models.Model):
     name = models.CharField(max_length=1000, db_index=True)
     count = models.IntegerField(null=True, blank=True)
     last_updated = models.DateTimeField(null=True, db_index=True)
-    status = models.CharField(max_length=4, default='',
-                              null=True, blank=True, db_index=True)  # I: initial
+    status = models.CharField(max_length=4, default='', null=True, blank=True, db_index=True)  # I: initial
 
 
 class Contact(models.Model):
     name = models.CharField(max_length=1000)
     email = models.CharField(max_length=1000, blank=True, null=True)
-    orcid = models.CharField(
-        max_length=1000, blank=True, null=True, unique=True)
-    organization = models.ForeignKey(
-        'Organization', on_delete=models.SET_NULL, null=True, blank=True)
+    orcid = models.CharField(max_length=1000, blank=True, null=True, unique=True)
+    organization = models.ForeignKey('Organization', on_delete=models.SET_NULL, null=True, blank=True)
     # is_login = models.BooleanField('登入狀態', default=True)
     is_organization_admin = models.BooleanField('是否為計畫總管理人', default=False)
     # is_forestry_bureau = models.BooleanField('是否能進入林務局管考系統', default=False)
@@ -40,12 +37,9 @@ class ProjectMember(models.Model):
         ('uploader', '資料上傳者'),
         #('general', '一般使用者'),
     )
-    project = models.ForeignKey(
-        'Project', on_delete=models.SET_NULL, null=True, blank=True)
-    member = models.ForeignKey(
-        'Contact', on_delete=models.SET_NULL, null=True, blank=True)
-    role = models.CharField(
-        max_length=1000, choices=ROLE_CHOICES, null=True, blank=True)
+    project = models.ForeignKey('Project', on_delete=models.SET_NULL, null=True, blank=True)
+    member = models.ForeignKey('Contact', on_delete=models.SET_NULL, null=True, blank=True)
+    role = models.CharField(max_length=1000, choices=ROLE_CHOICES, null=True, blank=True)
 
 
 class Organization(models.Model):
@@ -61,7 +55,9 @@ class PublishedProjectManager(models.Manager):
         today = timezone.now().date()
         five_years_ago = today - timedelta(days=1825)
         # 5_years_ago = today - timedelta(days=1825) # 365*5
-        return super(PublishedProjectManager, self).get_queryset().filter(Q(publish_date__lte=today) | Q(end_date__lte=five_years_ago))
+        return super(
+            PublishedProjectManager, self).get_queryset().filter(
+            Q(publish_date__lte=today) | Q(end_date__lte=five_years_ago))
 
 
 class Project(models.Model):
@@ -75,8 +71,7 @@ class Project(models.Model):
 
     # Project Objectives
     description = models.TextField('計畫摘要', default='', blank=True)
-    short_title = models.CharField(
-        '計畫簡稱', max_length=1000, blank=True, null=True)
+    short_title = models.CharField('計畫簡稱', max_length=1000, blank=True, null=True)
     keyword = models.CharField('計畫關鍵字', max_length=1000, blank=True, null=True)
     start_date = models.DateField('計畫時間-開始', null=True, blank=True)
     end_date = models.DateField('計畫時間-結束', null=True, blank=True)
@@ -85,26 +80,20 @@ class Project(models.Model):
     executive_unit = models.CharField(
         '執行單位', max_length=100, blank=True, null=True)
     code = models.CharField('計畫編號', max_length=100, blank=True, null=True)
-    principal_investigator = models.CharField(
-        '計畫主持人', max_length=1000, blank=True, null=True)
-    funding_agency = models.CharField(
-        '委辦單位', max_length=100, blank=True, null=True)
+    principal_investigator = models.CharField('計畫主持人', max_length=1000, blank=True, null=True)
+    funding_agency = models.CharField('委辦單位', max_length=100, blank=True, null=True)
     region = models.CharField('計畫地區', max_length=1000, null=True, blank=True)
     note = models.CharField('備註', max_length=1000, blank=True, null=True)
     created = models.DateTimeField(auto_now_add=True)
     source_data = models.JSONField(default=dict, blank=True)
-    mode = models.CharField(max_length=8, blank=True,
-                            null=True, default='official', choices=MODE_CHOICES)
+    mode = models.CharField(max_length=8, blank=True, null=True, default='official', choices=MODE_CHOICES)
     #members = models.ManyToManyField('Contact', )
 
     # License
     publish_date = models.DateField('公開日期', null=True, blank=True)
-    interpretive_data_license = models.CharField(
-        '詮釋資料', max_length=10, blank=True, null=True)
-    identification_information_license = models.CharField(
-        '鑑定資訊', max_length=10, blank=True, null=True)
-    video_material_license = models.CharField(
-        '影像資料', max_length=10, blank=True, null=True)
+    interpretive_data_license = models.CharField('詮釋資料', max_length=10, blank=True, null=True)
+    identification_information_license = models.CharField('鑑定資訊', max_length=10, blank=True, null=True)
+    video_material_license = models.CharField('影像資料', max_length=10, blank=True, null=True)
 
     objects = models.Manager()
     published_objects = PublishedProjectManager()
@@ -136,10 +125,8 @@ class Project(models.Model):
 
 class StudyArea(models.Model):
     name = models.CharField(max_length=1000)
-    parent = models.ForeignKey(
-        'self', on_delete=models.CASCADE, null=True, blank=True)
-    project = models.ForeignKey(
-        Project, on_delete=models.SET_NULL, null=True, related_name='studyareas')
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True, related_name='studyareas')
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -179,29 +166,21 @@ class Deployment(models.Model):
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
     # cameraDeploymentBeginDateTime
     # cameraDeploymentEndDateTime
-    longitude = models.DecimalField(
-        decimal_places=8, max_digits=20, null=True, blank=True)
-    latitude = models.DecimalField(
-        decimal_places=8, max_digits=20, null=True, blank=True)
+    longitude = models.DecimalField(decimal_places=8, max_digits=20, null=True, blank=True)
+    latitude = models.DecimalField(decimal_places=8, max_digits=20, null=True, blank=True)
     altitude = models.SmallIntegerField(null=True, blank=True)
     # deploymentLocationID
     name = models.CharField(max_length=1000)
     # cameraStatus
-    camera_status = models.CharField(
-        max_length=4, default='1', choices=CAMERA_STATUS_CHOICES)
-    study_area = models.ForeignKey(
-        StudyArea, on_delete=models.SET_NULL, null=True)
+    camera_status = models.CharField(max_length=4, default='1', choices=CAMERA_STATUS_CHOICES)
+    study_area = models.ForeignKey(StudyArea, on_delete=models.SET_NULL, null=True)
     created = models.DateTimeField(auto_now_add=True)
     source_data = models.JSONField(default=dict, blank=True)
 
-    geodetic_datum = models.CharField(
-        max_length=10, default='TWD97', choices=GEODETIC_DATUM_CHOICES)
-    landcover = models.CharField(
-        '土地覆蓋類型', max_length=1000, blank=True, null=True)
-    vegetation = models.CharField(
-        '植被類型', max_length=1000, blank=True, null=True)
-    verbatim_locality = models.CharField(
-        max_length=1000, blank=True, null=True)
+    geodetic_datum = models.CharField(max_length=10, default='TWD97', choices=GEODETIC_DATUM_CHOICES)
+    landcover = models.CharField('土地覆蓋類型', max_length=1000, blank=True, null=True)
+    vegetation = models.CharField('植被類型', max_length=1000, blank=True, null=True)
+    verbatim_locality = models.CharField(max_length=1000, blank=True, null=True)
 
     def __str__(self):
         return f'<Deployment {self.name}>'
@@ -221,37 +200,37 @@ class Image(models.Model):
         ('time-lapse', 'Timelapse'),
     )
     id = models.BigAutoField(primary_key=True)
-    deployment = models.ForeignKey(
-        Deployment, on_delete=models.SET_NULL, null=True)
-    project = models.ForeignKey(
-        Project, on_delete=models.SET_NULL, null=True)
-    studyarea = models.ForeignKey(
-        StudyArea, on_delete=models.SET_NULL, null=True)  # be careful, this field has no underline!
+    deployment = models.ForeignKey(Deployment, on_delete=models.SET_NULL, null=True)
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
+    # be careful, this field has no underline!
+    studyarea = models.ForeignKey(StudyArea, on_delete=models.SET_NULL, null=True)
     file_url = models.CharField(max_length=1000, null=True)
     filename = models.CharField(max_length=1000)  # first file if is_sequence
     # dateTimeCaptured
     datetime = models.DateTimeField(null=True, db_index=True)
     # photoType
-    photo_type = models.CharField(
-        max_length=100, null=True, choices=PHOTO_TYPE_CHOICES)
+    photo_type = models.CharField(max_length=100, null=True, choices=PHOTO_TYPE_CHOICES)
     # photoTypeIdentifiedBy
-    count = models.PositiveSmallIntegerField(default=1)
-    species = models.CharField(max_length=1000, default='', blank=True)
+    count = models.PositiveSmallIntegerField(default=1, db_index=True)
+    species = models.CharField(max_length=1000, null=True, default='', blank=True, db_index=True)
     #taxon = models
-    sequence = models.ForeignKey(
-        'self', on_delete=models.SET_NULL, null=True, blank=True)  # imageid
-    sequence_definition = models.CharField(
-        max_length=1000, default='', blank=True)
-    life_stage = models.CharField(max_length=1000, default='', blank=True)
-    sex = models.CharField(max_length=1000, default='', blank=True)
-    remarks = models.TextField(default='', blank=True)
-    animal_id = models.CharField(max_length=1000, default='', blank=True)
+    sequence = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)  # imageid
+    sequence_definition = models.CharField(max_length=1000, default='', blank=True)
+    life_stage = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
+    sex = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
+    antler = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
+    remarks = models.TextField(default='', null=True, blank=True, db_index=True)
+    animal_id = models.CharField(max_length=1000, null=True, default='', blank=True, db_index=True)
+    # mongoDB的自填欄位
+    remarks2 = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
+    last_updated = models.DateTimeField(null=True, db_index=True)
     annotation = models.JSONField(default=dict, blank=True, db_index=True)
     memo = models.TextField(default='', blank=True)
     image_hash = models.TextField(default='', blank=True)
     from_mongo = models.BooleanField(default=False, blank=True)
     file_path = models.TextField(default='', blank=True)
+    image_uuid = models.CharField(max_length=1000, default='', blank=True, null=True, db_index=True)
 
     source_data = models.JSONField(default=dict, blank=True)
     exif = models.JSONField(default=dict, blank=True)
@@ -267,6 +246,7 @@ class Image(models.Model):
 
 class Image_info(models.Model):
     image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True)
+    image_uuid = models.CharField(max_length=1000, default='', blank=True, null=True)
     source_data = models.JSONField(default=dict, blank=True)
     exif = models.JSONField(default=dict, blank=True)
 
@@ -282,7 +262,7 @@ class ProjectStat(models.Model):
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
     num_sa = models.IntegerField(null=True, blank=True)
     num_deployment = models.IntegerField(null=True, blank=True)
-    num_image = models.IntegerField(null=True, blank=True)
+    num_data = models.IntegerField(null=True, blank=True)
     last_updated = models.DateTimeField(null=True, db_index=True)
 
 
