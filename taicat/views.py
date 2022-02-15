@@ -2,13 +2,14 @@ from django.db.models.fields import PositiveBigIntegerField
 from django.http import response, JsonResponse
 from django.shortcuts import redirect, render, HttpResponse
 from pandas.core.groupby.generic import DataFrameGroupBy
-from .models import *
+from taicat.models import *
 from django.db import connection  # for executing raw SQL
 import re
 import json
 import math
-from datetime import datetime, timedelta
-from django.db.models import Count, Window, F, Sum, Min, Q, Max
+import datetime
+# from datetime import datetime, timedelta, timezone
+from django.db.models import Count, Window, F, Sum, Min, Q, Max, Func, Value, CharField
 from django.db.models.functions import Trunc
 from django.contrib import messages
 from django.core import serializers
@@ -36,6 +37,8 @@ from calendar import monthrange
 from .utils import Calculation
 import collections
 from operator import itemgetter
+from dateutil import parser
+from django.test.utils import CaptureQueriesContext
 
 
 s3_bucket = env('S3_BUCKET', default='camera-trap-21-prod')
@@ -292,7 +295,9 @@ def get_project_info(project_list):
     has_new = Image.objects.filter(created__gte=last_updated, project_id__in=list(project_info.id))
     if has_new.exists():
         # update project stat
+        # TODO update earliest_date & latest_date
         ProjectStat.objects.filter(project_id__in=list(project_info.id)).update(last_updated=now)
+        ProjectSpecies.objects.filter(project_id__in=list(project_info.id)).update(last_updated=now)
         for i in project_info.id:
             c = Image.objects.filter(project_id=i).count()
             if ProjectStat.objects.filter(project_id=i).exists():
@@ -441,109 +446,158 @@ def project_detail(request, pk):
         project_info = cursor.fetchone()
     project_info = list(project_info)
     deployment = Deployment.objects.filter(project_id=pk)
-    # TODO: save latest_date & earliest_date into project stat table?
-    # TODO: update projectspecies table
+    # TODO: update project species & project stat
+
     species = ProjectSpecies.objects.filter(project_id=pk).values_list('count', 'name').order_by('count')
-    image_objects = Image.objects.filter(project_id=pk)
-    if image_objects.exists():
-        latest_date = image_objects.latest('datetime').datetime.strftime("%Y-%m-%d")
-        earliest_date = image_objects.earliest('datetime').datetime.strftime("%Y-%m-%d")
+
+    if ProjectStat.objects.filter(project_id=pk).first().latest_date and ProjectStat.objects.filter(project_id=pk).first():
+        latest_date = ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d")
+        earliest_date = ProjectStat.objects.filter(project_id=pk).first().earliest_date.strftime("%Y-%m-%d")
     else:
         latest_date, earliest_date = None, None
+
     # edit permission
     user_id = request.session.get('id', None)
-    edit = False
+    editable = False
     if user_id:
         # 系統管理員 / 個別計畫承辦人
         if Contact.objects.filter(id=user_id, is_system_admin=True).first() or ProjectMember.objects.filter(member_id=user_id, role="project_admin", project_id=pk):
-            edit = True
+            editable = True
         # 計畫總管理人
         elif Contact.objects.filter(id=user_id, is_organization_admin=True):
-            organization_id = Contact.objects.filter(
-                id=user_id, is_organization_admin=True).values('organization').first()['organization']
+            organization_id = Contact.objects.filter(id=user_id, is_organization_admin=True).values('organization').first()['organization']
             if Organization.objects.filter(id=organization_id, projects=pk):
-                edit = True
+                editable = True
     study_area = StudyArea.objects.filter(project_id=pk).order_by('name')
     return render(request, 'project/project_detail.html',
                   {'project_name': len(project_info[0]), 'project_info': project_info, 'species': species, 'pk': pk,
                    'study_area': study_area, 'deployment': deployment,
                    'earliest_date': earliest_date, 'latest_date': latest_date,
-                   'edit': edit, 'is_authorized': is_authorized})
+                   'editable': editable, 'is_authorized': is_authorized})
 
 
 def data(request):
+    t = time.time()
     requests = request.POST
+    print(requests)
     pk = requests.get('pk')
+    _start = requests.get('start')
+    # set _length = 1000 to avoid bad psql query plan
+    _length = 1000
+
     start_date = requests.get('start_date')
     end_date = requests.get('end_date')
     date_filter = ''
-    if start_date and end_date:
-        start_date = datetime.strptime(start_date, "%Y-%m-%d")
-        end_date = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
-        date_filter = "AND i.datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
-    _start = requests.get('start')
-    _length = requests.get('length')
-    species = requests.get('species')
+    if (start_date != ProjectStat.objects.filter(project_id=pk).first().earliest_date.strftime("%Y-%m-%d") or end_date != ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d")):
+        start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+        end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
+        date_filter = "AND i.datetime BETWEEN '{}' AND '{}'".format(
+            start_date, end_date)
     conditions = ''
     deployment = requests.getlist('deployment[]')
-    sa = requests.get('sa')
+    sa = requests.get('sa-filter')
     if sa:
-        conditions += f' AND i.studyarea_id = {sa}'
+        conditions += f' AND sa.id = {sa}'
         if deployment:
             if 'all' not in deployment:
                 x = [int(i) for i in deployment]
                 x = str(x).replace('[', '(').replace(']', ')')
-                conditions += f' AND i.deployment_id IN {x}'
+                conditions += f' AND d.id IN {x}'
         else:
-            conditions = ' AND i.deployment_id IS NULL'
+            conditions = ' AND d.id IS NULL'
     spe_conditions = ''
+    species = requests.getlist('species[]')
     if species:
-        spe_conditions = f" WHERE anno ->> 'species' = '{species}' "
+        if 'all' not in species:
+            x = [i for i in species]
+            x = str(x).replace('[', '(').replace(']', ')')
+            spe_conditions = f" AND species IN {x}"
+    print(spe_conditions)
+    # basic query
+    # query_object = Image.objects.filter(project_id=pk)
+
+    # start_date = requests.get('start_date')
+    # end_date = requests.get('end_date')
+    # if (start_date != ProjectStat.objects.filter(project_id=pk).first().earliest_date.strftime("%Y-%m-%d") or end_date != ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d")):
+    #     start_date = parser.parse(start_date + ' 00:00:00 +0800')
+    #     end_date = parser.parse(end_date + ' 00:00:00 +0800') + datetime.timedelta(days=1)
+    #     query_object = query_object.filter(datetime__range=[start_date, end_date])
+
+    # if species := requests.get('species'):
+    #     query_object = query_object.filter(species=species)
+
+    # deployment = requests.getlist('deployment[]')
+    # sa = requests.get('sa')
+    # if sa:
+    #     query_object = query_object.filter(studyarea_id=sa)
+    #     if deployment:
+    #         if 'all' not in deployment:
+    #             query_object = query_object.filter(deployment_id__in=[int(i) for i in deployment])
+    #     else:
+    #         query_object = query_object.filter(deployment_id__isnull=True)
+    # print('a', time.time()-t)
+    # image_info = query_object.order_by('-created', '-id', 'project_id').values('studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
+    #                                                                            'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo')[int(_start):int(_start)+int(_length)].annotate(
+    #     datetime=Func(
+    #         F("datetime"),
+    #         Value("YYYY-MM-DD HH24:MI:SS TZ"),
+    #         function='to_char',
+    #         output_field=CharField()
+    #     ))
+    # print('1', time.time()-t)
+    # print(image_info.query)
+
+#     image_info = query_object.order_by().values('studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
+#                                                 'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo')[int(_start):int(_start)+int(_length)].annotate(
+#         datetime=Func(
+#             F("datetime"),
+#             Value("YYYY-MM-DD HH24:MI:SS TZ"),
+#             function='to_char',
+#             output_field=CharField()
+#         ))
+
     with connection.cursor() as cursor:
-        query = """WITH base_request as (SELECT 
-                        i.studyarea_id, i.deployment_id, i.filename, 
-                        to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
-                        anno, i.file_url, i.id, i.from_mongo 
+        query = """SELECT studyarea_id, deployment_id, filename, species,
+                        life_stage, sex, antler, animal_id, remarks,
+                        file_url, image_uuid, from_mongo, to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime
                         FROM taicat_image i
-                        LEFT JOIN jsonb_array_elements(i.annotation::jsonb) AS anno ON true 
-                        WHERE i.project_id = {} {} {} 
-                        ORDER BY i.created, i.filename)
-                        select * from base_request {};"""
-        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions))
+                        WHERE project_id = {} {} {} {}
+                        ORDER BY created DESC, project_id ASC
+                        LIMIT 1000 OFFSET {}"""
+
+        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, _start))
         image_info = cursor.fetchall()
+    print(query.format(pk, date_filter, conditions, spe_conditions, _start))
     if image_info:
-        df = pd.DataFrame(image_info, columns=['studyarea_id', 'deployment_id', 'filename', 'datetime', 'annotation', 'file_url', 'image_id', 'from_mongo'])
-        # parse string to dict
+
+        df = pd.DataFrame(image_info, columns=['studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
+                                               'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime'])[:10]
+        print('b', time.time()-t)
         sa_names = pd.DataFrame(StudyArea.objects.filter(id__in=df.studyarea_id.unique()).values('id', 'name', 'parent_id')
                                 ).rename(columns={'id': 'studyarea_id', 'name': 'saname', 'parent_id': 'saparent'})
         d_names = pd.DataFrame(Deployment.objects.filter(id__in=df.deployment_id.unique()).values('id', 'name')).rename(columns={'id': 'deployment_id', 'name': 'dname'})
         df = df.merge(d_names).merge(sa_names)
 
-        # parse string to dict
-        df['annotation'] = df.annotation.replace('null', "''", regex=True)
-        df['anno_list'] = df.annotation.apply(lambda x: literal_eval(str(x)))
+        with connection.cursor() as cursor:
+            query = """SELECT COUNT(*)
+                            FROM taicat_image i
+                            WHERE project_id = {} {} {} {}"""
+            cursor.execute(query.format(
+                pk, date_filter, conditions, spe_conditions, _start))
+            count = cursor.fetchone()
+        recordsTotal = count[0]
 
-        recordsTotal = len(df)
-        recordsFiltered = len(df)
+        print('c-1', time.time()-t)
+        recordsFiltered = recordsTotal
 
-        # 只保留該頁顯示的筆數
         start = int(_start)
         length = int(_length)
         per_page = length
         page = math.ceil(start / length) + 1
-
-        df = df.reset_index()
-        df = df[start:start + length]  # concat may add rows
-        # remark to remarks
-        for i in df[df.anno_list.notnull()].index:
-            if 'remark' in df.anno_list[i]:
-                df.anno_list[i]['remarks'] = df.anno_list[i].pop('remark')
-
-        df = pd.concat([df.drop(['anno_list'], axis=1), df['anno_list'].apply(pd.Series)], axis=1)
-        df = df.reset_index()
-
-        # add group id
-        df['group_id'] = df.groupby('index').cumcount()
+        # TODO 改成image_uuid
+        # df['group_id'] = df.groupby('index').cumcount()
+        df['group_id'] = ''
+        # add sub studyarea if exists
         ssa_exist = StudyArea.objects.filter(project_id=pk, parent__isnull=False)
         if ssa_exist.count() > 0:
             ssa_list = list(ssa_exist.values_list('name', flat=True))
@@ -554,45 +608,44 @@ def data(request):
                     df.loc[i, 'saname'] = f"{parent_saname}_{current_name}"
                 except:
                     pass
+        print('d', time.time()-t)
 
         for i in df.index:
             file_url = df.file_url[i]
             if not file_url and not df.from_mongo[i]:
                 file_url = f"{df.image_id[i]}-m.jpg"
-            extension = file_url.split('.')[-1]
+            extension = file_url.split('.')[-1].lower()
+            file_url = file_url[:-len(extension)]+extension
+            # print(file_url)
             if not df.from_mongo[i]:
                 # new data - image
-                # env('AWS_ACCESS_KEY_ID', default='')
-                if extension == 'jpg':
-                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://{}ap-northeast-1.amazonaws.com/{}" />""".format(s3_bucket, file_url)
+                if extension in ['jpg', '']:
+                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://{}.s3.ap-northeast-1.amazonaws.com/{}" />""".format(s3_bucket, file_url)
                 # new data - video
                 else:
                     df.loc[i, 'file_url'] = """
                     <video class="img lazy mx-auto d-block" controls height="100">
-                        <source src="https://{}ap-northeast-1.amazonaws.com/{}"
-                                type="video/webm">
-                        <source src="https://{}ap-northeast-1.amazonaws.com/{}"
-                                type="video/mp4">
+                        <source src="https://{}.s3.ap-northeast-1.amazonaws.com/{}" type="video/webm">
+                        <source src="https://{}.s3.ap-northeast-1.amazonaws.com/{}" type="video/mp4">
                         抱歉，您的瀏覽器不支援內嵌影片。
                     </video>
                     """.format(s3_bucket, file_url, s3_bucket, file_url)
             else:
                 # old data - image
-                if extension == 'jpg':
+                if extension in ['jpg', '']:
                     df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-images/{}" />""".format(
                         file_url)
                 # old data - video
                 else:
                     df.loc[i, 'file_url'] = """
                     <video class="img lazy mx-auto d-block" controls height="100">
-                        <source src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-videos/{}"
-                                type="video/webm">
-                        <source src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-videos/{}"
-                                type="video/mp4">
+                        <source src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-videos/{}" type="video/webm">
+                        <source src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-videos/{}" type="video/mp4">
                         抱歉，您的瀏覽器不支援內嵌影片。
                     </video>
                     """.format(file_url, file_url)
             ### videos: https://developer.mozilla.org/zh-CN/docs/Web/HTML/Element/video ##
+        print('e', time.time()-t)
 
         cols = ['saname', 'dname', 'filename', 'datetime', 'species', 'lifestage',
                 'sex', 'antler', 'animal_id', 'remarks', 'file_url', 'group_id', 'image_id']
@@ -679,8 +732,8 @@ def generate_download_excel(request, pk):
     end_date = requests.get('end_date')
     date_filter = ''
     if start_date and end_date:
-        start_date = datetime.strptime(start_date, "%Y-%m-%d")
-        end_date = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+        start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+        end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
         date_filter = "AND i.datetime BETWEEN '{}' AND '{}'".format(
             start_date, end_date)
     species = requests.get('species-filter')
@@ -759,7 +812,7 @@ def generate_download_excel(request, pk):
     else:
         df = pd.DataFrame()  # no data
 
-    n = f'download_{randomword(8)}_{datetime.now().strftime("%Y-%m-%d")}.xlsx'
+    n = f'download_{randomword(8)}_{datetime.datetime.now().strftime("%Y-%m-%d")}.xlsx'
 
     download_dir = os.path.join(settings.MEDIA_ROOT, 'download')
     df.to_excel(os.path.join(download_dir, n), index=False)
@@ -797,11 +850,11 @@ def project_oversight(request, pk):
             end_year = mnx['datetime__max'].year
             start_year = mnx['datetime__min'].year
             year_list = list(range(start_year, end_year+1))
-            #imax = Image.objects.values('datetime').filter(project_id=pk).order_by('datetime')[:1]
-            #imin = Image.objects.filter(project_id=pk).order_by('-datetime')[:1]
+            # imax = Image.objects.values('datetime').filter(project_id=pk).order_by('datetime')[:1]
+            # imin = Image.objects.filter(project_id=pk).order_by('-datetime')[:1]
             # print(imax)
-            #print(mn.first(), mn.last())
-            #year_list = list(range(2010, 2022))
+            # print(mn.first(), mn.last())
+            # year_list = list(range(2010, 2022))
 
             result = []
             if year:
@@ -815,7 +868,7 @@ def project_oversight(request, pk):
                         for m in range(1, 13):
                             days_in_month = monthrange(year, m)[1]
                             month_list.append([0, [0, days_in_month]])
-                        #query = Image.objects.values('datetime').filter(project_id=pk, deployment_id=dep_id).annotate(year=Trunc('datetime', 'year')).filter(datetime__year=year).annotate(day=Trunc('datetime', 'day')).annotate(count=Count('day'))
+                        # query = Image.objects.values('datetime').filter(project_id=pk, deployment_id=dep_id).annotate(year=Trunc('datetime', 'year')).filter(datetime__year=year).annotate(day=Trunc('datetime', 'day')).annotate(count=Count('day'))
                         # print(query.query)
                         with connection.cursor() as cursor:
                             query = f"SELECT DATE_TRUNC('day', datetime) AS day FROM taicat_image WHERE deployment_id={dep_id} AND datetime BETWEEN '{year}-01-01' AND '{year}-12-31' GROUP BY day ORDER BY day;"
