@@ -25,7 +25,6 @@ MESSAGE_TAGS = {
     messages.ERROR: 'alert-danger',
 }
 
-TIME_ZONE = 'Asia/Taipei'
 
 # Build paths inside the taicat like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
