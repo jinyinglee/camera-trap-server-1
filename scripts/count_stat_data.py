@@ -5,7 +5,7 @@ from django.utils import timezone
 
 now = timezone.now()
 with connection.cursor() as cursor:
-    query = """SELECT EXTRACT (year FROM datetime) as year, count(id) as count
+    query = """SELECT EXTRACT (year FROM datetime) as year, count(distinct(image_uuid)) as count
     FROM taicat_image
     GROUP BY year"""
     cursor.execute(query)
@@ -69,29 +69,32 @@ with connection.cursor() as cursor:
                     ORDER BY taicat_project.start_date DESC;"
     cursor.execute(q)
     project_info = cursor.fetchall()
-    project_info = pd.DataFrame(project_info, columns=[
-        'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea'])
+    project_info = pd.DataFrame(project_info, columns=['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea'])
 
-project_info['num_image'] = 0
+project_info['num_data'] = 0
 project_info['num_deployment'] = 0
 
 for i in project_info.id:
     image_c = Image.objects.filter(project_id=i).count()
     dep_c = Deployment.objects.filter(project_id=i).count()
-    project_info.loc[project_info['id']
-                     == i, 'num_image'] = image_c
-    project_info.loc[project_info['id']
-                     == i, 'num_deployment'] = dep_c
+    project_info.loc[project_info['id'] == i, 'num_data'] = image_c
+    project_info.loc[project_info['id'] == i, 'num_deployment'] = dep_c
 
-project_info = project_info[[
-    'id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_image']]
+project_info = project_info[['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_data']]
 
 for i in project_info.index:
+    print(i)
+    image_objects = Image.objects.filter(project_id=project_info.loc[i, 'id'])
+    if image_objects.exists():
+        latest_date = image_objects.latest('datetime').datetime
+        earliest_date = image_objects.earliest('datetime').datetime
+        ProjectStat.objects.filter(project_id=project_info.loc[i, 'id']).update(latest_date=latest_date, earliest_date=earliest_date)
+
     new = ProjectStat(
         project_id=project_info.loc[i, 'id'],
         num_sa=project_info.loc[i, 'num_studyarea'],
         num_deployment=project_info.loc[i, 'num_deployment'],
-        num_image=project_info.loc[i, 'num_image'],
+        num_data=project_info.loc[i, 'num_data'],
         last_updated=now
     )
     new.save()
