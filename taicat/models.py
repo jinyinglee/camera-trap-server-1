@@ -264,6 +264,8 @@ class ProjectStat(models.Model):
     num_deployment = models.IntegerField(null=True, blank=True)
     num_data = models.IntegerField(null=True, blank=True)
     last_updated = models.DateTimeField(null=True, db_index=True)
+    latest_date = models.DateTimeField(null=True, db_index=True)
+    earliest_date = models.DateTimeField(null=True, db_index=True)
 
 
 class ProjectSpecies(models.Model):
