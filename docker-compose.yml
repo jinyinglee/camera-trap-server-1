@@ -3,17 +3,17 @@ version: '3.7'
 services:
   django:
     build: .
-    container_name: ct21-django-dev-container
-    image: ct21-django-dev-image
+    container_name: ct22-django-dev-container
+    image: ct22-django-dev-image
     ports:
       - 8000:8000
     depends_on:
       - postgres
     volumes:
       - .:/code
-      - ../ct21-volumes/static:/ct21-volumes/static
-      - ../ct21-volumes/media:/ct21-volumes/media
-      - ../ct21-volumes/bucket:/bucket
+      - ../ct22-volumes/static:/ct22-volumes/static
+      - ../ct22-volumes/media:/ct22-volumes/media
+      - ../ct22-volumes/bucket:/bucket
     command: /srv/start
     restart: always
     #env_file:
@@ -27,15 +27,16 @@ services:
       - POSTGRES_DB=cameratrap
   postgres:
     image: postgres:13-alpine
+    shm_size: '1g'
     #build:
     #  context: .
     #  dockerfile: ./compose/production/postgres/Dockerfile
     #image: ct-postgres-image
-    container_name: ct21-postgres-container
+    container_name: ct22-postgres-container
     restart: always
     volumes:
-      - ../ct21-volumes/pgdata:/var/lib/postgresql/data/pgdata
-      - ../ct21-volumes/bucket:/bucket
+      - ../ct22-volumes/pgdata:/var/lib/postgresql/data/pgdata
+      - ../ct22-volumes/bucket:/bucket
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=example
