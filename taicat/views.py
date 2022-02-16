@@ -479,7 +479,6 @@ def project_detail(request, pk):
 def data(request):
     t = time.time()
     requests = request.POST
-    print(requests)
     pk = requests.get('pk')
     _start = requests.get('start')
     # set _length = 1000 to avoid bad psql query plan
@@ -491,20 +490,20 @@ def data(request):
     if (start_date != ProjectStat.objects.filter(project_id=pk).first().earliest_date.strftime("%Y-%m-%d") or end_date != ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d")):
         start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
         end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
-        date_filter = "AND i.datetime BETWEEN '{}' AND '{}'".format(
+        date_filter = "AND datetime BETWEEN '{}' AND '{}'".format(
             start_date, end_date)
     conditions = ''
     deployment = requests.getlist('deployment[]')
-    sa = requests.get('sa-filter')
+    sa = requests.get('sa')
     if sa:
-        conditions += f' AND sa.id = {sa}'
+        conditions += f' AND studyarea_id = {sa}'
         if deployment:
             if 'all' not in deployment:
                 x = [int(i) for i in deployment]
                 x = str(x).replace('[', '(').replace(']', ')')
-                conditions += f' AND d.id IN {x}'
+                conditions += f' AND deployment_id IN {x}'
         else:
-            conditions = ' AND d.id IS NULL'
+            conditions = ' AND deployment_id IS NULL'
     spe_conditions = ''
     species = requests.getlist('species[]')
     if species:
@@ -512,55 +511,11 @@ def data(request):
             x = [i for i in species]
             x = str(x).replace('[', '(').replace(']', ')')
             spe_conditions = f" AND species IN {x}"
-    print(spe_conditions)
-    # basic query
-    # query_object = Image.objects.filter(project_id=pk)
-
-    # start_date = requests.get('start_date')
-    # end_date = requests.get('end_date')
-    # if (start_date != ProjectStat.objects.filter(project_id=pk).first().earliest_date.strftime("%Y-%m-%d") or end_date != ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d")):
-    #     start_date = parser.parse(start_date + ' 00:00:00 +0800')
-    #     end_date = parser.parse(end_date + ' 00:00:00 +0800') + datetime.timedelta(days=1)
-    #     query_object = query_object.filter(datetime__range=[start_date, end_date])
-
-    # if species := requests.get('species'):
-    #     query_object = query_object.filter(species=species)
-
-    # deployment = requests.getlist('deployment[]')
-    # sa = requests.get('sa')
-    # if sa:
-    #     query_object = query_object.filter(studyarea_id=sa)
-    #     if deployment:
-    #         if 'all' not in deployment:
-    #             query_object = query_object.filter(deployment_id__in=[int(i) for i in deployment])
-    #     else:
-    #         query_object = query_object.filter(deployment_id__isnull=True)
-    # print('a', time.time()-t)
-    # image_info = query_object.order_by('-created', '-id', 'project_id').values('studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
-    #                                                                            'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo')[int(_start):int(_start)+int(_length)].annotate(
-    #     datetime=Func(
-    #         F("datetime"),
-    #         Value("YYYY-MM-DD HH24:MI:SS TZ"),
-    #         function='to_char',
-    #         output_field=CharField()
-    #     ))
-    # print('1', time.time()-t)
-    # print(image_info.query)
-
-#     image_info = query_object.order_by().values('studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
-#                                                 'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo')[int(_start):int(_start)+int(_length)].annotate(
-#         datetime=Func(
-#             F("datetime"),
-#             Value("YYYY-MM-DD HH24:MI:SS TZ"),
-#             function='to_char',
-#             output_field=CharField()
-#         ))
-
     with connection.cursor() as cursor:
         query = """SELECT studyarea_id, deployment_id, filename, species,
                         life_stage, sex, antler, animal_id, remarks,
-                        file_url, image_uuid, from_mongo, to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime
-                        FROM taicat_image i
+                        file_url, image_uuid, from_mongo, to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime
+                        FROM taicat_image 
                         WHERE project_id = {} {} {} {}
                         ORDER BY created DESC, project_id ASC
                         LIMIT 1000 OFFSET {}"""
@@ -781,8 +736,7 @@ def generate_download_excel(request, pk):
                        df['anno_list'].apply(pd.Series)], axis=1)
         df = df.reset_index()
         df['subsaname'] = ''
-        ssa_exist = StudyArea.objects.filter(
-            project_id=pk, parent__isnull=False)
+        ssa_exist = StudyArea.objects.filter(project_id=pk, parent__isnull=False)
         if ssa_exist.count() > 0:
             ssa_list = list(ssa_exist.values_list('name', flat=True))
             for i in df[df.saname.isin(ssa_list)].index:
