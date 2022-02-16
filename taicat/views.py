@@ -520,7 +520,6 @@ def data(request):
         # set limit = 1000 to avoid bad psql query plan
         cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, 1000, _start))
         image_info = cursor.fetchall()
-    print(query.format(pk, date_filter, conditions, spe_conditions, _length, _start))
     if image_info:
 
         df = pd.DataFrame(image_info, columns=['studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
@@ -577,7 +576,7 @@ def data(request):
                 # new data - video
                 else:
                     df.loc[i, 'file_url'] = """
-                    <video class="img lazy mx-auto d-block" controls height="100">
+                    <video class="img lazy mx-auto d-block" controls height="100" preload="none">
                         <source src="https://{}.s3.ap-northeast-1.amazonaws.com/{}" type="video/webm">
                         <source src="https://{}.s3.ap-northeast-1.amazonaws.com/{}" type="video/mp4">
                         抱歉，您的瀏覽器不支援內嵌影片。
@@ -591,7 +590,7 @@ def data(request):
                 # old data - video
                 else:
                     df.loc[i, 'file_url'] = """
-                    <video class="img lazy mx-auto d-block" controls height="100">
+                    <video class="img lazy mx-auto d-block" controls height="100" preload="none">
                         <source src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-videos/{}" type="video/webm">
                         <source src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-videos/{}" type="video/mp4">
                         抱歉，您的瀏覽器不支援內嵌影片。
