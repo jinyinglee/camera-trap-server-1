@@ -616,6 +616,29 @@
                         }
                     }
                 }
+
+                // lazy loading for videos
+                var watcher2 = new IntersectionObserver(onEnterView2);
+                var lazyVideos = document.querySelectorAll("video");
+                for (let v of lazyVideos) {
+                    watcher2.observe(v); // 開始監視
+                }
+                function onEnterView2(entries, observer) {
+                    for (let entry of entries) {
+                        if (entry.isIntersecting) {
+                            var video = entry.target;
+                            video.setAttribute("preload", "");
+                            observer.unobserve(video);
+                        }
+                    }
+                }
+
+                // event listener for loading video & img
+                $('video source, img').on('error',function(event) {
+                  $(this).parent().after('<p align="center" style="color: brown">無法載入<p>')
+                  $(this).parent().remove()
+                })
+
                 // adjust columns after 1000 ms
                 setTimeout(function(){
                     $.fn.dataTable.tables( { visible: false, api: true } ).columns.adjust();
@@ -694,6 +717,10 @@
             $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
             $('#edit-image video').attr('width', '100%');
             $('#edit-image video').attr('height', '');
+            $('#edit-image video source, #edit-image img').on('error',function(event) {
+              $(this).parent().after('<p align="center" style="color: brown">無法載入<p>')
+              $(this).parent().remove()
+            })
             $('#editModal').modal('show');
 
             // disable edit
@@ -765,15 +792,6 @@
             //console.log($('#downloadForm').serialize())
             //$('#downloadForm').submit()
         })
-
-
-        // radio style for species
-        /*
-        $("input[name=species-filter]").click( function () {
-            $(`input[name=species-filter]`).parent('label').children('i').remove()
-            $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=species-filter]:checked`));
-        });
-        */
 
         // radio style for studyarea & cameralocation
         $("input[name=sa-filter]").click( function () {
