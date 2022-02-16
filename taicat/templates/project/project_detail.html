@@ -518,8 +518,6 @@
 
 
     $(document).ready(function() {
-        window.speciesArray = []
-
         /* sub studyarea */
         {% for i in study_area %}
             {% if i.parent_id != None %}
@@ -593,10 +591,10 @@
                 data: function ( d ) {
                     d.pk = "{{ pk }}";
                     d.species = $('input[name="species-filter"]:checked').map(function(){return $(this).val();}).get();
-                    d.sa =  $("input[name=sa-filter]:checked").val()
+                    d.sa =  $("input[name=sa-filter]:checked").val();
                     {% if earliest_date != None %}
-                    d.start_date = (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10)
-                    d.end_date = (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10)
+                    d.start_date = (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10);
+                    d.end_date = (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10);
                     {% endif %}
                     d.deployment =  $('input[name="d-filter"]:checked').map(function(){return $(this).val();}).get();
                 },
@@ -779,7 +777,7 @@
 
         // radio style for studyarea & cameralocation
         $("input[name=sa-filter]").click( function () {
-            $(`input[type=checkbox].filter`).prop('checked', false);
+            $(`input[type=checkbox][name=d-filter].filter`).prop('checked', false);
             let radio_group = $(`input[name=sa-filter]:checked`).val();
             if (radio_group){
                 $(`input[data-parent-radio=${radio_group}]`).prop('checked', true);
@@ -789,11 +787,11 @@
         });
 
         // radio style for studyarea & cameralocation: checkbox toggle
-        $("input[type=checkbox].filter.all").not("input[name='species-filter']").click (function(){
+        $("input[type=checkbox][name=d-filter].filter.all").click (function(){
             let parent_radio = $(this).data('parent-radio')
 
             // uncheck other checkbox group
-            $(`input[type=checkbox]:not([data-parent-radio=${parent_radio}])`).prop('checked', false)
+            $(`input[type=checkbox][name=d-filter]:not([data-parent-radio=${parent_radio}])`).prop('checked', false)
 
             if( $(this).is(':checked') ) {
                 $(`input[data-parent-radio=${parent_radio}][type=checkbox]`).prop('checked', true)
@@ -808,10 +806,10 @@
         })
 
         // deployment: if other checkbox checked, uncheck 'all'
-        $("input[type=checkbox].filter:not(.all)").not("input[name='species-filter']").click (function(){
+        $("input[type=checkbox][name=d-filter].filter:not(.all)").click (function(){
             let parent_radio = $(this).data('parent-radio')
             // uncheck other checkbox group
-            $(`input[type=checkbox]:not([data-parent-radio=${parent_radio}])`).prop('checked', false)
+            $(`input[type=checkbox][name=d-filter]:not([data-parent-radio=${parent_radio}])`).prop('checked', false)
             // uncheck all
             $(`input[data-parent-radio=${parent_radio}][type=checkbox].all`).prop('checked', false)
             // radio
@@ -838,7 +836,6 @@
 
         $("input[name='species-filter'].all").click (function(){
             if( $(this).is(':checked') ) {
-                console.log('c')
                 // 先移除掉全部的再一次加上去
                 $("#species-list li label i").remove()
                 $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
