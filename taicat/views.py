@@ -487,11 +487,10 @@ def data(request):
     start_date = requests.get('start_date')
     end_date = requests.get('end_date')
     date_filter = ''
-    if (start_date != ProjectStat.objects.filter(project_id=pk).first().earliest_date.strftime("%Y-%m-%d") or end_date != ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d")):
+    if ((start_date and start_date != ProjectStat.objects.filter(project_id=pk).first().earliest_date.strftime("%Y-%m-%d")) or (end_date and end_date != ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d"))):
         start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
         end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
-        date_filter = "AND datetime BETWEEN '{}' AND '{}'".format(
-            start_date, end_date)
+        date_filter = "AND datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
     conditions = ''
     deployment = requests.getlist('deployment[]')
     sa = requests.get('sa')
@@ -513,16 +512,15 @@ def data(request):
             spe_conditions = f" AND species IN {x}"
     with connection.cursor() as cursor:
         query = """SELECT studyarea_id, deployment_id, filename, species,
-                        life_stage, sex, antler, animal_id, remarks,
-                        file_url, image_uuid, from_mongo, to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime
+                        life_stage, sex, antler, animal_id, remarks, file_url, image_uuid, from_mongo, 
+                        to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime
                         FROM taicat_image 
                         WHERE project_id = {} {} {} {}
                         ORDER BY created DESC, project_id ASC
-                        LIMIT 1000 OFFSET {}"""
-
-        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, _start))
+                        LIMIT {} OFFSET {}"""
+        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, _length, _start))
         image_info = cursor.fetchall()
-    print(query.format(pk, date_filter, conditions, spe_conditions, _start))
+    print(query.format(pk, date_filter, conditions, spe_conditions, _length, _start))
     if image_info:
 
         df = pd.DataFrame(image_info, columns=['studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
@@ -686,63 +684,62 @@ def generate_download_excel(request, pk):
     start_date = requests.get('start_date')
     end_date = requests.get('end_date')
     date_filter = ''
-    if start_date and end_date:
+    if ((start_date and start_date != ProjectStat.objects.filter(project_id=pk).first().earliest_date.strftime("%Y-%m-%d")) or (end_date and end_date != ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d"))):
         start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
         end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
-        date_filter = "AND i.datetime BETWEEN '{}' AND '{}'".format(
-            start_date, end_date)
-    species = requests.get('species-filter')
+        date_filter = "AND datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
+
     conditions = ''
     deployment = requests.getlist('d-filter')
     sa = requests.get('sa-filter')
     if sa:
-        conditions += f' AND sa.id = {sa}'
+        conditions += f' AND studyarea_id = {sa}'
         if deployment:
             if 'all' not in deployment:
                 x = [int(i) for i in deployment]
                 x = str(x).replace('[', '(').replace(']', ')')
-                conditions += f' AND d.id IN {x}'
+                conditions += f' AND deployment_id IN {x}'
         else:
-            conditions = ' AND d.id IS NULL'
+            conditions = ' AND deployment_id IS NULL'
     spe_conditions = ''
+    species = requests.getlist('species-filter')
     if species:
-        spe_conditions = f" WHERE anno ->> 'species' = '{species}' "
+        if 'all' not in species:
+            x = [i for i in species]
+            x = str(x).replace('[', '(').replace(']', ')')
+            spe_conditions = f" AND species IN {x}"
+
     with connection.cursor() as cursor:
-        query = """WITH base_request as (SELECT 
-                        sa.name AS saname, d.name AS dname, i.filename, 
-                        to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, 
-                        sa.parent_id AS saparent, anno, i.file_url, i.id, i.from_mongo 
-                        FROM taicat_image i
-                        LEFT JOIN jsonb_array_elements(i.annotation::jsonb) AS anno ON true 
-                        JOIN taicat_deployment d ON d.id = i.deployment_id
-                        JOIN taicat_studyarea sa ON sa.id = d.study_area_id 
-                        WHERE d.project_id = {} {} {} 
-                        ORDER BY i.created, i.filename)
-                        select * from base_request {};"""
-        cursor.execute(query.format(
-            pk, date_filter, conditions, spe_conditions))
+        query = f"""SELECT studyarea_id, deployment_id, filename, species,
+                        life_stage, sex, antler, animal_id, remarks, file_url, image_uuid, from_mongo, 
+                        to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime
+                        FROM taicat_image 
+                        WHERE project_id = {pk} {date_filter} {conditions} {spe_conditions} 
+                        ORDER BY created DESC, project_id ASC"""
+        cursor.execute(query)
+        image_info = cursor.fetchall()
+
+    with connection.cursor() as cursor:
+        cursor.execute(query)
         image_info = cursor.fetchall()
 
     if image_info:
-        df = pd.DataFrame(image_info, columns=[
-                          'saname', 'dname', 'filename', 'datetime', 'saparent', 'annotation', 'file_url', 'image_id', 'from_mongo'])
-        # parse string to dict
-        df['anno_list'] = df.annotation.apply(lambda x: literal_eval(str(x)))
-        for i in df[df.anno_list.notnull()].index:
-            if 'remark' in df.anno_list[i]:
-                df.anno_list[i]['remarks'] = df.anno_list[i].pop('remark')
-
-        df = pd.concat([df.drop(['anno_list'], axis=1),
-                       df['anno_list'].apply(pd.Series)], axis=1)
+        df = pd.DataFrame(image_info, columns=['studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
+                                               'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime'])
+        sa_names = pd.DataFrame(StudyArea.objects.filter(id__in=df.studyarea_id.unique()).values('id', 'name', 'parent_id')
+                                ).rename(columns={'id': 'studyarea_id', 'name': 'saname', 'parent_id': 'saparent'})
+        d_names = pd.DataFrame(Deployment.objects.filter(id__in=df.deployment_id.unique()).values('id', 'name')).rename(columns={'id': 'deployment_id', 'name': 'dname'})
+        df = df.merge(d_names).merge(sa_names)
         df = df.reset_index()
+
+        # add sub studyarea if exists
         df['subsaname'] = ''
         ssa_exist = StudyArea.objects.filter(project_id=pk, parent__isnull=False)
         if ssa_exist.count() > 0:
             ssa_list = list(ssa_exist.values_list('name', flat=True))
             for i in df[df.saname.isin(ssa_list)].index:
                 try:
-                    parent_saname = StudyArea.objects.get(
-                        id=df.saparent[i]).name
+                    parent_saname = StudyArea.objects.get(id=df.saparent[i]).name
                     current_name = df.saname[i]
                     df.loc[i, 'saname'] = f"{parent_saname}"
                     df.loc[i, 'subsaname'] = f"{current_name}"
@@ -753,7 +750,7 @@ def generate_download_excel(request, pk):
         df['計畫ID'] = pk
         # rename
         df = df.rename(columns={'saname': '樣區', 'dname': '相機位置', 'filename': '檔名', 'datetime': '拍攝時間', 'species': '物種',
-                                'lifestage': '年齡', 'sex': '性別', 'antler': '角況', 'remarks': '備註', 'animal_id': '個體ID', 'image_id': '影像ID',
+                                'lifestage': '年齡', 'sex': '性別', 'antler': '角況', 'remarks': '備註', 'animal_id': '個體ID', 'image_uuid': '影像ID',
                                 'subsaname': '子樣區'})
         # subset and change column order
         cols = ['計畫ID', '計畫名稱', '影像ID', '樣區', '子樣區', '相機位置',
@@ -773,14 +770,12 @@ def generate_download_excel(request, pk):
     download_url = request.scheme+"://" + \
         request.META['HTTP_HOST']+settings.MEDIA_URL + \
         os.path.join('download', n)
-    download_url = download_url.replace('http', 'https')
+    if settings.ENV == 'prod':
+        download_url = download_url.replace('http', 'https')
 
     email_subject = '[臺灣自動相機資訊系統] 下載資料'
-    email_body = render_to_string('project/download.html', {
-        'download_url': download_url,
-    })
+    email_body = render_to_string('project/download.html', {'download_url': download_url, })
     send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, [email])
-
     # return response
 
 
