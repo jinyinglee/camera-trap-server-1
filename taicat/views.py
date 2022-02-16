@@ -481,8 +481,7 @@ def data(request):
     requests = request.POST
     pk = requests.get('pk')
     _start = requests.get('start')
-    # set _length = 1000 to avoid bad psql query plan
-    _length = 1000
+    _length = requests.get('length')
 
     start_date = requests.get('start_date')
     end_date = requests.get('end_date')
@@ -518,13 +517,14 @@ def data(request):
                         WHERE project_id = {} {} {} {}
                         ORDER BY created DESC, project_id ASC
                         LIMIT {} OFFSET {}"""
-        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, _length, _start))
+        # set limit = 1000 to avoid bad psql query plan
+        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, 1000, _start))
         image_info = cursor.fetchall()
     print(query.format(pk, date_filter, conditions, spe_conditions, _length, _start))
     if image_info:
 
         df = pd.DataFrame(image_info, columns=['studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
-                                               'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime'])[:10]
+                                               'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime'])[:int(_length)]
         print('b', time.time()-t)
         sa_names = pd.DataFrame(StudyArea.objects.filter(id__in=df.studyarea_id.unique()).values('id', 'name', 'parent_id')
                                 ).rename(columns={'id': 'studyarea_id', 'name': 'saname', 'parent_id': 'saparent'})
