@@ -303,17 +303,22 @@ def get_project_info(project_list):
     has_new = Image.objects.filter(created__gte=last_updated, project_id__in=list(project_info.id))
     if has_new.exists():
         # update project stat
-        # TODO update earliest_date & latest_date
         ProjectStat.objects.filter(project_id__in=list(project_info.id)).update(last_updated=now)
-        ProjectSpecies.objects.filter(project_id__in=list(project_info.id)).update(last_updated=now)
         for i in project_info.id:
             c = Image.objects.filter(project_id=i).count()
+            image_objects = Image.objects.filter(project_id=i, created__gte=last_updated)
+            latest_date = image_objects.latest('datetime').datetime
+            earliest_date = image_objects.earliest('datetime').datetime
             if ProjectStat.objects.filter(project_id=i).exists():
                 p = ProjectStat.objects.get(project_id=i)
                 p.num_sa = StudyArea.objects.filter(project_id=i).count()
                 p.num_deployment = Deployment.objects.filter(project_id=i).count()
                 p.num_data = c
                 p.last_updated = now
+                if latest_date > ProjectStat.objects.get(project_id=i).latest_date:
+                    p.latest_date = latest_date
+                if earliest_date < ProjectStat.objects.get(project_id=i).earliest_date:
+                    p.earliest_date = earliest_date
                 p.save()
             else:
                 p = ProjectStat(
@@ -321,26 +326,28 @@ def get_project_info(project_list):
                     num_sa=StudyArea.objects.filter(project_id=i).count(),
                     num_deployment=Deployment.objects.filter(project_id=i).count(),
                     num_data=c,
-                    last_updated=now)
+                    last_updated=now,
+                    latest_date=latest_date,
+                    earliest_date=earliest_date)
                 p.save()
-            # ------update project species stat-------#
-            query = Image.objects.filter(project_id=i, last_updated__gte=last_updated).values('species').annotate(total=Count('species')).order_by('-total')
+    # update project species
+    has_new = Image.objects.filter(Q(created__gte=last_updated) | Q(last_updated__gte=last_updated), project_id__in=list(project_info.id))
+    if has_new.exists():
+        ProjectSpecies.objects.filter(project_id__in=list(project_info.id)).update(last_updated=now)
+        for i in project_info.id:
+            query = Image.objects.filter(project_id=i).values('species').annotate(total=Count('species')).order_by('-total')
             for q in query:
-                if ProjectSpecies.objects.filter(name=q['species'], project_id=i).exists():
-                    # exist -> update
-                    p_sp = ProjectSpecies.objects.get(name=q['species'], project_id=i)
-                    p_sp.count += q['total']
+                if p_sp := ProjectSpecies.objects.filter(name=q['species'], project_id=i).first():
+                    p_sp.count = q['total']
                     p_sp.last_updated = now
                     p_sp.save()
                 else:
-                    # not exitst -> create
                     p_sp = ProjectSpecies(
-                        project_id=i,
                         name=q['species'],
+                        last_updated=now,
                         count=q['total'],
-                        last_updated=now,)
+                        project_id=i)
                     p_sp.save()
-            # ------update project species stat-------#
     species_data = ProjectSpecies.objects.filter(project_id__in=list(project_info.id), name__in=Species.DEFAULT_LIST).values(
         'name').annotate(total_count=Sum('count')).values_list('total_count', 'name').order_by('-total_count')
     project_info['num_data'] = 0
@@ -375,8 +382,7 @@ def project_overview(request):
     my_project = []
     my_species_data = []
     my_project_list = []
-    member_id = request.session.get('id', None)
-    if member_id:
+    if member_id := request.session.get('id', None):
         # 1. select from project_member table
         with connection.cursor() as cursor:
             query = "SELECT project_id FROM taicat_projectmember where member_id ={}"
@@ -403,6 +409,7 @@ def update_datatable(request):
     if request.method == 'POST':
         table_id = request.POST.get('table_id')
         species = request.POST.getlist('species[]')
+        # TODO 改成多選
         species = species[0]
         print(species)
         if table_id == 'publicproject':
@@ -456,7 +463,55 @@ def project_detail(request, pk):
     deployment = Deployment.objects.filter(project_id=pk)
     # folder name takes long time
     # folder_list = Image.objects.filter(project_id=pk).order_by('folder_name').distinct('folder_name')
-    # TODO: update project species & project stat
+    now = timezone.now()
+    last_updated = ProjectStat.objects.filter(project_id=pk).aggregate(Min('last_updated'))['last_updated__min']
+    has_new = Image.objects.filter(created__gte=last_updated, project_id=pk)
+    if has_new.exists():
+        # update project stat
+        ProjectStat.objects.filter(project_id=pk).update(last_updated=now)
+        c = Image.objects.filter(project_id=pk).count()
+        image_objects = Image.objects.filter(project_id=pk, created__gte=last_updated)
+        latest_date = image_objects.latest('datetime').datetime
+        earliest_date = image_objects.earliest('datetime').datetime
+        if ProjectStat.objects.filter(project_id=pk).exists():
+            p = ProjectStat.objects.get(project_id=pk)
+            p.num_sa = StudyArea.objects.filter(project_id=pk).count()
+            p.num_deployment = Deployment.objects.filter(project_id=pk).count()
+            p.num_data = c
+            p.last_updated = now
+            if latest_date > ProjectStat.objects.get(project_id=pk).latest_date:
+                p.latest_date = latest_date
+            if earliest_date < ProjectStat.objects.get(project_id=pk).earliest_date:
+                p.earliest_date = earliest_date
+            p.save()
+        else:
+            p = ProjectStat(
+                project_id=pk,
+                num_sa=StudyArea.objects.filter(project_id=pk).count(),
+                num_deployment=Deployment.objects.filter(project_id=pk).count(),
+                num_data=c,
+                last_updated=now,
+                latest_date=latest_date,
+                earliest_date=earliest_date)
+            p.save()
+    # update project species
+    has_new = Image.objects.filter(Q(created__gte=last_updated) | Q(last_updated__gte=last_updated), project_id=pk)
+    if has_new.exists():
+        ProjectSpecies.objects.filter(project_id=pk).update(last_updated=now)
+        query = Image.objects.filter(project_id=pk).values('species').annotate(total=Count('species')).order_by('-total')
+        for q in query:
+            # print(q['species'], q['total'])
+            if p_sp := ProjectSpecies.objects.filter(name=q['species'], project_id=pk).first():
+                p_sp.count = q['total']
+                p_sp.last_updated = now
+                p_sp.save()
+            else:
+                p_sp = ProjectSpecies(
+                    name=q['species'],
+                    last_updated=now,
+                    count=q['total'],
+                    project_id=pk)
+                p_sp.save()
 
     species = ProjectSpecies.objects.filter(project_id=pk).values_list('count', 'name').order_by('count')
 
