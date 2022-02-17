@@ -43,8 +43,7 @@ from operator import itemgetter
 from dateutil import parser
 from django.test.utils import CaptureQueriesContext
 
-s3_bucket = env('S3_BUCKET', default='camera-trap-21')
-
+s3_bucket = env('S3_BUCKET', default='camera-trap-21-prod')
 
 
 def randomword(length):
@@ -449,6 +448,8 @@ def project_detail(request, pk):
         project_info = cursor.fetchone()
     project_info = list(project_info)
     deployment = Deployment.objects.filter(project_id=pk)
+    # folder name takes long time
+    # folder_list = Image.objects.filter(project_id=pk).order_by('folder_name').distinct('folder_name')
     # TODO: update project species & project stat
 
     species = ProjectSpecies.objects.filter(project_id=pk).values_list('count', 'name').order_by('count')
@@ -512,17 +513,24 @@ def data(request):
             x = [i for i in species]
             x = str(x).replace('[', '(').replace(']', ')')
             spe_conditions = f" AND species IN {x}"
+
+    time_filter = ''  # 要先減掉8的時差
+    if times := requests.get('times'):
+        result = datetime.datetime.strptime(f"1990-01-01 {times}", "%Y-%m-%d %H:%M:%S") + datetime.timedelta(hours=-8)
+        time_filter = f" AND datetime::time AT TIME ZONE 'UTC' = time '{result.strftime('%H:%M:%S')}'"
+
     with connection.cursor() as cursor:
         query = """SELECT studyarea_id, deployment_id, filename, species,
-                        life_stage, sex, antler, animal_id, remarks, file_url, image_uuid, from_mongo, 
+                        life_stage, sex, antler, animal_id, remarks, file_url, image_uuid, from_mongo,
                         to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime
-                        FROM taicat_image 
-                        WHERE project_id = {} {} {} {}
+                        FROM taicat_image
+                        WHERE project_id = {} {} {} {} {}
                         ORDER BY created DESC, project_id ASC
                         LIMIT {} OFFSET {}"""
         # set limit = 1000 to avoid bad psql query plan
-        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, 1000, _start))
+        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, time_filter, 1000, _start))
         image_info = cursor.fetchall()
+        print(query.format(pk, date_filter, conditions, spe_conditions, time_filter, 1000, _start))
     if image_info:
 
         df = pd.DataFrame(image_info, columns=['studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
@@ -536,9 +544,8 @@ def data(request):
         with connection.cursor() as cursor:
             query = """SELECT COUNT(*)
                             FROM taicat_image i
-                            WHERE project_id = {} {} {} {}"""
-            cursor.execute(query.format(
-                pk, date_filter, conditions, spe_conditions, _start))
+                            WHERE project_id = {} {} {} {} {}"""
+            cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, time_filter))
             count = cursor.fetchone()
         recordsTotal = count[0]
 
@@ -714,17 +721,18 @@ def generate_download_excel(request, pk):
             x = str(x).replace('[', '(').replace(']', ')')
             spe_conditions = f" AND species IN {x}"
 
+    time_filter = ''  # 要先減掉8的時差
+    if times := requests.get('times'):
+        result = datetime.datetime.strptime(f"1990-01-01 {times}", "%Y-%m-%d %H:%M:%S") + datetime.timedelta(hours=-8)
+        time_filter = f" AND datetime::time AT TIME ZONE 'UTC' = time '{result.strftime('%H:%M:%S')}'"
+
     with connection.cursor() as cursor:
         query = f"""SELECT studyarea_id, deployment_id, filename, species,
                         life_stage, sex, antler, animal_id, remarks, file_url, image_uuid, from_mongo, 
                         to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime
                         FROM taicat_image 
-                        WHERE project_id = {pk} {date_filter} {conditions} {spe_conditions} 
+                        WHERE project_id = {pk} {date_filter} {conditions} {spe_conditions} {time_filter}
                         ORDER BY created DESC, project_id ASC"""
-        cursor.execute(query)
-        image_info = cursor.fetchall()
-
-    with connection.cursor() as cursor:
         cursor.execute(query)
         image_info = cursor.fetchall()
 
@@ -823,10 +831,10 @@ def project_oversight(request, pk):
                             days_in_month = monthrange(year, m)[1]
                             ret = find_deployment_working_day(year, m, dep_id)
                             working_day = ret[0]
-                            #print(year, m, dep_id, working_day)
-                            #display_day_list = ['{}:{}'.format(index+1, 'Y' if yes else 'N') for index, yes in enumerate(working_day)]
+                            # print(year, m, dep_id, working_day)
+                            # display_day_list = ['{}:{}'.format(index+1, 'Y' if yes else 'N') for index, yes in enumerate(working_day)]
                             month_cal = monthcalendar(year, m)
-                            #display_working_day_in_calendar(year, m, working_day)
+                            # display_working_day_in_calendar(year, m, working_day)
                             count_working_day = sum(working_day)
                             data = [
                                 year,
@@ -840,10 +848,10 @@ def project_oversight(request, pk):
                             ]
                             ratio = count_working_day * 100.0 / days_in_month
                             month_list.append([ratio, json.dumps(data)])
-                        #query = Image.objects.values('datetime').filter(project_id=pk, deployment_id=dep_id).annotate(year=Trunc('datetime', 'year')).filter(datetime__year=year).annotate(day=Trunc('datetime', 'day')).annotate(count=Count('day'))
+                        # query = Image.objects.values('datetime').filter(project_id=pk, deployment_id=dep_id).annotate(year=Trunc('datetime', 'year')).filter(datetime__year=year).annotate(day=Trunc('datetime', 'day')).annotate(count=Count('day'))
                         # print(query.query)
 
-                        #with connection.cursor() as cursor:
+                        # with connection.cursor() as cursor:
                         #    query = f"SELECT DATE_TRUNC('day', datetime) AS day FROM taicat_image WHERE deployment_id={dep_id} AND datetime BETWEEN '{year}-01-01' AND '{year}-12-31' GROUP BY day ORDER BY day;"
                         #    cursor.execute(query)
                         #    data = cursor.fetchall()

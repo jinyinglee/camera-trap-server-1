@@ -1,6 +1,5 @@
-{% extends 'base/base.html' %} {% block title %} {{ project_info.0 }} | {{ block.super }} {% endblock title %} {% block head %}
+{% extends 'base/base.html' %} {% block title %} {{ project_info.0 }} | {{ block.super }} {% endblock title %} {% block head %} {% load static %}
 <link rel="stylesheet" href="{% static 'css/bootstrap-select.min.css' %}" />
-{% load static %}
 <style>
   /* datatable loader */
   .dataTables_wrapper .dataTables_processing {
@@ -236,6 +235,10 @@
                 </div>
                 {% endif %} {% endfor %}
               </ul>
+              <p class="mb-1"><strong>拍攝時間</strong></p>
+              <div class="w-75 mx-auto mb-2">
+                <input type="time" id="times" name="times" step="2" />
+              </div>
               <p class="mb-1"><strong>拍攝日期</strong></p>
               <p id="date-content" class="font-sm"></p>
               <input type="text" class="d-none" id="date" readonly />
@@ -253,7 +256,7 @@
               <td>樣區</td>
               <td>相機位置</td>
               <td>檔名</td>
-              <td>拍攝時間</td>
+              <td>日期時間</td>
               <td>物種</td>
               <td>年齡</td>
               <td>性別</td>
@@ -293,7 +296,7 @@
               <div class="col-9" id="edit-filename"></div>
             </div>
             <div class="row my-3">
-              <div class="col-3 text-end my-auto">拍攝時間</div>
+              <div class="col-3 text-end my-auto">日期時間</div>
               <div class="col-9" id="edit-datetime"></div>
             </div>
             <div class="row my-3">
@@ -589,6 +592,7 @@
                 url: "{% url 'data' %}",
                 headers:{'X-CSRFToken':'{{ csrf_token }}'},
                 data: function ( d ) {
+                    d.times = $("input[name=times]").val();
                     d.pk = "{{ pk }}";
                     d.species = $('input[name="species-filter"]:checked').map(function(){return $(this).val();}).get();
                     d.sa =  $("input[name=sa-filter]:checked").val();
