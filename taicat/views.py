@@ -140,6 +140,11 @@ def edit_project_basic(request, pk):
             project = Project.objects.filter(id=pk).update(**data)
 
         project = Project.objects.filter(id=pk).values().first()
+        # replace None in dictionary
+        for k, v in project.items():
+            if v is None:
+                project[k] = ""
+
         if project['region'] not in ['', None, []]:
             region = {'region': project['region'].split(',')}
             project.update(region)
@@ -220,6 +225,7 @@ def edit_project_deployment(request, pk):
 
     if is_authorized:
         project = Project.objects.filter(id=pk)
+
         study_area = StudyArea.objects.filter(project_id=pk)
 
         return render(request, 'project/edit_project_deployment.html', {'project': project, 'pk': pk,
