@@ -224,12 +224,12 @@ class Image(models.Model):
     # mongoDB的自填欄位
     remarks2 = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
-    last_updated = models.DateTimeField(null=True, db_index=True)
+    last_updated = models.DateTimeField(null=True, db_index=True, auto_now_add=True)
     annotation = models.JSONField(default=dict, blank=True, db_index=True)
     memo = models.TextField(default='', blank=True)
     image_hash = models.TextField(default='', blank=True)
     from_mongo = models.BooleanField(default=False, blank=True)
-    file_path = models.TextField(default='', blank=True)
+    # file_path = models.TextField(default='', blank=True)  # deprecated
     image_uuid = models.CharField(max_length=1000, default='', blank=True, null=True, db_index=True)
 
     source_data = models.JSONField(default=dict, blank=True)
@@ -283,16 +283,21 @@ class DeploymentJournal(models.Model):
     studyarea = models.ForeignKey(
         StudyArea, on_delete=models.SET_NULL, null=True)
     working_start = models.DateTimeField(null=True, blank=True)
-    working_end= models.DateTimeField(null=True, blank=True)
+    working_end = models.DateTimeField(null=True, blank=True)
     working_unformat = models.CharField(max_length=1000, null=True, blank=True)
     is_effective = models.BooleanField('是否有效', default=True)
 
+
 class DeploymentStat(models.Model):
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
-    deployment = models.ForeignKey(
-        Deployment, on_delete=models.SET_NULL, null=True)
-    studyarea = models.ForeignKey(
-        StudyArea, on_delete=models.SET_NULL, null=True)
+    deployment = models.ForeignKey(Deployment, on_delete=models.SET_NULL, null=True)
+    studyarea = models.ForeignKey(StudyArea, on_delete=models.SET_NULL, null=True)
     year = models.SmallIntegerField(null=True, blank=True)
     month = models.SmallIntegerField(null=True, blank=True)
     count_working_hour = models.SmallIntegerField(null=True, blank=True)
+
+
+class ImageFolder(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
+    folder_name = models.CharField(max_length=1000, default='', blank=True)
+    last_updated = models.DateTimeField(null=True, db_index=True)
