@@ -513,6 +513,24 @@ def project_detail(request, pk):
                     project_id=pk)
                 p_sp.save()
 
+    # update imagefolder table
+    has_new = Image.objects.exclude(folder_name='').filter(last_updated__gte=last_updated, project_id=pk)
+    if has_new.exists():
+        ImageFolder.objects.filter(project_id=pk).update(last_updated=now)
+        query = Image.objects.exclude(folder_name='').filter(last_updated__gte=last_updated, project_id=pk).order_by('folder_name').distinct('folder_name').values('folder_name')
+        for q in query:
+            f_last_updated = Image.objects.filter(last_updated__gte=last_updated, project_id=pk, folder_name=q['folder_name']).aggregate(Max('last_updated'))['last_updated__max']
+            if img_f := ImageFolder.objects.filter(name=q['folder_name'], project_id=pk).first():
+                img_f.folder_last_updated = f_last_updated
+                img_f.last_updated = now
+                img_f.save()
+            else:
+                img_f = ImageFolder(
+                    folder_name=q['folder_name'],
+                    folder_last_updated=f_last_updated,
+                    project_id=pk)
+                img_f.save()
+
     species = ProjectSpecies.objects.filter(project_id=pk).values_list('count', 'name').order_by('count')
 
     if ProjectStat.objects.filter(project_id=pk).first().latest_date and ProjectStat.objects.filter(project_id=pk).first():
@@ -521,6 +539,20 @@ def project_detail(request, pk):
     else:
         latest_date, earliest_date = None, None
 
+    with connection.cursor() as cursor:
+        query = f"""SELECT folder_name,
+                        to_char(last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS last_updated
+                        FROM taicat_imagefolder
+                        WHERE project_id = {pk}"""
+        cursor.execute(query)
+        folder_list = cursor.fetchall()
+        columns = list(cursor.description)
+        results = []
+        for row in folder_list:
+            row_dict = {}
+            for i, col in enumerate(columns):
+                row_dict[col.name] = row[i]
+            results.append(row_dict)
     # edit permission
     user_id = request.session.get('id', None)
     editable = False
@@ -538,7 +570,8 @@ def project_detail(request, pk):
                   {'project_name': len(project_info[0]), 'project_info': project_info, 'species': species, 'pk': pk,
                    'study_area': study_area, 'deployment': deployment,
                    'earliest_date': earliest_date, 'latest_date': latest_date,
-                   'editable': editable, 'is_authorized': is_authorized})
+                   'editable': editable, 'is_authorized': is_authorized,
+                   'folder_list': results})
 
 
 def data(request):
@@ -559,39 +592,43 @@ def data(request):
     deployment = requests.getlist('deployment[]')
     sa = requests.get('sa')
     if sa:
-        conditions += f' AND studyarea_id = {sa}'
+        conditions += f'AND studyarea_id = {sa}'
         if deployment:
             if 'all' not in deployment:
                 x = [int(i) for i in deployment]
                 x = str(x).replace('[', '(').replace(']', ')')
-                conditions += f' AND deployment_id IN {x}'
+                conditions += f'AND deployment_id IN {x}'
         else:
-            conditions = ' AND deployment_id IS NULL'
+            conditions = 'AND deployment_id IS NULL'
     spe_conditions = ''
     species = requests.getlist('species[]')
     if species:
         if 'all' not in species:
             x = [i for i in species]
             x = str(x).replace('[', '(').replace(']', ')')
-            spe_conditions = f" AND species IN {x}"
+            spe_conditions = f"AND species IN {x}"
 
     time_filter = ''  # 要先減掉8的時差
     if times := requests.get('times'):
         result = datetime.datetime.strptime(f"1990-01-01 {times}", "%Y-%m-%d %H:%M:%S") + datetime.timedelta(hours=-8)
-        time_filter = f" AND datetime::time AT TIME ZONE 'UTC' = time '{result.strftime('%H:%M:%S')}'"
+        time_filter = f"AND datetime::time AT TIME ZONE 'UTC' = time '{result.strftime('%H:%M:%S')}'"
+
+    folder_filter = ''
+    if folder_name := requests.get('folder_name'):
+        folder_filter = f"AND folder_name = '{folder_name}'"
 
     with connection.cursor() as cursor:
         query = """SELECT studyarea_id, deployment_id, filename, species,
                         life_stage, sex, antler, animal_id, remarks, file_url, image_uuid, from_mongo,
                         to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime
                         FROM taicat_image
-                        WHERE project_id = {} {} {} {} {}
+                        WHERE project_id = {} {} {} {} {} {}
                         ORDER BY created DESC, project_id ASC
                         LIMIT {} OFFSET {}"""
         # set limit = 1000 to avoid bad psql query plan
-        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, time_filter, 1000, _start))
+        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, 1000, _start))
         image_info = cursor.fetchall()
-        print(query.format(pk, date_filter, conditions, spe_conditions, time_filter, 1000, _start))
+        print(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, 1000, _start))
     if image_info:
 
         df = pd.DataFrame(image_info, columns=['studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
@@ -605,8 +642,8 @@ def data(request):
         with connection.cursor() as cursor:
             query = """SELECT COUNT(*)
                             FROM taicat_image i
-                            WHERE project_id = {} {} {} {} {}"""
-            cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, time_filter))
+                            WHERE project_id = {} {} {} {} {} {}"""
+            cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter))
             count = cursor.fetchone()
         recordsTotal = count[0]
 
@@ -787,12 +824,16 @@ def generate_download_excel(request, pk):
         result = datetime.datetime.strptime(f"1990-01-01 {times}", "%Y-%m-%d %H:%M:%S") + datetime.timedelta(hours=-8)
         time_filter = f" AND datetime::time AT TIME ZONE 'UTC' = time '{result.strftime('%H:%M:%S')}'"
 
+    folder_filter = ''
+    if folder_name := requests.get('folder_name'):
+        folder_filter = f"AND folder_name = '{folder_name}'"
+
     with connection.cursor() as cursor:
         query = f"""SELECT studyarea_id, deployment_id, filename, species,
                         life_stage, sex, antler, animal_id, remarks, file_url, image_uuid, from_mongo, 
                         to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime
                         FROM taicat_image 
-                        WHERE project_id = {pk} {date_filter} {conditions} {spe_conditions} {time_filter}
+                        WHERE project_id = {pk} {date_filter} {conditions} {spe_conditions} {time_filter} {folder_filter}
                         ORDER BY created DESC, project_id ASC"""
         cursor.execute(query)
         image_info = cursor.fetchall()
