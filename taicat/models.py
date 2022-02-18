@@ -234,7 +234,7 @@ class Image(models.Model):
 
     source_data = models.JSONField(default=dict, blank=True)
     exif = models.JSONField(default=dict, blank=True)
-    folder_name = models.CharField(max_length=1000, default='', blank=True)
+    folder_name = models.CharField(max_length=1000, default='', blank=True, db_index=True)
 
     @property
     def species_list(self):
@@ -300,4 +300,5 @@ class DeploymentStat(models.Model):
 class ImageFolder(models.Model):
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
     folder_name = models.CharField(max_length=1000, default='', blank=True)
-    last_updated = models.DateTimeField(null=True, db_index=True)
+    folder_last_updated = models.DateTimeField(null=True, db_index=True)
+    last_updated = models.DateTimeField(null=True, db_index=True, auto_now_add=True)
