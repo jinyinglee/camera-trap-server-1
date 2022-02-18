@@ -608,7 +608,6 @@
             scrollX: true,
             scrollCollapse: true,
             filter: false,
-            //pagingType: "ellipses",
             ajax: {
                 type: "POST",
                 url: "{% url 'data' %}",
@@ -628,6 +627,9 @@
             },
             order: [[0, "asc"]],
             drawCallback:function(){
+                // remove last page button
+                $("a[data-dt-idx=7]").remove()
+
                 // lazy loading for images
                 var watcher = new IntersectionObserver(onEnterView);
                 var lazyImages = document.querySelectorAll("img.lazy");
