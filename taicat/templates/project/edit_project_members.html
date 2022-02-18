@@ -125,7 +125,7 @@
                                 {% for i in members %}
                                 <tr class="align-middle"  >
                                     <td style="width: 20%">{{ i.member.name }}</td>
-                                    <td style="width: 35%">{{ i.member.email }}</td>
+                                    <td style="width: 35%">{% if i.member.email and i.member.email != 'None'  %}{{ i.member.email }}{% endif %}</td>
                                     <td style="width: 35%">
                                     <!-- disable change current user's (self) permission  -->
                                     {% if request.session.name == i.member.name %}

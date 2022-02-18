@@ -142,7 +142,7 @@ def edit_project_basic(request, pk):
         project = Project.objects.filter(id=pk).values().first()
         # replace None in dictionary
         for k, v in project.items():
-            if v is None:
+            if v is None or v == 'None':
                 project[k] = ""
 
         if project['region'] not in ['', None, []]:
@@ -184,6 +184,7 @@ def edit_project_members(request, pk):
 
         # other members
         members = ProjectMember.objects.filter(project_id=pk).all()
+
         if request.method == "POST":
             data = dict(request.POST.items())
             # Add member
@@ -409,16 +410,14 @@ def update_datatable(request):
     if request.method == 'POST':
         table_id = request.POST.get('table_id')
         species = request.POST.getlist('species[]')
-        # TODO 改成多選
-        species = species[0]
-        print(species)
+        # print(species)
         if table_id == 'publicproject':
             with connection.cursor() as cursor:
                 q = "SELECT taicat_project.id FROM taicat_project \
                     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
                 cursor.execute(q)
                 public_project_list = [l[0] for l in cursor.fetchall()]
-            project_list = ProjectSpecies.objects.filter(name=species, project_id__in=public_project_list).order_by('project_id').distinct('project_id')
+            project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=public_project_list).order_by('project_id').distinct('project_id')
             project_list = list(project_list.values_list('project_id', flat=True))
         else:
             my_project_list = []
@@ -441,7 +440,7 @@ def update_datatable(request):
                 # check species
                 if my_project_list:
                     with connection.cursor() as cursor:
-                        project_list = ProjectSpecies.objects.filter(name=species, project_id__in=my_project_list).order_by('project_id').distinct('project_id')
+                        project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=my_project_list).order_by('project_id').distinct('project_id')
                         project_list = list(project_list.values_list('project_id', flat=True))
         project = []
         if project_list:
