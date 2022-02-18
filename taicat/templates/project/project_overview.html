@@ -32,6 +32,10 @@
   label {
     cursor: pointer;
   }
+
+  input[name="species-filter"] {
+    display: none;
+  }
 </style>
 {% endblock style %} {% block body %} {% csrf_token %}
 <div class="container content">
@@ -54,31 +58,33 @@
           <strong>物種</strong>
         </p>
         <ul id="species-list" style="list-style: none">
-          <li class="public-species">
+          <li class="public-species" id="species-list-all-publicproject">
             <label class="form-check-label">
               <i class="fas fa-check title-dark"></i>
-              <input class="filter all publicproject" type="radio" name="species-filter" value="" checked />
+              <input class="filter all publicproject" type="checkbox" name="species-filter" value="" checked />
               全部
             </label>
           </li>
-          <li class="my-species d-none">
+          <li class="my-species d-none" id="species-list-all-myproject">
             <label class="form-check-label">
               <i class="fas fa-check title-dark"></i>
-              <input class="filter all myproject" type="radio" name="species-filter" value="" checked />
+              <input class="filter all myproject" type="checkbox" name="species-filter" value="" checked />
               全部
             </label>
           </li>
           {% for i in public_species_data %}
           <li class="public-species">
             <label class="form-check-label">
-              <input class="filter publicproject" type="radio" group="species" name="species-filter" value="{{ i.1 }}" />
+              <i class="fas fa-check title-dark"></i>
+              <input class="filter publicproject" type="checkbox" group="species" name="species-filter" value="{{ i.1 }}" checked />
               {{ i.1 }} ({{i.0}})
             </label>
           </li>
           {% endfor %} {% for i in my_species_data %}
           <li class="my-species d-none">
             <label class="form-check-label">
-              <input class="filter myproject" type="radio" group="species" name="species-filter" value="{{ i.1 }}" />
+              <i class="fas fa-check title-dark"></i>
+              <input class="filter myproject" type="checkbox" group="species" name="species-filter" value="{{ i.1 }}" checked />
               {{ i.1 }} ({{i.0}})
             </label>
           </li>
@@ -166,6 +172,39 @@
   var $crf_token = $('[name="csrfmiddlewaretoken"]').attr("value");
 
   $(function () {
+    // species: if other checkbox checked, uncheck 'all'
+    $("input[name='species-filter'].filter:not(.all)").click(function () {
+      let table_id = $(".col-10 .active").attr("aria-controls");
+      console.log(table_id);
+      if ($(this).is(":checked")) {
+        $('<i class="fas fa-check title-dark"></i>').insertBefore($(this));
+      } else {
+        $(this).parent("label").children("i").remove();
+      }
+      $(`input[name='species-filter'].all.${table_id}`).prop("checked", false);
+      $(`#species-list-all-${table_id} label i`).remove();
+    });
+
+    // species: if 'all' checked, check all checkbox
+    $("input[name='species-filter'].all").click(function () {
+      let table_id = $(".col-10 .active").attr("aria-controls");
+      let list_name;
+      if (table_id == "publicproject") {
+        list_name = "public-species";
+      } else {
+        list_name = "my-species";
+      }
+      if ($(this).is(":checked")) {
+        // 先移除掉全部的再一次加上去
+        $(`#species-list li.${list_name} label i`).remove();
+        $(`#species-list li.${list_name} label`).prepend('<i class="fas fa-check title-dark"></i>');
+        $(`input[name='species-filter'].${table_id}`).prop("checked", true);
+      } else {
+        $(`#species-list li.${list_name} label i`).remove();
+        $(`input[name='species-filter'].${table_id}`).prop("checked", false);
+      }
+    });
+
     // speices filter list
     $("#publicproject-tab").on("click", function () {
       $(".public-species").removeClass("d-none");
@@ -354,13 +393,13 @@
       $(".public-species").removeClass("d-none");
     }
 
-    // reset radio
-    $("input[type=radio]").prop("checked", false);
-    $("input[type=radio].all").prop("checked", true);
+    // reset checkbox
+    //$("input[name=species-filter][type=checkbox]").prop("checked", false);
+    //$("input[type=checkbox].all").prop("checked", true);
 
     // radio
-    $(".fa-check").remove();
-    $('<i class="fas fa-check title-dark"></i>').insertBefore($("input[type=radio].all"));
+    //$(".fa-check").remove();
+    //$('<i class="fas fa-check title-dark"></i>').insertBefore($("input[type=radio].all"));
   }
 </script>
 {% endblock script %}

@@ -43,8 +43,7 @@ from operator import itemgetter
 from dateutil import parser
 from django.test.utils import CaptureQueriesContext
 
-s3_bucket = env('S3_BUCKET', default='camera-trap-21')
-
+s3_bucket = env('S3_BUCKET', default='camera-trap-21-prod')
 
 
 def randomword(length):
@@ -141,6 +140,11 @@ def edit_project_basic(request, pk):
             project = Project.objects.filter(id=pk).update(**data)
 
         project = Project.objects.filter(id=pk).values().first()
+        # replace None in dictionary
+        for k, v in project.items():
+            if v is None or v == 'None':
+                project[k] = ""
+
         if project['region'] not in ['', None, []]:
             region = {'region': project['region'].split(',')}
             project.update(region)
@@ -180,6 +184,7 @@ def edit_project_members(request, pk):
 
         # other members
         members = ProjectMember.objects.filter(project_id=pk).all()
+
         if request.method == "POST":
             data = dict(request.POST.items())
             # Add member
@@ -221,6 +226,7 @@ def edit_project_deployment(request, pk):
 
     if is_authorized:
         project = Project.objects.filter(id=pk)
+
         study_area = StudyArea.objects.filter(project_id=pk)
 
         return render(request, 'project/edit_project_deployment.html', {'project': project, 'pk': pk,
@@ -298,17 +304,22 @@ def get_project_info(project_list):
     has_new = Image.objects.filter(created__gte=last_updated, project_id__in=list(project_info.id))
     if has_new.exists():
         # update project stat
-        # TODO update earliest_date & latest_date
         ProjectStat.objects.filter(project_id__in=list(project_info.id)).update(last_updated=now)
-        ProjectSpecies.objects.filter(project_id__in=list(project_info.id)).update(last_updated=now)
         for i in project_info.id:
             c = Image.objects.filter(project_id=i).count()
+            image_objects = Image.objects.filter(project_id=i, created__gte=last_updated)
+            latest_date = image_objects.latest('datetime').datetime
+            earliest_date = image_objects.earliest('datetime').datetime
             if ProjectStat.objects.filter(project_id=i).exists():
                 p = ProjectStat.objects.get(project_id=i)
                 p.num_sa = StudyArea.objects.filter(project_id=i).count()
                 p.num_deployment = Deployment.objects.filter(project_id=i).count()
                 p.num_data = c
                 p.last_updated = now
+                if latest_date > ProjectStat.objects.get(project_id=i).latest_date:
+                    p.latest_date = latest_date
+                if earliest_date < ProjectStat.objects.get(project_id=i).earliest_date:
+                    p.earliest_date = earliest_date
                 p.save()
             else:
                 p = ProjectStat(
@@ -316,26 +327,28 @@ def get_project_info(project_list):
                     num_sa=StudyArea.objects.filter(project_id=i).count(),
                     num_deployment=Deployment.objects.filter(project_id=i).count(),
                     num_data=c,
-                    last_updated=now)
+                    last_updated=now,
+                    latest_date=latest_date,
+                    earliest_date=earliest_date)
                 p.save()
-            # ------update project species stat-------#
-            query = Image.objects.filter(project_id=i, last_updated__gte=last_updated).values('species').annotate(total=Count('species')).order_by('-total')
+    # update project species
+    has_new = Image.objects.filter(Q(created__gte=last_updated) | Q(last_updated__gte=last_updated), project_id__in=list(project_info.id))
+    if has_new.exists():
+        ProjectSpecies.objects.filter(project_id__in=list(project_info.id)).update(last_updated=now)
+        for i in project_info.id:
+            query = Image.objects.filter(project_id=i).values('species').annotate(total=Count('species')).order_by('-total')
             for q in query:
-                if ProjectSpecies.objects.filter(name=q['species'], project_id=i).exists():
-                    # exist -> update
-                    p_sp = ProjectSpecies.objects.get(name=q['species'], project_id=i)
-                    p_sp.count += q['total']
+                if p_sp := ProjectSpecies.objects.filter(name=q['species'], project_id=i).first():
+                    p_sp.count = q['total']
                     p_sp.last_updated = now
                     p_sp.save()
                 else:
-                    # not exitst -> create
                     p_sp = ProjectSpecies(
-                        project_id=i,
                         name=q['species'],
+                        last_updated=now,
                         count=q['total'],
-                        last_updated=now,)
+                        project_id=i)
                     p_sp.save()
-            # ------update project species stat-------#
     species_data = ProjectSpecies.objects.filter(project_id__in=list(project_info.id), name__in=Species.DEFAULT_LIST).values(
         'name').annotate(total_count=Sum('count')).values_list('total_count', 'name').order_by('-total_count')
     project_info['num_data'] = 0
@@ -370,8 +383,7 @@ def project_overview(request):
     my_project = []
     my_species_data = []
     my_project_list = []
-    member_id = request.session.get('id', None)
-    if member_id:
+    if member_id := request.session.get('id', None):
         # 1. select from project_member table
         with connection.cursor() as cursor:
             query = "SELECT project_id FROM taicat_projectmember where member_id ={}"
@@ -398,15 +410,14 @@ def update_datatable(request):
     if request.method == 'POST':
         table_id = request.POST.get('table_id')
         species = request.POST.getlist('species[]')
-        species = species[0]
-        print(species)
+        # print(species)
         if table_id == 'publicproject':
             with connection.cursor() as cursor:
                 q = "SELECT taicat_project.id FROM taicat_project \
                     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
                 cursor.execute(q)
                 public_project_list = [l[0] for l in cursor.fetchall()]
-            project_list = ProjectSpecies.objects.filter(name=species, project_id__in=public_project_list).order_by('project_id').distinct('project_id')
+            project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=public_project_list).order_by('project_id').distinct('project_id')
             project_list = list(project_list.values_list('project_id', flat=True))
         else:
             my_project_list = []
@@ -429,7 +440,7 @@ def update_datatable(request):
                 # check species
                 if my_project_list:
                     with connection.cursor() as cursor:
-                        project_list = ProjectSpecies.objects.filter(name=species, project_id__in=my_project_list).order_by('project_id').distinct('project_id')
+                        project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=my_project_list).order_by('project_id').distinct('project_id')
                         project_list = list(project_list.values_list('project_id', flat=True))
         project = []
         if project_list:
@@ -449,7 +460,75 @@ def project_detail(request, pk):
         project_info = cursor.fetchone()
     project_info = list(project_info)
     deployment = Deployment.objects.filter(project_id=pk)
-    # TODO: update project species & project stat
+    # folder name takes long time
+    # folder_list = Image.objects.filter(project_id=pk).order_by('folder_name').distinct('folder_name')
+    now = timezone.now()
+    last_updated = ProjectStat.objects.filter(project_id=pk).aggregate(Min('last_updated'))['last_updated__min']
+    has_new = Image.objects.filter(created__gte=last_updated, project_id=pk)
+    if has_new.exists():
+        # update project stat
+        ProjectStat.objects.filter(project_id=pk).update(last_updated=now)
+        c = Image.objects.filter(project_id=pk).count()
+        image_objects = Image.objects.filter(project_id=pk, created__gte=last_updated)
+        latest_date = image_objects.latest('datetime').datetime
+        earliest_date = image_objects.earliest('datetime').datetime
+        if ProjectStat.objects.filter(project_id=pk).exists():
+            p = ProjectStat.objects.get(project_id=pk)
+            p.num_sa = StudyArea.objects.filter(project_id=pk).count()
+            p.num_deployment = Deployment.objects.filter(project_id=pk).count()
+            p.num_data = c
+            p.last_updated = now
+            if latest_date > ProjectStat.objects.get(project_id=pk).latest_date:
+                p.latest_date = latest_date
+            if earliest_date < ProjectStat.objects.get(project_id=pk).earliest_date:
+                p.earliest_date = earliest_date
+            p.save()
+        else:
+            p = ProjectStat(
+                project_id=pk,
+                num_sa=StudyArea.objects.filter(project_id=pk).count(),
+                num_deployment=Deployment.objects.filter(project_id=pk).count(),
+                num_data=c,
+                last_updated=now,
+                latest_date=latest_date,
+                earliest_date=earliest_date)
+            p.save()
+    # update project species
+    has_new = Image.objects.filter(Q(created__gte=last_updated) | Q(last_updated__gte=last_updated), project_id=pk)
+    if has_new.exists():
+        ProjectSpecies.objects.filter(project_id=pk).update(last_updated=now)
+        query = Image.objects.filter(project_id=pk).values('species').annotate(total=Count('species')).order_by('-total')
+        for q in query:
+            # print(q['species'], q['total'])
+            if p_sp := ProjectSpecies.objects.filter(name=q['species'], project_id=pk).first():
+                p_sp.count = q['total']
+                p_sp.last_updated = now
+                p_sp.save()
+            else:
+                p_sp = ProjectSpecies(
+                    name=q['species'],
+                    last_updated=now,
+                    count=q['total'],
+                    project_id=pk)
+                p_sp.save()
+
+    # update imagefolder table
+    has_new = Image.objects.exclude(folder_name='').filter(last_updated__gte=last_updated, project_id=pk)
+    if has_new.exists():
+        ImageFolder.objects.filter(project_id=pk).update(last_updated=now)
+        query = Image.objects.exclude(folder_name='').filter(last_updated__gte=last_updated, project_id=pk).order_by('folder_name').distinct('folder_name').values('folder_name')
+        for q in query:
+            f_last_updated = Image.objects.filter(last_updated__gte=last_updated, project_id=pk, folder_name=q['folder_name']).aggregate(Max('last_updated'))['last_updated__max']
+            if img_f := ImageFolder.objects.filter(name=q['folder_name'], project_id=pk).first():
+                img_f.folder_last_updated = f_last_updated
+                img_f.last_updated = now
+                img_f.save()
+            else:
+                img_f = ImageFolder(
+                    folder_name=q['folder_name'],
+                    folder_last_updated=f_last_updated,
+                    project_id=pk)
+                img_f.save()
 
     species = ProjectSpecies.objects.filter(project_id=pk).values_list('count', 'name').order_by('count')
 
@@ -459,6 +538,20 @@ def project_detail(request, pk):
     else:
         latest_date, earliest_date = None, None
 
+    with connection.cursor() as cursor:
+        query = f"""SELECT folder_name,
+                        to_char(last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS last_updated
+                        FROM taicat_imagefolder
+                        WHERE project_id = {pk}"""
+        cursor.execute(query)
+        folder_list = cursor.fetchall()
+        columns = list(cursor.description)
+        results = []
+        for row in folder_list:
+            row_dict = {}
+            for i, col in enumerate(columns):
+                row_dict[col.name] = row[i]
+            results.append(row_dict)
     # edit permission
     user_id = request.session.get('id', None)
     editable = False
@@ -476,7 +569,8 @@ def project_detail(request, pk):
                   {'project_name': len(project_info[0]), 'project_info': project_info, 'species': species, 'pk': pk,
                    'study_area': study_area, 'deployment': deployment,
                    'earliest_date': earliest_date, 'latest_date': latest_date,
-                   'editable': editable, 'is_authorized': is_authorized})
+                   'editable': editable, 'is_authorized': is_authorized,
+                   'folder_list': results})
 
 
 def data(request):
@@ -497,32 +591,43 @@ def data(request):
     deployment = requests.getlist('deployment[]')
     sa = requests.get('sa')
     if sa:
-        conditions += f' AND studyarea_id = {sa}'
+        conditions += f'AND studyarea_id = {sa}'
         if deployment:
             if 'all' not in deployment:
                 x = [int(i) for i in deployment]
                 x = str(x).replace('[', '(').replace(']', ')')
-                conditions += f' AND deployment_id IN {x}'
+                conditions += f'AND deployment_id IN {x}'
         else:
-            conditions = ' AND deployment_id IS NULL'
+            conditions = 'AND deployment_id IS NULL'
     spe_conditions = ''
     species = requests.getlist('species[]')
     if species:
         if 'all' not in species:
             x = [i for i in species]
             x = str(x).replace('[', '(').replace(']', ')')
-            spe_conditions = f" AND species IN {x}"
+            spe_conditions = f"AND species IN {x}"
+
+    time_filter = ''  # 要先減掉8的時差
+    if times := requests.get('times'):
+        result = datetime.datetime.strptime(f"1990-01-01 {times}", "%Y-%m-%d %H:%M:%S") + datetime.timedelta(hours=-8)
+        time_filter = f"AND datetime::time AT TIME ZONE 'UTC' = time '{result.strftime('%H:%M:%S')}'"
+
+    folder_filter = ''
+    if folder_name := requests.get('folder_name'):
+        folder_filter = f"AND folder_name = '{folder_name}'"
+
     with connection.cursor() as cursor:
         query = """SELECT studyarea_id, deployment_id, filename, species,
-                        life_stage, sex, antler, animal_id, remarks, file_url, image_uuid, from_mongo, 
+                        life_stage, sex, antler, animal_id, remarks, file_url, image_uuid, from_mongo,
                         to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime
-                        FROM taicat_image 
-                        WHERE project_id = {} {} {} {}
+                        FROM taicat_image
+                        WHERE project_id = {} {} {} {} {} {}
                         ORDER BY created DESC, project_id ASC
                         LIMIT {} OFFSET {}"""
         # set limit = 1000 to avoid bad psql query plan
-        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, 1000, _start))
+        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, 1000, _start))
         image_info = cursor.fetchall()
+        print(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, 1000, _start))
     if image_info:
 
         df = pd.DataFrame(image_info, columns=['studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
@@ -536,9 +641,8 @@ def data(request):
         with connection.cursor() as cursor:
             query = """SELECT COUNT(*)
                             FROM taicat_image i
-                            WHERE project_id = {} {} {} {}"""
-            cursor.execute(query.format(
-                pk, date_filter, conditions, spe_conditions, _start))
+                            WHERE project_id = {} {} {} {} {} {}"""
+            cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter))
             count = cursor.fetchone()
         recordsTotal = count[0]
 
@@ -714,17 +818,22 @@ def generate_download_excel(request, pk):
             x = str(x).replace('[', '(').replace(']', ')')
             spe_conditions = f" AND species IN {x}"
 
+    time_filter = ''  # 要先減掉8的時差
+    if times := requests.get('times'):
+        result = datetime.datetime.strptime(f"1990-01-01 {times}", "%Y-%m-%d %H:%M:%S") + datetime.timedelta(hours=-8)
+        time_filter = f" AND datetime::time AT TIME ZONE 'UTC' = time '{result.strftime('%H:%M:%S')}'"
+
+    folder_filter = ''
+    if folder_name := requests.get('folder_name'):
+        folder_filter = f"AND folder_name = '{folder_name}'"
+
     with connection.cursor() as cursor:
         query = f"""SELECT studyarea_id, deployment_id, filename, species,
                         life_stage, sex, antler, animal_id, remarks, file_url, image_uuid, from_mongo, 
                         to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime
                         FROM taicat_image 
-                        WHERE project_id = {pk} {date_filter} {conditions} {spe_conditions} 
+                        WHERE project_id = {pk} {date_filter} {conditions} {spe_conditions} {time_filter} {folder_filter}
                         ORDER BY created DESC, project_id ASC"""
-        cursor.execute(query)
-        image_info = cursor.fetchall()
-
-    with connection.cursor() as cursor:
         cursor.execute(query)
         image_info = cursor.fetchall()
 
@@ -823,10 +932,10 @@ def project_oversight(request, pk):
                             days_in_month = monthrange(year, m)[1]
                             ret = find_deployment_working_day(year, m, dep_id)
                             working_day = ret[0]
-                            #print(year, m, dep_id, working_day)
-                            #display_day_list = ['{}:{}'.format(index+1, 'Y' if yes else 'N') for index, yes in enumerate(working_day)]
+                            # print(year, m, dep_id, working_day)
+                            # display_day_list = ['{}:{}'.format(index+1, 'Y' if yes else 'N') for index, yes in enumerate(working_day)]
                             month_cal = monthcalendar(year, m)
-                            #display_working_day_in_calendar(year, m, working_day)
+                            # display_working_day_in_calendar(year, m, working_day)
                             count_working_day = sum(working_day)
                             data = [
                                 year,
@@ -840,10 +949,10 @@ def project_oversight(request, pk):
                             ]
                             ratio = count_working_day * 100.0 / days_in_month
                             month_list.append([ratio, json.dumps(data)])
-                        #query = Image.objects.values('datetime').filter(project_id=pk, deployment_id=dep_id).annotate(year=Trunc('datetime', 'year')).filter(datetime__year=year).annotate(day=Trunc('datetime', 'day')).annotate(count=Count('day'))
+                        # query = Image.objects.values('datetime').filter(project_id=pk, deployment_id=dep_id).annotate(year=Trunc('datetime', 'year')).filter(datetime__year=year).annotate(day=Trunc('datetime', 'day')).annotate(count=Count('day'))
                         # print(query.query)
 
-                        #with connection.cursor() as cursor:
+                        # with connection.cursor() as cursor:
                         #    query = f"SELECT DATE_TRUNC('day', datetime) AS day FROM taicat_image WHERE deployment_id={dep_id} AND datetime BETWEEN '{year}-01-01' AND '{year}-12-31' GROUP BY day ORDER BY day;"
                         #    cursor.execute(query)
                         #    data = cursor.fetchall()
