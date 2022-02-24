@@ -186,11 +186,11 @@ def get_species_data(request):
     if has_new.exists():
         Species.objects.filter(status='I').update(last_updated=now)
         for i in Species.DEFAULT_LIST:
-            c = Image.objects.filter(species=i, last_updated__gte=last_updated).count()
+            c = Image.objects.filter(species=i).count()
             if Species.objects.filter(status='I', name=i).exists():
                 # if exist, update
                 s = Species.objects.get(status='I', name=i)
-                s.count += c
+                s.count = c
                 s.last_updated = now
                 s.save()
             else:  # else, create new
