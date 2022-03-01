@@ -2,6 +2,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/standalone/selectize.js" integrity="sha512-pF+DNRwavWMukUv/LyzDyDMn8U2uvqYQdJN0Zvilr6DDo/56xPDZdDoyPDYZRSL4aOKO/FGKXTpzDyQJ8je8Qw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.bootstrap4.min.css" integrity="sha512-MMojOrCQrqLg4Iarid2YMYyZ7pzjPeXKRvhW9nZqLo6kPBBTuvNET9DBVWptAo/Q20Fy11EIHM5ig4WlIrJfQw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.dataTables.min.css" />
 <style>
   /* datatable loader */
   .dataTables_wrapper .dataTables_processing {
@@ -49,6 +51,11 @@
 
   #img-table {
     margin: 0 auto;
+  }
+
+  #img-table tbody tr:hover {
+    background: #f8f8f8;
+    cursor: pointer;
   }
 
   #img-table_wrapper {
@@ -156,8 +163,8 @@
         <div class="d-flex justify-content-between align-items-center">
           <h4 class="title-dark p-0">{{ project_info.0 }} <i class="fa fa-info-circle" style="cursor: pointer" data-bs-toggle="modal" data-bs-target="#infoModal"></i></h4>
           <div>
-            {% if is_authorized %}
-            <a class="btn btn-outline-success" href="{% url 'edit_project_basic' pk %}"><i class="fa fa-xs fa-pencil"></i> 計畫管理</a>
+            {% if editable %}
+            <button class="btn btn-outline-success" id="edit_button" data-edit="off"><i class="fa fa-xs fa-pencil"></i> 編輯模式</button>
             {% endif %}
             <a class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#downloadModal"><i class="fas fa-file-csv"></i> 下載篩選資料</a>
             {% comment %} <a class="btn btn-outline-success download"><i class="fas fa-file-csv"></i> 下載篩選資料</a> {% endcomment %}
@@ -259,6 +266,7 @@
         <table class="table table-borderless w-100 px-3 h-100" id="img-table">
           <thead class="fw-bold title-dark">
             <tr>
+              <td><input type="checkbox" id="edit-all" class="edit-checkbox" name="edit" onclick="checkAllEdit()" /></td>
               <td>樣區</td>
               <td>相機位置</td>
               <td>檔名</td>
@@ -270,8 +278,8 @@
               <td>個體ID</td>
               <td>備註</td>
               <td>影像</td>
-              <td>group_id</td>
-              <td>id</td>
+              <td>image_uuid</td>
+              <td>image_id</td>
             </tr>
           </thead>
         </table>
@@ -353,8 +361,8 @@
                 </div>
               </div>
             </div>
-            <input type="hidden" id="edit-group_id" name="group_id" value="" />
-            <input type="hidden" id="edit-id" name="id" value="" />
+            <input type="hidden" id="edit-image_uuid" name="image_uuid" value="" />
+            <input type="hidden" id="edit-image_id" name="image_id" value="" />
             <input type="hidden" id="edit-page_info" name="page_info" value="" />
           </form>
         </div>
@@ -372,6 +380,9 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title title-dark">計畫基本資訊</h5>
+          {% if is_authorized %}
+          <a class="btn btn-outline-success ms-2" href="{% url 'edit_project_basic' pk %}"><i class="fa fa-xs fa-pencil"></i> 計畫管理</a>
+          {% endif %}
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -436,9 +447,44 @@
       </div>
     </div>
   </div>
+
+  <!-- delete modal -->
+  <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-body">
+          <p style="font-size: 20px">確定移除？</p>
+          {% comment %}
+          <form id="removeBtn" novalidate action="{% url 'delete_data' %}" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="id" id="id" value="" />
+            <input type="hidden" name="type" id="type" value="" />
+          </form>
+          {% endcomment %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+          <a class="btn btn-danger" id="deleteData"">移除</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   {% endblock body %} {% block script %}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/selectize.min.js" integrity="sha512-JiDSvppkBtWM1f9nPRajthdgTCZV3wtyngKUqVHlAs0d5q72n5zpM3QMOLmuNws2vkYmmLn4r1KfnPzgC/73Mw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script>
+
+
+    function checkAllEdit(){
+      if($('#edit-all').is(':checked')) {
+        $('.edit-checkbox').prop('checked', true)
+      } else {
+          $('.edit-checkbox').each(function() {
+            $('.edit-checkbox').prop('checked', false)
+          });
+      }
+    }
+
     //https://emailregex.com
     function ValidateEmail(inputText){
         let mailformat = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/
@@ -595,7 +641,7 @@
 
         // initalize datatable & redraw table
         let table = $('#img-table').DataTable({
-            dom:"<'row px-3 pt-3'<'col-sm-12 col-md-5'l>>" +
+            dom:"<'row px-3 pt-3 text-end'<'col-6'B><'col-6'l>>" +
                 "<'row'<'col-sm-12'tr>>" +
                 "<'row p-3'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
             language: language_settings,
@@ -608,6 +654,22 @@
             scrollX: true,
             scrollCollapse: true,
             filter: false,
+            buttons: [
+              {
+                  text: '編輯',
+                  className: 'btn btn-outline-success btn-sm e-button d-none disabled',
+                  action: function ( e, dt, node, config ) {
+                      alert( 'Button activated' );
+                  }
+              },
+              {
+                text: '刪除',
+                className: 'btn btn-outline-secondary btn-sm d-button d-none disabled',
+                action: function ( e, dt, node, config ) {
+                    $('#deleteModal').modal('show')
+                }
+              }
+            ],
             ajax: {
                 type: "POST",
                 url: "{% url 'data' %}",
@@ -627,6 +689,22 @@
             },
             order: [[0, "asc"]],
             drawCallback:function(){
+                // button style
+                var btns = $('.dt-button');
+                btns.removeClass('dt-button');
+
+                // uncheck select all button
+                $('#edit-all').prop('checked', false)
+
+                $('.e-button, .d-button').addClass('disabled')
+                // bind onclick event
+                $('input[name="edit"]').on('click', function(){
+                  if ($("input[name='edit']").is(":checked")){
+                    $('.e-button, .d-button').removeClass('disabled')
+                  } else {
+                    $('.e-button, .d-button').addClass('disabled')
+                  }
+                })
                 // remove last page button
                 $("a[data-dt-idx=7]").remove()
 
@@ -651,6 +729,7 @@
                 var lazyVideos = document.querySelectorAll("video");
                 for (let v of lazyVideos) {
                     watcher2.observe(v); // 開始監視
+                    v.removeAttribute('controls');
                 }
                 function onEnterView2(entries, observer) {
                     for (let entry of entries) {
@@ -662,18 +741,21 @@
                     }
                 }
 
+
+
                 // event listener for loading video & img
                 $('video source, img').on('error',function(event) {
-                  $(this).parent().after('<p align="center" style="color: brown">無法載入<p>')
-                  $(this).parent().remove()
+                  $(this).parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
                 })
 
                 // adjust columns after 1000 ms
                 setTimeout(function(){
                     $.fn.dataTable.tables( { visible: false, api: true } ).columns.adjust();
                 }, 1000);
+
             },
             columns: [
+                        {data: "edit"},
                         {data: "saname"},
                         {data: "dname"},
                         {data: "filename" },
@@ -685,16 +767,47 @@
                         {data: "animal_id"},
                         {data: "remarks"},
                         {data: "file_url"},
-                        {data: "group_id"},
+                        {data: "image_uuid"},
                         {data: "image_id"},
                     ],
             columnDefs: [
                 {
-                    "targets": [ 11,12 ], // hidden columns
+                    "targets": [ 0, 12,13 ], // hidden columns
                     "visible": false
                 }
             ],
         });
+
+        // edit
+        $('#edit_button').on('click', function(){
+          if ($('#edit_button').data('edit') == 'off'){
+            $('#edit_button').data('edit','on');
+            $($.fn.dataTable.tables( true ) ).DataTable().column( 0 ).visible(true);
+            $('#edit_button').html('<i class="fa fa-xs fa-pencil"></i> 結束編輯')
+            // show buttons
+            $('.d-button, .e-button').removeClass('d-none')
+            // bind onclick event
+            $('input[name="edit"]').on('click', function(){
+              if ($("input[name='edit']").is(":checked")){
+                $('.e-button, .d-button').removeClass('disabled')
+              } else {
+                $('.e-button, .d-button').addClass('disabled')
+              }
+            })
+          } else {
+            $('#edit_button').data('edit','off');
+            // uncheck all
+            $($.fn.dataTable.tables( true ) ).DataTable().column( 0 ).visible(false);
+            $('#edit_button').html('<i class="fa fa-xs fa-pencil"></i> 編輯模式')
+            $('.d-button, .e-button').addClass('d-none')
+          }
+          // adjust columns after 1000 ms
+          setTimeout(function(){
+            $.fn.dataTable.tables( { visible: false, api: true } ).columns.adjust();
+        }, 1000);
+        })
+
+
 
         // submit select
         $('.select').on('click', function() {
@@ -728,36 +841,38 @@
         });
 
         // set permission: 計畫總管理人/個別計畫承辦人/系統管理員
-        $('#img-table').on('click', 'tbody tr', function () {
-            var row = table.row($(this)).data();
-            $('#edit-studyarea').html(row['saname'])
-            $('#edit-deployment').html(row['dname'])
-            $('#edit-filename').html(row['filename'])
-            $('#edit-datetime').html(row['datetime'])
-            $('#edit-species').val(row['species'])
-            $('#edit-lifestage').val(row['lifestage'])
-            $('#edit-sex').val(row['sex'])
-            $('#edit-antler').val(row['antler'])
-            $('#edit-animal_id').val(row['animal_id'])
-            $('#edit-remarks').val(row['remarks'])
-            $('#edit-group_id').val(row['group_id'])
-            $('#edit-id').val(row['id'])
-            $('#edit-image').html(row['file_url'])
-            $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
-            $('#edit-image video').attr('width', '100%');
-            $('#edit-image video').attr('height', '');
-            $('#edit-image video source, #edit-image img').on('error',function(event) {
-              $(this).parent().after('<p align="center" style="color: brown">無法載入<p>')
-              $(this).parent().remove()
-            })
-            $('#editModal').modal('show');
+        $('#img-table tbody').on('click', 'td', function () {
+            let row = table.row($(this)).data();
+            let idx = table.column($(this)).index();
+            if (idx != 0){
+              $('#edit-studyarea').html(row['saname'])
+              $('#edit-deployment').html(row['dname'])
+              $('#edit-filename').html(row['filename'])
+              $('#edit-datetime').html(row['datetime'])
+              $('#edit-species').val(row['species'])
+              $('#edit-lifestage').val(row['lifestage'])
+              $('#edit-sex').val(row['sex'])
+              $('#edit-antler').val(row['antler'])
+              $('#edit-animal_id').val(row['animal_id'])
+              $('#edit-remarks').val(row['remarks'])
+              $('#edit-image_uuid').val(row['image_uuid'])
+              $('#edit-image_id').val(row['image_id'])
+              $('#edit-image').html(row['file_url'])
+              $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
+              $('#edit-image video').attr('width', '100%');
+              $('#edit-image video').attr('height', '');
+              $('#edit-image video source, #edit-image img').on('error',function(event) {
+              $(this).parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
+              })
+              $('#editModal').modal('show');
 
-            // disable edit
-            {% if not editable %}
-            $('.edit-content input').attr('disabled', 'disabled')
-            $('.edit-footer').remove()
-            {% endif %}
-            });
+              // disable edit
+              {% if not editable %}
+              $('.edit-content input').attr('disabled', 'disabled')
+              $('.edit-footer').remove()
+              {% endif %}
+            }
+        });
 
             $('.edit-submit').on('click', function() {
                 $.ajax({
@@ -892,6 +1007,31 @@
                 $("input[name='species-filter']").prop('checked', false)
             }
         })
+
+        $('#deleteData').on('click', function() {
+          checkedvalue = [];
+          $("input[name=edit]").not('#edit-all').each(function () {
+              if ($(this).is(":checked")) {
+                  checkedvalue.push($(this).val());
+              }
+          });
+          // ajax to delete data
+          $.ajax({
+            data: {'image_id': checkedvalue},
+            headers:{'X-CSRFToken':'{{ csrf_token }}'},
+            type: "POST",
+            url: "{% url 'delete_data' pk %}",
+            success: function(){
+            },
+            error:function(){
+                alert('未知錯誤，請聯繫管理員');
+            }
+            })
+          // redraw datatable
+          $('#deleteModal').modal('hide')
+          $($.fn.dataTable.tables( true ) ).DataTable().columns.adjust().draw();
+    })
+
 
 
     });

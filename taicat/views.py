@@ -10,7 +10,7 @@ import math
 import datetime
 # from datetime import datetime, timedelta, timezone
 from django.db.models import Count, Window, F, Sum, Min, Q, Max, Func, Value, CharField
-from django.db.models.functions import Trunc
+from django.db.models.functions import Trunc, ExtractYear
 from django.contrib import messages
 from django.core import serializers
 import pandas as pd
@@ -44,6 +44,57 @@ from dateutil import parser
 from django.test.utils import CaptureQueriesContext
 
 s3_bucket = env('S3_BUCKET', default='camera-trap-21-prod')
+
+
+def delete_data(request, pk):
+    if request.method == "POST":
+        now = timezone.now()
+        image_list = request.POST.getlist('image_id[]')
+        image_objects = Image.objects.filter(id__in=image_list)
+        # species的資料先用id抓回來計算再扣掉
+        query = image_objects.values('species').annotate(total=Count('species')).order_by('-total')
+        for q in query:
+            print(q['species'], q['total'])
+            # taicat_species
+            if sp := Species.objects.filter(name=q['species']).first():
+                if sp.count == q['total']:
+                    sp.delete()
+                else:
+                    sp.count -= q['total']
+                    sp.last_updated = now
+                    sp.save()
+            # taicat_projectspecies
+            if p_sp := ProjectSpecies.objects.filter(name=q['species'], project_id=pk).first():
+                if p_sp.count == q['total']:
+                    p_sp.delete()
+                else:
+                    p_sp.count -= q['total']
+                    p_sp.last_updated = now
+                    p_sp.save()
+
+        # 判斷起迄日期有沒有更新
+        latest_date = image_objects.latest('datetime').datetime
+        earliest_date = image_objects.earliest('datetime').datetime
+        if ProjectStat.objects.filter(project_id=pk).exists():
+            p = ProjectStat.objects.get(project_id=pk)
+            p.num_data -= image_objects.count()
+            p.last_updated = now
+            if not ProjectStat.objects.get(project_id=pk).latest_date or latest_date > ProjectStat.objects.get(project_id=pk).latest_date:
+                p.latest_date = latest_date
+            if not ProjectStat.objects.get(project_id=pk).earliest_date or earliest_date < ProjectStat.objects.get(project_id=pk).earliest_date:
+                p.earliest_date = earliest_date
+            p.save()
+
+        year = image_objects.aggregate(Min('datetime'))['datetime__min'].strftime("%Y")
+        home = HomePageStat.objects.filter(year__gte=year)
+        for h in home:
+            h.count -= 10
+            h.last_updated = now
+            h.save()
+
+        response = Image.objects.filter(id__in=image_list).delete()
+
+    return HttpResponse(json.dumps(response), content_type='application/json')
 
 
 def randomword(length):
@@ -622,7 +673,7 @@ def data(request):
         folder_filter = f"AND folder_name = '{folder_name}'"
 
     with connection.cursor() as cursor:
-        query = """SELECT studyarea_id, deployment_id, filename, species,
+        query = """SELECT id, studyarea_id, deployment_id, filename, species,
                         life_stage, sex, antler, animal_id, remarks, file_url, image_uuid, from_mongo,
                         to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime
                         FROM taicat_image
@@ -635,7 +686,7 @@ def data(request):
         print(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, 1000, _start))
     if image_info:
 
-        df = pd.DataFrame(image_info, columns=['studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
+        df = pd.DataFrame(image_info, columns=['image_id', 'studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
                                                'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime'])[:int(_length)]
         print('b', time.time()-t)
         sa_names = pd.DataFrame(StudyArea.objects.filter(id__in=df.studyarea_id.unique()).values('id', 'name', 'parent_id')
@@ -658,9 +709,6 @@ def data(request):
         length = int(_length)
         per_page = length
         page = math.ceil(start / length) + 1
-        # TODO 改成image_uuid
-        # df['group_id'] = df.groupby('index').cumcount()
-        df['group_id'] = ''
         # add sub studyarea if exists
         ssa_exist = StudyArea.objects.filter(project_id=pk, parent__isnull=False)
         if ssa_exist.count() > 0:
@@ -714,8 +762,10 @@ def data(request):
             ### videos: https://developer.mozilla.org/zh-CN/docs/Web/HTML/Element/video ##
         print('e', time.time()-t)
 
-        cols = ['saname', 'dname', 'filename', 'datetime', 'species', 'lifestage',
-                'sex', 'antler', 'animal_id', 'remarks', 'file_url', 'group_id', 'image_id']
+        df['edit'] = df.image_id.apply(lambda x: f"<input type='checkbox' class='edit-checkbox' name='edit' value='{x}'>")
+
+        cols = ['edit', 'saname', 'dname', 'filename', 'datetime', 'species', 'lifestage',
+                'sex', 'antler', 'animal_id', 'remarks', 'file_url', 'image_uuid', 'image_id']
         data = df.reindex(df.columns.union(cols, sort=False), axis=1, fill_value=None)
         data = data[cols]
         data = data.astype(object).replace(np.nan, '')
