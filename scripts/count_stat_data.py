@@ -84,17 +84,20 @@ project_info = project_info[['id', 'name', 'keyword', 'start_year', 'funding_age
 
 for i in project_info.index:
     print(i)
+    latest_date = None
+    earliest_date = None
     image_objects = Image.objects.filter(project_id=project_info.loc[i, 'id'])
     if image_objects.exists():
         latest_date = image_objects.latest('datetime').datetime
         earliest_date = image_objects.earliest('datetime').datetime
-        ProjectStat.objects.filter(project_id=project_info.loc[i, 'id']).update(latest_date=latest_date, earliest_date=earliest_date)
-
+        # ProjectStat.objects.filter(project_id=project_info.loc[i, 'id']).update(latest_date=latest_date, earliest_date=earliest_date)
     new = ProjectStat(
         project_id=project_info.loc[i, 'id'],
         num_sa=project_info.loc[i, 'num_studyarea'],
         num_deployment=project_info.loc[i, 'num_deployment'],
         num_data=project_info.loc[i, 'num_data'],
-        last_updated=now
+        last_updated=now,
+        latest_date=latest_date,
+        earliest_date=earliest_date,
     )
     new.save()

@@ -24,12 +24,12 @@ query = Image.objects.all().values('species').annotate(total=Count('species')).o
 
 for i in query:
     print(i['species'])
-    if sp := Species.objects.filter(name=i[0]).first():
-        sp.count = i[1]
+    if sp := Species.objects.filter(name=i['species']).first():
+        sp.count = i['total']
         sp.last_updated = now
         sp.save()
     else:
-        sp = Species(name=i[0], last_updated=now, count=i[1])
-        if i[0] in Species.DEFAULT_LIST:
+        sp = Species(name=i['species'], last_updated=now, count=i['total'])
+        if i['species'] in Species.DEFAULT_LIST:
             sp.status = 'I'
         sp.save()
