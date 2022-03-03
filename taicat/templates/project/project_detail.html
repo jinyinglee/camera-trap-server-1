@@ -1,8 +1,10 @@
-{% extends 'base/base.html' %} {% block title %} {{ project_info.0 }} | {{ block.super }} {% endblock title %} {% block head %} {% load static %}
+{% extends 'base/base.html' %} {% load tag_library %}
+{% block title %} {{ project_info.0 }} | {{ block.super }} {% endblock title %} {% block head %} {% load static %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/standalone/selectize.js" integrity="sha512-pF+DNRwavWMukUv/LyzDyDMn8U2uvqYQdJN0Zvilr6DDo/56xPDZdDoyPDYZRSL4aOKO/FGKXTpzDyQJ8je8Qw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.bootstrap4.min.css" integrity="sha512-MMojOrCQrqLg4Iarid2YMYyZ7pzjPeXKRvhW9nZqLo6kPBBTuvNET9DBVWptAo/Q20Fy11EIHM5ig4WlIrJfQw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
 <script src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
+<script src="{% static 'js/datatable-settings.js' %}"></script>
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.dataTables.min.css" />
 <style>
   /* datatable loader */
@@ -181,7 +183,7 @@
             <div class="mt-3 d-flex justify-content-between">
               <p>篩選條件</p>
               <div>
-                <button type="button" style="font-size: 14px" class="btn btn-orange py-0 px-1 select">篩選</button>
+                <button type="button" style="font-size: 14px" class="btn btn-orange py-0 px-1" onclick="submitSelect()">篩選</button>
                 <button type="button" style="font-size: 14px" class="btn btn-light border-secondary py-0 px-1 clear">清除</button>
               </div>
             </div>
@@ -299,7 +301,11 @@
             {% csrf_token %}
             <div class="row my-3">
               <div class="col-3 text-end my-auto">樣區</div>
-              <div class="col-9" id="edit-studyarea"></div>
+              <div class="col-9">
+                <div class="autocomplete">
+                  <input class="form-control" id="edit-studyarea" type="text" name="studyarea" />
+                </div>
+              </div>
             </div>
             <div class="row my-3">
               <div class="col-3 text-end my-auto">相機位置</div>
@@ -454,13 +460,6 @@
       <div class="modal-content">
         <div class="modal-body">
           <p style="font-size: 20px">確定移除？</p>
-          {% comment %}
-          <form id="removeBtn" novalidate action="{% url 'delete_data' %}" method="post">
-            {% csrf_token %}
-            <input type="hidden" name="id" id="id" value="" />
-            <input type="hidden" name="type" id="type" value="" />
-          </form>
-          {% endcomment %}
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
@@ -515,6 +514,21 @@
             $(this).autocomplete("search", "");
     });
 
+    //let studyarea_arr = {{ study_area | get_value_in_qs:'name' | safe }};
+    $('#edit-studyarea').autocomplete({
+        minLength: 0,
+        source: function(request, response) {
+            var data = $.grep( studyarea_arr
+            , function(value) {
+                return value.substring(0, request.term.length).toLowerCase() == request.term.toLowerCase();
+            });
+            response(data);
+        }
+        }).focus(function () {
+            $(this).autocomplete("search", "");
+    });
+    
+
     $('#edit-antler').autocomplete({
         minLength: 0,
         source: function(request, response) {
@@ -551,26 +565,21 @@
             $(this).autocomplete("search", "");
     });
 
-
-    // datatable
-    let language_settings = {
-        "decimal":        "",
-        "emptyTable":     "查無資料",
-        "info":           "正在檢視第 _START_ 至 _END_ 筆，總共 _TOTAL_ 筆",
-        "infoEmpty":      "共 0 筆",
-        "infoFiltered":   "",
-        "infoPostFix":    "",
-        "thousands":      ",",
-        "lengthMenu":     `每頁顯示 _MENU_ 筆`,
-        "loadingRecords": "載入中...",
-        "processing":     "",
-        "zeroRecords":    "查無符合資料",
-        "paginate": {
-            "next":       "下一頁",
-            "previous":   "上一頁"
-        }
-    };
-
+    function submitSelect(){
+      window.conditions = {
+        times : $("input[name=times]").val(),
+        pk : "{{ pk }}",
+        species : $('input[name="species-filter"]:checked').map(function(){return $(this).val();}).get(),
+        sa :  $("input[name=sa-filter]:checked").val(),
+        //{% if earliest_date != None %}
+        start_date : (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10),
+        end_date : (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10),
+        //{% endif %}
+        deployment : $('input[name="d-filter"]:checked').map(function(){return $(this).val();}).get(),
+        folder_name : $('#select-folder option:selected').val(),
+      }
+      $('#img-table').DataTable().draw();
+    }
 
     $(document).ready(function() {
 
@@ -587,7 +596,6 @@
           },
         },
         });
-
 
         /* sub studyarea */
         {% for i in study_area %}
@@ -639,6 +647,17 @@
         (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
         {% endif %}
 
+        window.conditions = {
+          times : $("input[name=times]").val(),
+          pk : "{{ pk }}",
+          species : $('input[name="species-filter"]:checked').map(function(){return $(this).val();}).get(),
+          sa :  $("input[name=sa-filter]:checked").val(),
+          start_date : (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10),
+          end_date : (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10),
+          deployment : $('input[name="d-filter"]:checked').map(function(){return $(this).val();}).get(),
+          folder_name : $('#select-folder option:selected').val(),
+        }
+
         // initalize datatable & redraw table
         let table = $('#img-table').DataTable({
             dom:"<'row px-3 pt-3 text-end'<'col-6'B><'col-6'l>>" +
@@ -672,23 +691,23 @@
             ],
             ajax: {
                 type: "POST",
+                dataType : 'json',        
                 url: "{% url 'data' %}",
                 headers:{'X-CSRFToken':'{{ csrf_token }}'},
                 data: function ( d ) {
-                    d.times = $("input[name=times]").val();
-                    d.pk = "{{ pk }}";
-                    d.species = $('input[name="species-filter"]:checked').map(function(){return $(this).val();}).get();
-                    d.sa =  $("input[name=sa-filter]:checked").val();
-                    {% if earliest_date != None %}
-                    d.start_date = (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10);
-                    d.end_date = (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10);
-                    {% endif %}
-                    d.deployment = $('input[name="d-filter"]:checked').map(function(){return $(this).val();}).get();
-                    d.folder_name = $('#select-folder option:selected').val();
-                },
+                  d.times = window.conditions.times;
+                  d.pk = "{{ pk }}";
+                  d.species = window.conditions.species;
+                  d.sa =  window.conditions.sa;
+                  d.start_date = window.conditions.start_date;
+                  d.end_date = window.conditions.end_date;
+                  d.deployment = window.conditions.deployment;
+                  d.folder_name = window.conditions.folder_name;
+              },
             },
             order: [[0, "asc"]],
             drawCallback:function(){
+              console.log(window.conditions)
                 // button style
                 var btns = $('.dt-button');
                 btns.removeClass('dt-button');
@@ -741,11 +760,13 @@
                     }
                 }
 
-
-
                 // event listener for loading video & img
-                $('video source, img').on('error',function(event) {
+                $('img').on('error',function(event) {
                   $(this).parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
+                })
+
+                $('video source').on('error',function(event) {
+                  $(this).parent().parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
                 })
 
                 // adjust columns after 1000 ms
@@ -808,12 +829,6 @@
         })
 
 
-
-        // submit select
-        $('.select').on('click', function() {
-            $($.fn.dataTable.tables( true ) ).DataTable().columns.adjust().draw();
-        });
-
         $('.clear').on('click', function() {
             $('input[type=radio]').prop('checked', false);
             $('input[type=radio].all').prop('checked', true);
@@ -837,7 +852,6 @@
             $("#date-content").html((new Date($("#date-slider").slider("values",0)*1000).toISOString().substring(0, 10)) + "至" +
             (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
             {% endif %}
-            //$($.fn.dataTable.tables( true ) ).DataTable().columns.adjust().draw();
         });
 
         // set permission: 計畫總管理人/個別計畫承辦人/系統管理員
@@ -845,7 +859,7 @@
             let row = table.row($(this)).data();
             let idx = table.column($(this)).index();
             if (idx != 0){
-              $('#edit-studyarea').html(row['saname'])
+              //$('#edit-studyarea').html(row['saname'])
               $('#edit-deployment').html(row['dname'])
               $('#edit-filename').html(row['filename'])
               $('#edit-datetime').html(row['datetime'])
@@ -861,6 +875,9 @@
               $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
               $('#edit-image video').attr('width', '100%');
               $('#edit-image video').attr('height', '');
+              $('#edit-image video source').on('error',function(event) {
+              $(this).parent().parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
+              })
               $('#edit-image video source, #edit-image img').on('error',function(event) {
               $(this).parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
               })
@@ -911,31 +928,6 @@
                         });
                 }})
             });
-
-        // download
-        $('.download').on('click', function(){
-            {% if earliest_date != None %}
-            $("input[name=start_date]").val((new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10));
-            $("input[name=end_date]").val((new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
-            {% endif %}
-            $("input[name=email]").val($("#download-email").val())
-            $.ajax({
-                    data: $('#downloadForm').serialize(),
-                    type: "POST",
-                    url: "{% url 'download' pk %}",
-                    success: function(){
-                        alert('請求已送出');
-                        $('#downloadModal').modal('hide')
-                    },
-                    error:function(){
-                        alert('未知錯誤，請聯繫管理員');
-                        $('#downloadModal').modal('hide')
-                    }
-                    })
-
-            //console.log($('#downloadForm').serialize())
-            //$('#downloadForm').submit()
-        })
 
         // radio style for studyarea & cameralocation
         $("input[name=sa-filter]").click( function () {
@@ -1029,164 +1021,34 @@
             })
           // redraw datatable
           $('#deleteModal').modal('hide')
-          $($.fn.dataTable.tables( true ) ).DataTable().columns.adjust().draw();
-    })
+          $('#img-table').DataTable().draw();
+        })
 
 
+        // download
+        $('.download').on('click', function(){
+          {% if earliest_date != None %}
+          $("input[name=start_date]").val((new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10));
+          $("input[name=end_date]").val((new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
+          {% endif %}
+          $("input[name=email]").val($("#download-email").val())
+          $.ajax({
+                  data: $('#downloadForm').serialize(),
+                  type: "POST",
+                  url: "{% url 'download' pk %}",
+                  success: function(){
+                      alert('請求已送出');
+                      $('#downloadModal').modal('hide')
+                  },
+                  error:function(){
+                      alert('未知錯誤，請聯繫管理員');
+                      $('#downloadModal').modal('hide')
+                  }
+                })
+        })
 
     });
 
-
-    //  datatable automatically fits window height
-    (function( factory ){
-    	if ( typeof define === 'function' && define.amd ) {
-    		// AMD
-    		define( ['jquery', 'datatables.net'], function ( $ ) {
-    			return factory( $, window, document );
-    		} );
-    	}
-    	else if ( typeof exports === 'object' ) {
-    		// CommonJS
-    		module.exports = function (root, $) {
-    			if ( ! root ) {
-    				root = window;
-    			}
-
-    			if ( ! $ || ! $.fn.dataTable ) {
-    				$ = require('datatables.net')(root, $).$;
-    			}
-
-    			return factory( $, root, root.document );
-    		};
-    	}
-    	else {
-    		// Browser
-    		factory( jQuery, window, document );
-    	}
-    }(function( $, window, document, undefined ) {
-    'use strict';
-
-
-    var ScrollResize = function ( dt )
-    {
-    	var that = this;
-    	var table = dt.table();
-
-    	this.s = {
-    		dt:        dt,
-    		host:      $(table.container()).parent(),
-    		header:    $(table.header()),
-    		footer:    $(table.footer()),
-    		body:      $(table.body()),
-    		container: $(table.container()),
-    		table:     $(table.node())
-    	};
-
-    	var host = this.s.host;
-    	if ( host.css('position') === 'static' ) {
-    		host.css( 'position', 'relative' );
-    	}
-
-    	dt.on( 'draw', function () {
-    		that._size();
-    	} );
-
-    	this._attach();
-    	this._size();
-    };
-
-
-    ScrollResize.prototype = {
-    	_size: function ()
-    	{
-    		var settings = this.s;
-    		var dt = settings.dt;
-    		var t = dt.table();
-    		var offsetTop = $( settings.table ).offset().top;
-    		var availableHeight = settings.host.height();
-    		var scrollBody = $('div.dataTables_scrollBody', t.container());
-
-    		// Subtract the height of the header, footer and the elements
-    		// surrounding the table
-    		availableHeight -= offsetTop;
-    		availableHeight -= settings.container.height() - ( offsetTop + scrollBody.height() );
-
-    		$('div.dataTables_scrollBody', t.container()).css( {
-    			maxHeight: availableHeight,
-    			height: availableHeight
-    		} );
-
-    		if ( dt.fixedColumns ) {
-    			dt.fixedColumns().relayout();
-    		}
-    	},
-
-    	_attach: function () {
-    		// There is no `resize` event for elements, so to trigger this effect,
-    		// create an empty HTML document using an <iframe> which will issue a
-    		// resize event inside itself when the document resizes. Since it is
-    		// 100% x 100% that will occur whenever the host element is resized.
-    		var that = this;
-    		var obj = $('<iframe/>')
-    			.css( {
-    				position: 'absolute',
-    				top: 0,
-    				left: 0,
-    				height: '100%',
-    				width: '100%',
-    				zIndex: -1,
-    				border: 0
-    			} )
-    			.attr( 'frameBorder', '0' )
-    			.attr( 'src', 'about:blank' );
-
-    		obj[0].onload = function () {
-    			var body = this.contentDocument.body;
-    			var height = body.offsetHeight;
-    			var contentDoc = this.contentDocument;
-    			var defaultView = contentDoc.defaultView || contentDoc.parentWindow;
-
-    			defaultView.onresize = function () {
-    				// Three methods to get the iframe height, to keep all browsers happy
-    				var newHeight = body.clientHeight || body.offsetHeight;
-    				var docClientHeight = contentDoc.documentElement.clientHeight;
-
-    				if ( ! newHeight && docClientHeight ) {
-    					newHeight = docClientHeight;
-    				}
-
-    				if ( newHeight !== height ) {
-    					height = newHeight;
-
-    					that._size();
-    				}
-    			};
-    		};
-
-    		obj
-    			.appendTo( this.s.host )
-    			.attr( 'data', 'about:blank' );
-    	}
-    };
-
-    $.fn.dataTable.ScrollResize = ScrollResize;
-    $.fn.DataTable.ScrollResize = ScrollResize;
-
-    // Automatic initialisation listener
-    $(document).on( 'init.dt', function ( e, settings ) {
-    	if ( e.namespace !== 'dt' ) {
-    		return;
-    	}
-
-    	var api = new $.fn.dataTable.Api( settings );
-
-    	if ( settings.oInit.scrollResize || $.fn.dataTable.defaults.scrollResize ) {
-    		new ScrollResize( api );
-    	}
-    } );
-
-
-    }));
   </script>
   {% endblock script %}
 </div>
