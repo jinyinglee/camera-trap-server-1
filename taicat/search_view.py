@@ -5,6 +5,7 @@ import time
 import re
 
 from django.shortcuts import render, redirect
+from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.urls import reverse
 from django.utils.http import urlencode
@@ -191,3 +192,66 @@ def index(request):
             base_url = '{}?{}'.format(base_url, urlencode(args, True))
 
         return redirect(base_url)
+
+
+def api_get_species(request):
+    species_list = [x.to_dict() for x in Species.objects.filter(status='I').all()]
+    return JsonResponse({
+        'data': species_list,
+        'total': len(species_list)
+    })
+
+def api_get_projects(request):
+    public_project_list = Project.published_objects.all()
+    public_project_ids = [x.id for x in public_project_list]
+    private_project_list = Project.objects.exclude(id__in=public_project_ids).all()
+
+    public_projects = []
+    my_projects = []
+    for p in public_project_list:
+        x = p.to_dict()
+        x['group_by'] = '公開計畫'
+        public_projects.append(x)
+    for p in private_project_list:
+        if check_if_authorized(request, p.id):
+            x = p.to_dict()
+            x['group_by'] = '我的計畫'
+            my_projects.append(x)
+
+    projects = public_projects + my_projects
+    return JsonResponse({
+        'data': projects,
+        'total': len(projects)
+    })
+
+def api_search(request):
+    rows = []
+    if request.is_ajax() and request.method == 'GET':
+        start = 0
+        end = 20
+        query = Image.objects.filter()
+        print(request.GET)
+        if request.GET.get('filter'):
+            filter_dict = json.loads(request.GET['filter'])
+            #print(filter_dict, flush=True)
+            if values := filter_dict.get('projects'):
+                query = query.filter(project_id__in=values)
+            if values := filter_dict.get('species'):
+                query = query.filter(species__in=values)
+            if value := filter_dict.get('startDate'):
+                query = query.filter(datetime__gte=value)
+            if value := filter_dict.get('endDate'):
+                query = query.filter(datetime__lte=value)
+        if request.GET.get('pagination'):
+            pagination = json.loads(request.GET['pagination'])
+            start = pagination['page'] * pagination['perPage']
+            end = start + pagination['perPage']
+
+        rows = query.all()[start:end]
+        total = query.count()
+
+    return JsonResponse({
+        'data': [x.to_dict() for x in rows],
+        'total': total,
+        'query': str(query.query) if query.query else ''
+    })

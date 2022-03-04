@@ -1,12 +1,14 @@
 {% extends 'base/base.html' %}
 
 {% load tag_library %}
-
+{% load static %}
 {% block title %}
 search
 {% endblock title %}
 
 {% block script %}
+<script src="{% static 'js/search.dev.js' %}"></script>
+
 <script>
  const btnList = document.querySelectorAll(".check-form");
  btnList.forEach((x)=>{
@@ -149,6 +151,8 @@ search
   </div>
   <div class="panel">
     <div class="panel-body">
+      <div id="app-search"></div>
+      {% comment %}
       <h3>篩選條件</h3>
       <form action="{% url 'search' %}" method="post" class="row g-3 needs-validation" novalidate id="my-form">
         {% csrf_token %}
@@ -219,7 +223,7 @@ search
     <div class="mb-3">
       <button type="submit" class="btn btn-primary check-form" name="query_type" value="query">篩選</button> <button type="submit" class="btn btn-secondary" value="clear" name="submit">清除</input>
     </div>
-
+    {% endcomment %}
        {% comment %}
         <div class="form-group">
           <label for="calculation">計算分析</label>

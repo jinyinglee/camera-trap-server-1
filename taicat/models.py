@@ -14,6 +14,11 @@ class Species(models.Model):
     last_updated = models.DateTimeField(null=True, db_index=True)
     status = models.CharField(max_length=4, default='', null=True, blank=True, db_index=True)  # I: initial
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+        }
 
 class Contact(models.Model):
     name = models.CharField(max_length=1000)
@@ -102,6 +107,12 @@ class Project(models.Model):
     def __str__(self):
         return '<Project {}>'.format(self.name)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+        }
+
     def get_deployment_list(self):
         res = []
         sa = self.studyareas.filter(parent__isnull=True).all()
@@ -132,6 +143,11 @@ class StudyArea(models.Model):
     def __str__(self):
         return f'<StudyArea {self.name}>'
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+        }
 
 # Survey
 '''The Survey level includes information on different surveys completed within the same
@@ -185,6 +201,14 @@ class Deployment(models.Model):
     def __str__(self):
         return f'<Deployment {self.name}>'
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'longitude': self.longitude,
+            'latitude': self.latitude,
+            'altitude': self.altitude,
+        }
 
 class Image(models.Model):
     '''if is_sequence, ex: 5 Images, set last 4 Images's is_sequence to True (wouldn't  count)'''
@@ -240,10 +264,20 @@ class Image(models.Model):
     def species_list(self):
         return [x['species'] for x in self.annotation if isinstance(x, dict) and x.get('species', '')]
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'species': self.species,
+            'filename': self.filename,
+            'datetime': self.datetime,
+            'project__name': self.project.name if self.project else None,
+            'studyarea__name': self.studyarea.name if self.studyarea_id else None,
+            'deployment__name': self.deployment.name if self.deployment_id else None,
+        }
+
     class Meta:
         ordering = ['created']
         indexes = [GinIndex(fields=['annotation'])]
-
 
 class Image_info(models.Model):
     image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True)
