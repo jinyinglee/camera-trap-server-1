@@ -122,6 +122,35 @@ class Project(models.Model):
             })
         return res
 
+    def get_sa_list(self):
+        res = []
+        sa = self.studyareas.filter().all()
+        for i in sa:
+            # children = []
+            if not i.parent_id:
+                res.append({
+                    'value': i.id,
+                    'label': i.name,
+                })
+            else:
+                parent_name = self.studyareas.get(id=i.parent_id).name
+                res.append({
+                    'value': i.id,
+                    'label': f"{parent_name}_{i.name}",
+                })
+        return res
+
+    def get_sa_d_list(self):
+        res = {}
+        sa = self.studyareas.all()
+        for i in sa:
+            if not i.parent_id:
+                res.update({i.name: [{'label': x.name, 'value': x.id} for x in i.deployment_set.all()]})
+            else:
+                parent_name = self.studyareas.get(id=i.parent_id).name
+                res.update({f"{parent_name}_{i.name}": [{'label': x.name, 'value': x.id} for x in i.deployment_set.all()]})
+        return res
+
 
 class StudyArea(models.Model):
     name = models.CharField(max_length=1000)
@@ -245,8 +274,59 @@ class Image(models.Model):
         indexes = [GinIndex(fields=['annotation'])]
 
 
+class DeletedImage(models.Model):
+    '''if is_sequence, ex: 5 Images, set last 4 Images's is_sequence to True (wouldn't  count)'''
+    PHOTO_TYPE_CHOICES = (
+        ('start', 'Start'),
+        ('end', 'End'),
+        ('set-up', 'Set Up'),
+        ('blank', 'Blank'),
+        ('animal', 'Animal'),
+        ('staff', 'Staff'),
+        ('unknown', 'Unknown'),
+        ('unidentifiable', 'Unidentifiable'),
+        ('time-lapse', 'Timelapse'),
+    )
+    id = models.BigAutoField(primary_key=True)
+    deployment = models.ForeignKey(Deployment, on_delete=models.SET_NULL, null=True)
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
+    studyarea = models.ForeignKey(StudyArea, on_delete=models.SET_NULL, null=True)
+    file_url = models.CharField(max_length=1000, null=True)
+    filename = models.CharField(max_length=1000)  # first file if is_sequence
+    datetime = models.DateTimeField(null=True, db_index=True)
+    photo_type = models.CharField(max_length=100, null=True, choices=PHOTO_TYPE_CHOICES)
+    count = models.PositiveSmallIntegerField(default=1, db_index=True)
+    species = models.CharField(max_length=1000, null=True, default='', blank=True, db_index=True)
+    sequence = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)  # imageid
+    sequence_definition = models.CharField(max_length=1000, default='', blank=True)
+    life_stage = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
+    sex = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
+    antler = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
+    remarks = models.TextField(default='', null=True, blank=True, db_index=True)
+    animal_id = models.CharField(max_length=1000, null=True, default='', blank=True, db_index=True)
+    remarks2 = models.JSONField(default=dict, blank=True, null=True)
+    created = models.DateTimeField(auto_now_add=True, db_index=True)
+    last_updated = models.DateTimeField(null=True, db_index=True, auto_now_add=True)
+    annotation = models.JSONField(default=dict, blank=True, db_index=True)
+    memo = models.TextField(default='', blank=True)
+    image_hash = models.TextField(default='', blank=True)
+    from_mongo = models.BooleanField(default=False, blank=True)
+    image_uuid = models.CharField(max_length=1000, default='', blank=True, null=True, db_index=True)
+
+    source_data = models.JSONField(default=dict, blank=True)
+    exif = models.JSONField(default=dict, blank=True)
+    folder_name = models.CharField(max_length=1000, default='', blank=True, db_index=True)
+
+    @property
+    def species_list(self):
+        return [x['species'] for x in self.annotation if isinstance(x, dict) and x.get('species', '')]
+
+    class Meta:
+        ordering = ['created']
+
+
 class Image_info(models.Model):
-    image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True)
+    # image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True)
     image_uuid = models.CharField(max_length=1000, default='', blank=True, null=True)
     source_data = models.JSONField(default=dict, blank=True)
     exif = models.JSONField(default=dict, blank=True)
