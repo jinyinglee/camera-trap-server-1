@@ -13,6 +13,7 @@ import LocalizationProvider from '@mui/lab/LocalizationProvider';
 import { zhTW } from 'date-fns/locale';
 
 import { AppSearchDataGrid } from './AppSearchDataGrid';
+import { AppSearchCalculation } from './AppSearchCalculation';
 import { cleanFormData } from './Utils';
 
 const apiPrefix = 'http://127.0.0.1:8000/api/';
@@ -36,6 +37,11 @@ const AppSearch = () => {
     projects: [],
   });
   const [result, setResult] = useState(null);
+  const [calcData, setCalcData] = React.useState({
+    round: 'month',
+    fotoInterval: '',
+    eventInterval: '',
+  });
 
   useEffect(() => {
     fetch(`${apiPrefix}species`)
@@ -104,6 +110,9 @@ const AppSearch = () => {
     setPagination({page: 0, perPage: parseInt(e.target.value, 10)});
   }
 
+  const handleCalc = () => {
+    console.log(formData, calcData);
+  }
   console.log('formData: ', formData, result);
 
 
@@ -192,8 +201,20 @@ const AppSearch = () => {
           <Button variant="contained" onClick={handleSubmit}>搜尋</Button>
         </Grid>
         <Grid item xs={12}>
-          {(result && result.data.length > 0) ? <AppSearchDataGrid result={result} handleChangePage={handleChangePage} handleChangeRowsPerPage={handleChangeRowsPerPage} pagination={pagination}/> : null}
+          {(result && result.data.length > 0) ?
+           <>
+           <AppSearchDataGrid result={result} handleChangePage={handleChangePage} handleChangeRowsPerPage={handleChangeRowsPerPage} pagination={pagination}/>
+             <AppSearchCalculation calcData={calcData} setCalcData={setCalcData} />
+           <Button variant="contained" onClick={handleCalc} style={{marginTop: '10px'}}>下載計算</Button>
+             <div>
+           <button type="button" className="btn btn-warning" data-bs-toggle="modal" data-bs-target="#exampleModal" style={{marginTop: '24px'}}>
+                 計算項目的說明
+               </button>
+             </div>
+           </>
+           : null}
         </Grid>
+
       </Grid>
       </LocalizationProvider>
     </>
