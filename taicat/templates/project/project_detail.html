@@ -1185,12 +1185,14 @@
         })
 
         $('#deleteData').on('click', function() {
+
           checkedvalue = [];
           $("input[name=edit]").not('#edit-all').each(function () {
               if ($(this).is(":checked")) {
                   checkedvalue.push($(this).val());
               }
           });
+          $('#deleteModal').modal('hide')
           // ajax to delete data
           $.ajax({
             data: {'image_id': checkedvalue},
@@ -1198,6 +1200,7 @@
             type: "POST",
             url: "{% url 'delete_data' pk %}",
             success: function(data){
+              
               table.draw(false); // stay in same page
               // update filter //
               let current_species = $("input[name=species-filter]:checked")
@@ -1246,14 +1249,12 @@
                     $("input[name='species-filter']").prop('checked', false)
                 }
             })
+
           },
-            error:function(){
-                alert('未知錯誤，請聯繫管理員');
-            }
-            })
-          // redraw datatable
-          $('#deleteModal').modal('hide')
-          $('#img-table').DataTable().draw();
+          error:function(){
+              alert('未知錯誤，請聯繫管理員');
+          }
+          })
         })
 
 
