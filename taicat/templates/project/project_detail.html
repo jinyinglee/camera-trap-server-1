@@ -1185,12 +1185,14 @@
         })
 
         $('#deleteData').on('click', function() {
+
           checkedvalue = [];
           $("input[name=edit]").not('#edit-all').each(function () {
               if ($(this).is(":checked")) {
                   checkedvalue.push($(this).val());
               }
           });
+          $('#deleteModal').modal('hide')
           // ajax to delete data
           $.ajax({
             data: {'image_id': checkedvalue},
@@ -1198,62 +1200,61 @@
             type: "POST",
             url: "{% url 'delete_data' pk %}",
             success: function(data){
-                $('#editModal').modal('hide');
-                table.draw(false); // stay in same page
-                // update filter //
-                let current_species = $("input[name=species-filter]:checked")
-                $('#species-list-all').nextAll('li').remove();
-                for (let i = 0; i < data['species'].length; i++) {
-                 $('#species-list').append(
-                    `<li>
-                    <label class="form-check-label">
-                    <input class="filter" type="checkbox" name="species-filter" value="${data['species'][i]['name']}" checked>
-                        ${data['species'][i]['name']} (${data['species'][i]['count']})
-                    </label>
-                    </li>`)
-                }
-                if ($("input[name=species-filter].all").is(':checked')){
-                  $("#species-list li label i").remove()
-                  $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
-                  $("input[name='species-filter']").prop('checked', true)
-                } else {
-                  $("#species-list li label i").remove()
-                  $(`input[name=species-filter]`).prop("checked",false);
-                  current_species.each(function(){
-                    $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=species-filter][value="${this.value}"]`));
-                    $(`input[name=species-filter][value="${this.value}"]`).prop("checked",true);
-                  })
-                }
-                // bind click function
-                // species: if other checkbox checked, uncheck 'all'
-                $("input[name='species-filter'].filter:not(.all)").click (function(){
-                  $("#species-list-all label i").remove()
-                  // 先移除自己本身的再判斷
-                  $(this).prev('i').remove
-                  if( $(this).is(':checked') ) {
-                      $('<i class="fas fa-check title-dark"></i>').insertBefore($(this));
-                  } 
-                  $("input[name='species-filter'].all").prop('checked', false)
-              })
-              // species: if 'all' checked, check all checkbox
-              $("input[name='species-filter'].all").click (function(){
-                  // 先移除掉全部的再一次加上去
-                  $("#species-list li label i").remove()
-                  if( $(this).is(':checked') ) {
-                      $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
-                      $("input[name='species-filter']").prop('checked', true)
-                  } else {
-                      $("input[name='species-filter']").prop('checked', false)
-                  }
-              })
-            },
-            error:function(){
-                alert('未知錯誤，請聯繫管理員');
-            }
+              
+              table.draw(false); // stay in same page
+              // update filter //
+              let current_species = $("input[name=species-filter]:checked")
+              $('#species-list-all').nextAll('li').remove();
+              for (let i = 0; i < data['species'].length; i++) {
+               $('#species-list').append(
+                  `<li>
+                  <label class="form-check-label">
+                  <input class="filter" type="checkbox" name="species-filter" value="${data['species'][i]['name']}" checked>
+                      ${data['species'][i]['name']} (${data['species'][i]['count']})
+                  </label>
+                  </li>`)
+              }
+              if ($("input[name=species-filter].all").is(':checked')){
+                $("#species-list li label i").remove()
+                $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
+                $("input[name='species-filter']").prop('checked', true)
+              } else {
+                $("#species-list li label i").remove()
+                $(`input[name=species-filter]`).prop("checked",false);
+                current_species.each(function(){
+                  $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=species-filter][value="${this.value}"]`));
+                  $(`input[name=species-filter][value="${this.value}"]`).prop("checked",true);
+                })
+              }
+            // bind click function
+            // species: if other checkbox checked, uncheck 'all'
+            $("input[name='species-filter'].filter:not(.all)").click (function(){
+              $("#species-list-all label i").remove()
+              // 先移除自己本身的再判斷
+              $(this).prev('i').remove()
+              if( $(this).is(':checked') ) {
+                  $('<i class="fas fa-check title-dark"></i>').insertBefore($(this));
+              } 
+              $("input[name='species-filter'].all").prop('checked', false)
             })
-          // redraw datatable
-          $('#deleteModal').modal('hide')
-          $('#img-table').DataTable().draw();
+
+            // species: if 'all' checked, check all checkbox
+            $("input[name='species-filter'].all").click (function(){
+                // 先移除掉全部的再一次加上去
+                $("#species-list li label i").remove()
+                if( $(this).is(':checked') ) {
+                    $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
+                    $("input[name='species-filter']").prop('checked', true)
+                } else {
+                    $("input[name='species-filter']").prop('checked', false)
+                }
+            })
+
+          },
+          error:function(){
+              alert('未知錯誤，請聯繫管理員');
+          }
+          })
         })
 
 

@@ -50,6 +50,7 @@ def delete_data(request, pk):
     if request.method == "POST":
         now = timezone.now()
         image_list = request.POST.getlist('image_id[]')
+        print(image_list)
         image_objects = Image.objects.filter(id__in=image_list)
         # species的資料先用id抓回來計算再扣掉
         query = image_objects.values('species').annotate(total=Count('species')).order_by('-total')
@@ -72,17 +73,10 @@ def delete_data(request, pk):
                     p_sp.last_updated = now
                     p_sp.save()
 
-        # 判斷起迄日期有沒有更新
-        latest_date = image_objects.latest('datetime').datetime
-        earliest_date = image_objects.earliest('datetime').datetime
         if ProjectStat.objects.filter(project_id=pk).exists():
             p = ProjectStat.objects.get(project_id=pk)
             p.num_data -= image_objects.count()
             p.last_updated = now
-            if not ProjectStat.objects.get(project_id=pk).latest_date or latest_date > ProjectStat.objects.get(project_id=pk).latest_date:
-                p.latest_date = latest_date
-            if not ProjectStat.objects.get(project_id=pk).earliest_date or earliest_date < ProjectStat.objects.get(project_id=pk).earliest_date:
-                p.earliest_date = earliest_date
             p.save()
 
         year = image_objects.aggregate(Min('datetime'))['datetime__min'].strftime("%Y")
