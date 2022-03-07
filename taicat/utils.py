@@ -386,3 +386,33 @@ def count_all_species_list():
     ret['all'] = all_species_list
 
     return ret
+
+def calc(query):
+    # group by deployment
+    deployment_list = query.values('deployment', 'deployment__name').annotate(count=Count('deployment')).order_by()
+    print(deployment_list, flush=True)
+    
+    # default round: month
+    for dep in deployment_list[0:2]:
+        dep_group_count = query.filter(deployment_id=dep['deployment']).annotate(month=Trunc('datetime', 'month')).values('month').annotate(month_count=Count('*')).order_by('month')
+
+        for res_deployment_month in dep_group_count:
+            print (dep_group_count, flush=True)
+            '''
+                    year = res_deployment_month['month'].year
+                    month = res_deployment_month['month'].month
+                    if year_range[0] == 0 or year < year_range[0]:
+                        year_range[0] = year
+                    if year > year_range[1]:
+                        year_range[1] = year
+                    if month_range[0] == 0 or month < month_range[0]:
+                        month_range[0] = month
+                    if month > month_range[1]:
+                        month_range[1] = month
+
+                    session_query = self.query_no_species.filter(deployment_id=dep['deployment'], datetime__year=year, datetime__month=month)
+                    session_query2 = self.query.filter(deployment_id=dep['deployment'], datetime__year=year, datetime__month=month)
+                    ret = find_deployment_working_day(year, month, dep['deployment'])
+                    working_day = ret[0]
+                    working_hour = sum(working_day) * 24
+            '''

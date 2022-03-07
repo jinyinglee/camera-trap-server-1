@@ -91,7 +91,7 @@ const AppSearch = () => {
     })
       .then(resp => resp.json())
       .then(data => {
-        //console.log(data)
+        console.log('resp', data)
         setResult(data);
         setIsLoading(false);
       });
@@ -111,7 +111,29 @@ const AppSearch = () => {
   }
 
   const handleCalc = () => {
-    console.log(formData, calcData);
+    const formDataCleaned = cleanFormData(formData);
+
+    const d = JSON.stringify(formDataCleaned);
+    let searchApiUrl = `${apiPrefix}search?filter=${d}`;
+    searchApiUrl = `${searchApiUrl}&download=csv`;
+    setIsLoading(true);
+    console.log('fetch:', searchApiUrl);
+    fetch(encodeURI(searchApiUrl), {
+      //body: JSON.stringify({filter: formData}),
+      mode: 'same-origin',
+      headers: {
+        'content-type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest', // for Django request.is_ajax()
+        //'X-CSRFToken': csrftoken,
+      },
+      method: 'GET',
+    })
+      .then(resp => resp.json())
+      .then(data => {
+        //console.log(data)
+        setResult(data);
+        setIsLoading(false);
+      });
   }
   console.log('formData: ', formData, result);
 

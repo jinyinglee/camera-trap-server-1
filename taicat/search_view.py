@@ -22,8 +22,10 @@ from taicat.models import (
 )
 from .utils import (
     get_species_list,
-    Calculation
+    Calculation,
+    calc
 )
+
 from .views import check_if_authorized
 
 def index(request):
@@ -227,6 +229,7 @@ def api_get_projects(request):
 def api_search(request):
     rows = []
     if request.is_ajax() and request.method == 'GET':
+        start_time = time.time()
         start = 0
         end = 20
         query = Image.objects.filter()
@@ -242,16 +245,23 @@ def api_search(request):
                 query = query.filter(datetime__gte=value)
             if value := filter_dict.get('endDate'):
                 query = query.filter(datetime__lte=value)
+
         if request.GET.get('pagination'):
             pagination = json.loads(request.GET['pagination'])
             start = pagination['page'] * pagination['perPage']
             end = start + pagination['perPage']
 
+        if request.GET.get('download'):
+            calc(query)
+
+        total = 1000 #query.values('id').order_by('id').count() # fake
+
         rows = query.all()[start:end]
-        total = query.count()
+        end_time = time.time() - start_time
 
     return JsonResponse({
         'data': [x.to_dict() for x in rows],
         'total': total,
-        'query': str(query.query) if query.query else ''
+        'query': str(query.query) if query.query else '',
+        'elapsed': end_time,
     })

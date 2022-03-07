@@ -329,7 +329,7 @@ class DeploymentStat(models.Model):
     year = models.SmallIntegerField(null=True, blank=True)
     month = models.SmallIntegerField(null=True, blank=True)
     count_working_hour = models.SmallIntegerField(null=True, blank=True)
-
+    session = models.CharField(max_length=50, null=True)
 
 class ImageFolder(models.Model):
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
