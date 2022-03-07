@@ -13,7 +13,18 @@ const cleanFormData = (formData) => {
       }
     } else if (['startDate', 'endDate'].indexOf(v) >= 0 && formData[v] != null) {
       cleaned[v] = format(formData[v], 'yyyy-MM-dd');
+    } else if ( v === 'projectFilters') {
+      const studyareaIds = [];
+      const deploymentIds = [];
+      for (const i in formData[v]) {
+        if (formData[v][i].deployments) {
+          cleaned['deployments'] = formData[v][i].deployments.map(x=>x.deployment_id);
+        } else if (formData[v][i].studyareas) {
+          cleaned['studyareas'] = formData[v][i].studyareas.map(x=>x.studyarea_id);
+        }
+      }
     } else if (formData[v]) {
+      // other
       cleaned[v] = formData[v];
     }
   }

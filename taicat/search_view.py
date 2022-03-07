@@ -18,6 +18,8 @@ from django.db.models import (
 from taicat.models import (
     Image,
     Project,
+    Deployment,
+    StudyArea,
     Species,
 )
 from .utils import (
@@ -226,6 +228,18 @@ def api_get_projects(request):
         'total': len(projects)
     })
 
+def api_deployments(request):
+    query = StudyArea.objects.filter()
+    resp = {
+        'data': [],
+    }
+    if project_id := request.GET.get('project_id'):
+        proj = Project.objects.get(id=project_id)
+        project_deployment_list = proj.get_deployment_list()
+        query = query.filter(project_id=project_id)
+        resp['data'] = project_deployment_list
+    return JsonResponse(resp)
+
 def api_search(request):
     rows = []
     if request.is_ajax() and request.method == 'GET':
@@ -233,7 +247,7 @@ def api_search(request):
         start = 0
         end = 20
         query = Image.objects.filter()
-        print(request.GET)
+        #print(request.GET)
         if request.GET.get('filter'):
             filter_dict = json.loads(request.GET['filter'])
             #print(filter_dict, flush=True)
@@ -245,6 +259,10 @@ def api_search(request):
                 query = query.filter(datetime__gte=value)
             if value := filter_dict.get('endDate'):
                 query = query.filter(datetime__lte=value)
+            if values := filter_dict.get('deployments'):
+                query = query.filter(deployment_id__in=values)
+            elif values := filter_dict.get('studyareas'):
+                query = query.filter(studyarea_id__in=values)
 
         if request.GET.get('pagination'):
             pagination = json.loads(request.GET['pagination'])

@@ -4,37 +4,45 @@ import Chip from '@mui/material/Chip';
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Grid';
+import Paper from '@mui/material/Paper';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import DatePicker from '@mui/lab/DatePicker';
 import DateAdapter from '@mui/lab/AdapterDateFns';
 import Backdrop from '@mui/material/Backdrop';
 import CircularProgress from '@mui/material/CircularProgress';
 import LocalizationProvider from '@mui/lab/LocalizationProvider';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+
 import { zhTW } from 'date-fns/locale';
 
 import { AppSearchDataGrid } from './AppSearchDataGrid';
 import { AppSearchCalculation } from './AppSearchCalculation';
 import { cleanFormData } from './Utils';
 
-const apiPrefix = 'http://127.0.0.1:8000/api/';
 
 
 const AppSearch = () => {
+  const apiPrefix = process.env.API_PREFIX;
   const [isLoading, setIsLoading] = React.useState(false);
   const [pagination, setPagination] = React.useState({
     page: 0,
     perPage: 10
+  });
+  const [options, setOptions] = useState({
+    species: [],
+    projects: [],
+    deployments: null,
   });
   const [formData, setFormData] = useState({
     species: [],
     startDate: null,
     endDate: null,
     projects: [],
+    projectFilters: [{project: null}],
     keywoard: '',
-  });
-  const [options, setOptions] = useState({
-    species: [],
-    projects: [],
   });
   const [result, setResult] = useState(null);
   const [calcData, setCalcData] = React.useState({
@@ -97,6 +105,30 @@ const AppSearch = () => {
       });
   };
 
+  const fetchDeploymentList = (projectId) => {
+    let studyareaApiUrl = `${apiPrefix}deployments?project_id=${projectId}`;
+
+    setIsLoading(true);
+    fetch(encodeURI(studyareaApiUrl), {
+      //body: JSON.stringify({filter: formData}),
+      mode: 'same-origin',
+      headers: {
+        'content-type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest', // for Django request.is_ajax()
+        //'X-CSRFToken': csrftoken,
+      },
+      method: 'GET',
+    })
+      .then(resp => resp.json())
+      .then(data => {
+        //console.log('resp sa', data)
+        let newDeployments = options.deployments || {};
+        newDeployments[projectId] = data.data;
+        setOptions({...options, deployments: newDeployments})
+        setIsLoading(false);
+      });
+  };
+
   const handleSubmit = () => {
     fetchData();
   }
@@ -135,7 +167,112 @@ const AppSearch = () => {
         setIsLoading(false);
       });
   }
-  console.log('formData: ', formData, result);
+
+  const ProjectFilterBox = ({index}) => {
+    const projectId = (formData.projectFilters[index].project) ? formData.projectFilters[index].project.id : null;
+    const studyareas = formData.projectFilters[index].studyareas || [];
+    let deploymentOptions = [];
+    for (let i in studyareas) {
+      const values = studyareas[i].deployments.map(x=> {x.groupBy = studyareas[i].name; return x});
+      deploymentOptions = deploymentOptions.concat(values);
+    }
+    return (
+      <Box sx={{ mt: 1}}>
+        <Paper elevation={2} sx={{ p: 3}}>
+          <Typography variant="subtitle1">計畫篩選 ({index+1})</Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={10}>
+              <Autocomplete
+                options={options.projects}
+                getOptionLabel={(option) => option.name}
+                value={formData.projectFilters[index].project || null}
+                groupBy={(option)=> option.group_by}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    variant="standard"
+                    label="計畫名稱"
+                  />
+                )}
+                onChange={(e, v) => {
+                  if (v && v.id) {
+                    const newArr = [...formData.projectFilters];
+                    newArr[index].project = v;
+                    setFormData({...formData, projectFilters: newArr});
+                    fetchDeploymentList(v.id);
+                  }
+                }}
+                filterOptions={(options, {inputValue}) => {
+                  const projectIds = formData.projectFilters.filter(x=>x.project).map(x=>x.project.id);
+                  return options.filter(option => (projectIds.indexOf(option.id)<0) && (option.name.indexOf(inputValue) >=0));
+                }}
+              />
+            </Grid>
+            <Grid item xs={2} align="right">
+              <Button startIcon={<RemoveCircleOutlineIcon/>} onClick={(e)=> {
+                const newArr = [...formData.projectFilters];
+                newArr.splice(index, 1);
+                setFormData({...formData, projectFilters: newArr});
+              }}>
+                移除
+              </Button>
+            </Grid>
+            {(formData.projectFilters[index].project && options.deployments && options.deployments[projectId]) ?
+             <Grid item xs={6}>
+               <Autocomplete
+                 multiple
+                 options={options.deployments[projectId]}
+                 getOptionLabel={(option) => option.name}
+                 value={formData.projectFilters[index].studyareas || []}
+                 renderInput={(params) => (
+                   <TextField
+                     {...params}
+                     variant="standard"
+                     label="樣區"
+                   />
+                 )}
+                 onChange={(e, v) => {
+                   const newArr = [...formData.projectFilters];
+                   newArr[index].studyareas = v;
+                   setFormData({...formData, projectFilters: newArr})
+                 }}
+               />
+             </Grid>
+             : null}
+            {(formData.projectFilters[index].project && options.deployments && formData.projectFilters[index].studyareas && formData.projectFilters[index].studyareas) ?
+             <Grid item xs={6}>
+               <Autocomplete
+                 multiple
+                 options={deploymentOptions}
+                 getOptionLabel={(option) => `${option.groupBy}: ${option.name}`}
+                 value={formData.projectFilters[index].deployments || []}
+                 groupBy={(option)=> option.groupBy}
+                 renderInput={(params) => (
+                   <TextField
+                     {...params}
+                     variant="standard"
+                     label="相機位置"
+                   />
+                 )}
+                 onChange={(e, v) => {
+                   const newArr = [...formData.projectFilters];
+                   newArr[index].deployments = v;
+                   setFormData({...formData, projectFilters: newArr})
+                 }}
+                 filterOptions={(options) => {
+                   const projectIds = formData.projectFilters.filter(x=>x.project).map(x=>x.project.id);
+                   return options.filter(option => projectIds.indexOf(option.id)<0);
+                 }}
+               />
+             </Grid>
+             : null}
+          </Grid>
+        </Paper>
+      </Box>
+    );
+  }
+
+  console.log('render ', formData, result, options);
 
 
   return (
@@ -194,23 +331,6 @@ const AppSearch = () => {
             renderInput={(params) => <TextField {...params} variant="standard" />}
           />
         </Grid>
-        <Grid item xs={9}>
-          <Autocomplete
-            multiple
-            options={options.projects}
-            getOptionLabel={(option) => option.name}
-            value={formData.projects}
-            groupBy={(option)=> option.group_by}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                variant="standard"
-                label="計畫"
-              />
-            )}
-            onChange={(e, v) => setFormData({...formData, projects: v})}
-          />
-        </Grid>
         <Grid item xs={3}>
           <TextField
             label="計畫關鍵字"
@@ -219,6 +339,17 @@ const AppSearch = () => {
             onChange={(e)=> setFormData({...formData, keywoard: e.target.value})}
           />
         </Grid>
+        <Grid item xs={3}>
+          <Button variant="outlined" startIcon={<AddCircleOutlineIcon />} onClick={(e)=>setFormData({...formData, projectFilters:[...formData.projectFilters, {}]})}>
+            新增計畫篩選
+          </Button>
+        </Grid>
+        {formData.projectFilters.map((x, index)=>
+          <Grid item key={index} xs={12}>
+            <ProjectFilterBox index={index}/>
+          </Grid>
+        )}
+
         <Grid item xs={3}>
           <Button variant="contained" onClick={handleSubmit}>搜尋</Button>
         </Grid>
