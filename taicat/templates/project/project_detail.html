@@ -475,11 +475,11 @@
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-body">
-          <p style="font-size: 20px">確定移除？</p>
+          <p style="font-size: 20px">確定刪除？</p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
-          <a class="btn btn-danger" id="deleteData"">移除</a>
+          <a class="btn btn-danger" id="deleteData"">刪除</a>
         </div>
       </div>
     </div>
@@ -749,7 +749,7 @@
                       remarks_array.push(current_row['remarks'])
                     });  
 
-                  
+                      $('#edit-image_id').val(img_array)                  
                       // remove notice info
                       $('.notice').addClass('d-none');
                       // clean studyarea & deployment id
@@ -793,6 +793,17 @@
                       })  
                       
                       $('#editModal').modal('show');
+
+                      // disable edit
+                      let editable = '{{ editable }}';
+                      if ((editable!='True')||($('#edit_button').data('edit')=='off')){
+                        $('.edit-content input').attr('disabled', 'disabled')
+                        $('.edit-footer').addClass('d-none')
+                      } else {
+                        $('.edit-content input').prop("disabled", false)
+                        $('.edit-footer').removeClass('d-none')
+                      }
+
                     }
                   
               },
@@ -971,6 +982,7 @@
         // set permission: 計畫總管理人/個別計畫承辦人/系統管理員
         $('#img-table tbody').on('click', 'td', function () {
             // remove notice info
+            $('#edit-studyarea, #edit-deployment').removeClass('notice-border')
             $('.notice').addClass('d-none');
             // clean studyarea & deployment id
             $('#edit-studyarea_id').val('')
@@ -1182,7 +1194,56 @@
             headers:{'X-CSRFToken':'{{ csrf_token }}'},
             type: "POST",
             url: "{% url 'delete_data' pk %}",
-            success: function(){
+            success: function(data){
+              $('#editModal').modal('hide');
+              table.draw(false); // stay in same page
+              // update filter //
+              current_species = $("input[name=species-filter]:checked").val()
+              $('#species-list-all').nextAll('li').remove();
+              for (let i = 0; i < data['species'].length; i++) {
+               $('#species-list').append(
+                  `<li>
+                  <label class="form-check-label">
+                  <input class="filter" type="checkbox" name="species-filter" value="${data['species'][i]['name']}" checked>
+                      ${data['species'][i]['name']} (${data['species'][i]['count']})
+                  </label>
+                  </li>`
+               )}
+              if ($("input[name=species-filter].all").is(':checked')){
+                $("#species-list li label i").remove()
+                $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
+                $("input[name='species-filter']").prop('checked', true)
+              } else {
+                $("#species-list li label i").remove()
+                $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=species-filter][value=${current_species}]`));
+                $(`input[name=species-filter][value=${current_species}]`).attr("checked",true);
+                $(`input[name=species-filter]`).not(`[value=${current_species}]`).attr("checked",false);
+              }
+            // bind click function
+            // species: if other checkbox checked, uncheck 'all'
+            $("input[name='species-filter'].filter:not(.all)").click (function(){
+
+                if( $(this).is(':checked') ) {
+                    $('<i class="fas fa-check title-dark"></i>').insertBefore($(this));
+                } else {
+                    $(this).parent('label').children('i').remove()
+                }
+                $("input[name='species-filter'].all").prop('checked', false)
+                $("#species-list-all label i").remove()
+            })
+            // species: if 'all' checked, check all checkbox
+            $("input[name='species-filter'].all").click (function(){
+                if( $(this).is(':checked') ) {
+                    // 先移除掉全部的再一次加上去
+                    $("#species-list li label i").remove()
+                    $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
+                    $("input[name='species-filter']").prop('checked', true)
+                } else {
+                    $("#species-list li label i").remove()
+                    $("input[name='species-filter']").prop('checked', false)
+                }
+            })
+
             },
             error:function(){
                 alert('未知錯誤，請聯繫管理員');

@@ -88,13 +88,94 @@ def delete_data(request, pk):
         year = image_objects.aggregate(Min('datetime'))['datetime__min'].strftime("%Y")
         home = HomePageStat.objects.filter(year__gte=year)
         for h in home:
-            h.count -= 10
+            h.count -= image_objects.count()
             h.last_updated = now
             h.save()
 
-        response = Image.objects.filter(id__in=image_list).delete()
+        # move deleted image to DeletedImage table
+        image_dict = image_objects.values()
+        for d in image_dict:
+            di = DeletedImage(**d)
+            di.save()
+        Image.objects.filter(id__in=image_list).delete()
 
-    return HttpResponse(json.dumps(response), content_type='application/json')
+    species = ProjectSpecies.objects.filter(project_id=pk).order_by('count').values('count', 'name')
+    response = {'species': list(species)}
+    return JsonResponse(response, safe=False)  # or JsonResponse({'data': data})
+
+
+def edit_image(request, pk):
+    if request.method == "POST":
+        now = timezone.now()
+        requests = request.POST
+        image_id = requests.get('image_id')
+        image_id = image_id.split(',')
+
+        keys = ['species', 'life_stage', 'sex', 'antler', 'animal_id', 'remarks']
+        updated_dict = {}
+        for k in keys:
+            updated_dict.update({k: requests.get(k)})
+
+        if requests.get('studyarea_id'):
+            updated_dict.update({'studyarea_id': requests.get('studyarea_id')})
+        if requests.get('deployment_id'):
+            updated_dict.update({'deployment_id': requests.get('deployment_id')})
+
+        # TODO: update species stat
+        obj = Image.objects.filter(id__in=image_id)
+        c = obj.count()  # 更新的照片數量
+
+        # 抓原本的回來減掉
+        species = requests.get('species')
+        query = obj.values('species').annotate(total=Count('species')).order_by('-total')
+        for q in query:
+            # taicat_species
+            if sp := Species.objects.filter(name=q['species']).first():
+                if sp.count == q['total']:
+                    sp.delete()
+                else:
+                    sp.count -= q['total']
+                    sp.last_updated = now
+                    sp.save()
+            # taicat_projectspecies
+            if p_sp := ProjectSpecies.objects.filter(name=q['species'], project_id=pk).first():
+                if p_sp.count == q['total']:
+                    p_sp.delete()
+                else:
+                    p_sp.count -= q['total']
+                    p_sp.last_updated = now
+                    p_sp.save()
+        # 新的加上去
+        if sp := Species.objects.filter(name=species).first():
+            sp.count += c
+            sp.last_updated = now
+            sp.save()
+        else:
+            sp = Species(name=species, last_updated=now, count=c)
+            if species in Species.DEFAULT_LIST:
+                sp.status = 'I'
+            sp.save()
+
+        # taicat_projectspecies
+        if p_sp := ProjectSpecies.objects.filter(name=species, project_id=pk).first():
+            p_sp.count += c
+            p_sp.last_updated = now
+            p_sp.save()
+        else:
+            p_sp = ProjectSpecies(
+                name=species,
+                last_updated=now,
+                count=c,
+                project_id=pk)
+            p_sp.save()
+
+        if updated_dict:
+            updated_dict.update({'last_updated': now})
+            obj.update(**updated_dict)
+
+    species = ProjectSpecies.objects.filter(project_id=pk).order_by('count').values('count', 'name')
+    response = {'species': list(species)}
+    return JsonResponse(response, safe=False)  # or JsonResponse({'data': data})
 
 
 def randomword(length):
@@ -533,9 +614,9 @@ def project_detail(request, pk):
             p.num_deployment = Deployment.objects.filter(project_id=pk).count()
             p.num_data = c
             p.last_updated = now
-            if not ProjectStat.objects.get(project_id=i).latest_date or latest_date > ProjectStat.objects.get(project_id=i).latest_date:
+            if not ProjectStat.objects.get(project_id=pk).latest_date or latest_date > ProjectStat.objects.get(project_id=pk).latest_date:
                 p.latest_date = latest_date
-            if not ProjectStat.objects.get(project_id=i).earliest_date or earliest_date < ProjectStat.objects.get(project_id=i).earliest_date:
+            if not ProjectStat.objects.get(project_id=pk).earliest_date or earliest_date < ProjectStat.objects.get(project_id=pk).earliest_date:
                 p.earliest_date = earliest_date
             p.save()
         else:
@@ -566,7 +647,7 @@ def project_detail(request, pk):
                         name=q_species,
                         last_updated=now,
                         count=q['total'],
-                        project_id=i)
+                        project_id=pk)
                     p_sp.save()
     # update imagefolder table
     has_new = Image.objects.exclude(folder_name='').filter(last_updated__gte=last_updated, project_id=pk)
@@ -621,12 +702,15 @@ def project_detail(request, pk):
             if Organization.objects.filter(id=organization_id, projects=pk):
                 editable = True
     study_area = StudyArea.objects.filter(project_id=pk).order_by('name')
+    sa_list = Project.objects.get(pk=pk).get_sa_list()
+    sa_d_list = Project.objects.get(pk=pk).get_sa_d_list()
+    print(editable)
     return render(request, 'project/project_detail.html',
                   {'project_name': len(project_info[0]), 'project_info': project_info, 'species': species, 'pk': pk,
                    'study_area': study_area, 'deployment': deployment,
                    'earliest_date': earliest_date, 'latest_date': latest_date,
                    'editable': editable, 'is_authorized': is_authorized,
-                   'folder_list': results})
+                   'folder_list': results, 'sa_list': list(sa_list), 'sa_d_list': sa_d_list})
 
 
 def data(request):
@@ -788,50 +872,6 @@ def data(request):
             'recordsFiltered': 0,
         }
 
-    return HttpResponse(json.dumps(response), content_type='application/json')
-
-
-def edit_image(request, pk):
-    # get original annotation first
-    requests = request.POST
-    image_id = requests.get('id')
-    anno = Image.objects.get(id=image_id).annotation
-    group_id = int(requests.get('group_id'))
-    species = requests.get('species')
-    lifestage = requests.get('lifestage')
-    sex = requests.get('sex')
-    antler = requests.get('antler')
-    animal_id = requests.get('animal_id')
-    remarks = requests.get('remarks')
-    anno[group_id] = {'species': species, 'lifestage': lifestage, 'sex': sex, 'antler': antler,
-                      'animal_id': animal_id, 'remarks': remarks}
-    # write back to db
-    obj = Image.objects.get(id=image_id)
-    obj.annotation = anno
-    obj.save()
-
-    # TODO: update species stat
-
-    # update filter species options
-    with connection.cursor() as cursor:
-        query = """with base_request as ( 
-                    SELECT 
-                        x.*, 
-                        i.id FROM taicat_image i
-                        CROSS JOIN LATERAL
-                        json_to_recordset(i.annotation::json) x 
-                                ( species text) 
-                        WHERE i.annotation::TEXT <> '[]' AND i.project_id = {} 
-                        )
-                select count(id), species from base_request
-                group by species;
-                """
-        cursor.execute(query.format(pk))
-        species = cursor.fetchall()
-        species = [x for x in species if x[1] is not None and x[1] != '']
-        species.sort(key=lambda x: x[1])
-
-    response = {'species': species}
     return HttpResponse(json.dumps(response), content_type='application/json')
 
 
