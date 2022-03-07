@@ -15,7 +15,7 @@ $ yarn install
 
 Run for development
 ```
-$ yarn dev
+$ yarn start
 ```
 
 Build for production
