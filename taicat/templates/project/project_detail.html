@@ -676,6 +676,7 @@
         {% endfor %}
 
         // date slider
+        
         {% if earliest_date != None %}
         $("#date-slider").slider({
           range: true,
@@ -697,8 +698,10 @@
           pk : "{{ pk }}",
           species : $('input[name="species-filter"]:checked').map(function(){return $(this).val();}).get(),
           sa :  $("input[name=sa-filter]:checked").val(),
+          {% if earliest_date != None %}
           start_date : (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10),
           end_date : (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10),
+          {% endif %}
           deployment : $('input[name="d-filter"]:checked').map(function(){return $(this).val();}).get(),
           folder_name : $('#select-folder option:selected').val(),
         }
