@@ -28,12 +28,12 @@ const AppSearchCalculation = ({calcData, setCalcData}) => {
         </Grid>
         <Grid item xs={3}>
           <FormControl fullWidth>
-            <InputLabel id="label-foto-interval">有效照片間隔</InputLabel>
+            <InputLabel id="label-image-interval">有效照片間隔</InputLabel>
             <Select
-              labelId="label-foto-interval"
-              value={calcData.fotoInterval}
+              labelId="label-image-interval"
+              value={calcData.imageInterval}
               label="有效照片間隔"
-              onChange={(e)=>setCalcData({...calcData, fotoInterval: e.target.value})}
+              onChange={(e)=>setCalcData({...calcData, imageInterval: e.target.value})}
             >
               <MenuItem value="2">2 分鐘</MenuItem>
               <MenuItem value="5">5 分鐘</MenuItem>

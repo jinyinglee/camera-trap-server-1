@@ -3,9 +3,15 @@ import math
 import logging
 import time
 import re
+import csv
+import tempfile
 
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
+from django.http import (
+    JsonResponse,
+    FileResponse,
+    HttpResponse,
+)
 from django.core.paginator import Paginator
 from django.urls import reverse
 from django.utils.http import urlencode
@@ -242,12 +248,14 @@ def api_deployments(request):
 
 def api_search(request):
     rows = []
-    if request.is_ajax() and request.method == 'GET':
+    #request.is_ajax() and 
+    if request.method == 'GET':
         start_time = time.time()
         start = 0
         end = 20
         query = Image.objects.filter()
         #print(request.GET)
+        # TODO: 考慮 auth
         if request.GET.get('filter'):
             filter_dict = json.loads(request.GET['filter'])
             #print(filter_dict, flush=True)
@@ -269,17 +277,50 @@ def api_search(request):
             start = pagination['page'] * pagination['perPage']
             end = start + pagination['perPage']
 
-        if request.GET.get('download'):
-            calc(query)
+        download = request.GET.get('download', '')
+        calc_data = request.GET.get('calc', '')
+        if calc_data:
+            calc_data = json.loads(calc_data)
 
-        total = 1000 #query.values('id').order_by('id').count() # fake
+        if download and calc_data:
+            results = calc(query, calc_data)
+            # output
+            with tempfile.TemporaryFile('w+t') as fp:
+                fp.write('filters:'+ request.GET['filter'] + 'cal:' + request.GET['calc'] + '\n')
+                fp.write('==='+'\n')
+                fp.write('year,month,days in month,相機位置,相機工作時數,有效照片數,目擊事件數,OI3,捕獲回合比例,存缺,'+','.join(f'活動機率day{day}' for day in range(1, 32))+'\n')
+                for y in results:
+                    for m, value in enumerate(results[y]):
+                        row = []
+                        for x in value:
+                            if x != 'apoa':
+                                row.append(str(value[x]))
+                            else:
+                                if value[x] != None:
+                                    for day in value[x]:
+                                        hours = '|'.join([str(d) for d in day])
+                                        row.append(hours)
 
-        rows = query.all()[start:end]
-        end_time = time.time() - start_time
+                        #print (row)
+                        fp.write(','.join(row) + '\n')
 
-    return JsonResponse({
-        'data': [x.to_dict() for x in rows],
-        'total': total,
-        'query': str(query.query) if query.query else '',
-        'elapsed': end_time,
-    })
+                fp.seek(0)
+                content = fp.read()
+                response = HttpResponse(content)
+                response['Content-Type'] = 'text/plain'
+                response['Content-Disposition'] = 'attachment; filename=camera-trap-calculation.csv'
+                #print ('--------------', flush=True)
+                return response
+
+        else:
+            total = 1000 #query.values('id').order_by('id').count() # fake
+
+            rows = query.all()[start:end]
+            end_time = time.time() - start_time
+
+            return JsonResponse({
+                'data': [x.to_dict() for x in rows],
+                'total': total,
+                'query': str(query.query) if query.query else '',
+                'elapsed': end_time,
+            })

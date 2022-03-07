@@ -47,7 +47,7 @@ const AppSearch = () => {
   const [result, setResult] = useState(null);
   const [calcData, setCalcData] = React.useState({
     round: 'month',
-    fotoInterval: '',
+    imageInterval: '',
     eventInterval: '',
   });
 
@@ -144,11 +144,10 @@ const AppSearch = () => {
 
   const handleCalc = () => {
     const formDataCleaned = cleanFormData(formData);
-
+    const calc = JSON.stringify(calcData);
     const d = JSON.stringify(formDataCleaned);
-    let searchApiUrl = `${apiPrefix}search?filter=${d}`;
-    searchApiUrl = `${searchApiUrl}&download=csv`;
-    setIsLoading(true);
+    const searchApiUrl = `${apiPrefix}search?filter=${d}&calc=${calc}&download=csv`;
+    //setIsLoading(true); TODO
     console.log('fetch:', searchApiUrl);
     fetch(encodeURI(searchApiUrl), {
       //body: JSON.stringify({filter: formData}),
@@ -160,12 +159,21 @@ const AppSearch = () => {
       },
       method: 'GET',
     })
-      .then(resp => resp.json())
-      .then(data => {
+      .then(resp => resp.blob())
+      .then(blob => {
+        const href = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = href;
+        link.setAttribute('download', 'camera-trap-calculation.csv'); 
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
+        /*.then(data => {
         //console.log(data)
         setResult(data);
         setIsLoading(false);
-      });
+      });*/
   }
 
   const ProjectFilterBox = ({index}) => {

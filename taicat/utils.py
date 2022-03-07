@@ -16,7 +16,10 @@ from django.db.models import (
     Min,
     Count
 )
-from django.db.models.functions import Trunc
+from django.db.models.functions import (
+    Trunc,
+    ExtractDay,
+)
 from django.utils.timezone import make_aware
 
 from taicat.models import (
@@ -25,6 +28,7 @@ from taicat.models import (
     StudyArea,
     Deployment,
     DeploymentJournal,
+    DeploymentStat,
 )
 
 # WIP
@@ -387,32 +391,95 @@ def count_all_species_list():
 
     return ret
 
-def calc(query):
+def calc(query, calc_data):
+    #print('query', calc_data)
+    image_interval = int(calc_data['imageInterval'])
+    event_interval = int(calc_data['eventInterval'])
+
+    agg = query.aggregate(Max('datetime'), Min('datetime'))
+
+    results = {} # by year/month
+
     # group by deployment
     deployment_list = query.values('deployment', 'deployment__name').annotate(count=Count('deployment')).order_by()
-    print(deployment_list, flush=True)
-    
+    #print(deployment_list, flush=True)
+
     # default round: month
-    for dep in deployment_list[0:2]:
-        dep_group_count = query.filter(deployment_id=dep['deployment']).annotate(month=Trunc('datetime', 'month')).values('month').annotate(month_count=Count('*')).order_by('month')
+    for dep in deployment_list:
+        # fill month year
+        for y in range(agg['datetime__min'].year, agg['datetime__max'].year+1):
+            results[str(y)] = []
+            for m in range(1, 13):
+                item = {
+                    'year': y,
+                    'month': m,
+                    'days_in_month': 0, # 總台天?
+                    'deployment': dep['deployment__name'],
+                    'working_hour': 0,
+                    'num_image': 0,
+                    'num_event': 0,
+                    'oi3': 0,
+                    'pod': 0,
+                    'presence': 0,
+                    'apoa': None,
 
-        for res_deployment_month in dep_group_count:
-            print (dep_group_count, flush=True)
-            '''
-                    year = res_deployment_month['month'].year
-                    month = res_deployment_month['month'].month
-                    if year_range[0] == 0 or year < year_range[0]:
-                        year_range[0] = year
-                    if year > year_range[1]:
-                        year_range[1] = year
-                    if month_range[0] == 0 or month < month_range[0]:
-                        month_range[0] = month
-                    if month > month_range[1]:
-                        month_range[1] = month
+                }
+                results[str(y)].append(item)
 
-                    session_query = self.query_no_species.filter(deployment_id=dep['deployment'], datetime__year=year, datetime__month=month)
-                    session_query2 = self.query.filter(deployment_id=dep['deployment'], datetime__year=year, datetime__month=month)
-                    ret = find_deployment_working_day(year, month, dep['deployment'])
-                    working_day = ret[0]
-                    working_hour = sum(working_day) * 24
-            '''
+        # count each deployment
+        for i in DeploymentStat.objects.filter(deployment_id=dep['deployment'], session='month'):
+            # find working hour
+            if i.year and i.month and i.count_working_hour:
+                results[str(i.year)][i.month-1]['working_hour'] = i.count_working_hour
+
+                # only take datetime
+                query = query.values('datetime')
+
+                # count image num
+                query_image = query.filter(deployment_id=dep['deployment'], datetime__year=i.year, datetime__month=i.month)
+
+                last_datetime = None
+                image_count = 0
+                for image in query_image.all():
+                    if last_datetime:
+                        delta = image['datetime'] - last_datetime
+                        if ((delta.days * 86400) + (delta.seconds / 3600)) > image_interval * 60:
+                            image_count += 1
+                    else:
+                        # 第一張有效照片, 直接加 1
+                        image_count += 1
+
+                    last_datetime = image['datetime']
+
+                oi3 = (image_count * 1.0 / i.count_working_hour) * 1000
+                results[str(i.year)][i.month-1]['oi3'] = oi3
+
+                # count event num
+                last_datetime = None
+                count = 0
+                for image in query_image.order_by('datetime').all():
+                    delta = image['datetime'] - last_datetime if last_datetime else 0
+                    if delta:
+                        if ((delta.days * 86400) + (delta.seconds / 3600)) > event_interval * 60:
+                            count += 1
+                    last_datetime = image['datetime']
+
+                event_num = count * 1.0 / i.count_working_hour
+                results[str(i.year)][i.month-1]['num_event'] = event_num
+
+                # count pod & presence_absence
+                days_in_month = monthrange(i.year, i.month)[1]
+                results[str(i.year)][i.month-1]['days_in_month'] = days_in_month
+                image_group_by_day = query_image.values('datetime__day').annotate(count=Count('datetime__day')).order_by('datetime__day')
+                results[str(i.year)][i.month-1]['pod'] = image_group_by_day.count() / days_in_month # 用總台天算?
+                results[str(i.year)][i.month-1]['presence'] = 1 if results[str(i.year)][i.month-1]['pod'] > 0 else 0
+                # count apoa
+                image_group_by_hour = query_image.values('datetime__day', 'datetime__hour').annotate(count=Count('*')).order_by('datetime__day', 'datetime__hour')
+                # init apoa fill zero
+                results[str(i.year)][i.month-1]['apoa'] =  [[0 for hour in range(0, 24)] for day in range(0, 32)]
+                #[[0] * 24] * days_in_month => 
+                for day_hour in image_group_by_hour:
+                    results[str(i.year)][i.month-1]['apoa'][day_hour['datetime__day']-1][day_hour['datetime__hour']-1] = day_hour['count']
+
+    #print('----', results, flush=True)
+    return results
