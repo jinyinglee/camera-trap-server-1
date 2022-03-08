@@ -1,3 +1,11 @@
+FROM node:14-alpine as frontend
+WORKDIR /code
+COPY ./frontend-search/.env ./frontend-search/package.json ./frontend-search/yarn.lock /code/
+COPY ./frontend-search/webpack.config.js /code/
+RUN yarn install --production
+ADD static /code/static/
+RUN yarn run prod
+
 FROM python:3.8-slim-buster
 
 ENV PYTHONDONTWRITEBYTECODE 1

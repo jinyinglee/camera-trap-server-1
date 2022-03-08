@@ -7,82 +7,11 @@ search
 {% endblock title %}
 
 {% block script %}
+  {% if env == "dev" %}
 <script src="{% static 'js/search.dev.js' %}"></script>
-
-<script>
- const btnList = document.querySelectorAll(".check-form");
- btnList.forEach((x)=>{
-   x.onclick = (e) => {
-     e.preventDefault();
-     const modal = document.getElementById("myModal");
-     const textEle = document.getElementById("my-modal-text");
-     const queryType = document.getElementById("query-type");
-     const form = document.getElementById('my-form');
-     modal.style.display = "block";
-     //const text = (x.value == "query") ? "篩選中" : "計算中";
-     //textEle.innnerHTML = `${text}...`;
-     queryType.value = x.value;
-
-     if (x.value === 'calculate') {
-       const intervalSelect = document.getElementById('interval');
-       const intervalSelect2 = document.getElementById('interval2');
-
-       if (form.checkValidity()) {
-         form.requestSubmit(); // won't process name=submit ?
-       } else {
-         form.classList.add('was-validated');
-         modal.style.display = "none";
-       }
-     } else {
-       form.requestSubmit();
-     }
-   }
- });
-
- let projectStudyareas = {% if project_deployment_list %}{{project_deployment_list|safe}}{% else %}null{% endif %};
-
- const handleProjectChange = () =>{
-   const selectedProjectList = document.getElementById('project').selectedOptions;
-   const studyareaEle = document.getElementById('studyarea');
-   studyareaEle.innerHTML = '<option value="">---</option>';
-   if (selectedProjectList.length == 1) {
-     const projectId = selectedProjectList[0].value;
-     fetch(`/api/client/v1/projects/${projectId}`)
-       .then((resp) => resp.json())
-       .then((jsonData) => {
-         //console.log(jsonData)
-         studyareaEle.innerHTML = '<option value="">---</option>';
-         projectStudyareas = jsonData.studyareas;
-         projectStudyareas.forEach((x)=>{
-           const optionEle = document.createElement('option');
-           optionEle.value = x.studyarea_id;
-           optionEle.innerHTML = x.name;
-           studyareaEle.appendChild(optionEle);
-         });
-       });
-   }
- }
- const handleStudyareaChange = () =>{
-   const studyareaId = document.getElementById('studyarea').value;
-   if (studyareaId !== '') {
-     if (projectStudyareas) {
-       const found = projectStudyareas.find((x)=> parseInt(x.studyarea_id, 10) === parseInt(studyareaId, 10));
-       if (found && found.deployments.length > 0) {
-         const deploymentEle = document.getElementById('deployment');
-         deploymentEle.innerHTML = '<option value="">---</option>';
-         found.deployments.forEach((x)=>{
-           const optionEle = document.createElement('option');
-           optionEle.value = x.deployment_id;
-           optionEle.innerHTML = x.name;
-           deploymentEle.appendChild(optionEle);
-         });
-       }
-     }
-   }
- }
-
-  console.log('debug query:', '{{ debug_query|safe}}' );
-</script>
+  {% else %}
+<script src="{% static 'js/search.min.js' %}"></script>
+  {% endif %}
 {% endblock %}
 
 {% block style %}
@@ -146,7 +75,7 @@ search
 
 {% include "./inc_calculate_description.html" %}
 
-  <div class="row" style="margin-bottom: 10px">
+<div class="row" style="margin-bottom: 10px">
     <h4 class="title-dark p-0">資料篩選計算</h4>
   </div>
   <div class="panel">

@@ -46,9 +46,10 @@ const AppSearch = () => {
   });
   const [result, setResult] = useState(null);
   const [calcData, setCalcData] = React.useState({
-    round: 'month',
+    session: 'month',
     imageInterval: '',
     eventInterval: '',
+    fileFormat: '',
   });
 
   useEffect(() => {
@@ -146,8 +147,8 @@ const AppSearch = () => {
     const formDataCleaned = cleanFormData(formData);
     const calc = JSON.stringify(calcData);
     const d = JSON.stringify(formDataCleaned);
-    const searchApiUrl = `${apiPrefix}search?filter=${d}&calc=${calc}&download=csv`;
-    //setIsLoading(true); TODO
+    const searchApiUrl = `${apiPrefix}search?filter=${d}&calc=${calc}&download=1`;
+    setIsLoading(true);
     console.log('fetch:', searchApiUrl);
     fetch(encodeURI(searchApiUrl), {
       //body: JSON.stringify({filter: formData}),
@@ -161,19 +162,18 @@ const AppSearch = () => {
     })
       .then(resp => resp.blob())
       .then(blob => {
+        const ext_name = (calcData.fileFormat === 'csv') ? 'csv' : 'xlsx';
+        // code via: https://stackoverflow.com/a/65609170/644070
         const href = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = href;
-        link.setAttribute('download', 'camera-trap-calculation.csv'); 
+        link.setAttribute('download', `camera-trap-calculation.${ext_name}`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-      });
-        /*.then(data => {
-        //console.log(data)
-        setResult(data);
+
         setIsLoading(false);
-      });*/
+      });
   }
 
   const ProjectFilterBox = ({index}) => {
@@ -280,7 +280,7 @@ const AppSearch = () => {
     );
   }
 
-  console.log('render ', formData, result, options);
+  console.log('render ', formData, result, options, calcData);
 
 
   return (
@@ -369,7 +369,7 @@ const AppSearch = () => {
            <Button variant="contained" onClick={handleCalc} style={{marginTop: '10px'}}>下載計算</Button>
              <div>
            <button type="button" className="btn btn-warning" data-bs-toggle="modal" data-bs-target="#exampleModal" style={{marginTop: '24px'}}>
-                 計算項目的說明
+                 計算項目說明
                </button>
              </div>
            </>

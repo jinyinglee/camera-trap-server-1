@@ -3,8 +3,6 @@ import math
 import logging
 import time
 import re
-import csv
-import tempfile
 
 from django.shortcuts import render, redirect
 from django.http import (
@@ -16,6 +14,7 @@ from django.core.paginator import Paginator
 from django.urls import reverse
 from django.utils.http import urlencode
 from django.db import connection
+from django.conf import settings
 from django.db.models import (
     OuterRef,
     Subquery,
@@ -31,12 +30,19 @@ from taicat.models import (
 from .utils import (
     get_species_list,
     Calculation,
-    calc
+    calc,
+    calc_output,
 )
 
 from .views import check_if_authorized
-
 def index(request):
+    context = {
+        'env': settings.ENV,
+        #'JS_BUNDLE_VERSION': settings.JS_BUNDLE_VERSION
+    }
+    return render(request, 'search/search_index.html', context)
+
+def index_depricated(request):
     #species_list = get_species_list()
     #species_list = species_list['all']
     species_list = [[sp.name, sp.count] for sp in Species.objects.filter(status='I').all()]
@@ -284,36 +290,18 @@ def api_search(request):
 
         if download and calc_data:
             results = calc(query, calc_data)
-            # output
-            with tempfile.TemporaryFile('w+t') as fp:
-                fp.write('filters:'+ request.GET['filter'] + 'cal:' + request.GET['calc'] + '\n')
-                fp.write('==='+'\n')
-                fp.write('year,month,days in month,相機位置,相機工作時數,有效照片數,目擊事件數,OI3,捕獲回合比例,存缺,'+','.join(f'活動機率day{day}' for day in range(1, 32))+'\n')
-                for y in results:
-                    for m, value in enumerate(results[y]):
-                        row = []
-                        for x in value:
-                            if x != 'apoa':
-                                row.append(str(value[x]))
-                            else:
-                                if value[x] != None:
-                                    for day in value[x]:
-                                        hours = '|'.join([str(d) for d in day])
-                                        row.append(hours)
+            calc_dict = json.loads(request.GET['calc'])
+            out_format = calc_dict['fileFormat']
+            content = calc_output(results, out_format, request.GET.get('filter'), request.GET.get('calc'))
 
-                        #print (row)
-                        fp.write(','.join(row) + '\n')
-
-                fp.seek(0)
-                content = fp.read()
-                response = HttpResponse(content)
-                response['Content-Type'] = 'text/plain'
-                response['Content-Disposition'] = 'attachment; filename=camera-trap-calculation.csv'
-                #print ('--------------', flush=True)
-                return response
+            response = HttpResponse(content)
+            response['Content-Type'] = 'text/plain'
+            response['Content-Disposition'] = 'attachment; filename=camera-trap-calculation.{}'.format('csv' if out_format == 'csv' else 'xlsx')
+            #print ('--------------', flush=True)
+            return response
 
         else:
-            total = 1000 #query.values('id').order_by('id').count() # fake
+            total = query.values('id').order_by('id').count()
 
             rows = query.all()[start:end]
             end_time = time.time() - start_time

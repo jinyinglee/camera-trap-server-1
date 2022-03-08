@@ -15,19 +15,19 @@ const AppSearchCalculation = ({calcData, setCalcData}) => {
       <Grid container spacing={2}>
         <Grid item xs={3}>
           <FormControl fullWidth>
-            <InputLabel id="label-round">回合</InputLabel>
+            <InputLabel id="label-session">回合</InputLabel>
             <Select
-              labelId="label-round"
-              value={calcData.round}
+              labelId="label-session"
+              value={calcData.session}
               label="回合"
-              onChange={(e)=>setCalcData({...calcData, round: e.target.value})}
+              onChange={(e)=>setCalcData({...calcData, session: e.target.value})}
             >
               <MenuItem value="month">月</MenuItem>
             </Select>
           </FormControl>
         </Grid>
         <Grid item xs={3}>
-          <FormControl fullWidth>
+          <FormControl required fullWidth>
             <InputLabel id="label-image-interval">有效照片間隔</InputLabel>
             <Select
               labelId="label-image-interval"
@@ -44,20 +44,33 @@ const AppSearchCalculation = ({calcData, setCalcData}) => {
           </FormControl>
         </Grid>
         <Grid item xs={3}>
-          <FormControl fullWidth>
+          <FormControl required fullWidth>
             <InputLabel id="label-event-interval">目擊事件間隔</InputLabel>
             <Select
               labelId="label-event-interval"
               value={calcData.eventInterval}
               label="目擊事件間隔"
               onChange={(e)=>setCalcData({...calcData, eventInterval: e.target.value})}
-
             >
               <MenuItem value="2">2 分鐘</MenuItem>
               <MenuItem value="5">5 分鐘</MenuItem>
               <MenuItem value="10">10 分鐘</MenuItem>
               <MenuItem value="30">30 分鐘</MenuItem>
               <MenuItem value="60">60 分鐘</MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid item xs={3}>
+          <FormControl fullWidth>
+            <InputLabel id="label-file-format">檔案格式</InputLabel>
+            <Select
+              labelId="label-file-format"
+              value={calcData.fileFormat}
+              label="檔案格式"
+              onChange={(e)=>setCalcData({...calcData, fileFormat: e.target.value})}
+            >
+              <MenuItem value="csv">csv</MenuItem>
+              <MenuItem value="excel">Excel (xlsx)</MenuItem>
             </Select>
           </FormControl>
         </Grid>
