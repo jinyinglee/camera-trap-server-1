@@ -48,7 +48,7 @@ for i in ret.keys():
 for p in Project.objects.all().values('id'):
     query = Image.objects.filter(project_id=p['id']).values('species').annotate(total=Count('species')).order_by('-total')
     for i in query:
-        print(p['id'], i['species'])
+        print(i['species'], i['total'])
         if p_sp := ProjectSpecies.objects.filter(name=i['species'], project_id=p['id']).first():
             p_sp.count = i['total']
             p_sp.last_updated = now

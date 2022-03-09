@@ -1,7 +1,11 @@
-{% extends 'base/base.html' %} {% block title %} {{ project_info.0 }} | {{ block.super }} {% endblock title %} {% block head %} {% load static %}
+{% extends 'base/base.html' %} {% load tag_library %}
+{% block title %} {{ project_info.0 }} | {{ block.super }} {% endblock title %} {% block head %} {% load static %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/standalone/selectize.js" integrity="sha512-pF+DNRwavWMukUv/LyzDyDMn8U2uvqYQdJN0Zvilr6DDo/56xPDZdDoyPDYZRSL4aOKO/FGKXTpzDyQJ8je8Qw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.bootstrap4.min.css" integrity="sha512-MMojOrCQrqLg4Iarid2YMYyZ7pzjPeXKRvhW9nZqLo6kPBBTuvNET9DBVWptAo/Q20Fy11EIHM5ig4WlIrJfQw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
+<script src="{% static 'js/datatable-settings.js' %}"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.dataTables.min.css" />
 <style>
   /* datatable loader */
   .dataTables_wrapper .dataTables_processing {
@@ -51,6 +55,11 @@
     margin: 0 auto;
   }
 
+  #img-table tbody tr:hover {
+    background: #f8f8f8;
+    cursor: pointer;
+  }
+
   #img-table_wrapper {
     box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
   }
@@ -84,6 +93,7 @@
     display: none;
   }
 
+  
   input[name="species-filter"] {
     display: none;
   }
@@ -141,6 +151,7 @@
   .font-sm {
     font-size: 15px;
   }
+
 </style>
 {% endblock head %} {% block body %}
 <div class="container box">
@@ -156,8 +167,8 @@
         <div class="d-flex justify-content-between align-items-center">
           <h4 class="title-dark p-0">{{ project_info.0 }} <i class="fa fa-info-circle" style="cursor: pointer" data-bs-toggle="modal" data-bs-target="#infoModal"></i></h4>
           <div>
-            {% if is_authorized %}
-            <a class="btn btn-outline-success" href="{% url 'edit_project_basic' pk %}"><i class="fa fa-xs fa-pencil"></i> 計畫管理</a>
+            {% if editable %}
+            <button class="btn btn-outline-success" id="edit_button" data-edit="off"><i class="fa fa-xs fa-pencil"></i> 編輯模式</button>
             {% endif %}
             <a class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#downloadModal"><i class="fas fa-file-csv"></i> 下載篩選資料</a>
             {% comment %} <a class="btn btn-outline-success download"><i class="fas fa-file-csv"></i> 下載篩選資料</a> {% endcomment %}
@@ -174,7 +185,7 @@
             <div class="mt-3 d-flex justify-content-between">
               <p>篩選條件</p>
               <div>
-                <button type="button" style="font-size: 14px" class="btn btn-orange py-0 px-1 select">篩選</button>
+                <button type="button" style="font-size: 14px" class="btn btn-orange py-0 px-1" onclick="submitSelect()">篩選</button>
                 <button type="button" style="font-size: 14px" class="btn btn-light border-secondary py-0 px-1 clear">清除</button>
               </div>
             </div>
@@ -259,6 +270,7 @@
         <table class="table table-borderless w-100 px-3 h-100" id="img-table">
           <thead class="fw-bold title-dark">
             <tr>
+              <td><input type="checkbox" id="edit-all" class="edit-checkbox" name="edit" onclick="checkAllEdit()" /></td>
               <td>樣區</td>
               <td>相機位置</td>
               <td>檔名</td>
@@ -270,8 +282,8 @@
               <td>個體ID</td>
               <td>備註</td>
               <td>影像</td>
-              <td>group_id</td>
-              <td>id</td>
+              <td>image_uuid</td>
+              <td>image_id</td>
             </tr>
           </thead>
         </table>
@@ -291,11 +303,27 @@
             {% csrf_token %}
             <div class="row my-3">
               <div class="col-3 text-end my-auto">樣區</div>
-              <div class="col-9" id="edit-studyarea"></div>
+              <div class="col-9">
+                <div class="autocomplete">
+                  <input id="edit-studyarea_id" type="hidden" name="studyarea_id" />
+                  <input class="form-control" id="edit-studyarea" type="text" />
+                </div>
+                <div class="notice d-none">
+                  必填欄位
+                </div>
+              </div>
             </div>
             <div class="row my-3">
               <div class="col-3 text-end my-auto">相機位置</div>
-              <div class="col-9" id="edit-deployment"></div>
+              <div class="col-9">
+                <div class="autocomplete">
+                  <input class="form-control" id="edit-deployment" type="text" />
+                  <input id="edit-deployment_id" type="hidden" name="deployment_id" />
+                </div>
+                <div class="notice d-none">
+                  必填欄位
+                </div>
+              </div>
             </div>
             <div class="row my-3">
               <div class="col-3 text-end my-auto">檔名</div>
@@ -303,7 +331,14 @@
             </div>
             <div class="row my-3">
               <div class="col-3 text-end my-auto">日期時間</div>
-              <div class="col-9" id="edit-datetime"></div>
+              <div class="col-9" id="edit-datetime">
+                <!--
+                <input class="form-control" style="height: 38px" id="edit-datetime" type="datetime-local" name="datetime" step="1">
+                <div class="notice d-none">
+                  時間格式錯誤，請至少填寫至分鐘
+                </div>
+                -->              
+              </div>
             </div>
             <div class="row my-3">
               <div class="col-3 text-end my-auto">物種</div>
@@ -317,7 +352,7 @@
               <div class="col-3 text-end my-auto">年齡</div>
               <div class="col-9">
                 <div class="autocomplete">
-                  <input class="form-control" id="edit-lifestage" type="text" name="lifestage" />
+                  <input class="form-control" id="edit-lifestage" type="text" name="life_stage" />
                 </div>
               </div>
             </div>
@@ -340,21 +375,17 @@
             <div class="row my-3">
               <div class="col-3 text-end my-auto">個體ID</div>
               <div class="col-9">
-                <div class="autocomplete">
-                  <input class="form-control" id="edit-animal_id" type="text" name="animal_id" />
-                </div>
+                <input class="form-control" id="edit-animal_id" type="text" name="animal_id" />
               </div>
             </div>
             <div class="row my-3">
               <div class="col-3 text-end my-auto">備註</div>
               <div class="col-9">
-                <div class="autocomplete">
-                  <input class="form-control" id="edit-remarks" type="text" name="remarks" />
-                </div>
+                <input class="form-control" id="edit-remarks" type="text" name="remarks" />
               </div>
             </div>
-            <input type="hidden" id="edit-group_id" name="group_id" value="" />
-            <input type="hidden" id="edit-id" name="id" value="" />
+            <input type="hidden" id="edit-image_uuid" name="image_uuid" value="" />
+            <input type="hidden" id="edit-image_id" name="image_id" value="" />
             <input type="hidden" id="edit-page_info" name="page_info" value="" />
           </form>
         </div>
@@ -372,6 +403,9 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title title-dark">計畫基本資訊</h5>
+          {% if is_authorized %}
+          <a class="btn btn-outline-success ms-2" href="{% url 'edit_project_basic' pk %}"><i class="fa fa-xs fa-pencil"></i> 計畫管理</a>
+          {% endif %}
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -436,9 +470,36 @@
       </div>
     </div>
   </div>
+
+  <!-- delete modal -->
+  <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-body">
+          <p style="font-size: 20px">確定刪除？</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+          <a class="btn btn-danger" id="deleteData"">刪除</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   {% endblock body %} {% block script %}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/selectize.min.js" integrity="sha512-JiDSvppkBtWM1f9nPRajthdgTCZV3wtyngKUqVHlAs0d5q72n5zpM3QMOLmuNws2vkYmmLn4r1KfnPzgC/73Mw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script>
+
+    function checkAllEdit(){
+      if($('#edit-all').is(':checked')) {
+        $('.edit-checkbox').prop('checked', true)
+      } else {
+          $('.edit-checkbox').each(function() {
+            $('.edit-checkbox').prop('checked', false)
+          });
+      }
+    }
+
     //https://emailregex.com
     function ValidateEmail(inputText){
         let mailformat = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/
@@ -468,6 +529,48 @@
         }).focus(function () {
             $(this).autocomplete("search", "");
     });
+
+
+    // dependent dropdown menu
+    var $dep = $("#edit-deployment").autocomplete({
+      source: [],
+      minLength: 0,
+      change: function(event,ui){
+        // only allow deployments in the list
+        $(this).val((ui.item ? ui.item.label : ""));
+      },      
+      select: function( event, ui ) {
+          $( "#edit-deployment" ).val( ui.item.label );
+          $( "#edit-deployment_id" ).val( ui.item.value );
+          return false;
+      }
+    }).focus(function () {
+      $(this).autocomplete("search", "");
+    });
+
+
+    $( "#edit-studyarea" ).autocomplete({
+      minLength: 0,
+      source: {{ sa_list | safe }},
+      change: function(event,ui){
+        // only allow studyarea in the list
+        $(this).val((ui.item ? ui.item.label : ""));
+      },      
+      select: function( event, ui ) {
+        let pre_select = $('#edit-studyarea').val();
+          $( "#edit-studyarea_id" ).val( ui.item.value );
+          $( "#edit-studyarea" ).val( ui.item.label )
+          if (pre_select != ui.item.label) {
+            $('#edit-deployment, #edit-deployment_id').val('')
+          }
+          var src = ui.item.label;
+          $dep.autocomplete('option', 'source', {{ sa_d_list | safe }}[src]);
+          return false;
+      }
+    }).focus(function () {
+      $(this).autocomplete("search", "");
+    })
+
 
     $('#edit-antler').autocomplete({
         minLength: 0,
@@ -505,26 +608,23 @@
             $(this).autocomplete("search", "");
     });
 
+    function submitSelect(){
+        window.conditions = {
+        times : $("input[name=times]").val(),
+        pk : "{{ pk }}",
+        species : $('input[name="species-filter"]:checked').map(function(){return $(this).val();}).get(),
+        sa :  $("input[name=sa-filter]:checked").val(),
+        //{% if earliest_date != None %}
+        start_date : (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10),
+        end_date : (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10),
+        //{% endif %}
+        deployment : $('input[name="d-filter"]:checked').map(function(){return $(this).val();}).get(),
+        folder_name : $('#select-folder option:selected').val(),
+      }
+      $('#img-table').DataTable().draw();
+    }
 
-    // datatable
-    let language_settings = {
-        "decimal":        "",
-        "emptyTable":     "查無資料",
-        "info":           "正在檢視第 _START_ 至 _END_ 筆，總共 _TOTAL_ 筆",
-        "infoEmpty":      "共 0 筆",
-        "infoFiltered":   "",
-        "infoPostFix":    "",
-        "thousands":      ",",
-        "lengthMenu":     `每頁顯示 _MENU_ 筆`,
-        "loadingRecords": "載入中...",
-        "processing":     "",
-        "zeroRecords":    "查無符合資料",
-        "paginate": {
-            "next":       "下一頁",
-            "previous":   "上一頁"
-        }
-    };
-
+    const allEqual = arr => arr.every( v => v === arr[0] )
 
     $(document).ready(function() {
 
@@ -577,6 +677,7 @@
         {% endfor %}
 
         // date slider
+        
         {% if earliest_date != None %}
         $("#date-slider").slider({
           range: true,
@@ -593,9 +694,22 @@
         (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
         {% endif %}
 
+        window.conditions = {
+          times : $("input[name=times]").val(),
+          pk : "{{ pk }}",
+          species : $('input[name="species-filter"]:checked').map(function(){return $(this).val();}).get(),
+          sa :  $("input[name=sa-filter]:checked").val(),
+          {% if earliest_date != None %}
+          start_date : (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10),
+          end_date : (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10),
+          {% endif %}
+          deployment : $('input[name="d-filter"]:checked').map(function(){return $(this).val();}).get(),
+          folder_name : $('#select-folder option:selected').val(),
+        }
+
         // initalize datatable & redraw table
         let table = $('#img-table').DataTable({
-            dom:"<'row px-3 pt-3'<'col-sm-12 col-md-5'l>>" +
+            dom:"<'row px-3 pt-3 text-end'<'col-6'B><'col-6'l>>" +
                 "<'row'<'col-sm-12'tr>>" +
                 "<'row p-3'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
             language: language_settings,
@@ -608,25 +722,137 @@
             scrollX: true,
             scrollCollapse: true,
             filter: false,
+            buttons: [
+              {
+                  text: '編輯',
+                  className: 'btn btn-outline-success btn-sm e-button d-none disabled',
+                  action: function ( e, dt, node, config ) {
+                    
+                    let img_array = []
+                    let imguuid_array = []
+                    let sa_array = []
+                    let dep_array = []
+                    let species_array = []
+                    let sex_array = []
+                    let lifestage_array = []
+                    let antler_array = []
+                    let animal_id_array = []
+                    let remarks_array = []
+                    
+                    $( "input.edit-checkbox:checked").not('#edit-all').each(function(  ) {
+                      current_row = table.row($(this).parent()).data();
+                      img_array.push(current_row['image_id'])
+                      imguuid_array.push(current_row['image_uuid'])
+                      sa_array.push(current_row['saname'])
+                      dep_array.push(current_row['dname'])
+                      species_array.push(current_row['species'])
+                      sex_array.push(current_row['sex'])
+                      lifestage_array.push(current_row['lifestage'])
+                      antler_array.push(current_row['antler'])
+                      animal_id_array.push(current_row['animal_id'])
+                      remarks_array.push(current_row['remarks'])
+                    });  
+
+                      $('#edit-image_id').val(img_array)                  
+                      // remove notice info
+                      $('.notice').addClass('d-none');
+                      // clean studyarea & deployment id
+                      $('#edit-studyarea_id').val('')
+                      $('#edit-deployment_id').val('')
+
+                     if (allEqual(sa_array)){
+                        $('#edit-studyarea').val(sa_array[0])
+                        $dep.autocomplete('option', 'source', {{ sa_d_list | safe }}[current_row['saname']]);
+                      } else {
+                        $('#edit-studyarea').val('')
+                        $dep.autocomplete('option', 'source', '');
+                      }                      
+                      allEqual(dep_array) ? $('#edit-deployment').val(dep_array[0]) : $('#edit-deployment').val('');
+                      allEqual(species_array) ? $('#edit-species').val(species_array[0]) : $('#edit-species').val('');
+                      allEqual(lifestage_array) ? $('#edit-lifestage').val(lifestage_array[0]) : $('#edit-lifestage').val('');
+                      allEqual(sex_array) ? $('#edit-sex').val(sex_array[0]) : $('#edit-sex').val('');
+                      allEqual(antler_array) ? $('#edit-antler').val(antler_array[0]) : $('#edit-antler').val('');
+                      allEqual(animal_id_array) ? $('#edit-animal_id').val(animal_id_array[0]) : $('#edit-animal_id').val('');
+                      allEqual(remarks_array) ? $('#edit-remarks').val(remarks_array[0]) : $('#edit-remarks').val('');
+
+                      // image or videos
+                      if (allEqual(imguuid_array)){
+                        $('#edit-filename').html(current_row['filename'])
+                        $('#edit-datetime').html(current_row['datetime'])  
+                        $('#edit-image').html(current_row['file_url'])
+                      } else {
+                        $('#edit-filename').html('')
+                        $('#edit-datetime').html('')  
+                        $('#edit-image').html('')
+                      }
+
+                      $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
+                      $('#edit-image video').attr('width', '100%');
+                      $('#edit-image video').attr('height', '');
+                      $('#edit-image video source').on('error',function(event) {
+                      $(this).parent().parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
+                      })
+                      $('#edit-image video source, #edit-image img').on('error',function(event) {
+                      $(this).parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
+                      })  
+                      
+                      $('#editModal').modal('show');
+
+                      // disable edit
+                      let editable = '{{ editable }}';
+                      if ((editable!='True')||($('#edit_button').data('edit')=='off')){
+                        $('.edit-content input').attr('disabled', 'disabled')
+                        $('.edit-footer').addClass('d-none')
+                      } else {
+                        $('.edit-content input').prop("disabled", false)
+                        $('.edit-footer').removeClass('d-none')
+                      }
+
+                    }
+                  
+              },
+              {
+                text: '刪除',
+                className: 'btn btn-outline-secondary btn-sm d-button d-none disabled',
+                action: function ( e, dt, node, config ) {
+                    $('#deleteModal').modal('show')
+                }
+              }
+            ],
             ajax: {
                 type: "POST",
+                dataType : 'json',        
                 url: "{% url 'data' %}",
                 headers:{'X-CSRFToken':'{{ csrf_token }}'},
                 data: function ( d ) {
-                    d.times = $("input[name=times]").val();
-                    d.pk = "{{ pk }}";
-                    d.species = $('input[name="species-filter"]:checked').map(function(){return $(this).val();}).get();
-                    d.sa =  $("input[name=sa-filter]:checked").val();
-                    {% if earliest_date != None %}
-                    d.start_date = (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10);
-                    d.end_date = (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10);
-                    {% endif %}
-                    d.deployment = $('input[name="d-filter"]:checked').map(function(){return $(this).val();}).get();
-                    d.folder_name = $('#select-folder option:selected').val();
-                },
+                  d.times = window.conditions.times;
+                  d.pk = "{{ pk }}";
+                  d.species = window.conditions.species;
+                  d.sa =  window.conditions.sa;
+                  d.start_date = window.conditions.start_date;
+                  d.end_date = window.conditions.end_date;
+                  d.deployment = window.conditions.deployment;
+                  d.folder_name = window.conditions.folder_name;
+              },
             },
             order: [[0, "asc"]],
             drawCallback:function(){
+                // button style
+                var btns = $('.dt-button');
+                btns.removeClass('dt-button');
+
+                // uncheck select all button
+                $('#edit-all').prop('checked', false)
+
+                $('.e-button, .d-button').addClass('disabled')
+                // bind onclick event
+                $('input[name="edit"]').on('click', function(){
+                  if ($("input[name='edit']").is(":checked")){
+                    $('.e-button, .d-button').removeClass('disabled')
+                  } else {
+                    $('.e-button, .d-button').addClass('disabled')
+                  }
+                })
                 // remove last page button
                 $("a[data-dt-idx=7]").remove()
 
@@ -651,6 +877,7 @@
                 var lazyVideos = document.querySelectorAll("video");
                 for (let v of lazyVideos) {
                     watcher2.observe(v); // 開始監視
+                    v.removeAttribute('controls');
                 }
                 function onEnterView2(entries, observer) {
                     for (let entry of entries) {
@@ -663,17 +890,22 @@
                 }
 
                 // event listener for loading video & img
-                $('video source, img').on('error',function(event) {
-                  $(this).parent().after('<p align="center" style="color: brown">無法載入<p>')
-                  $(this).parent().remove()
+                $('img').on('error',function(event) {
+                  $(this).parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
+                })
+
+                $('video source').on('error',function(event) {
+                  $(this).parent().parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
                 })
 
                 // adjust columns after 1000 ms
                 setTimeout(function(){
                     $.fn.dataTable.tables( { visible: false, api: true } ).columns.adjust();
                 }, 1000);
+
             },
             columns: [
+                        {data: "edit"},
                         {data: "saname"},
                         {data: "dname"},
                         {data: "filename" },
@@ -685,21 +917,46 @@
                         {data: "animal_id"},
                         {data: "remarks"},
                         {data: "file_url"},
-                        {data: "group_id"},
+                        {data: "image_uuid"},
                         {data: "image_id"},
                     ],
             columnDefs: [
                 {
-                    "targets": [ 11,12 ], // hidden columns
+                    "targets": [ 0, 12,13 ], // hidden columns
                     "visible": false
                 }
             ],
         });
 
-        // submit select
-        $('.select').on('click', function() {
-            $($.fn.dataTable.tables( true ) ).DataTable().columns.adjust().draw();
-        });
+        // edit
+        $('#edit_button').on('click', function(){
+          if ($('#edit_button').data('edit') == 'off'){
+            $('#edit_button').data('edit','on');
+            $($.fn.dataTable.tables( true ) ).DataTable().column( 0 ).visible(true);
+            $('#edit_button').html('<i class="fa fa-xs fa-pencil"></i> 結束編輯')
+            // show buttons
+            $('.d-button, .e-button').removeClass('d-none')
+            // bind onclick event
+            $('input[name="edit"]').on('click', function(){
+              if ($("input[name='edit']").is(":checked")){
+                $('.e-button, .d-button').removeClass('disabled')
+              } else {
+                $('.e-button, .d-button').addClass('disabled')
+              }
+            })
+          } else {
+            $('#edit_button').data('edit','off');
+            // uncheck all
+            $($.fn.dataTable.tables( true ) ).DataTable().column( 0 ).visible(false);
+            $('#edit_button').html('<i class="fa fa-xs fa-pencil"></i> 編輯模式')
+            $('.d-button, .e-button').addClass('d-none')
+          }
+          // adjust columns after 1000 ms
+          setTimeout(function(){
+            $.fn.dataTable.tables( { visible: false, api: true } ).columns.adjust();
+        }, 1000);
+        })
+
 
         $('.clear').on('click', function() {
             $('input[type=radio]').prop('checked', false);
@@ -724,42 +981,78 @@
             $("#date-content").html((new Date($("#date-slider").slider("values",0)*1000).toISOString().substring(0, 10)) + "至" +
             (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
             {% endif %}
-            //$($.fn.dataTable.tables( true ) ).DataTable().columns.adjust().draw();
         });
 
         // set permission: 計畫總管理人/個別計畫承辦人/系統管理員
-        $('#img-table').on('click', 'tbody tr', function () {
-            var row = table.row($(this)).data();
-            $('#edit-studyarea').html(row['saname'])
-            $('#edit-deployment').html(row['dname'])
-            $('#edit-filename').html(row['filename'])
-            $('#edit-datetime').html(row['datetime'])
-            $('#edit-species').val(row['species'])
-            $('#edit-lifestage').val(row['lifestage'])
-            $('#edit-sex').val(row['sex'])
-            $('#edit-antler').val(row['antler'])
-            $('#edit-animal_id').val(row['animal_id'])
-            $('#edit-remarks').val(row['remarks'])
-            $('#edit-group_id').val(row['group_id'])
-            $('#edit-id').val(row['id'])
-            $('#edit-image').html(row['file_url'])
-            $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
-            $('#edit-image video').attr('width', '100%');
-            $('#edit-image video').attr('height', '');
-            $('#edit-image video source, #edit-image img').on('error',function(event) {
-              $(this).parent().after('<p align="center" style="color: brown">無法載入<p>')
-              $(this).parent().remove()
-            })
-            $('#editModal').modal('show');
+        $('#img-table tbody').on('click', 'td', function () {
+            // remove notice info
+            $('#edit-studyarea, #edit-deployment').removeClass('notice-border')
+            $('.notice').addClass('d-none');
+            // clean studyarea & deployment id
+            $('#edit-studyarea_id').val('')
+            $('#edit-deployment_id').val('')
+            let row = table.row($(this)).data();
+            let idx = table.column($(this)).index();
+            if (idx != 0){
+              $dep.autocomplete('option', 'source', {{ sa_d_list | safe }}[row['saname']]);
+              $('#edit-studyarea').val(row['saname'])
+              $('#edit-deployment').val(row['dname'])
+              $('#edit-filename').html(row['filename'])
+              $('#edit-datetime').html(row['datetime'])
+              //$('#edit-datetime').val(row['datetime'].replace(' ','T'))
+              $('#edit-species').val(row['species'])
+              $('#edit-lifestage').val(row['lifestage'])
+              $('#edit-sex').val(row['sex'])
+              $('#edit-antler').val(row['antler'])
+              $('#edit-animal_id').val(row['animal_id'])
+              $('#edit-remarks').val(row['remarks'])
+              $('#edit-image_uuid').val(row['image_uuid'])
+              $('#edit-image_id').val(row['image_id'])
+              $('#edit-image').html(row['file_url'])
+              $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
+              $('#edit-image video').attr('width', '100%');
+              $('#edit-image video').attr('height', '');
+              $('#edit-image video source').on('error',function(event) {
+              $(this).parent().parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
+              })
+              $('#edit-image video source, #edit-image img').on('error',function(event) {
+              $(this).parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
+              })
+              $('#editModal').modal('show');
+              // disable edit
+              let editable = '{{ editable }}';
+              if ((editable!='True')||($('#edit_button').data('edit')=='off')){
+                $('.edit-content input').attr('disabled', 'disabled')
+                $('.edit-footer').addClass('d-none')
+              } else {
+                $('.edit-content input').prop("disabled", false)
+                $('.edit-footer').removeClass('d-none')
+              }
+            }
+        });
 
-            // disable edit
-            {% if not editable %}
-            $('.edit-content input').attr('disabled', 'disabled')
-            $('.edit-footer').remove()
-            {% endif %}
-            });
-
-            $('.edit-submit').on('click', function() {
+          $('.edit-submit').on('click', function() {
+              let checked = true
+              // studyarea
+              if (!$('#edit-studyarea').val()){
+                checked = false
+                $('#edit-studyarea').parent().next('.notice').removeClass('d-none')
+                $('#edit-studyarea').addClass('notice-border')
+              }
+              // deployment
+              if (!$('#edit-deployment').val()){
+                checked = false
+                $('#edit-deployment').parent().next('.notice').removeClass('d-none')
+                $('#edit-deployment').addClass('notice-border')
+              }
+              // datetime
+              /*
+              if (!$('input[name=datetime]').val()){
+                checked = false
+                $('input[name=datetime]').next('.notice').removeClass('d-none')
+                $('input[name=datetime]').addClass('notice-border')
+              }*/
+              if (checked){
                 $.ajax({
                     data: $('#editForm').serialize(),
                     type: "POST",
@@ -768,59 +1061,59 @@
                         $('#editModal').modal('hide');
                         table.draw(false); // stay in same page
                         // update filter //
-                        current_species = $("input[name=species-filter]:checked").val()
+                        let current_species = $("input[name=species-filter]:checked")
                         $('#species-list-all').nextAll('li').remove();
                         for (let i = 0; i < data['species'].length; i++) {
                          $('#species-list').append(
-                            `
-                            <li>
+                            `<li>
                             <label class="form-check-label">
-                            <input class="filter" type="checkbox" name="species-filter" value="${data['species'][i][1]}">
-                                ${data['species'][i][1]} (${data['species'][i][0]})
+                            <input class="filter" type="checkbox" name="species-filter" value="${data['species'][i]['name']}" checked>
+                                ${data['species'][i]['name']} (${data['species'][i]['count']})
                             </label>
-                            </li>
-                            `
-                         )
+                            </li>`)
                         }
-                        if (current_species==''){
-                            $('#species-all-option').prop('checked', true);
+                        if ($("input[name=species-filter].all").is(':checked')){
+                          $("#species-list li label i").remove()
+                          $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
+                          $("input[name='species-filter']").prop('checked', true)
                         } else {
-                            $(`input[name=species-filter][value=${current_species}]`).attr("checked",true);
-                            $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=species-filter][value=${current_species}]`));
-                            }
-
-                        $("input[type=radio]").click( function () {
-                            let group = $(this).attr('name')
-                            $(`input[name=${group}]`).parent('label').children('i').remove()
-                            $('<i class="fas fa-check title-dark"></i>').insertBefore(this);
-                        });
-                }})
+                          $("#species-list li label i").remove()
+                          $(`input[name=species-filter]`).prop("checked",false);
+                          current_species.each(function(){
+                            $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=species-filter][value="${this.value}"]`));
+                            $(`input[name=species-filter][value="${this.value}"]`).prop("checked",true);
+                          })
+                        }
+                  // bind click function
+                  // species: if other checkbox checked, uncheck 'all'
+                  $("input[name='species-filter'].filter:not(.all)").click (function(){
+                    $("#species-list-all label i").remove()
+                    // 先移除自己本身的再判斷
+                    $(this).prev('i').remove()
+                    if( $(this).is(':checked') ) {
+                        $('<i class="fas fa-check title-dark"></i>').insertBefore($(this));
+                    } 
+                    $("input[name='species-filter'].all").prop('checked', false)
+                })
+  
+                  // species: if 'all' checked, check all checkbox
+                  $("input[name='species-filter'].all").click (function(){
+                      // 先移除掉全部的再一次加上去
+                      $("#species-list li label i").remove()
+                      if( $(this).is(':checked') ) {
+                          $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
+                          $("input[name='species-filter']").prop('checked', true)
+                      } else {
+                          $("input[name='species-filter']").prop('checked', false)
+                      }
+                  })
+                },
+                error:function(){
+                  alert('未知錯誤，請聯繫管理員');
+                }
+              })
+              }
             });
-
-        // download
-        $('.download').on('click', function(){
-            {% if earliest_date != None %}
-            $("input[name=start_date]").val((new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10));
-            $("input[name=end_date]").val((new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
-            {% endif %}
-            $("input[name=email]").val($("#download-email").val())
-            $.ajax({
-                    data: $('#downloadForm').serialize(),
-                    type: "POST",
-                    url: "{% url 'download' pk %}",
-                    success: function(){
-                        alert('請求已送出');
-                        $('#downloadModal').modal('hide')
-                    },
-                    error:function(){
-                        alert('未知錯誤，請聯繫管理員');
-                        $('#downloadModal').modal('hide')
-                    }
-                    })
-
-            //console.log($('#downloadForm').serialize())
-            //$('#downloadForm').submit()
-        })
 
         // radio style for studyarea & cameralocation
         $("input[name=sa-filter]").click( function () {
@@ -866,18 +1159,16 @@
             $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=sa-filter][id=${parent_radio}]`));
         })
 
-        // species: if other checkbox checked, uncheck 'all'
         $("input[name='species-filter'].filter:not(.all)").click (function(){
 
-            if( $(this).is(':checked') ) {
-                $('<i class="fas fa-check title-dark"></i>').insertBefore($(this));
-            } else {
-                $(this).parent('label').children('i').remove()
-            }
-            $("input[name='species-filter'].all").prop('checked', false)
-            $("#species-list-all label i").remove()
-
-        })
+          $("#species-list-all label i").remove()
+          // 先移除自己本身的再判斷
+          $(this).prev('i').remove()
+          if( $(this).is(':checked') ) {
+              $('<i class="fas fa-check title-dark"></i>').insertBefore($(this));
+          } 
+          $("input[name='species-filter'].all").prop('checked', false)
+      })
 
         // species: if 'all' checked, check all checkbox
 
@@ -893,160 +1184,104 @@
             }
         })
 
+        $('#deleteData').on('click', function() {
+
+          checkedvalue = [];
+          $("input[name=edit]").not('#edit-all').each(function () {
+              if ($(this).is(":checked")) {
+                  checkedvalue.push($(this).val());
+              }
+          });
+          $('#deleteModal').modal('hide')
+          // ajax to delete data
+          $.ajax({
+            data: {'image_id': checkedvalue},
+            headers:{'X-CSRFToken':'{{ csrf_token }}'},
+            type: "POST",
+            url: "{% url 'delete_data' pk %}",
+            success: function(data){
+              
+              table.draw(false); // stay in same page
+              // update filter //
+              let current_species = $("input[name=species-filter]:checked")
+              $('#species-list-all').nextAll('li').remove();
+              for (let i = 0; i < data['species'].length; i++) {
+               $('#species-list').append(
+                  `<li>
+                  <label class="form-check-label">
+                  <input class="filter" type="checkbox" name="species-filter" value="${data['species'][i]['name']}" checked>
+                      ${data['species'][i]['name']} (${data['species'][i]['count']})
+                  </label>
+                  </li>`)
+              }
+              if ($("input[name=species-filter].all").is(':checked')){
+                $("#species-list li label i").remove()
+                $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
+                $("input[name='species-filter']").prop('checked', true)
+              } else {
+                $("#species-list li label i").remove()
+                $(`input[name=species-filter]`).prop("checked",false);
+                current_species.each(function(){
+                  $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=species-filter][value="${this.value}"]`));
+                  $(`input[name=species-filter][value="${this.value}"]`).prop("checked",true);
+                })
+              }
+            // bind click function
+            // species: if other checkbox checked, uncheck 'all'
+            $("input[name='species-filter'].filter:not(.all)").click (function(){
+              $("#species-list-all label i").remove()
+              // 先移除自己本身的再判斷
+              $(this).prev('i').remove()
+              if( $(this).is(':checked') ) {
+                  $('<i class="fas fa-check title-dark"></i>').insertBefore($(this));
+              } 
+              $("input[name='species-filter'].all").prop('checked', false)
+            })
+
+            // species: if 'all' checked, check all checkbox
+            $("input[name='species-filter'].all").click (function(){
+                // 先移除掉全部的再一次加上去
+                $("#species-list li label i").remove()
+                if( $(this).is(':checked') ) {
+                    $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
+                    $("input[name='species-filter']").prop('checked', true)
+                } else {
+                    $("input[name='species-filter']").prop('checked', false)
+                }
+            })
+
+          },
+          error:function(){
+              alert('未知錯誤，請聯繫管理員');
+          }
+          })
+        })
+
+
+        // download
+        $('.download').on('click', function(){
+          {% if earliest_date != None %}
+          $("input[name=start_date]").val((new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10));
+          $("input[name=end_date]").val((new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
+          {% endif %}
+          $("input[name=email]").val($("#download-email").val())
+          $.ajax({
+                  data: $('#downloadForm').serialize(),
+                  type: "POST",
+                  url: "{% url 'download' pk %}",
+                  success: function(){
+                      alert('請求已送出');
+                      $('#downloadModal').modal('hide')
+                  },
+                  error:function(){
+                      alert('未知錯誤，請聯繫管理員');
+                      $('#downloadModal').modal('hide')
+                  }
+                })
+        })
 
     });
 
-
-    //  datatable automatically fits window height
-    (function( factory ){
-    	if ( typeof define === 'function' && define.amd ) {
-    		// AMD
-    		define( ['jquery', 'datatables.net'], function ( $ ) {
-    			return factory( $, window, document );
-    		} );
-    	}
-    	else if ( typeof exports === 'object' ) {
-    		// CommonJS
-    		module.exports = function (root, $) {
-    			if ( ! root ) {
-    				root = window;
-    			}
-
-    			if ( ! $ || ! $.fn.dataTable ) {
-    				$ = require('datatables.net')(root, $).$;
-    			}
-
-    			return factory( $, root, root.document );
-    		};
-    	}
-    	else {
-    		// Browser
-    		factory( jQuery, window, document );
-    	}
-    }(function( $, window, document, undefined ) {
-    'use strict';
-
-
-    var ScrollResize = function ( dt )
-    {
-    	var that = this;
-    	var table = dt.table();
-
-    	this.s = {
-    		dt:        dt,
-    		host:      $(table.container()).parent(),
-    		header:    $(table.header()),
-    		footer:    $(table.footer()),
-    		body:      $(table.body()),
-    		container: $(table.container()),
-    		table:     $(table.node())
-    	};
-
-    	var host = this.s.host;
-    	if ( host.css('position') === 'static' ) {
-    		host.css( 'position', 'relative' );
-    	}
-
-    	dt.on( 'draw', function () {
-    		that._size();
-    	} );
-
-    	this._attach();
-    	this._size();
-    };
-
-
-    ScrollResize.prototype = {
-    	_size: function ()
-    	{
-    		var settings = this.s;
-    		var dt = settings.dt;
-    		var t = dt.table();
-    		var offsetTop = $( settings.table ).offset().top;
-    		var availableHeight = settings.host.height();
-    		var scrollBody = $('div.dataTables_scrollBody', t.container());
-
-    		// Subtract the height of the header, footer and the elements
-    		// surrounding the table
-    		availableHeight -= offsetTop;
-    		availableHeight -= settings.container.height() - ( offsetTop + scrollBody.height() );
-
-    		$('div.dataTables_scrollBody', t.container()).css( {
-    			maxHeight: availableHeight,
-    			height: availableHeight
-    		} );
-
-    		if ( dt.fixedColumns ) {
-    			dt.fixedColumns().relayout();
-    		}
-    	},
-
-    	_attach: function () {
-    		// There is no `resize` event for elements, so to trigger this effect,
-    		// create an empty HTML document using an <iframe> which will issue a
-    		// resize event inside itself when the document resizes. Since it is
-    		// 100% x 100% that will occur whenever the host element is resized.
-    		var that = this;
-    		var obj = $('<iframe/>')
-    			.css( {
-    				position: 'absolute',
-    				top: 0,
-    				left: 0,
-    				height: '100%',
-    				width: '100%',
-    				zIndex: -1,
-    				border: 0
-    			} )
-    			.attr( 'frameBorder', '0' )
-    			.attr( 'src', 'about:blank' );
-
-    		obj[0].onload = function () {
-    			var body = this.contentDocument.body;
-    			var height = body.offsetHeight;
-    			var contentDoc = this.contentDocument;
-    			var defaultView = contentDoc.defaultView || contentDoc.parentWindow;
-
-    			defaultView.onresize = function () {
-    				// Three methods to get the iframe height, to keep all browsers happy
-    				var newHeight = body.clientHeight || body.offsetHeight;
-    				var docClientHeight = contentDoc.documentElement.clientHeight;
-
-    				if ( ! newHeight && docClientHeight ) {
-    					newHeight = docClientHeight;
-    				}
-
-    				if ( newHeight !== height ) {
-    					height = newHeight;
-
-    					that._size();
-    				}
-    			};
-    		};
-
-    		obj
-    			.appendTo( this.s.host )
-    			.attr( 'data', 'about:blank' );
-    	}
-    };
-
-    $.fn.dataTable.ScrollResize = ScrollResize;
-    $.fn.DataTable.ScrollResize = ScrollResize;
-
-    // Automatic initialisation listener
-    $(document).on( 'init.dt', function ( e, settings ) {
-    	if ( e.namespace !== 'dt' ) {
-    		return;
-    	}
-
-    	var api = new $.fn.dataTable.Api( settings );
-
-    	if ( settings.oInit.scrollResize || $.fn.dataTable.defaults.scrollResize ) {
-    		new ScrollResize( api );
-    	}
-    } );
-
-
-    }));
   </script>
   {% endblock script %}
 </div>
