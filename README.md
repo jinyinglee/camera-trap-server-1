@@ -4,24 +4,27 @@
 - `production.yml` yml file for for production
 - `Makefile` for command shortcuts
 
-## Frontend (Search page)
+## Development
 
+### Frontend (Search page)
+
+folder: `frontend-search`
+```bash
+$ cd frontend-search
+```
 
 Install packages
 
-```
+```bash
 $ yarn install
 ```
 
 Run for development
-```
+
+```bash
 $ yarn start
 ```
 
-Build for production
-```
-$ yarn build
-```
 
 ## Nginx & Let's Encrypt for HTTPS
 [Setup referece](https://pentacent.medium.com/nginx-and-lets-encrypt-with-docker-in-less-than-5-minutes-b4b8a60d3a71)
