@@ -25,6 +25,12 @@ Run for development
 $ yarn start
 ```
 
+### Data Model
+
+- DeploymentJournal: 相機行程
+- DeploymentStat: 相機位置工作時數
+- `script/import-deployment-stat.py` 計算/匯入工作時數
+
 
 ## Nginx & Let's Encrypt for HTTPS
 [Setup referece](https://pentacent.medium.com/nginx-and-lets-encrypt-with-docker-in-less-than-5-minutes-b4b8a60d3a71)
