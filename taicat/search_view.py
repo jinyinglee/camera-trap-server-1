@@ -35,6 +35,8 @@ from .utils import (
 )
 
 from .views import check_if_authorized
+
+
 def index(request):
     context = {
         'env': settings.ENV,

@@ -3,12 +3,13 @@ const Dotenv = require('dotenv-webpack');
 
 module.exports = (env) => {
   const env_name = (env.dev === true) ? '.dev.js' : '.min.js';
+  const env_path = (env.dev === true) ? path.join(__dirname, '../static/js') : path.join(__dirname, 'dist');
   return {
     entry: {
       'search': './src/search.js',
     },
     output: {
-      path: path.join(__dirname, '../static/js'),
+      path: env_path,
       filename: `[name]${env_name}`,
     },
     module: {
