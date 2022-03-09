@@ -22,5 +22,9 @@ urlpatterns = [
     path('api/edit_image/<pk>', views.edit_image, name='edit_image'),
     path('download/<pk>', views.download_request, name='download'),
     #    path('download/data/<uidb64>/<token>', views.download_data, name='download_data'),
+    path('api/species', search_view.api_get_species, name='get_species'),
+    path('api/projects', search_view.api_get_projects, name='get_projects'),
+    path('api/deployments', search_view.api_deployments, name='get_deployments'),
+    path('api/search', search_view.api_search, name='get_search'),
     path('delete/<pk>/', views.delete_data, name='delete_data'),
 ]
