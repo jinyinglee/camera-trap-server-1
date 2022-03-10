@@ -1,0 +1,164 @@
+{% extends 'base/base.html' %} {% block head %} {% load static %} {% endblock head %} {% block style %}
+<style>
+  textarea,
+  input {
+    border: 1px solid #cccccc;
+  }
+
+  .btn-upload {
+    font-size: 1rem;
+    padding: 5px 16px;
+    cursor: pointer;
+    display: inline-block;
+    text-decoration: none;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #257455; 
+      border-radius: 4px;
+  
+  }
+    .btn-upload input {
+      display: none; }
+    .btn-upload .text {
+      color: #257455; }
+  
+      .f-remove, .f-remove-lg {
+        cursor: pointer; 
+        color:  grey; 
+      }
+      .f-remove:hover, .f-remove-lg:hover {
+        color: lightgrey; 
+      }
+
+      .f-label {
+        background-color: #f2f2f2;
+        border-radius: 10px;
+        padding: 10px;
+        margin-left: 0;
+        margin-bottom: 10px;
+        width: 400px;
+        text-overflow: ellipsis;
+        list-style-position: inside;
+        white-space: nowrap;
+        overflow: hidden;      
+        font-size: 14px;
+      }
+</style>
+{% endblock %} {% block body %}
+<div class="container content">
+  <div class="row" style="margin-bottom: 10px">
+    <h4 class="title-dark">聯絡我們</h4>
+  </div>
+  <div class="row">
+    <p>對於 Camera Trap 的使用有任何問題或回饋嗎？請描述您遇到的狀況，我們會盡快與您聯絡！</p>
+    <div class="bg-white shadow px-0 mx-2 q-detail">
+      <div class="m-4">
+        <div class="row py-3">
+          <div class="col-2 text-end my-auto"><span class="required">*</span>問題類型</div>
+          <div class="col-8"><input type="checkbox" class="mx-1" name="q-detail-type" />系統操作 <input class="mx-1" type="checkbox" name="q-detail-type" />帳號相關 <input class="mx-1" type="checkbox" name="q-detail-type" />計畫管理 <input class="mx-1" type="checkbox" name="q-detail-type" />單機版軟體使用 <input type="checkbox" class="mx-1" name="q-detail-type" />篩選及計算 <input type="checkbox" class="mx-1" name="q-detail-type" />其他</div>
+        </div>
+        <div class="row py-3">
+          <div class="col-2 text-end"><span class="required">*</span>問題描述</div>
+          <div class="col-8">
+            <textarea class="form-control w-100" name="description" placeholder="請詳述您的問題，我們將儘速與您聯繫"></textarea>
+            <p class="text-gray mt-2 mb-0" style="font-size: 13px"> 建議您在問題回報中提供以下資訊，讓我們能更精確的為您提供幫助。</p>
+            <ul class="text-gray mt-2 mb-0 ps-4" style="font-size: 13px;">
+              <li>明確且詳細的問題說明</li>
+              <li>重現問題狀況的確切步驟</li>
+              <li>出現問題的螢幕截圖或影片連結 (建議)</li>
+              <li>您認為可能對找出和解決問題有幫助的所有其他資訊</li>
+            </ul>
+          </div>
+        </div>
+        <div class="row py-3">
+          <div class="col-2 text-end"><span class="required">*</span>您的電子郵件</div>
+          <div class="col-8">
+            <input class="form-control w-100" type="text" id="email" data-checked="f" onkeyup="ValidateEmail(this.value)" />
+            <p class="text-gray mt-2 mb-0" style="font-size: 13px"> 我們將透過電子郵件與您聯繫此問題的相關事宜，您的電子郵件不會被分享，或用於任何其他用途。</p>
+          </div>
+          <div class="col-1 p-0">
+            <svg id="email-check" xmlns="http://www.w3.org/2000/svg" width="38" height="38" fill="lightgrey" class="bi bi-check align-middle" viewBox="0 0 16 16">
+              <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
+            </svg>
+          </div>
+        </div>
+        <div class="row py-3">
+          <div class="col-2 text-end">附件</div>
+          <div class="col-8">
+            <input type="file" multiple id="f-upload" style="display:none" accept=".csv, .tsv, .tab, .txt, .xls, .xlsx, .jpg, .png, .mp4, .avi,.mov, .mpg, .mpeg" /> 
+            <button class="btn btn-outline-success" id="upload-btn">添加附加檔案</button>
+            <p class="text-gray mt-2 mb-0" style="font-size: 13px">附加螢幕截圖、資料、圖片或影片檔案
+              (.csv, .tsv, .tab, .txt, .xls, .xlsx, .jpg, .png, .mp4, .avi,
+              .mov, .mpg, .mpeg) ，檔案容量上限為 20 MB。
+            </p>
+            <ul id='f-list' style="list-style: none; padding-left: 0" class="mt-2"></ul> 
+            {% if not request.session.is_login %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="px-0 mx-2 mt-3">
+      <div class="text-end px-0">
+        <a class="btn btn-orange submit">確認送出</a>
+      </div>
+    </div>
+
+    </div>
+  </div>
+
+  {% endblock body %} {% block script %}
+  <script>
+    $(document).ready(
+    
+      $('.submit').on('click', function(){
+        let checked = true
+        if (($("#email").data("checked")=='f')||(!$("input[name=q-detail-type]").is(":checked"))||($('textarea[name=description]').val()=='')){
+          checked = false
+        }
+      
+      })
+        
+    );
+    
+    window.file_list = {}
+    window.file_index = 0
+    $('#upload-btn').click(function(){ $('#f-upload').trigger('click'); });
+    $("#f-upload").change(function(){
+      let f
+      for (i = 0; i < this.files.length; i++) {
+        window.file_index += 1;
+        f = this.files[i]
+        if (f.size / 1024 / 1024 > 20){
+          $("#f-list").append(`<li class="f-label d-flex justify-content-between">${f.name} <span class="notice">檔案過大，已移除 <span class="f-remove-lg" style="">x</span></span></li>`)
+        } else {
+          window.file_list[window.file_index] = {'file': f}
+        $("#f-list").append(`<li class="f-label d-flex justify-content-between">${f.name} <span data-index="${window.file_index}" class="f-remove" style=""> x</span></li>`)
+        }
+      }
+      $('.f-remove').on('click', function(){
+        delete window.file_list[$(this).data('index')]
+        $(this).parent().remove()
+      })
+      $('.f-remove-lg').on('click', function(){
+        $(this).parent().parent().remove()
+      })
+    });
+    
+    //https://emailregex.com
+    function ValidateEmail(inputText) {
+      let mailformat = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/;
+      if (inputText.match(mailformat)) {
+        $("#email-check").attr("fill", "green");
+        $("#email").data("checked", "t");
+        //$("button.download").prop("disabled", false);
+      } else {
+        $("#email-check").attr("fill", "lightgrey");
+        $("#email").data("checked", "f");
+        //$("button.download").prop("disabled", true);
+      }
+    }
+  </script>
+  {% endblock script %}
+</div>
