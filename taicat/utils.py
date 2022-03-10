@@ -1,4 +1,7 @@
+import csv
+from tempfile import NamedTemporaryFile
 import collections
+
 from operator import itemgetter
 from datetime import (
     datetime,
@@ -16,8 +19,13 @@ from django.db.models import (
     Min,
     Count
 )
-from django.db.models.functions import Trunc
+from django.db.models.functions import (
+    Trunc,
+    ExtractDay,
+)
 from django.utils.timezone import make_aware
+
+from openpyxl import Workbook
 
 from taicat.models import (
     Project,
@@ -25,6 +33,7 @@ from taicat.models import (
     StudyArea,
     Deployment,
     DeploymentJournal,
+    DeploymentStat,
 )
 
 # WIP
@@ -386,3 +395,195 @@ def count_all_species_list():
     ret['all'] = all_species_list
 
     return ret
+
+
+def calc_by_species_deployments(species, deployment_id, query, calc_data, results):
+    '''
+    species: <str> species name: 山羌
+    deployment_id: <int>
+    query: <QuerySet>
+    calc_data: <json> calculation filter
+    results: <dict> calculated data
+    '''
+    query = query.values('datetime')
+    image_interval = int(calc_data['imageInterval'])
+    event_interval = int(calc_data['eventInterval'])
+    # count each deployment
+    for i in DeploymentStat.objects.filter(deployment_id=deployment_id, session='month'):
+        # find working hour
+        if i.year and str(i.year) in results[species] and i.month and i.count_working_hour:
+            results[species][str(i.year)][i.month-1]['working_hour'] = i.count_working_hour
+
+            # count image num
+            query_image = query.filter(
+                deployment_id=deployment_id,
+                datetime__year=i.year,
+                datetime__month=i.month,
+                species=species
+            )
+
+            last_datetime = None
+            image_count = 0
+            for image in query_image.all():
+                if last_datetime:
+                    delta = image['datetime'] - last_datetime
+                    if ((delta.days * 86400) + (delta.seconds / 3600)) > image_interval * 60:
+                        image_count += 1
+                else:
+                    # 第一張有效照片, 直接加 1
+                    image_count += 1
+
+                last_datetime = image['datetime']
+
+            oi3 = (image_count * 1.0 / i.count_working_hour) * 1000
+            results[species][str(i.year)][i.month-1]['oi3'] = oi3
+
+            # count event num
+            last_datetime = None
+            count = 0
+            for image in query_image.order_by('datetime').all():
+                delta = image['datetime'] - last_datetime if last_datetime else 0
+                if delta:
+                    if ((delta.days * 86400) + (delta.seconds / 3600)) > event_interval * 60:
+                        count += 1
+                last_datetime = image['datetime']
+
+            event_num = count * 1.0 / i.count_working_hour
+            results[species][str(i.year)][i.month-1]['num_event'] = event_num
+
+            # count pod & presence_absence
+            days_in_month = monthrange(i.year, i.month)[1]
+            results[species][str(i.year)][i.month-1]['days_in_month'] = days_in_month
+            image_group_by_day = query_image.values('datetime__day').annotate(count=Count('datetime__day')).order_by('datetime__day')
+            results[species][str(i.year)][i.month-1]['pod'] = image_group_by_day.count() / days_in_month # 用總台天算?
+            results[species][str(i.year)][i.month-1]['presence'] = 1 if results[species][str(i.year)][i.month-1]['pod'] > 0 else 0
+            # count apoa
+            image_group_by_hour = query_image.values('datetime__day', 'datetime__hour').annotate(count=Count('*')).order_by('datetime__day', 'datetime__hour')
+            # init apoa fill zero
+            results[species][str(i.year)][i.month-1]['apoa'] =  [[0 for hour in range(0, 24)] for day in range(0, 31)]
+            #[[0] * 24] * days_in_month => failed
+            for day_hour in image_group_by_hour:
+                results[species][str(i.year)][i.month-1]['apoa'][day_hour['datetime__day']-1][day_hour['datetime__hour']-1] = day_hour['count']
+
+    return results
+
+
+def calc(query, calc_data):
+    #print('query', calc_data)
+
+    agg = query.aggregate(Max('datetime'), Min('datetime'))
+
+    results = {} # by species/deployment/year/month
+    # group by species
+    species_list = query.values('species').annotate(count=Count('species')).order_by()
+    # group by deployment
+    deployment_list = query.values('deployment', 'deployment__name').annotate(count=Count('deployment')).order_by()
+
+    #print(species_list.query, species_list, flush=True)
+    #print(deployment_list, agg, query.query,flush=True)
+    for species in species_list:
+        species_name = species['species']
+        results[species_name] = {}
+        # default round: month
+        for dep in deployment_list:
+            # fill month year
+            for y in range(agg['datetime__min'].year, agg['datetime__max'].year+1):
+                results[species_name][str(y)] = []
+                for m in range(1, 13):
+                    item = {
+                        'year': y,
+                        'month': m,
+                        'species': species_name,
+                        'days_in_month': 0, # 總台天?
+                        'deployment': dep['deployment__name'],
+                        'working_hour': 0,
+                        'num_image': 0,
+                        'num_event': 0,
+                        'oi3': 0,
+                        'pod': 0,
+                        'presence': 0,
+                        'apoa': None,
+                    }
+                    results[species_name][str(y)].append(item)
+
+            # do calc by species/deployment
+            results = calc_by_species_deployments(
+                species_name,
+                dep['deployment'],
+                query,
+                calc_data,
+                results)
+
+
+    #print('----', results, flush=True)
+    return results
+
+def calc_output(results, file_format, filter_str, calc_str):
+    '''
+    filter_str, calc_str for display query condition
+    '''
+    if file_format == 'csv':
+        '''csv 多物種會全部放在一個大表
+        '''
+        #with tempfile.TemporaryFile('w+t') as fp:
+        with NamedTemporaryFile('w+t') as tmp:
+            tmp.write('filters:'+ filter_str + 'calc:' + calc_str + '\n')
+            tmp.write('==='+'\n')
+            tmp.write('year,month,物種,days in month,相機位置,相機工作時數,有效照片數,目擊事件數,OI3,捕獲回合比例,存缺,'+','.join(f'活動機率day{day}' for day in range(1, 32))+'\n')
+            for sp in results:
+                for y in results[sp]:
+                    for m, value in enumerate(results[sp][y]):
+                        row = []
+                        for x in value:
+                            if x != 'apoa':
+                                row.append(str(value[x]))
+                            else:
+                                if value[x] != None:
+                                    for day in value[x]:
+                                        hours = '|'.join([str(d) for d in day])
+                                        row.append(hours)
+
+                        #print (row)
+                        tmp.write(','.join(row) + '\n')
+
+            tmp.seek(0)
+            return tmp.read()
+
+    elif file_format == 'excel':
+        with NamedTemporaryFile() as tmp:
+            wb = Workbook()
+            ws = wb.active
+            query_condition = 'filters:'+ filter_str + 'calc:' + calc_str
+            ws.cell(row=1, column=1, value=query_condition)
+            sheets = []
+            sheet_index = 0
+            for sp in results:
+                row_index = 1
+                sheets.append(wb.create_sheet(title=sp))
+                header_str = 'year,month,物種,days in month,相機位置,相機工作時數,有效照片數,目擊事件數,OI3,捕獲回合比例,存缺,'+','.join(f'活動機率day{day}' for day in range(1, 32))
+                header_list = header_str.split(',')
+                for h, v in enumerate(header_list):
+                    sheets[sheet_index].cell(row=1, column=h+1, value=v)
+
+                for y in results[sp]:
+                    for m, value in enumerate(results[sp][y]):
+                        row_index += 1
+                        col_index = 0
+                        for x in value:
+                            if x != 'apoa':
+                                col_index += 1
+                                sheets[sheet_index].cell(row=row_index, column=col_index, value=str(value[x]))
+                            else:
+                                if value[x] != None:
+                                    for day in value[x]:
+                                        col_index += 1
+                                        hours = '|'.join([str(d) for d in day])
+                                        sheets[sheet_index].cell(row=row_index, column=col_index, value=hours)
+
+
+
+                sheet_index += 1
+
+            wb.save(tmp.name)
+            tmp.seek(0)
+            return tmp.read()

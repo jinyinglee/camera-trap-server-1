@@ -1,4 +1,17 @@
-FROM python:3.8-slim-buster
+##
+# stage 1
+##
+FROM node:14-alpine as static
+WORKDIR /build
+COPY ./frontend-search /build
+
+RUN yarn install
+RUN yarn build
+
+##
+# stage 2
+##
+FROM python:3.8-slim-buster as final
 
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
@@ -50,5 +63,7 @@ RUN chmod +x /srv/entrypoint
 COPY ./scripts/start /srv/start
 RUN sed -i 's/\r$//g' /srv/start
 RUN chmod +x /srv/start
+
+COPY --from=0 /build/dist /asset/asset/js
 
 ENTRYPOINT ["/srv/entrypoint"]
