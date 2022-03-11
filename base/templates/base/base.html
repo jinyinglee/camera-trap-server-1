@@ -16,6 +16,29 @@
     <script src="https://kit.fontawesome.com/b8e586964f.js" crossorigin="anonymous"></script>
     {% block head %}{% endblock head %}
     <style type="text/css">
+      .link:link {
+        color: gray;
+        cursor: pointer;
+      }
+
+      .link:visited {
+        color: gray;
+        background-color: transparent;
+        text-decoration: none;
+      }
+
+      .link:hover {
+        color: lightgrey;
+        background-color: transparent;
+        text-decoration: underline;
+      }
+
+      .link:active {
+        color: gray;
+        background-color: transparent;
+        text-decoration: underline;
+      }
+
       .notice {
         color: #c65454;
       }
@@ -23,6 +46,10 @@
         border-color: #c65454;
       }
       input[type="checkbox"]:checked {
+        /*accent-color: #7c9c2d;*/
+        filter: hue-rotate(215deg);
+      }
+      input[type="radio"]:checked {
         /*accent-color: #7c9c2d;*/
         filter: hue-rotate(215deg);
       }
@@ -290,10 +317,8 @@
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false"> 幫助 </a>
               <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
-                <!--
-                  <li><a class="dropdown-item" href="#">常見問題</a></li>
-                  <li><a class="dropdown-item" href="#">聯絡我們</a></li>
-                  -->
+                <li><a class="dropdown-item" href="{% url 'faq' %}">常見問題</a></li>
+                <li><a class="dropdown-item" href="{% url 'contact-us' %}">聯絡我們</a></li>
                 <li><a class="dropdown-item" href="{% url 'policy' %}">隱私權政策</a></li>
               </ul>
             </li>

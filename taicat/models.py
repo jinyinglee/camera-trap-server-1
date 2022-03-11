@@ -20,6 +20,7 @@ class Species(models.Model):
             'name': self.name,
         }
 
+
 class Contact(models.Model):
     name = models.CharField(max_length=1000)
     email = models.CharField(max_length=1000, blank=True, null=True)
@@ -178,6 +179,7 @@ class StudyArea(models.Model):
             'name': self.name,
         }
 
+
 # Survey
 '''The Survey level includes information on different surveys completed within the same
 Project or Study Area. In some cases, a Project or Study Area will consist of more than one
@@ -238,6 +240,7 @@ class Deployment(models.Model):
             'latitude': self.latitude,
             'altitude': self.altitude,
         }
+
 
 class Image(models.Model):
     '''if is_sequence, ex: 5 Images, set last 4 Images's is_sequence to True (wouldn't  count)'''
@@ -308,6 +311,7 @@ class Image(models.Model):
         ordering = ['created']
         indexes = [GinIndex(fields=['annotation'])]
 
+
 class DeletedImage(models.Model):
     '''if is_sequence, ex: 5 Images, set last 4 Images's is_sequence to True (wouldn't  count)'''
     PHOTO_TYPE_CHOICES = (
@@ -358,9 +362,10 @@ class DeletedImage(models.Model):
     class Meta:
         ordering = ['created']
 
+
 class Image_info(models.Model):
     # image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True)
-    image_uuid = models.CharField(max_length=1000, default='', blank=True, null=True)
+    image_uuid = models.CharField(max_length=1000, default='', primary_key=True)
     source_data = models.JSONField(default=dict, blank=True)
     exif = models.JSONField(default=dict, blank=True)
 
@@ -409,6 +414,7 @@ class DeploymentStat(models.Model):
     month = models.SmallIntegerField(null=True, blank=True)
     count_working_hour = models.SmallIntegerField(null=True, blank=True)
     session = models.CharField(max_length=50, null=True)
+
 
 class ImageFolder(models.Model):
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)

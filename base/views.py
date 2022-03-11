@@ -23,6 +23,14 @@ class DecimalEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
+def faq(request):
+    return render(request, 'base/faq.html')
+
+
+def contact_us(request):
+    return render(request, 'base/contact_us.html')
+
+
 def policy(request):
     return render(request, 'base/policy.html')
 

@@ -538,6 +538,7 @@
       change: function(event,ui){
         // only allow deployments in the list
         $(this).val((ui.item ? ui.item.label : ""));
+        $( "#edit-deployment_id" ).val((ui.item ? ui.item.value : ""));
       },      
       select: function( event, ui ) {
           $( "#edit-deployment" ).val( ui.item.label );
@@ -552,12 +553,19 @@
     $( "#edit-studyarea" ).autocomplete({
       minLength: 0,
       source: {{ sa_list | safe }},
+      open: function( event, ui ) {
+        window.pre_select = $('#edit-studyarea').val();
+      },
       change: function(event,ui){
         // only allow studyarea in the list
-        $(this).val((ui.item ? ui.item.label : ""));
+        $( "#edit-studyarea" ).val((ui.item ? ui.item.label : ""));
+        $( "#edit-studyarea_id" ).val((ui.item ? ui.item.value : ""));
+        if ($( "#edit-studyarea" ).val()==''){
+          $('#edit-deployment, #edit-deployment_id').val('')
+          $dep.autocomplete('option', 'source', '');
+        } 
       },      
       select: function( event, ui ) {
-        let pre_select = $('#edit-studyarea').val();
           $( "#edit-studyarea_id" ).val( ui.item.value );
           $( "#edit-studyarea" ).val( ui.item.label )
           if (pre_select != ui.item.label) {
@@ -727,7 +735,7 @@
                   text: '編輯',
                   className: 'btn btn-outline-success btn-sm e-button d-none disabled',
                   action: function ( e, dt, node, config ) {
-                    
+
                     let img_array = []
                     let imguuid_array = []
                     let sa_array = []
@@ -755,6 +763,7 @@
 
                       $('#edit-image_id').val(img_array)                  
                       // remove notice info
+                      $('#edit-studyarea, #edit-deployment').removeClass('notice-border')
                       $('.notice').addClass('d-none');
                       // clean studyarea & deployment id
                       $('#edit-studyarea_id').val('')
