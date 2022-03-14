@@ -54,6 +54,7 @@
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 {% endblock %} {% block body %}
 <div class="container content">
+  <div class="loader d-none"></div>
   <div class="row" style="margin-bottom: 10px">
     <h4 class="title-dark">聯絡我們</h4>
   </div>
@@ -61,7 +62,7 @@
     <p>對於 Camera Trap 的使用有任何問題或回饋嗎？請描述您遇到的狀況，我們會盡快與您聯絡！</p>
     <div class="bg-white shadow px-0 mx-2 q-detail">
       <div class="m-4">
-    <form id="submitForm" enctype="multipart/form-data" method="POST">
+    <form id="submitForm" action="{% url 'feedback_request' %}" enctype="multipart/form-data" method="POST">
     {% csrf_token %}
         <div class="row py-3">
           <div class="col-2 text-end"><span class="required">*</span>問題類型</div>
@@ -138,8 +139,37 @@
 
   {% endblock body %} {% block script %}
   <script>
-    $(document).ready(
+
+    $(document).on("submit", "form", function(event)
+    {
+        $('.loader').removeClass('d-none');
+        event.preventDefault();
+        $.ajax({
+            url: $(this).attr("action"),
+            type: $(this).attr("method"),
+            dataType: "JSON",
+            data: new FormData(this),
+            processData: false,
+            contentType: false,
+            success: function (data, status)
+            {
+              $('.loader').addClass('d-none');
+              alert('請求已送出');
+
+            },
+            error: function (xhr, desc, err)
+            {
+              $('.loader').addClass('d-none');
+              alert('未知錯誤，請聯繫管理員');
+
+            }
+        });        
     
+    });
+
+    $(document).ready(
+  
+
       $('.submit').on('click', function(){
         // clear previous validation
         $('.is-invalid').removeClass("is-invalid")
@@ -164,17 +194,7 @@
         }
 
         if (checked) {
-          $.ajax({
-            data: $('#submitForm').serialize(),
-            type: "POST",
-            url: "{% url 'feedback_request' %}",
-            success: function(){
-                alert('請求已送出');
-            },
-            error:function(){
-                alert('未知錯誤，請聯繫管理員');
-            }
-          })
+          $('#submitForm').submit()
         }
       })
         
