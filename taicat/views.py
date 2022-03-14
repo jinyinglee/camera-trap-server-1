@@ -580,6 +580,7 @@ def update_datatable(request):
 
 
 def project_detail(request, pk):
+    folder = request.GET.get('folder')
     is_authorized = check_if_authorized(request, pk)
     with connection.cursor() as cursor:
         query = "SELECT name, funding_agency, code, " \
@@ -698,10 +699,9 @@ def project_detail(request, pk):
     study_area = StudyArea.objects.filter(project_id=pk).order_by('name')
     sa_list = Project.objects.get(pk=pk).get_sa_list()
     sa_d_list = Project.objects.get(pk=pk).get_sa_d_list()
-    print(editable)
     return render(request, 'project/project_detail.html',
                   {'project_name': len(project_info[0]), 'project_info': project_info, 'species': species, 'pk': pk,
-                   'study_area': study_area, 'deployment': deployment,
+                   'study_area': study_area, 'deployment': deployment, 'folder': folder,
                    'earliest_date': earliest_date, 'latest_date': latest_date,
                    'editable': editable, 'is_authorized': is_authorized,
                    'folder_list': results, 'sa_list': list(sa_list), 'sa_d_list': sa_d_list})
