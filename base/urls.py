@@ -17,4 +17,6 @@ urlpatterns = [
     path('policy', views.policy, name='policy'),
     path('faq', views.faq, name='faq'),
     path('contact-us', views.contact_us, name='contact-us'),
+    path('send_feedback', views.send_feedback, name='send_feedback'),
+    path('feedback_request', views.feedback_request, name='feedback_request'),
 ]
