@@ -37,9 +37,7 @@
         background-color: #f2f2f2;
         border-radius: 10px;
         padding: 10px;
-        margin-left: 0;
-        margin-bottom: 10px;
-        width: 400px;
+        margin-bottom: 0px;
         text-overflow: ellipsis;
         list-style-position: inside;
         white-space: nowrap;
@@ -62,7 +60,7 @@
     <p>對於 Camera Trap 的使用有任何問題或回饋嗎？請描述您遇到的狀況，我們會盡快與您聯絡！</p>
     <div class="bg-white shadow px-0 mx-2 q-detail">
       <div class="m-4">
-    <form id="submitForm" action="{% url 'feedback_request' %}" enctype="multipart/form-data" method="POST">
+    <form id="submitForm" name="submitForm" action="{% url 'feedback_request' %}" enctype="multipart/form-data" method="POST">
     {% csrf_token %}
         <div class="row py-3">
           <div class="col-2 text-end"><span class="required">*</span>問題類型</div>
@@ -104,10 +102,14 @@
             <p class="text-gray mt-2 mb-0" style="font-size: 13px"> 我們將透過電子郵件與您聯繫此問題的相關事宜，您的電子郵件不會被分享，或用於任何其他用途。</p>
           </div>
         </div>
+      </form>
+
         <div class="row py-3">
           <div class="col-2 text-end">附件</div>
           <div class="col-8">
-            <input type="file" name="uploaded_file" multiple id="f-upload" style="display:none" accept=".csv, .tsv, .tab, .txt, .xls, .xlsx, .jpg, .png, .mp4, .avi,.mov, .mpg, .mpeg" /> 
+            <div id="f_div">
+            </div>
+            <input type="file" name="uploaded_file" style="display: none" multiple id="f-upload" accept=".csv, .tsv, .tab, .txt, .xls, .xlsx, .jpg, .png, .mp4, .avi,.mov, .mpg, .mpeg" /> 
             <a class="btn btn-outline-success" id="upload-btn">添加附加檔案</a>
             <p class="text-gray mt-2 mb-0" style="font-size: 13px">附加螢幕截圖、資料、圖片或影片檔案
               (.csv, .tsv, .tab, .txt, .xls, .xlsx, .jpg, .png, .mp4, .avi,
@@ -132,7 +134,6 @@
     <div class="px-0 mx-2 mt-3 text-end">
         <a class="btn btn-orange submit">確認送出</a>
     </div>
-    </form>
 
     </div>
   </div>
@@ -144,24 +145,31 @@
     {
         $('.loader').removeClass('d-none');
         event.preventDefault();
+        
+        let otherFormData = new FormData($("#submitForm")[0]);
+        for (var pair of otherFormData.entries()) {
+          window.f_data.append(pair[0], pair[1]);
+        }
+        
         $.ajax({
             url: $(this).attr("action"),
             type: $(this).attr("method"),
             dataType: "JSON",
-            data: new FormData(this),
+            data: window.f_data,
             processData: false,
             contentType: false,
             success: function (data, status)
             {
               $('.loader').addClass('d-none');
               alert('請求已送出');
+              window.f_data = new FormData();
 
             },
             error: function (xhr, desc, err)
             {
               $('.loader').addClass('d-none');
               alert('未知錯誤，請聯繫管理員');
-
+              window.f_data = new FormData();
             }
         });        
     
@@ -171,6 +179,9 @@
   
 
       $('.submit').on('click', function(){
+        
+        $('#submitForm').submit()
+        /*
         // clear previous validation
         $('.is-invalid').removeClass("is-invalid")
         let checked = true
@@ -192,16 +203,19 @@
           checked = false
           $('.g-recaptcha').addClass("is-invalid");
         }
-
+        
         if (checked) {
           $('#submitForm').submit()
         }
+        */
       })
         
     );
     
     window.file_list = {}
     window.file_index = 0
+    window.f_data = new FormData()
+
     $('#upload-btn').click(function(){ $('#f-upload').trigger('click'); });
     $("#f-upload").change(function(){
       let f
@@ -209,14 +223,22 @@
         window.file_index += 1;
         f = this.files[i]
         if (f.size / 1024 / 1024 > 20){
-          $("#f-list").append(`<li class="f-label d-flex justify-content-between">${f.name} <span class="notice">檔案過大，已移除 <span class="f-remove-lg" style="">x</span></span></li>`)
+          $("#f-list").append(`<li class="d-flex align-items-center mb-2"><p class="f-label">${f.name}</p> <span class="notice ms-2">檔案過大，已移除 <span class="f-remove-lg" style="">x</span></span></li>`)
         } else {
-          window.file_list[window.file_index] = {'file': f}
-        $("#f-list").append(`<li class="f-label d-flex justify-content-between">${f.name} <span data-index="${window.file_index}" class="f-remove" style=""> x</span></li>`)
+          $("#f-list").append(`<li class="d-flex align-items-center mb-2"><p class="f-label">${f.name}</p> <span data-index="${window.file_index}" class="f-remove ms-2" style=""> x</span></li>`)
+          var file = $('#f-upload').get(0).files[i]
+          window.file_list[window.file_index] = {'file': file}
+          window.f_data.append("uploaded_file", file, file.name);  
         }
       }
-      $('.f-remove').on('click', function(){
+      $('.f-remove').on('click', function(){        
         delete window.file_list[$(this).data('index')]
+        // delete from FormData
+        window.f_data.delete('uploaded_file')
+        // re-append to FormData
+        Object.entries(window.file_list).forEach(([k,v]) => {
+          window.f_data.append("uploaded_file", v['file'], v['file'].name);  
+        })
         $(this).parent().remove()
       })
       $('.f-remove-lg').on('click', function(){

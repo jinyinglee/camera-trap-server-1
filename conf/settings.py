@@ -75,6 +75,9 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'conf.urls'
 
+
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
