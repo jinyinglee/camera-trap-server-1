@@ -40,13 +40,19 @@ def contact_us(request):
 
 
 def feedback_request(request):
+    # print(print(request.POST))
+    # https://stackoverflow.com/questions/38345977/filefield-force-using-temporaryuploadedfile
+    print(request.POST)
     try:
+        # print(request.POST)
         q_detail_type = request.POST.getlist('q-detail-type')
         q_detail_type = ','.join(q_detail_type)
         description = request.POST.get('description')
         email = request.POST.get('email')
+        # user = '1'
         user = email.split('@')[0]
         files = request.FILES.getlist('uploaded_file')
+        # print(request.FILES.getlist('uploaded_file'))
 
         # send email
         html_content = f"""
@@ -70,21 +76,25 @@ def feedback_request(request):
 
         msg = EmailMessage(subject, html_content, 'Camera Trap <no-reply@camera-trap.tw>', [settings.CT_SERVICE_EMAIL])
         msg.content_subtype = "html"  # Main content is now text/html
-        # save files to temporary dir
-        # 改成在背景執行，避免附件檔案過大
+        # # save files to temporary dir
         for f in files:
-            # print(f.name)
+            print(f.name)
             fs = FileSystemStorage()
             filename = fs.save(f'email-attachment/{user}_' + f.name, f)
             msg.attach_file(os.path.join('/ct22-volumes/media', filename))
-        msg.send()
+
+        # 改成背景執行
+        task = threading.Thread(target=send_msg, args=(msg,))
+        # task.daemon = True
+        task.start()
 
         return JsonResponse({"status": 'success'}, safe=False)
     except:
         return JsonResponse({"status": 'fail'}, safe=False)
 
 
-
+def send_msg(msg):
+    msg.send()
 
 
 def policy(request):
