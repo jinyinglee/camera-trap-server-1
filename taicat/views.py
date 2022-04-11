@@ -805,6 +805,8 @@ def data(request):
 
         for i in df.index:
             file_url = df.file_url[i]
+            # 嘉大助理test
+            s3_bucket = 'camera-trap-21-prod' if df.memo[i] == '2022-pt-data' else s3_bucket
             if not file_url and not df.from_mongo[i]:
                 file_url = f"{df.image_id[i]}-m.jpg"
             extension = file_url.split('.')[-1].lower()
