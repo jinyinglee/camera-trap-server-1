@@ -753,7 +753,7 @@ def data(request):
     with connection.cursor() as cursor:
         query = """SELECT id, studyarea_id, deployment_id, filename, species,
                         life_stage, sex, antler, animal_id, remarks, file_url, image_uuid, from_mongo,
-                        to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime
+                        to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, memo
                         FROM taicat_image
                         WHERE project_id = {} {} {} {} {} {}
                         ORDER BY created DESC, project_id ASC
@@ -765,7 +765,7 @@ def data(request):
     if image_info:
 
         df = pd.DataFrame(image_info, columns=['image_id', 'studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
-                                               'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime'])[:int(_length)]
+                                               'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime', 'memo'])[:int(_length)]
         print('b', time.time()-t)
         sa_names = pd.DataFrame(StudyArea.objects.filter(id__in=df.studyarea_id.unique()).values('id', 'name', 'parent_id')
                                 ).rename(columns={'id': 'studyarea_id', 'name': 'saname', 'parent_id': 'saparent'})
