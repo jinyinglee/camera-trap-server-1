@@ -83,8 +83,7 @@ class Project(models.Model):
     end_date = models.DateField('計畫時間-結束', null=True, blank=True)
 
     # Project People
-    executive_unit = models.CharField(
-        '執行單位', max_length=100, blank=True, null=True)
+    executive_unit = models.CharField('執行單位', max_length=100, blank=True, null=True)
     code = models.CharField('計畫編號', max_length=100, blank=True, null=True)
     principal_investigator = models.CharField('計畫主持人', max_length=1000, blank=True, null=True)
     funding_agency = models.CharField('委辦單位', max_length=100, blank=True, null=True)
@@ -271,7 +270,7 @@ class Image(models.Model):
     species = models.CharField(max_length=1000, null=True, default='', blank=True, db_index=True)
     #taxon = models
     sequence = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)  # imageid
-    sequence_definition = models.CharField(max_length=1000, default='', blank=True)
+    sequence_definition = models.CharField(max_length=1000, default='', null=True, blank=True)
     life_stage = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
     sex = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
     antler = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
@@ -365,7 +364,8 @@ class DeletedImage(models.Model):
 
 class Image_info(models.Model):
     # image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True)
-    image_uuid = models.CharField(max_length=1000, default='', primary_key=True)
+    id = models.BigAutoField(primary_key=True)
+    image_uuid = models.CharField(max_length=1000, default='')
     source_data = models.JSONField(default=dict, blank=True)
     exif = models.JSONField(default=dict, blank=True)
 
