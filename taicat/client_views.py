@@ -78,31 +78,47 @@ def post_image_annotation(request):
             utc_tz = pytz.timezone(settings.TIME_ZONE)
 
             for i in data['image_list']:
+                img_info_payload = None
                 # prevent json load error
                 exif_str = i[9].replace('\\u0000', '') if i[9] else '{}'
                 exif = json.loads(exif_str)
                 anno = json.loads(i[7]) if i[7] else '{}'
                 if i[11]:
+                    is_new_image = False
                     img = Image.objects.get(pk=i[11])
                     # only update annotation
                     img.annotation = anno
+                    img.last_updated = datetime.now()
                 else:
                     img = Image(
                         deployment_id=deployment.id,
                         filename=i[2],
                         datetime=datetime.fromtimestamp(i[3], utc_tz),
-                        source_data=i,
+                        # source_data=i,
                         image_hash=i[6],
                         annotation=anno,
                         memo=data['key'],
-                        exif=exif,
+                        # exif=exif,
                     )
+                    img_info_payload = {
+                        'source_data': i,
+                        'exif': exif,
+                    }
                     if pid := deployment.project_id:
                         img.project_id = pid
                     if said := deployment.study_area_id:
                         img.studyarea_id = said
                 img.save()
                 res[i[0]] = img.id
+
+                if img_info_payload != None:
+                    # seperate image_info
+                    img_info = ImageInfo(
+                        image_id=img.id,
+                        source_data=img_info_payload['source_data'],
+                        exif=img_info_payload['exif'],
+                    )
+                    img_info.save()
 
             ret['saved_image_ids'] = res
         else:
