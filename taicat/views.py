@@ -14,13 +14,12 @@ from django.db.models.functions import Trunc, ExtractYear
 from django.contrib import messages
 from django.core import serializers
 import pandas as pd
-from django.utils.http import urlquote
 from decimal import Decimal
 from django.core.mail import EmailMessage
 from django.contrib.sites.shortcuts import get_current_site
 from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
-from django.utils.encoding import force_bytes, force_str, force_text, DjangoUnicodeDecodeError
+#from django.utils.encoding import force_bytes, force_str, force_text, DjangoUnicodeDecodeError
 from base.utils import generate_token
 from django.conf import settings
 import threading

@@ -17,7 +17,8 @@ from django.conf import settings
 from taicat.models import (
     Image,
     Project,
-    Deployment
+    Deployment,
+    Image_info,
 )
 
 def index(request):

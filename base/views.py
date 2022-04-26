@@ -5,7 +5,6 @@ from django.db import connection
 from taicat.models import Deployment, HomePageStat, Image, Contact, Organization, Project, Species
 from django.db.models import Count, Window, F, Sum, Min, Q, Max
 from django.db.models.functions import ExtractYear
-from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.template import loader
 import requests
 from django.contrib import messages

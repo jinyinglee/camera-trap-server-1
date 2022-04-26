@@ -14,8 +14,8 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
-from django.conf.urls import url
+from django.urls import path, include, re_path
+#from django.conf.urls import url
 from conf import settings
 from django.views.static import serve
 
@@ -25,7 +25,7 @@ urlpatterns = [
     path('', include('base.urls')),
     path('', include('taicat.urls')),
     path('api/client/v1/', include('taicat.client_urls')),
-    url(r'^media/(?P<path>.*)$', serve, {
+    re_path(r'^media/(?P<path>.*)$', serve, {
         'document_root': settings.MEDIA_ROOT,
     }),
 ]
