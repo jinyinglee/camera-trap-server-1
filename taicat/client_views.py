@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 import pytz
+from bson.objectid import ObjectId
 
 from django.shortcuts import render
 from django.http import (
@@ -90,31 +91,34 @@ def post_image_annotation(request):
                     img.annotation = anno
                     img.last_updated = datetime.now()
                 else:
+                    image_uuid = str(ObjectId())
                     img = Image(
                         deployment_id=deployment.id,
                         filename=i[2],
                         datetime=datetime.fromtimestamp(i[3], utc_tz),
-                        # source_data=i,
                         image_hash=i[6],
                         annotation=anno,
                         memo=data['key'],
-                        # exif=exif,
+                        image_uuid=image_uuid,
+                        has_storage='N'
                     )
                     img_info_payload = {
                         'source_data': i,
                         'exif': exif,
+                        'image_uuid': image_uuid
                     }
                     if pid := deployment.project_id:
                         img.project_id = pid
                     if said := deployment.study_area_id:
                         img.studyarea_id = said
+
                 img.save()
-                res[i[0]] = img.id
+                res[i[0]] = [img.id, img.image_uuid]
 
                 if img_info_payload != None:
                     # seperate image_info
-                    img_info = ImageInfo(
-                        image_id=img.id,
+                    img_info = Image_info(
+                        image_uuid=img_info_payload['image_uuid'],
                         source_data=img_info_payload['source_data'],
                         exif=img_info_payload['exif'],
                     )
@@ -134,9 +138,9 @@ def update_image(request):
         if pk := data['pk']:
             image = Image.objects.get(pk=pk)
             if image:
-                for i in data:
-                    if i == 'file_url':
-                        image.file_url = data[i]
+                # limited update field
+                if has_storage := data.get('has_storage', ''):
+                    image.has_storage = has_storage
                 image.save()
         res = {
             'text': 'update-image'

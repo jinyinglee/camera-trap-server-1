@@ -286,7 +286,7 @@ class Image(models.Model):
     from_mongo = models.BooleanField(default=False, blank=True)
     # file_path = models.TextField(default='', blank=True)  # deprecated
     image_uuid = models.CharField(max_length=1000, default='', blank=True, null=True, db_index=True)
-
+    has_storage = models.CharField('實體檔案(有無上傳)', max_length=2, default='Y', blank=True) # Y/N or 如果之後有其他種狀況, 如: 存在別的圖台?
     source_data = models.JSONField(default=dict, blank=True)
     exif = models.JSONField(default=dict, blank=True)
     folder_name = models.CharField(max_length=1000, default='', blank=True, db_index=True)
@@ -349,7 +349,6 @@ class DeletedImage(models.Model):
     image_hash = models.TextField(default='', blank=True)
     from_mongo = models.BooleanField(default=False, blank=True)
     image_uuid = models.CharField(max_length=1000, default='', blank=True, null=True, db_index=True)
-
     source_data = models.JSONField(default=dict, blank=True)
     exif = models.JSONField(default=dict, blank=True)
     folder_name = models.CharField(max_length=1000, default='', blank=True, db_index=True)
@@ -395,6 +394,21 @@ class ProjectSpecies(models.Model):
 
 
 class DeploymentJournal(models.Model):
+    GAP_CHOICES = (
+        '道路中斷 / 路況不佳無法回收',
+        '相機遭竊',
+        '相機遭刻意破壞',
+        '樣點暫時撤除',
+        '樣點永久撤除',
+        '樣點尚未架設',
+        '樣點剛架設尚未回收資料',
+        '相機故障',
+        '記憶卡故障',
+        '記憶卡遺失',
+        '電池沒電',
+        '其他(自由填寫)',
+    )
+
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
     deployment = models.ForeignKey(
         Deployment, on_delete=models.SET_NULL, null=True)
@@ -404,6 +418,8 @@ class DeploymentJournal(models.Model):
     working_end = models.DateTimeField(null=True, blank=True)
     working_unformat = models.CharField(max_length=1000, null=True, blank=True)
     is_effective = models.BooleanField('是否有效', default=True)
+    is_gap = models.BooleanField('缺失記錄', default=False)
+    gap_caused = models.CharField(max_length=1000, null=True, blank=True)
 
 
 class DeploymentStat(models.Model):

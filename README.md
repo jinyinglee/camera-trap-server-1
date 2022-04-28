@@ -1,6 +1,7 @@
 # CameraTrap 2021
 
-- `docker-compose.yml`: yml file for development 
+- `docker-compose.yml`: yml file for development
+- `docker-compose-initdb.yml`: yml file for development (start from xxx.sql.gz dump file)
 - `production.yml` yml file for for production
 - `Makefile` for command shortcuts
 
