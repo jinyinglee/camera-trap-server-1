@@ -19,7 +19,9 @@ from taicat.models import (
     Image,
     Project,
     Deployment,
+    DeploymentJournal,
     Image_info,
+
 )
 
 def index(request):
@@ -78,6 +80,48 @@ def post_image_annotation(request):
             # aware datetime object
             utc_tz = pytz.timezone(settings.TIME_ZONE)
 
+            # find if is specific_bucket
+            bucket_name = data.get('bucket_name', '')
+            specific_bucket = ''
+            if bucket_name != settings.AWS_S3_BUCKET:
+                specific_bucket = bucket_name
+
+            folder_name = ''
+            deployment_journal_id = ''
+            # create or update DeploymentJournal
+            if data.get('trip_start') and data.get('trip_end') and data.get('folder_name') and data.get('source_id'):
+                folder_name = data['folder_name']
+                dj_exist = DeploymentJournal.objects.filter(
+                    deployment=deployment,
+                    folder_name=folder_name,
+                    local_source_id=data['source_id']).first()
+
+                if dj_exist:
+                    is_modified = False
+                    if data['trip_start'] != dj_exist.working_start:
+                        dj_exist.working_start = data['trip_start']
+                        is_modified = True
+                    if data['trip_end'] != dj_exist.working_end:
+                        dj_exist.working_end = data['trip_end']
+                        is_modified = True
+
+                    if is_modified:
+                        dj_exist.save()
+                    deployment_journal_id = dj_exist.id
+
+                else:
+                    dj_new = DeploymentJournal(
+                        deployment_id=deployment.id,
+                        project=deployment.project,
+                        studyarea=deployment.study_area,
+                        working_start=data['trip_start'],
+                        working_end=data['trip_end'],
+                        folder_name=data['folder_name'],
+                        local_source_id=data['source_id'])
+
+                    dj_new.save()
+                    deployment_journal_id = dj_new.id
+
             for i in data['image_list']:
                 img_info_payload = None
                 # prevent json load error
@@ -100,8 +144,15 @@ def post_image_annotation(request):
                         annotation=anno,
                         memo=data['key'],
                         image_uuid=image_uuid,
-                        has_storage='N'
+                        has_storage='N',
+                        folder_name=folder_name,
                     )
+
+                    if deployment_journal_id != '':
+                        img.deployment_journal_id = deployment_journal_id
+                    if specific_bucket != '':
+                        img.specific_bucket = specific_bucket
+
                     img_info_payload = {
                         'source_data': i,
                         'exif': exif,

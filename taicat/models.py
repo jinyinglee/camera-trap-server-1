@@ -4,7 +4,7 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 from django.contrib.postgres.indexes import GinIndex
-
+from django.conf import settings
 
 class Species(models.Model):
     DEFAULT_LIST = ['水鹿', '山羌', '獼猴', '山羊', '野豬', '鼬獾', '白鼻心', '食蟹獴', '松鼠',
@@ -290,6 +290,14 @@ class Image(models.Model):
     source_data = models.JSONField(default=dict, blank=True)
     exif = models.JSONField(default=dict, blank=True)
     folder_name = models.CharField(max_length=1000, default='', blank=True, db_index=True)
+    specific_bucket = models.CharField(max_length=1000, default='', blank=True) # 跟預設不同的 bucket
+    deployment_journal = models.ForeignKey('DeploymentJournal', on_delete=models.SET_NULL, null=True, blank=True) # 知道是那次上傳的
+
+    def get_associated_media(self, thumbnail='m'):
+        bucket_name = settings.AWS_S3_BUCKET
+        if self.specific_bucket:
+            bucket_name = specific_bucket
+        return f'https://{bucket_name}.s3.ap-northeast-1.amazonaws.com/{self.image_uuid}-{thumbnail}.jpg'
 
     @property
     def species_list(self):
@@ -362,6 +370,10 @@ class DeletedImage(models.Model):
 
 
 class Image_info(models.Model):
+    '''
+    手動加上 primary key id:
+    ALTER TABLE taicat_image_info ADD COLUMN id SERIAL PRIMARY KEY;
+    '''
     # image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True)
     id = models.BigAutoField(primary_key=True)
     image_uuid = models.CharField(max_length=1000, default='')
@@ -420,7 +432,8 @@ class DeploymentJournal(models.Model):
     is_effective = models.BooleanField('是否有效', default=True)
     is_gap = models.BooleanField('缺失記錄', default=False)
     gap_caused = models.CharField(max_length=1000, null=True, blank=True)
-
+    folder_name = models.CharField(max_length=1000, null=True, blank=True, default='')
+    local_source_id = models.CharField(max_length=1000, null=True, blank=True, default='') # client local database (sqlite)'s folder id, 用來檢查是否上傳過
 
 class DeploymentStat(models.Model):
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
