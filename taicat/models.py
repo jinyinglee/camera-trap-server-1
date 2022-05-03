@@ -290,6 +290,7 @@ class Image(models.Model):
     source_data = models.JSONField(default=dict, blank=True)
     exif = models.JSONField(default=dict, blank=True)
     folder_name = models.CharField(max_length=1000, default='', blank=True, db_index=True)
+    specific_bucket = models.CharField(max_length=1000, default='', blank=True)
 
     @property
     def species_list(self):
@@ -362,6 +363,10 @@ class DeletedImage(models.Model):
 
 
 class Image_info(models.Model):
+    '''
+    手動加上 primary key id:
+    ALTER TABLE taicat_image_info ADD COLUMN id SERIAL PRIMARY KEY;
+    '''
     # image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True)
     id = models.BigAutoField(primary_key=True)
     image_uuid = models.CharField(max_length=1000, default='')
