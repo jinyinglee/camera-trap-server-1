@@ -36,6 +36,7 @@ from calendar import monthrange, monthcalendar
 from .utils import (
     Calculation,
     find_deployment_working_day,
+    get_my_project_list
 )
 import collections
 from operator import itemgetter
@@ -511,24 +512,8 @@ def project_overview(request):
     # my project
     my_project = []
     my_species_data = []
-    my_project_list = []
     if member_id := request.session.get('id', None):
-        # 1. select from project_member table
-        with connection.cursor() as cursor:
-            query = "SELECT project_id FROM taicat_projectmember where member_id ={}"
-            cursor.execute(query.format(member_id))
-            temp = cursor.fetchall()
-            for i in temp:
-                if i[0]:
-                    my_project_list += [i[0]]
-        # 2. check if the user is organization admin
-        if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
-        if if_organization_admin:
-            organization_id = if_organization_admin.values('organization').first()['organization']
-            temp = Organization.objects.filter(id=organization_id).values('projects')
-            for i in temp:
-                my_project_list += [i['projects']]
-        if my_project_list:
+        if my_project_list := get_my_project_list(member_id):
             my_project, my_species_data = get_project_info(str(my_project_list).replace('[', '(').replace(']', ')'))
     return render(request, 'project/project_overview.html', {'public_project': public_project, 'my_project': my_project, 'is_authorized_create': is_authorized_create,
                                                              'public_species_data': public_species_data, 'my_species_data': my_species_data})
@@ -549,25 +534,9 @@ def update_datatable(request):
             project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=public_project_list).order_by('project_id').distinct('project_id')
             project_list = list(project_list.values_list('project_id', flat=True))
         else:
-            my_project_list = []
             member_id = request.session.get('id', None)
-            if member_id:
-                # 1. select from project_member table
-                with connection.cursor() as cursor:
-                    query = "SELECT project_id FROM taicat_projectmember where member_id ={}"
-                    cursor.execute(query.format(member_id))
-                    temp = cursor.fetchall()
-                    for i in temp:
-                        my_project_list += [i[0]]
-                # 2. check if the user is organization admin
-                if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
-                if if_organization_admin:
-                    organization_id = if_organization_admin.values('organization').first()['organization']
-                    temp = Organization.objects.filter(id=organization_id).values('projects')
-                    for i in temp:
-                        my_project_list += [i['projects']]
-                # check species
-                if my_project_list:
+            if member_id := request.session.get('id', None):
+                if my_project_list := get_my_project_list(member_id): 
                     with connection.cursor() as cursor:
                         project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=my_project_list).order_by('project_id').distinct('project_id')
                         project_list = list(project_list.values_list('project_id', flat=True))
@@ -802,10 +771,11 @@ def data(request):
         s3_bucket = 'camera-trap-21-prod'
 
         for i in df.index:
-            # file_url = df.file_url[i]
-            # if not file_url and not df.from_mongo[i]:
-            #     file_url = f"{df.image_uuid[i]}-m.jpg"
-            file_url = f"{df.image_uuid[i]}-m.jpg" if df.memo[i] != '2022-pt-data' else f"{df.image_id[i]}-m.jpg"
+            file_url = df.file_url[i]
+            if df.memo[i] == '2022-pt-data':
+                file_url = f"{df.image_id[i]}-m.jpg"
+            elif not file_url and not df.from_mongo[i]:
+                file_url = f"{df.image_uuid[i]}-m.jpg"
             extension = file_url.split('.')[-1].lower()
             file_url = file_url[:-len(extension)]+extension
             # print(file_url)
