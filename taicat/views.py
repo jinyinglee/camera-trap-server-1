@@ -36,25 +36,22 @@ from calendar import monthrange, monthcalendar
 from .utils import (
     Calculation,
     find_deployment_working_day,
+    get_my_project_list
 )
 import collections
 from operator import itemgetter
 from dateutil import parser
 from django.test.utils import CaptureQueriesContext
 
-s3_bucket = env('S3_BUCKET', default='camera-trap-21-prod')
-
 
 def delete_data(request, pk):
     if request.method == "POST":
         now = timezone.now()
         image_list = request.POST.getlist('image_id[]')
-        print(image_list)
         image_objects = Image.objects.filter(id__in=image_list)
         # species的資料先用id抓回來計算再扣掉
         query = image_objects.values('species').annotate(total=Count('species')).order_by('-total')
         for q in query:
-            print(q['species'], q['total'])
             # taicat_species
             if sp := Species.objects.filter(name=q['species']).first():
                 if sp.count == q['total']:
@@ -511,24 +508,8 @@ def project_overview(request):
     # my project
     my_project = []
     my_species_data = []
-    my_project_list = []
     if member_id := request.session.get('id', None):
-        # 1. select from project_member table
-        with connection.cursor() as cursor:
-            query = "SELECT project_id FROM taicat_projectmember where member_id ={}"
-            cursor.execute(query.format(member_id))
-            temp = cursor.fetchall()
-            for i in temp:
-                if i[0]:
-                    my_project_list += [i[0]]
-        # 2. check if the user is organization admin
-        if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
-        if if_organization_admin:
-            organization_id = if_organization_admin.values('organization').first()['organization']
-            temp = Organization.objects.filter(id=organization_id).values('projects')
-            for i in temp:
-                my_project_list += [i['projects']]
-        if my_project_list:
+        if my_project_list := get_my_project_list(member_id):
             my_project, my_species_data = get_project_info(str(my_project_list).replace('[', '(').replace(']', ')'))
     return render(request, 'project/project_overview.html', {'public_project': public_project, 'my_project': my_project, 'is_authorized_create': is_authorized_create,
                                                              'public_species_data': public_species_data, 'my_species_data': my_species_data})
@@ -549,25 +530,9 @@ def update_datatable(request):
             project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=public_project_list).order_by('project_id').distinct('project_id')
             project_list = list(project_list.values_list('project_id', flat=True))
         else:
-            my_project_list = []
             member_id = request.session.get('id', None)
-            if member_id:
-                # 1. select from project_member table
-                with connection.cursor() as cursor:
-                    query = "SELECT project_id FROM taicat_projectmember where member_id ={}"
-                    cursor.execute(query.format(member_id))
-                    temp = cursor.fetchall()
-                    for i in temp:
-                        my_project_list += [i[0]]
-                # 2. check if the user is organization admin
-                if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
-                if if_organization_admin:
-                    organization_id = if_organization_admin.values('organization').first()['organization']
-                    temp = Organization.objects.filter(id=organization_id).values('projects')
-                    for i in temp:
-                        my_project_list += [i['projects']]
-                # check species
-                if my_project_list:
+            if member_id := request.session.get('id', None):
+                if my_project_list := get_my_project_list(member_id): 
                     with connection.cursor() as cursor:
                         project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=my_project_list).order_by('project_id').distinct('project_id')
                         project_list = list(project_list.values_list('project_id', flat=True))
@@ -650,7 +615,7 @@ def project_detail(request, pk):
         query = Image.objects.exclude(folder_name='').filter(last_updated__gte=last_updated, project_id=pk).order_by('folder_name').distinct('folder_name').values('folder_name')
         for q in query:
             f_last_updated = Image.objects.filter(last_updated__gte=last_updated, project_id=pk, folder_name=q['folder_name']).aggregate(Max('last_updated'))['last_updated__max']
-            if img_f := ImageFolder.objects.filter(name=q['folder_name'], project_id=pk).first():
+            if img_f := ImageFolder.objects.filter(folder_name=q['folder_name'], project_id=pk).first():
                 img_f.folder_last_updated = f_last_updated
                 img_f.last_updated = now
                 img_f.save()
@@ -752,7 +717,7 @@ def data(request):
     with connection.cursor() as cursor:
         query = """SELECT id, studyarea_id, deployment_id, filename, species,
                         life_stage, sex, antler, animal_id, remarks, file_url, image_uuid, from_mongo,
-                        to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, memo
+                        to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, memo, specific_bucket
                         FROM taicat_image
                         WHERE project_id = {} {} {} {} {} {}
                         ORDER BY created DESC, project_id ASC
@@ -764,7 +729,7 @@ def data(request):
     if image_info:
 
         df = pd.DataFrame(image_info, columns=['image_id', 'studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
-                                               'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime', 'memo'])[:int(_length)]
+                                               'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime', 'memo', 'specific_bucket'])[:int(_length)]
         # print('b', time.time()-t)
         sa_names = pd.DataFrame(StudyArea.objects.filter(id__in=df.studyarea_id.unique()).values('id', 'name', 'parent_id')
                                 ).rename(columns={'id': 'studyarea_id', 'name': 'saname', 'parent_id': 'saparent'})
@@ -798,17 +763,20 @@ def data(request):
                 except:
                     pass
         # print('d', time.time()-t)
-
-        s3_bucket = 'camera-trap-21-prod'
+        s3_bucket = settings.AWS_S3_BUCKET
 
         for i in df.index:
-            # file_url = df.file_url[i]
-            # if not file_url and not df.from_mongo[i]:
-            #     file_url = f"{df.image_uuid[i]}-m.jpg"
-            file_url = f"{df.image_uuid[i]}-m.jpg" if df.memo[i] != '2022-pt-data' else f"{df.image_id[i]}-m.jpg"
+            file_url = df.file_url[i]
+            if df.memo[i] == '2022-pt-data':
+                file_url = f"{df.image_id[i]}-m.jpg"
+            elif not file_url and not df.from_mongo[i]:
+                file_url = f"{df.image_uuid[i]}-m.jpg"
             extension = file_url.split('.')[-1].lower()
             file_url = file_url[:-len(extension)]+extension
             # print(file_url)
+            if df.specific_bucket[i]:
+                s3_bucket = df.specific_bucket[i]
+
             if not df.from_mongo[i]:
                 # new data - image
                 if extension in ['jpg', '']:

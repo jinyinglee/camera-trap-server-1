@@ -1,7 +1,7 @@
 from taicat.models import *
 from django.db import connection
 from django.utils import timezone
-from django.db.models import Count
+from django.db.models import Count, Max
 import pandas as pd
 
 # ---------- HOMEPAGE STAT ---------- #
@@ -134,3 +134,19 @@ for p in Project.objects.all().values('id'):
 
 # delete count = 0
 ProjectSpecies.objects.filter(count=0).delete()
+
+# ---------- IMAGE FOLDER ------------ #
+for p in Project.objects.all().values('id'):
+    query = Image.objects.exclude(folder_name='').filter(project_id=p).order_by('folder_name').distinct('folder_name').values('folder_name')
+    for q in query:
+        f_last_updated = Image.objects.filter(project_id=p, folder_name=q['folder_name']).aggregate(Max('last_updated'))['last_updated__max']
+        if img_f := ImageFolder.objects.filter(folder_name=q['folder_name'], project_id=p).first():
+            img_f.folder_last_updated = f_last_updated
+            img_f.last_updated = now
+            img_f.save()
+        else:
+            img_f = ImageFolder(
+                folder_name=q['folder_name'],
+                folder_last_updated=f_last_updated,
+                project_id=p)
+            img_f.save()
