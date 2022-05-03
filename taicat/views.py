@@ -43,19 +43,15 @@ from operator import itemgetter
 from dateutil import parser
 from django.test.utils import CaptureQueriesContext
 
-s3_bucket = env('S3_BUCKET', default='camera-trap-21-prod')
-
 
 def delete_data(request, pk):
     if request.method == "POST":
         now = timezone.now()
         image_list = request.POST.getlist('image_id[]')
-        print(image_list)
         image_objects = Image.objects.filter(id__in=image_list)
         # species的資料先用id抓回來計算再扣掉
         query = image_objects.values('species').annotate(total=Count('species')).order_by('-total')
         for q in query:
-            print(q['species'], q['total'])
             # taicat_species
             if sp := Species.objects.filter(name=q['species']).first():
                 if sp.count == q['total']:
@@ -721,7 +717,7 @@ def data(request):
     with connection.cursor() as cursor:
         query = """SELECT id, studyarea_id, deployment_id, filename, species,
                         life_stage, sex, antler, animal_id, remarks, file_url, image_uuid, from_mongo,
-                        to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, memo
+                        to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, memo, specific_bucket
                         FROM taicat_image
                         WHERE project_id = {} {} {} {} {} {}
                         ORDER BY created DESC, project_id ASC
@@ -733,7 +729,7 @@ def data(request):
     if image_info:
 
         df = pd.DataFrame(image_info, columns=['image_id', 'studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
-                                               'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime', 'memo'])[:int(_length)]
+                                               'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime', 'memo', 'specific_bucket'])[:int(_length)]
         # print('b', time.time()-t)
         sa_names = pd.DataFrame(StudyArea.objects.filter(id__in=df.studyarea_id.unique()).values('id', 'name', 'parent_id')
                                 ).rename(columns={'id': 'studyarea_id', 'name': 'saname', 'parent_id': 'saparent'})
@@ -767,8 +763,7 @@ def data(request):
                 except:
                     pass
         # print('d', time.time()-t)
-
-        s3_bucket = 'camera-trap-21-prod'
+        s3_bucket = settings.AWS_S3_BUCKET
 
         for i in df.index:
             file_url = df.file_url[i]
@@ -779,6 +774,9 @@ def data(request):
             extension = file_url.split('.')[-1].lower()
             file_url = file_url[:-len(extension)]+extension
             # print(file_url)
+            if df.specific_bucket[i]:
+                s3_bucket = df.specific_bucket[i]
+
             if not df.from_mongo[i]:
                 # new data - image
                 if extension in ['jpg', '']:
