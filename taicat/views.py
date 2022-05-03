@@ -619,7 +619,7 @@ def project_detail(request, pk):
         query = Image.objects.exclude(folder_name='').filter(last_updated__gte=last_updated, project_id=pk).order_by('folder_name').distinct('folder_name').values('folder_name')
         for q in query:
             f_last_updated = Image.objects.filter(last_updated__gte=last_updated, project_id=pk, folder_name=q['folder_name']).aggregate(Max('last_updated'))['last_updated__max']
-            if img_f := ImageFolder.objects.filter(name=q['folder_name'], project_id=pk).first():
+            if img_f := ImageFolder.objects.filter(folder_name=q['folder_name'], project_id=pk).first():
                 img_f.folder_last_updated = f_last_updated
                 img_f.last_updated = now
                 img_f.save()
