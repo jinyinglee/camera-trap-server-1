@@ -802,9 +802,10 @@ def data(request):
         s3_bucket = 'camera-trap-21-prod'
 
         for i in df.index:
-            file_url = df.file_url[i]
-            if not file_url and not df.from_mongo[i]:
-                file_url = f"{df.image_id[i]}-m.jpg"
+            # file_url = df.file_url[i]
+            # if not file_url and not df.from_mongo[i]:
+            #     file_url = f"{df.image_uuid[i]}-m.jpg"
+            file_url = f"{df.image_uuid[i]}-m.jpg" if df.memo[i] != '2022-pt-data' else f"{df.image_id[i]}-m.jpg"
             extension = file_url.split('.')[-1].lower()
             file_url = file_url[:-len(extension)]+extension
             # print(file_url)
