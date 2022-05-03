@@ -68,9 +68,14 @@ for i in project_info.index:
     earliest_date = None
     image_objects = Image.objects.filter(project_id=project_info.loc[i, 'id'])
     if image_objects.exists():
-        latest_date = image_objects.latest('datetime').datetime
-        earliest_date = image_objects.earliest('datetime').datetime
+        query = f"select min(datetime), max(datetime) from taicat_image where project_id={project_info.loc[i, 'id']};"
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            dates = cursor.fetchall()
+        latest_date = dates[0][1]
+        earliest_date = dates[0][0]
     if ps := ProjectStat.objects.filter(project_id=project_info.loc[i, 'id']).first():
+        ps = ProjectStat.objects.filter(project_id=288).first()
         ps.num_sa = project_info.loc[i, 'num_studyarea']
         ps.num_deployment = project_info.loc[i, 'num_deployment']
         ps.num_data = project_info.loc[i, 'num_data']

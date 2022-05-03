@@ -760,12 +760,12 @@ def data(request):
         # set limit = 1000 to avoid bad psql query plan
         cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, 1000, _start))
         image_info = cursor.fetchall()
-        print(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, 1000, _start))
+        # print(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, 1000, _start))
     if image_info:
 
         df = pd.DataFrame(image_info, columns=['image_id', 'studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
                                                'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime', 'memo'])[:int(_length)]
-        print('b', time.time()-t)
+        # print('b', time.time()-t)
         sa_names = pd.DataFrame(StudyArea.objects.filter(id__in=df.studyarea_id.unique()).values('id', 'name', 'parent_id')
                                 ).rename(columns={'id': 'studyarea_id', 'name': 'saname', 'parent_id': 'saparent'})
         d_names = pd.DataFrame(Deployment.objects.filter(id__in=df.deployment_id.unique()).values('id', 'name')).rename(columns={'id': 'deployment_id', 'name': 'dname'})
@@ -779,7 +779,7 @@ def data(request):
             count = cursor.fetchone()
         recordsTotal = count[0]
 
-        print('c-1', time.time()-t)
+        # print('c-1', time.time()-t)
         recordsFiltered = recordsTotal
 
         start = int(_start)
@@ -797,15 +797,12 @@ def data(request):
                     df.loc[i, 'saname'] = f"{parent_saname}_{current_name}"
                 except:
                     pass
-        print('d', time.time()-t)
+        # print('d', time.time()-t)
 
-        # if 花蓮 test -> camera-trap-21-prod; else -> camera-trap-21
-        s3_bucket = 'camera-trap-21-prod' if pk == 330 else 'camera-trap-21'
+        s3_bucket = 'camera-trap-21-prod'
 
         for i in df.index:
             file_url = df.file_url[i]
-            # 嘉大助理test
-            s3_bucket = 'camera-trap-21-prod' if df.memo[i] == '2022-pt-data' else s3_bucket
             if not file_url and not df.from_mongo[i]:
                 file_url = f"{df.image_id[i]}-m.jpg"
             extension = file_url.split('.')[-1].lower()
@@ -839,7 +836,7 @@ def data(request):
                     </video>
                     """.format(file_url, file_url)
             ### videos: https://developer.mozilla.org/zh-CN/docs/Web/HTML/Element/video ##
-        print('e', time.time()-t)
+        # print('e', time.time()-t)
 
         df['edit'] = df.image_id.apply(lambda x: f"<input type='checkbox' class='edit-checkbox' name='edit' value='{x}'>")
 
