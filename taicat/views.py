@@ -42,6 +42,7 @@ import collections
 from operator import itemgetter
 from dateutil import parser
 from django.test.utils import CaptureQueriesContext
+from base.utils import DecimalEncoder
 
 
 def delete_data(request, pk):
@@ -172,12 +173,6 @@ def randomword(length):
     letters = string.ascii_lowercase
     return ''.join(random.choice(letters) for i in range(length))
 
-
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Decimal):
-            return float(obj)
-        return json.JSONEncoder.default(self, obj)
 
 
 city_list = ['基隆市', '嘉義市', '台北市', '嘉義縣', '新北市', '台南市',
