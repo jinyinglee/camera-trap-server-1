@@ -1,4 +1,4 @@
-{% extends 'base/base.html' %}  {% load static %} {% block title %} search {% endblock title %} {% block script %} {% if env == "dev" %}
+{% extends 'base/base.html' %}  {% load static %} {% load tag_library %} {% block title %} search {% endblock title %} {% block script %} {% if env == "dev" %}
 <script src="{% static 'js/search.dev.js' %}"></script>
 {% else %}
 <script src="/asset/js/search.min.js"></script>
