@@ -98,6 +98,16 @@ def get_notif(contact_id):
         </div>
         </div>
         """
+    if not results:
+        results = """
+        <div class="notification-item">
+        <div class="notification-item-content">
+            <div class="notification-item-message"> 
+            暫無通知
+            </div>
+        </div>
+        </div>
+        """
     return mark_safe(results)
 
 
