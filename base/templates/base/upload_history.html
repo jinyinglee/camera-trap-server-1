@@ -71,39 +71,45 @@
           </tr>
         </thead>
         <tbody>
-          {% for i in rows %}
-          <tr>
-            <td>{{ i.0 }}</td>
-            <td>{{ i.1 }}</td>
-            <td>{{ i.2 }}</td>
-            <td>{{ i.3 }}</td>
-            <td>{{ i.4 }}</td>
-            <td>{{ i.5 }}</td>
-            <td style="padding-right: 0px">
-              {% if i.6 == 'finished' %}
-              <div class="flex-center">
-                已完成 <img class="up-icon ms-1" src="{% static 'icon/upload-success.png' %}" />
+          {% if not rows %}
+            {% for i in rows %}
+            <tr>
+              <td>{{ i.0 }}</td>
+              <td>{{ i.1 }}</td>
+              <td>{{ i.2 }}</td>
+              <td>{{ i.3 }}</td>
+              <td>{{ i.4 }}</td>
+              <td>{{ i.5 }}</td>
+              <td style="padding-right: 0px">
+                {% if i.6 == 'finished' %}
+                <div class="flex-center">
+                  已完成 <img class="up-icon ms-1" src="{% static 'icon/upload-success.png' %}" />
+                  </div>
+                {% elif i.6 == 'unfinished' %}
+                <div class="flex-center">
+                  未完成 <img class="up-icon ms-1" src="{% static 'icon/upload-fail.png' %}" />
                 </div>
-              {% elif i.6 == 'unfinished' %}
-              <div class="flex-center">
-                未完成 <img class="up-icon ms-1" src="{% static 'icon/upload-fail.png' %}" />
-              </div>
-              <a class="link error" data-bs-toggle="modal" data-bs-target="#errorModal" onClick="setModal('{{ i.8 }}','{{ i.9 }}','{{ i.10 }}')">檢視錯誤</a>
-              {% elif i.6 == 'uploading' %}
-              <div class="flex-center">
-                上傳中 <img class="up-icon ms-1" src="{% static 'icon/upload-gray.png' %}" />
-              </div>
-              {% endif %}
-            </td>
-            <td style="padding-left: 10px">
-              {% if i.2 != '' %}
-                <a class="link" href="{% url 'project_detail' pk=i.7 %}?folder={{ i.2 }}" target="_blank">查看</a>
-              {% else %}
-                <a class="link" href="{% url 'project_detail' pk=i.7 %}" target="_blank">查看</a>
-              {% endif %}
-            </td>
+                <a class="link error" data-bs-toggle="modal" data-bs-target="#errorModal" onClick="setModal('{{ i.8 }}','{{ i.9 }}','{{ i.10 }}')">檢視錯誤</a>
+                {% elif i.6 == 'uploading' %}
+                <div class="flex-center">
+                  上傳中 <img class="up-icon ms-1" src="{% static 'icon/upload-gray.png' %}" />
+                </div>
+                {% endif %}
+              </td>
+              <td style="padding-left: 10px">
+                {% if i.2 != '' %}
+                  <a class="link" href="{% url 'project_detail' pk=i.7 %}?folder={{ i.2 }}" target="_blank">查看</a>
+                {% else %}
+                  <a class="link" href="{% url 'project_detail' pk=i.7 %}" target="_blank">查看</a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+          <tr>
+            <td colspan="8">暫無紀錄</td>
           </tr>
-          {% endfor %}
+          {% endif %}
         </tbody>
       </table>
     </div>
