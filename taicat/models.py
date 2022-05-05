@@ -422,10 +422,8 @@ class DeploymentJournal(models.Model):
     )
 
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
-    deployment = models.ForeignKey(
-        Deployment, on_delete=models.SET_NULL, null=True)
-    studyarea = models.ForeignKey(
-        StudyArea, on_delete=models.SET_NULL, null=True)
+    deployment = models.ForeignKey(Deployment, on_delete=models.SET_NULL, null=True)
+    studyarea = models.ForeignKey(StudyArea, on_delete=models.SET_NULL, null=True)
     working_start = models.DateTimeField(null=True, blank=True)
     working_end = models.DateTimeField(null=True, blank=True)
     working_unformat = models.CharField(max_length=1000, null=True, blank=True)

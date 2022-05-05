@@ -8,7 +8,6 @@ from django.db.models.functions import ExtractYear
 from django.template import loader
 import requests
 from django.contrib import messages
-from decimal import Decimal
 import time
 import pandas as pd
 from django.utils import timezone
@@ -21,13 +20,188 @@ from django.template.loader import render_to_string
 from django.core.mail import EmailMessage
 import threading
 from django.http import response, JsonResponse
+from .models import *
+from taicat.utils import get_my_project_list, get_project_member
+from django.db.models.functions import Trunc, TruncDate
+from .utils import DecimalEncoder
+from django.views.decorators.csrf import csrf_exempt
 
 
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Decimal):
-            return float(obj)
-        return json.JSONEncoder.default(self, obj)
+def update_is_read(request):
+    if request.method == 'GET':
+        if contact_id := request.session['id'] :
+            UploadNotification.objects.filter(contact_id=contact_id).update(is_read=True)
+    return JsonResponse({'data': 'success'}, safe=False) 
+
+
+@csrf_exempt
+def send_upload_notification(upload_history_id, member_list):
+    try:
+        email_list = []
+        email = Contact.objects.filter(id__in=member_list).values('email')
+        for e in email:
+            email_list += [e['email']]
+        email_list = ['r05b44018@g.ntu.edu.tw']
+        uh = UploadHistory.objects.filter(id=upload_history_id)
+        if uh[0].status == 'finished':
+            status = '已完成' 
+        elif uh[0].status ==  'unfinished':
+            status = '未完成' 
+        elif uh[0].status ==  'uploading':
+            status = '上傳中' 
+        # send email
+        html_content = f"""
+        您好：
+        <br>
+        <br>
+        以下為系統上傳活動的通知
+        <br>
+        <br>
+        <b>計畫：</b>{uh[0].deployment_journal.project.name}
+        <br>
+        <br>
+        <b>樣區：</b>{uh[0].deployment_journal.studyarea.name}
+        <br>
+        <br>
+        <b>相機位置：</b>{uh[0].deployment_journal.deployment.name}
+        <br>
+        <br>
+        <b>資料夾名稱：</b>{uh[0].deployment_journal.folder_name}
+        <br>
+        <br>
+        <b>上傳狀態：</b>{status}
+        <br>
+
+        """
+        subject = '[臺灣自動相機資訊系統] 上傳通知'
+
+        msg = EmailMessage(subject, html_content, 'Camera Trap <no-reply@camera-trap.tw>', [], email_list)
+        msg.content_subtype = "html"  # Main content is now text/html
+        # 改成背景執行
+        task = threading.Thread(target=send_msg, args=(msg,))
+        # task.daemon = True
+        task.start()
+        return {"status": 'success'}
+    except:
+        return {"status": 'fail'}
+
+
+@csrf_exempt
+def update_upload_history(request):
+    # uploading, finished
+    response = {}
+    if request.method == 'POST':
+        client_status = request.POST.get('status')
+        deployment_journal_id = request.POST.get('deployment_journal_id')
+        if client_status == 'uploading' and deployment_journal_id:
+            # 把網頁狀態更新成上傳中
+            # 若沒有，新增一個uh
+            if uh := UploadHistory.objects.filter(deployment_journal_id=deployment_journal_id).first():
+                uh.last_updated = timezone.now()
+                uh.status = 'uploading'
+                uh.save()
+            else: 
+                uh = UploadHistory(
+                        deployment_journal_id=deployment_journal_id, 
+                        status='uploading', 
+                        last_updated=timezone.now())
+                uh.save()
+            response = {'messages': 'success'}
+        elif client_status == 'finished' and deployment_journal_id:
+            # 判斷網頁狀態是未完成or已完成, species_error & upload_error
+            upload_error = True if Image.objects.filter(deployment_journal_id=deployment_journal_id, has_storage='N').exists() else False
+            species_error = True if Image.objects.filter(deployment_journal_id=deployment_journal_id, species__in=[None, '']).exists() else False
+            status = 'unfinished' if upload_error or species_error else 'finished'
+            if uh := UploadHistory.objects.filter(deployment_journal_id=deployment_journal_id).first():
+                uh.last_updated = timezone.now()
+                uh.status = status
+                uh.upload_error = upload_error
+                uh.species_error = species_error
+                uh.save()
+                upload_history_id = UploadHistory.objects.filter(deployment_journal_id=deployment_journal_id)[0].id
+            else: 
+                uh = UploadHistory(
+                        deployment_journal_id=deployment_journal_id, 
+                        status=status,
+                        upload_error = upload_error,
+                        species_error = species_error,
+                        last_updated=timezone.now())
+                uh.save()
+                upload_history_id = uh.id
+            if DeploymentJournal.objects.filter(id=deployment_journal_id).exists():
+                project_id = DeploymentJournal.objects.filter(id=deployment_journal_id).values('project_id')[0]['project_id']
+            else:
+                response = {'messages': 'failed due to no associated record in DeploymentJournal table'}
+                return JsonResponse(response)
+            members = get_project_member(project_id) # 所有計劃下的成員
+            final_members = []
+            for m in members:
+                # 每次都建立新的通知
+                try:
+                    un = UploadNotification(
+                        upload_history_id = upload_history_id,
+                        contact_id = m
+                    )
+                    un.save()
+                    final_members += [m]
+                except:
+                    pass # contact已經不在則移除
+            # 每次都寄信
+            res = send_upload_notification(upload_history_id,[6])
+            if res.get('status') == 'fail':
+                response = {'messages': 'failed during sending email'}
+                return JsonResponse(response)
+            response = {'messages': 'success'}
+        else:
+            # 回傳沒有結果
+            response = {'messages': 'failed due to wrong parameters'}
+
+    return JsonResponse(response)
+
+
+def get_error_file_list(request, deployment_journal_id):
+    data = pd.DataFrame(columns=['所屬計畫', '樣區', '相機位置', '資料夾名稱', '檔名', '錯誤類型'])
+    query = """
+        SELECT p.name, s.name, d.name, i.folder_name, i.filename, i.species, i.has_storage
+        FROM taicat_image i
+        JOIN base_uploadhistory up ON i.deployment_journal_id = up.deployment_journal_id
+        JOIN taicat_project p ON i.project_id = p.id
+        JOIN taicat_deployment d ON i.deployment_id = d.id
+        JOIN taicat_studyarea s ON i.studyarea_id = s.id
+        WHERE i.deployment_journal_id = {} and (has_storage = 'N' or species is NULL or species = '' )"""
+    with connection.cursor() as cursor:
+        cursor.execute(query.format(deployment_journal_id))
+        data = cursor.fetchall()
+        data = pd.DataFrame(data, columns=['所屬計畫', '樣區', '相機位置', '資料夾名稱', '檔名', 'species', 'has_storage'])
+        data['錯誤類型'] = ''
+        data.loc[data['has_storage']=='N', '錯誤類型'] = '影像未成功上傳'
+        data.loc[(data['species'].isin([None, ''])) & (data['has_storage']=='Y'), '錯誤類型'] = data.loc[data['species'].isin([None, '']), '錯誤類型'] + '物種未填寫'
+        data.loc[(data['species'].isin([None, ''])) & (data['has_storage']=='N'), '錯誤類型'] = data.loc[data['species'].isin([None, '']), '錯誤類型'] + ', 物種未填寫'
+        data = data.drop(columns=['species', 'has_storage'])
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="cameratrap_error.xlsx"'
+    data.to_excel(response, index=False)
+    return response
+
+
+def upload_history(request):
+    rows = []
+    if member_id := request.session.get('id', None):
+        my_project_list = get_my_project_list(member_id)
+        query = """SELECT to_char(up.created AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS'),
+                    to_char(up.last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS'),
+                    dj.folder_name, p.name, s.name, d.name, up.status, dj.project_id, up.deployment_journal_id,
+                    up.species_error, up.upload_error
+                    FROM base_uploadhistory up
+                    JOIN taicat_deploymentjournal dj ON up.deployment_journal_id = dj.id
+                    JOIN taicat_project p ON dj.project_id = p.id
+                    JOIN taicat_deployment d ON dj.deployment_id = d.id
+                    JOIN taicat_studyarea s ON dj.studyarea_id = s.id
+                    WHERE dj.project_id IN {}"""
+        with connection.cursor() as cursor:
+            cursor.execute(query.format(str(my_project_list).replace('[','(').replace(']',')')))
+            rows = cursor.fetchall()
+    return render(request, 'base/upload_history.html', {'rows': rows})
 
 
 def faq(request):
@@ -41,7 +215,6 @@ def contact_us(request):
 def feedback_request(request):
     # print(print(request.POST))
     # https://stackoverflow.com/questions/38345977/filefield-force-using-temporaryuploadedfile
-    print(request.POST)
     try:
         # print(request.POST)
         q_detail_type = request.POST.getlist('q-detail-type')
@@ -111,7 +284,6 @@ def add_org_admin(request):
 def login_for_test(request):
     next = request.GET.get('next')
     role = request.GET.get('role')
-    print(next, role)
     info = Contact.objects.filter(name=role).values('name', 'id').first()
     request.session["is_login"] = True
     request.session["name"] = role

@@ -610,3 +610,15 @@ def get_my_project_list(member_id, project_list=[]):
         for i in temp:
             project_list += [i['projects']]
     return project_list
+
+
+def get_project_member(project_id):
+    member_list = []
+    members = list(ProjectMember.objects.filter(project_id=project_id).all().values('id'))
+    organization_id = Organization.objects.filter(projects=project_id).values('id')
+    for i in organization_id:
+        members += list(Contact.objects.filter(organization=i['id'], is_organization_admin=True).all().values('id'))
+    for m in members:
+        if m['id'] not in members:
+            member_list += [m['id']]
+    return member_list
