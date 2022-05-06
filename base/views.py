@@ -41,7 +41,6 @@ def send_upload_notification(upload_history_id, member_list):
         email = Contact.objects.filter(id__in=member_list).values('email')
         for e in email:
             email_list += [e['email']]
-        email_list = ['r05b44018@g.ntu.edu.tw']
         uh = UploadHistory.objects.filter(id=upload_history_id)
         if uh[0].status == 'finished':
             status = '已完成' 
