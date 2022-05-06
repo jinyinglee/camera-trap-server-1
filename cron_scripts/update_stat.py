@@ -75,7 +75,6 @@ for i in project_info.index:
         latest_date = dates[0][1]
         earliest_date = dates[0][0]
     if ps := ProjectStat.objects.filter(project_id=project_info.loc[i, 'id']).first():
-        ps = ProjectStat.objects.filter(project_id=288).first()
         ps.num_sa = project_info.loc[i, 'num_studyarea']
         ps.num_deployment = project_info.loc[i, 'num_deployment']
         ps.num_data = project_info.loc[i, 'num_data']
@@ -136,11 +135,14 @@ for p in Project.objects.all().values('id'):
 ProjectSpecies.objects.filter(count=0).delete()
 
 # ---------- IMAGE FOLDER ------------ #
+now = timezone.now()
+print('start IMAGE FOLDER', now)
+
 for p in Project.objects.all().values('id'):
-    query = Image.objects.exclude(folder_name='').filter(project_id=p).order_by('folder_name').distinct('folder_name').values('folder_name')
+    query = Image.objects.exclude(folder_name='').filter(project_id=p['id']).order_by('folder_name').distinct('folder_name').values('folder_name')
     for q in query:
-        f_last_updated = Image.objects.filter(project_id=p, folder_name=q['folder_name']).aggregate(Max('last_updated'))['last_updated__max']
-        if img_f := ImageFolder.objects.filter(folder_name=q['folder_name'], project_id=p).first():
+        f_last_updated = Image.objects.filter(project_id=p['id'], folder_name=q['folder_name']).aggregate(Max('last_updated'))['last_updated__max']
+        if img_f := ImageFolder.objects.filter(folder_name=q['folder_name'], project_id=p['id']).first():
             img_f.folder_last_updated = f_last_updated
             img_f.last_updated = now
             img_f.save()
@@ -148,5 +150,5 @@ for p in Project.objects.all().values('id'):
             img_f = ImageFolder(
                 folder_name=q['folder_name'],
                 folder_last_updated=f_last_updated,
-                project_id=p)
+                project_id=p['id'])
             img_f.save()
