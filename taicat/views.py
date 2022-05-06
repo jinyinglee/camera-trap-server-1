@@ -631,7 +631,7 @@ def project_detail(request, pk):
 
     with connection.cursor() as cursor:
         query = f"""SELECT folder_name,
-                        to_char(last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS last_updated
+                        to_char(folder_last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS folder_last_updated
                         FROM taicat_imagefolder
                         WHERE project_id = {pk}"""
         cursor.execute(query)

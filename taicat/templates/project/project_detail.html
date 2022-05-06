@@ -642,7 +642,7 @@
         options: {{ folder_list|safe }},
         render: {
           option: function (data, escape) {
-            return '<div class="option">' + '<span class="folder_name">' + escape(data.folder_name) + "</span>" + '<br><span style="color: grey; font-size:12px" class="last_updated">最後更新：' + escape(data.last_updated) + "</span>" + "</div>";
+            return '<div class="option">' + '<span class="folder_name">' + escape(data.folder_name) + "</span>" + '<br><span style="color: grey; font-size:12px" class="last_updated">最後更新：' + escape(data.folder_last_updated) + "</span>" + "</div>";
           },
           item: function (data, escape) {
             return '<div class="option">' + '<span class="folder_name">' + escape(data.folder_name) + "</span>" + "</div>";
