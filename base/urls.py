@@ -22,6 +22,6 @@ urlpatterns = [
     # path('send_feedback', views.send_feedback, name='send_feedback'),
     path('feedback_request', views.feedback_request, name='feedback_request'),
     path('send_upload_notification', views.send_upload_notification, name='send_upload_notification'),
-    path('update_upload_history', views.update_upload_history, name='update_upload_history'),
+    path('update_upload_history/', views.update_upload_history, name='update_upload_history'),
     path('update_is_read', views.update_is_read, name='update_is_read'),
 ]

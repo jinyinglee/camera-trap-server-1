@@ -622,3 +622,79 @@ def get_project_member(project_id):
         if m['id'] not in members:
             member_list += [m['id']]
     return member_list
+
+
+def set_deployment_journal(data, deployment):
+    # if data.get('trip_start') and data.get('trip_end') and data.get('folder_name') and data.get('source_id'):  # 不要判斷了
+
+    dj_exist = DeploymentJournal.objects.filter(
+        deployment=deployment,
+        folder_name=data['folder_name'],
+        local_source_id=data['source_id']).first()
+
+    if dj_exist:
+        is_modified = False
+        if data.get('trip_start') and data.get('trip_end'):
+            if data['trip_start'] != dj_exist.working_start:
+                dj_exist.working_start = data['trip_start']
+                is_modified = True
+            if data['trip_end'] != dj_exist.working_end:
+                dj_exist.working_end = data['trip_end']
+                is_modified = True
+
+        if is_modified:
+            dj_exist.save()
+
+        deployment_journal_id = dj_exist.id
+
+    else:
+        dj_new = DeploymentJournal(
+            deployment_id=deployment.id,
+            project=deployment.project,
+            studyarea=deployment.study_area,
+            is_effective=False,
+            folder_name=data['folder_name'],
+            local_source_id=data['source_id'])
+
+        if x := data.get('trip_start'):
+            dj_new.trip_start = x
+        if x := data.get('trip_end'):
+            dj_new.trip_end = x
+
+        dj_new.save()
+
+        deployment_journal_id = dj_new.id
+
+    # 有時間才算有效
+    if data.get('trip_start') and data.get('trip_end'):
+        dj_new.is_effective = True
+
+    return deployment_journal_id
+
+def set_image_annotation(image_obj):
+    '''extract annotation (json field) to seperate field, ex: species, life_stage...
+    '''
+    def update_annotation_field(obj, values):
+        # (annotation_field, model field)
+        field_map = {
+            'species': 'species',
+            'lifestage': 'life_stage',
+            'sex': 'sex',
+            'antler': 'antler',
+            'remarks': 'remarks',
+            'animal_id': 'animal_id',
+        }
+        for field in field_map:
+            if v := values.get(field):
+                setattr(obj, field_map[field], v)
+
+    if annotation := image_obj.annotation:
+        for index, row in enumerate(annotation):
+            if index == 0:
+                update_annotation_field(image_obj, row)
+                image_obj.save()
+            else:
+                cloned = image_obj.clone_image()
+                update_annotation_field(cloned, row)
+                cloned.annotation_seq = index
+                cloned.save()

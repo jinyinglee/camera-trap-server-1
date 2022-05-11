@@ -271,6 +271,7 @@ class Image(models.Model):
     #taxon = models
     sequence = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)  # imageid
     sequence_definition = models.CharField(max_length=1000, default='', null=True, blank=True)
+    annotation_seq = models.PositiveSmallIntegerField(default=0, null=True)
     life_stage = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
     sex = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
     antler = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
@@ -313,6 +314,26 @@ class Image(models.Model):
             'studyarea__name': self.studyarea.name if self.studyarea_id else None,
             'deployment__name': self.deployment.name if self.deployment_id else None,
         }
+
+    @classmethod
+    def clone_image(self):
+        new_img = Image(
+            deployment=self.deployment,
+            project=self.project,
+            studyarea=self.studyarea,
+            file_url=self.file_url,
+            filename=self.filename,
+            datetime=self.datetime,
+            count=self.count,
+            image_hash=self.image_hash,
+            image_uuid=self.image_uuid,
+            has_storge=self.has_storage,
+            folder_name=self.folder_name,
+            specific_bucket=self.specific_bucket,
+            deployment_journal=self.deployment_journal
+        )
+        new_img.save()
+        return new_image
 
     class Meta:
         ordering = ['created']
@@ -432,6 +453,7 @@ class DeploymentJournal(models.Model):
     gap_caused = models.CharField(max_length=1000, null=True, blank=True)
     folder_name = models.CharField(max_length=1000, null=True, blank=True, default='')
     local_source_id = models.CharField(max_length=1000, null=True, blank=True, default='') # client local database (sqlite)'s folder id, 用來檢查是否上傳過
+    created = models.DateTimeField(auto_now_add=True, null=True)
 
 class DeploymentStat(models.Model):
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
