@@ -265,9 +265,7 @@ def feedback_request(request):
 
 
 def send_msg(msg):
-    #msg.send()
-    pass
-
+    msg.send()
 
 def policy(request):
     return render(request, 'base/policy.html')
