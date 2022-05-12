@@ -23,9 +23,12 @@ from django.db.models.functions import (
     Trunc,
     ExtractDay,
 )
+from django.db import connection
+from django.utils import timezone
 from django.utils.timezone import make_aware
 
 from openpyxl import Workbook
+import requests
 
 from taicat.models import (
     Project,
@@ -36,10 +39,16 @@ from taicat.models import (
     DeploymentStat,
     ProjectMember,
     Contact,
-    Organization
+    Organization,
+    Species,
+    ProjectSpecies,
+    ProjectStat,
+    HomePageStat,
+    DeletedImage,
 )
 
-from django.db import connection
+
+
 
 # WIP
 def display_working_day_in_calendar_html(year, month, working_day):
@@ -643,6 +652,7 @@ def set_deployment_journal(data, deployment):
                 is_modified = True
 
         if is_modified:
+            dj_exist.last_updated = timezone.now()
             dj_exist.save()
 
         deployment_journal_id = dj_exist.id
@@ -654,7 +664,9 @@ def set_deployment_journal(data, deployment):
             studyarea=deployment.study_area,
             is_effective=False,
             folder_name=data['folder_name'],
-            local_source_id=data['source_id'])
+            local_source_id=data['source_id'],
+            last_updated=timezone.now()
+        )
 
         if x := data.get('trip_start'):
             dj_new.trip_start = x
@@ -671,6 +683,25 @@ def set_deployment_journal(data, deployment):
 
     return deployment_journal_id
 
+def clone_image(obj):
+    new_img = Image(
+        deployment=obj.deployment,
+        project=obj.project,
+        studyarea=obj.studyarea,
+        file_url=obj.file_url,
+        filename=obj.filename,
+        datetime=obj.datetime,
+        count=obj.count,
+        image_hash=obj.image_hash,
+        image_uuid=obj.image_uuid,
+        has_storage=obj.has_storage,
+        folder_name=obj.folder_name,
+        specific_bucket=obj.specific_bucket,
+        deployment_journal=obj.deployment_journal
+    )
+    new_img.save()
+    return new_img
+
 def set_image_annotation(image_obj):
     '''extract annotation (json field) to seperate field, ex: species, life_stage...
     '''
@@ -678,23 +709,98 @@ def set_image_annotation(image_obj):
         # (annotation_field, model field)
         field_map = {
             'species': 'species',
-            'lifestage': 'life_stage',
+            'lifestage': 'life_stage', # 該死的 _
             'sex': 'sex',
             'antler': 'antler',
-            'remarks': 'remarks',
+            'remark': 'remarks', # 該死的 s
             'animal_id': 'animal_id',
         }
         for field in field_map:
             if v := values.get(field):
                 setattr(obj, field_map[field], v)
+        obj.last_updated = timezone.now()
 
     if annotation := image_obj.annotation:
-        for index, row in enumerate(annotation):
-            if index == 0:
-                update_annotation_field(image_obj, row)
+        related_images = Image.objects.filter(image_uuid=image_obj.image_uuid).order_by('annotation_seq').all()
+        num_related = len(related_images)
+        num_annotation = len(annotation)
+        # print (num_related, num_annotation, flush=True)
+        to_delete = []
+        for i in range(0, max(num_annotation, num_related)):
+            if i == 0:  # original image
+                update_annotation_field(image_obj, annotation[0])
                 image_obj.save()
+            elif num_related - num_annotation <=0:  # new annotation (cloned image)
+                if i < num_related:
+                    update_annotation_field(related_images[i], annotation[i])
+                    related_images[i].save()
+                else:
+                    cloned = clone_image(image_obj)
+                    update_annotation_field(cloned, annotation[i])
+                    cloned.annotation_seq = i
+                    cloned.save()
+            elif num_related - num_annotation > 0: # delete cloned image
+                if i < num_annotation:
+                    update_annotation_field(related_images[i], annotation[i])
+                    related_images[i].save()
+                else:
+                    to_delete = [x.id for x in related_images if x.annotation_seq > 0]
+                    break
+
+        if len(to_delete) > 0:
+            #print(to_delete, flush=True)
+            delete_image_by_ids(to_delete, image_obj.project_id)
+            # 全部刪掉再重建
+            for i, a in enumerate(image_obj.annotation):
+                if i > 0:
+                    cloned = clone_image(image_obj)
+                    update_annotation_field(cloned, annotation[i])
+                    cloned.annotation_seq = i
+                    cloned.save()
+
+
+def delete_image_by_ids(image_list=[], pk=None):
+    now = timezone.now()
+    image_objects = Image.objects.filter(id__in=image_list)
+    # species的資料先用id抓回來計算再扣掉
+    query = image_objects.values('species').annotate(total=Count('species')).order_by('-total')
+    for q in query:
+        # taicat_species
+        if sp := Species.objects.filter(name=q['species']).first():
+            if sp.count == q['total']:
+                sp.delete()
             else:
-                cloned = image_obj.clone_image()
-                update_annotation_field(cloned, row)
-                cloned.annotation_seq = index
-                cloned.save()
+                sp.count -= q['total']
+                sp.last_updated = now
+                sp.save()
+        # taicat_projectspecies
+        if p_sp := ProjectSpecies.objects.filter(name=q['species'], project_id=pk).first():
+            if p_sp.count == q['total']:
+                p_sp.delete()
+            else:
+                p_sp.count -= q['total']
+                p_sp.last_updated = now
+                p_sp.save()
+
+    if ProjectStat.objects.filter(project_id=pk).exists():
+        p = ProjectStat.objects.get(project_id=pk)
+        p.num_data -= image_objects.count()
+        p.last_updated = now
+        p.save()
+
+    year = image_objects.aggregate(Min('datetime'))['datetime__min'].strftime("%Y")
+    home = HomePageStat.objects.filter(year__gte=year)
+    for h in home:
+        h.count -= image_objects.count()
+        h.last_updated = now
+        h.save()
+
+    # move deleted image to DeletedImage table
+    image_dict = image_objects.values()
+    for d in image_dict:
+        di = DeletedImage(**d)
+        di.save()
+    Image.objects.filter(id__in=image_list).delete()
+
+    species = ProjectSpecies.objects.filter(project_id=pk).order_by('count').values('count', 'name')
+    return list(species)

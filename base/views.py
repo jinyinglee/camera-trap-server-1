@@ -265,7 +265,8 @@ def feedback_request(request):
 
 
 def send_msg(msg):
-    msg.send()
+    #msg.send()
+    pass
 
 
 def policy(request):
