@@ -925,7 +925,7 @@ def download_project_oversight(request, pk):
             # each year
             headers = ['樣區', '相機位置']
             for x in range(1, 13):
-                headers += [f'{x}月', f'{x}月相機運作天數', f'{x}月天數']
+                headers += [f'{x}月(%)', f'{x}月相機運作天數', f'{x}月天數']
             headers += ['平均']
 
             if index == 0:
