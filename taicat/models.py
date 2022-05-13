@@ -9,6 +9,7 @@ from calendar import (
 import json
 
 from django.db import models
+from django.db import connection  # for executing raw SQL
 from django.db.models import (
     Q,
     Max,
@@ -215,13 +216,20 @@ class Project(models.Model):
                     dep_id = d['deployment_id']
                     month_list = []
                     ratio_year = 0
+                    year_species_images = d['object'].get_species_images(year)
                     for m in range(1, 13):
                         days_in_month = monthrange(year, m)[1]
                         ret = d['object'].count_working_day(year, m)
-                        #ret_species = d['object'].count_species_images(year, m)
                         working_day = ret[0]
                         month_cal = monthcalendar(year, m)
                         count_working_day = sum(working_day)
+                        num_images = [0, 0]
+                        if yd := year_species_images['species'].get(str(year)):
+                            if md := yd.get(str(m)):
+                                num_images[0] = md
+                        if yd := year_species_images['all'].get(str(year)):
+                            if md := yd.get(str(m)):
+                                num_images[1] = md
                         data = [
                             year,
                             m,
@@ -234,7 +242,9 @@ class Project(models.Model):
                         ]
                         ratio = count_working_day * 100.0 / days_in_month
                         ratio_year += ratio
-                        month_list.append([ratio, json.dumps(data)])
+                        ratio_sp_img = num_images[0] * 100.0/ num_images[1] if num_images[1] > 0 else 0
+                        month_list.append([ratio, json.dumps(data),  [ratio_sp_img, num_images[0], num_images[1]]])
+
                     items_d.append({
                         'name': d['name'],
                         'items': month_list,
@@ -358,32 +368,69 @@ class Deployment(models.Model):
 
         return month_stat, ret
 
-    def count_species_images(self, year, month):
-        '''計算該月有物種的照片數/全部照片數
+    def get_species_images(self, year):
+        key = f'SPIMG_{self.id}_{year}'
+        if value:= cache.get(key):
+            # print('cache', key)
+            return json.loads(value)
+        else:
+            value = self.count_species_images(year)
+            # print('count', value)
+            cache.set(key, json.dumps(value), 8640000) # 100 d
+            return value
+
+    def count_species_images(self, year):
+        '''計算該年有物種的照片數/全部照片數
         '''
-        k = f'{self.id}__{year}__{month}'
-        k_all= f'{k}__all'
-        k_sp = f'{k}__sp'
-        v_all = 0
-        v_sp = 0
-        if x := cache.get(k_all):
-            v_all = x
-        else:
-            r = Image.objects.values('image_uuid').filter(datetime__year=year, datetime__month=month).aggregate(Count('image_uuid'))
-            v_all = r['image_uuid__count']
-            cache.set(k_all, v_all, 86400) # 1d
+        key = f'SPIMG_{self.id}_{year}'
 
-        if x := cache.get(k_sp):
-            v_sp = x
-        else:
-            r = Image.objects.values('image_uuid').filter(datetime__year=year, datetime__month=month).exclude(species='').aggregate(Count('image_uuid'))
-            v_sp = r['image_uuid__count']
-            cache.set(k_all, v_sp, 86400) # 1d
+        with connection.cursor() as cursor:
+            q_all = f"SELECT count(distinct image_uuid), \
+            DATE_part('year', datetime) as year, \
+            DATE_part('month', datetime) as month \
+            FROM taicat_image \
+            WHERE deployment_id = {self.id} AND DATE_part('year', datetime) = {year} \
+            GROUP BY year, DATE_part('month', datetime) \
+            ORDER BY year, month;"
 
-        print(self.id, year, month, v_sp, k_all)
-        return [v_sp, v_all]
+            cursor.execute(q_all)
+            res = cursor.fetchall()
 
-    
+            by_year_month_all = {}
+            for i in res:
+                n = i[0]
+                year = str(int(i[1]))
+                month = str(int(i[2]))
+                if year not in by_year_month_all:
+                    by_year_month_all[year] = {}
+
+                by_year_month_all[year][month] = n
+
+            q_sp = f"SELECT count(distinct image_uuid), \
+            DATE_part('year', datetime) as year, \
+            DATE_part('month', datetime) as month \
+            FROM taicat_image \
+            WHERE deployment_id = {self.id} AND DATE_part('year', datetime) = {year} AND species !='' \
+            GROUP BY year, DATE_part('month', datetime) \
+            ORDER BY year, month;"
+            cursor.execute(q_sp)
+            res = cursor.fetchall()
+            by_year_month_sp = {}
+            for i in res:
+                n = i[0]
+                year = str(int(i[1]))
+                month = str(int(i[2]))
+                if year not in by_year_month_sp:
+                    by_year_month_sp[year] = {}
+
+                by_year_month_sp[year][month] = n
+
+            return {
+                'all': by_year_month_all,
+                'species': by_year_month_sp
+            }
+
+
 class Image(models.Model):
     '''if is_sequence, ex: 5 Images, set last 4 Images's is_sequence to True (wouldn't  count)'''
     PHOTO_TYPE_CHOICES = (

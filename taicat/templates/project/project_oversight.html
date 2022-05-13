@@ -256,6 +256,7 @@ $(function () {
   <div class="row">
     <div class="col-12">
       <h4>每月相機運作比例</h4>
+      <div>每一格數字代表: 每月相機運作時數(%) | 物種表示比例(%) (有標物種的照片/全部照片)</div>
       {% for studyarea in result %}
       <h5>樣區: {{ studyarea.name }}</h5>
       <table class="table table-striped table-hover">
@@ -273,7 +274,7 @@ $(function () {
               <tr>
                 <th scope="row">{{ deployment.name }}</th>
                 {% for x in deployment.items %}
-                <td>{#<span data-toggle="tooltip" data-placement="bottom" title="{{ x.1.0 }}/{{ x.1.1 }} （相機有運作天數 / 當月天數）<br/>{{ x.1.2 }}" data-bs-html="true">{{ x.0|floatformat:2 }}%</span>#}<button type="button" class="btn month-detail"data-bs-toggle="modal" data-bs-target="#exampleModal" data-detail="{{ x.1 }}">{{ x.0|floatformat:2 }}</button></td>
+                <td>{#<span data-toggle="tooltip" data-placement="bottom" title="{{ x.1.0 }}/{{ x.1.1 }} （相機有運作天數 / 當月天數）<br/>{{ x.1.2 }}" data-bs-html="true">{{ x.0|floatformat:2 }}%</span>#}<button type="button" class="btn month-detail"data-bs-toggle="modal" data-bs-target="#exampleModal" data-detail="{{ x.1 }}">{{ x.0|floatformat:2 }} <br /> {{ x.2.0|floatformat:2 }}{% if x.2.0 > 0 %}<br/><small>({{ x.2.1}} / {{ x.2.2 }})</small>{% endif %}</button></td>
                 {% endfor %}
                 <td>{{ deployment.ratio_year|floatformat:2  }}</td>
               </tr>
