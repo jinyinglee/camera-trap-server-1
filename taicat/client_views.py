@@ -1,7 +1,6 @@
 import json
 from datetime import datetime
 import pytz
-from bson.objectid import ObjectId
 
 from django.shortcuts import render
 from django.http import (
@@ -15,14 +14,21 @@ from django.core.serializers import serialize
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 
+import requests
+from bson.objectid import ObjectId
+
 from taicat.models import (
     Image,
     Project,
     Deployment,
     DeploymentJournal,
     Image_info,
-
 )
+from .utils import (
+    set_image_annotation,
+    set_deployment_journal
+)
+
 
 def index(request):
     project_list = Project.objects.filter(mode='test').all()
@@ -87,40 +93,13 @@ def post_image_annotation(request):
                 specific_bucket = bucket_name
 
             folder_name = ''
-            deployment_journal_id = ''
+
+
+            folder_name = data['folder_name']
+
             # create or update DeploymentJournal
-            if data.get('trip_start') and data.get('trip_end') and data.get('folder_name') and data.get('source_id'):
-                folder_name = data['folder_name']
-                dj_exist = DeploymentJournal.objects.filter(
-                    deployment=deployment,
-                    folder_name=folder_name,
-                    local_source_id=data['source_id']).first()
+            deployment_journal_id = set_deployment_journal(data, deployment)
 
-                if dj_exist:
-                    is_modified = False
-                    if data['trip_start'] != dj_exist.working_start:
-                        dj_exist.working_start = data['trip_start']
-                        is_modified = True
-                    if data['trip_end'] != dj_exist.working_end:
-                        dj_exist.working_end = data['trip_end']
-                        is_modified = True
-
-                    if is_modified:
-                        dj_exist.save()
-                    deployment_journal_id = dj_exist.id
-
-                else:
-                    dj_new = DeploymentJournal(
-                        deployment_id=deployment.id,
-                        project=deployment.project,
-                        studyarea=deployment.study_area,
-                        working_start=data['trip_start'],
-                        working_end=data['trip_end'],
-                        folder_name=data['folder_name'],
-                        local_source_id=data['source_id'])
-
-                    dj_new.save()
-                    deployment_journal_id = dj_new.id
 
             for i in data['image_list']:
                 img_info_payload = None
@@ -166,6 +145,8 @@ def post_image_annotation(request):
                 img.save()
                 res[i[0]] = [img.id, img.image_uuid]
 
+                set_image_annotation(img)
+
                 if img_info_payload != None:
                     # seperate image_info
                     img_info = Image_info(
@@ -176,6 +157,7 @@ def post_image_annotation(request):
                     img_info.save()
 
             ret['saved_image_ids'] = res
+            ret['deployment_journal_id'] = deployment_journal_id
         else:
             ret['error'] = 'ct-server: no deployment key'
 

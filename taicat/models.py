@@ -255,7 +255,7 @@ class Image(models.Model):
         ('time-lapse', 'Timelapse'),
     )
     id = models.BigAutoField(primary_key=True)
-    deployment = models.ForeignKey(Deployment, on_delete=models.SET_NULL, null=True)
+    deployment = models.ForeignKey(Deployment, on_delete=models.SET_NULL, null=True, related_name='images')
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
     # be careful, this field has no underline!
     studyarea = models.ForeignKey(StudyArea, on_delete=models.SET_NULL, null=True)
@@ -271,6 +271,7 @@ class Image(models.Model):
     #taxon = models
     sequence = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)  # imageid
     sequence_definition = models.CharField(max_length=1000, default='', null=True, blank=True)
+    annotation_seq = models.PositiveSmallIntegerField(default=0, null=True)
     life_stage = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
     sex = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
     antler = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
@@ -344,6 +345,7 @@ class DeletedImage(models.Model):
     species = models.CharField(max_length=1000, null=True, default='', blank=True, db_index=True)
     sequence = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)  # imageid
     sequence_definition = models.CharField(max_length=1000, default='', blank=True)
+    annotation_seq = models.PositiveSmallIntegerField(default=0, null=True)
     life_stage = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
     sex = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
     antler = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
@@ -360,6 +362,9 @@ class DeletedImage(models.Model):
     source_data = models.JSONField(default=dict, blank=True)
     exif = models.JSONField(default=dict, blank=True)
     folder_name = models.CharField(max_length=1000, default='', blank=True, db_index=True)
+    has_storage = models.CharField('實體檔案(有無上傳)', max_length=2, default='Y', blank=True) # Y/N or 如果之後有其他種狀況, 如: 存在別的圖台?
+    specific_bucket = models.CharField(max_length=1000, default='', blank=True) # 跟預設不同的 bucket
+    deployment_journal = models.ForeignKey('DeploymentJournal', on_delete=models.SET_NULL, null=True, blank=True) # 知道是那次上傳的
 
     @property
     def species_list(self):
@@ -432,6 +437,8 @@ class DeploymentJournal(models.Model):
     gap_caused = models.CharField(max_length=1000, null=True, blank=True)
     folder_name = models.CharField(max_length=1000, null=True, blank=True, default='')
     local_source_id = models.CharField(max_length=1000, null=True, blank=True, default='') # client local database (sqlite)'s folder id, 用來檢查是否上傳過
+    created = models.DateTimeField(auto_now_add=True, null=True)
+    last_updated = models.DateTimeField(null=True, auto_now_add=True)
 
 class DeploymentStat(models.Model):
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)

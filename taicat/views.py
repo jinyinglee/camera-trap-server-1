@@ -46,52 +46,12 @@ from base.utils import DecimalEncoder
 
 
 def delete_data(request, pk):
+    species_list = []
     if request.method == "POST":
-        now = timezone.now()
         image_list = request.POST.getlist('image_id[]')
-        image_objects = Image.objects.filter(id__in=image_list)
-        # species的資料先用id抓回來計算再扣掉
-        query = image_objects.values('species').annotate(total=Count('species')).order_by('-total')
-        for q in query:
-            # taicat_species
-            if sp := Species.objects.filter(name=q['species']).first():
-                if sp.count == q['total']:
-                    sp.delete()
-                else:
-                    sp.count -= q['total']
-                    sp.last_updated = now
-                    sp.save()
-            # taicat_projectspecies
-            if p_sp := ProjectSpecies.objects.filter(name=q['species'], project_id=pk).first():
-                if p_sp.count == q['total']:
-                    p_sp.delete()
-                else:
-                    p_sp.count -= q['total']
-                    p_sp.last_updated = now
-                    p_sp.save()
+        species_list = delete_image_by_ids(image_list)
 
-        if ProjectStat.objects.filter(project_id=pk).exists():
-            p = ProjectStat.objects.get(project_id=pk)
-            p.num_data -= image_objects.count()
-            p.last_updated = now
-            p.save()
-
-        year = image_objects.aggregate(Min('datetime'))['datetime__min'].strftime("%Y")
-        home = HomePageStat.objects.filter(year__gte=year)
-        for h in home:
-            h.count -= image_objects.count()
-            h.last_updated = now
-            h.save()
-
-        # move deleted image to DeletedImage table
-        image_dict = image_objects.values()
-        for d in image_dict:
-            di = DeletedImage(**d)
-            di.save()
-        Image.objects.filter(id__in=image_list).delete()
-
-    species = ProjectSpecies.objects.filter(project_id=pk).order_by('count').values('count', 'name')
-    response = {'species': list(species)}
+    response = {'species': species}
     return JsonResponse(response, safe=False)  # or JsonResponse({'data': data})
 
 
