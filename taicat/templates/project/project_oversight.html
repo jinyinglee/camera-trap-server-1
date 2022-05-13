@@ -229,7 +229,18 @@ $(function () {
 
       <div>
         <h4>年份</h4>
+        <h6>所有照片</h6>
       {% for i in year_list %}
+      {% if i|to_int == request.GET.year|to_int %}
+      {{ i }}
+      {% else %}
+      <a href="{% url 'project_oversight' pk=project.id %}?year={{ i }}">{{ i }}</a>
+      {% endif %}
+      {% if not forloop.last %} | {% endif %}
+      {% endfor %}
+      <hr>
+      <h6>行程篩選</h6>
+      {% for i in year_list2 %}
       {% if i|to_int == request.GET.year|to_int %}
       {{ i }}
       {% else %}
@@ -254,6 +265,7 @@ $(function () {
             {% for m in month_label_list %}
             <th scope="col">{{ m }}</th>
             {% endfor %}
+            <th scope="col">平均</th>
           </tr>
         </thead>
         <tbody>
@@ -263,11 +275,13 @@ $(function () {
                 {% for x in deployment.items %}
                 <td>{#<span data-toggle="tooltip" data-placement="bottom" title="{{ x.1.0 }}/{{ x.1.1 }} （相機有運作天數 / 當月天數）<br/>{{ x.1.2 }}" data-bs-html="true">{{ x.0|floatformat:2 }}%</span>#}<button type="button" class="btn month-detail"data-bs-toggle="modal" data-bs-target="#exampleModal" data-detail="{{ x.1 }}">{{ x.0|floatformat:2 }}</button></td>
                 {% endfor %}
+                <td>{{ deployment.ratio_year|floatformat:2  }}</td>
               </tr>
               {% endfor %}
           </tbody>
       </table>
       {% endfor %}
+      <a href="{% url 'download_project_oversight' pk=project.id %}" class="btn btn-success">管考表下載</a>
     </div>
 </div>
 {% endblock %}

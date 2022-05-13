@@ -1,5 +1,9 @@
 from django.db.models.fields import PositiveBigIntegerField
-from django.http import response, JsonResponse
+from django.http import (
+    response,
+    JsonResponse,
+    StreamingHttpResponse,
+)
 from django.shortcuts import redirect, render, HttpResponse
 from pandas.core.groupby.generic import DataFrameGroupBy
 from taicat.models import *
@@ -8,6 +12,8 @@ import re
 import json
 import math
 import datetime
+from tempfile import NamedTemporaryFile
+from urllib.parse import quote
 # from datetime import datetime, timedelta, timezone
 from django.db.models import Count, Window, F, Sum, Min, Q, Max, Func, Value, CharField
 from django.db.models.functions import Trunc, ExtractYear
@@ -44,6 +50,7 @@ from dateutil import parser
 from django.test.utils import CaptureQueriesContext
 from base.utils import DecimalEncoder
 
+from openpyxl import Workbook
 
 def delete_data(request, pk):
     species_list = []
@@ -903,6 +910,61 @@ def generate_download_excel(request, pk):
     send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, [email])
     # return response
 
+def download_project_oversight(request, pk):
+    # TODO auth
+    project = Project.objects.get(pk=pk)
+    mnx = DeploymentJournal.objects.filter(project_id=project.id, is_effective=True).aggregate(Max('working_end'), Min('working_start'))
+    end_year = mnx['working_end__max'].year
+    start_year = mnx['working_start__min'].year
+    res = project.count_deployment_journal(list(range(start_year, end_year+1)))
+
+    wb = Workbook()
+    ws1 = wb.active
+    with NamedTemporaryFile() as tmp:
+        for index, (year, data) in enumerate(res.items()):
+            # each year
+            headers = ['樣區', '相機位置']
+            for x in range(1, 13):
+                headers += [f'{x}月', f'{x}月相機運作天數', f'{x}月天數']
+            headers += ['平均']
+
+            if index == 0:
+                ws1.append(headers)
+                ws1.title = str(year)
+            else:
+                sheet = wb.create_sheet(year)
+                sheet.append(headers)
+
+            values = []
+            for sa in data:
+                for d in sa['items']:
+                    values = [sa['name'], d['name']]
+                    for x in d['items']:
+                        detail = json.loads(x[1])
+                        values +=[x[0], detail[3], detail[4]]
+
+                    values += [d['ratio_year']]
+                    if index == 0:
+                        ws1.append(values)
+                    else:
+                        sheet.append(values)
+
+        wb.save(tmp.name)
+
+        tmp.seek(0)
+        stream = tmp.read()
+        filename = quote(f'{project.name}_管考_{start_year}-{end_year}.xlsx')
+
+        #return StreamingHttpResponse(
+        #    stream,
+        #    headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        #    content_type="application/vnd.ms-excel",
+            #content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        #)
+        response = HttpResponse(content=stream, content_type='application/ms-excel', )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
 
 def project_oversight(request, pk):
     '''
@@ -919,17 +981,24 @@ def project_oversight(request, pk):
             # min/max 超慢?
             mnx = Image.objects.filter(project_id=pk).aggregate(
                 Max('datetime'), Min('datetime'))
-            # print(mnx)
+            mnx2 = DeploymentJournal.objects.filter(project_id=pk, is_effective=True).aggregate(
+                Max('working_end'), Min('working_start'))
+
             year = request.GET.get('year')
             end_year = mnx['datetime__max'].year
             start_year = mnx['datetime__min'].year
+            end_year2 = mnx2['working_end__max'].year
+            start_year2 = mnx2['working_start__min'].year
+
             year_list = list(range(start_year, end_year+1))
+            year_list2 = list(range(start_year2, end_year2+1))
             # imax = Image.objects.values('datetime').filter(project_id=pk).order_by('datetime')[:1]
             # imin = Image.objects.filter(project_id=pk).order_by('-datetime')[:1]
             # print(imax)
             # print(mn.first(), mn.last())
             # year_list = list(range(2010, 2022))
-
+            '''
+            move to Project.count_deployment_journal
             result = []
             if year:
                 year = int(year)
@@ -939,6 +1008,7 @@ def project_oversight(request, pk):
                     for d in sa['deployments']:
                         dep_id = d['deployment_id']
                         month_list = []
+                        ratio_year = 0
                         for m in range(1, 13):
                             days_in_month = monthrange(year, m)[1]
                             ret = find_deployment_working_day(year, m, dep_id)
@@ -959,6 +1029,7 @@ def project_oversight(request, pk):
                                 ret[1],
                             ]
                             ratio = count_working_day * 100.0 / days_in_month
+                            ratio_year += ratio
                             month_list.append([ratio, json.dumps(data)])
                         # query = Image.objects.values('datetime').filter(project_id=pk, deployment_id=dep_id).annotate(year=Trunc('datetime', 'year')).filter(datetime__year=year).annotate(day=Trunc('datetime', 'day')).annotate(count=Count('day'))
                         # print(query.query)
@@ -975,18 +1046,21 @@ def project_oversight(request, pk):
                         items_d.append({
                             'name': d['name'],
                             'items': month_list,
+                            'ratio_year': ratio_year / 12.0,
                         })
                     result.append({
                         'name': sa['name'],
                         'items': items_d
                     })
                     # print(result)
-
+            '''
+            result = project.count_deployment_journal([int(year)]) if year else []
             return render(request, 'project/project_oversight.html', {
                 'project': project,
                 'year_list': year_list,
+                'year_list2': year_list2,
                 'month_label_list': [f'{x} 月'for x in range(1, 13)],
-                'result': result,
+                'result': result[year] if year else [],
             })
         else:
             return ''

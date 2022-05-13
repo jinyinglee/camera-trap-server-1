@@ -410,7 +410,6 @@ def count_all_species_list():
 
     return ret
 
-
 def calc_by_species_deployments(species, deployment_id, query, calc_data, results):
     '''
     species: <str> species name: 山羌

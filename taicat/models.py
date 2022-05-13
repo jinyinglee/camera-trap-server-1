@@ -1,10 +1,25 @@
-from datetime import timedelta
+from datetime import (
+    timedelta,
+    datetime,
+)
+from calendar import (
+    monthrange,
+    monthcalendar
+)
+import json
 
 from django.db import models
-from django.db.models import Q
+from django.db.models import (
+    Q,
+    Max,
+    Min,
+    Count,
+)
 from django.utils import timezone
+from django.utils.timezone import make_aware
 from django.contrib.postgres.indexes import GinIndex
 from django.conf import settings
+from django.core.cache import cache
 
 class Species(models.Model):
     DEFAULT_LIST = ['水鹿', '山羌', '獼猴', '山羊', '野豬', '鼬獾', '白鼻心', '食蟹獴', '松鼠',
@@ -113,23 +128,43 @@ class Project(models.Model):
             'name': self.name,
         }
 
-    def get_deployment_list(self):
+    def get_deployment_list(self, as_object=False):
         res = []
         sa = self.studyareas.filter(parent__isnull=True).all()
         for i in sa:
             children = []
             for j in StudyArea.objects.filter(parent_id=i.id).all():
+                sa_deployments = []
+                for x in j.deployment_set.all():
+                    item = {
+                        'name': x.name,
+                        'deployment_id': x.id
+                    }
+                    if as_object is True:
+                        item['object'] = x
+                    sa_deployments.append(item)
+
                 children.append({
                     'studyarea_id': j.id,
                     'name': j.name,
-                    'deployments': [{'name': x.name, 'deployment_id': x.id} for x in j.deployment_set.all()]
+                    'deployments': sa_deployments
                 })
+
+            deployments = []
+            for x in i.deployment_set.all():
+                item = {
+                    'name': x.name,
+                    'deployment_id': x.id
+                }
+                if as_object is True:
+                    item['object'] = x
+                deployments.append(item)
 
             res.append({
                 'studyarea_id': i.id,
                 'name': i.name,
                 'substudyarea': children,
-                'deployments': [{'name': x.name, 'deployment_id': x.id} for x in i.deployment_set.all()]
+                'deployments': deployments
             })
         return res
 
@@ -161,6 +196,56 @@ class Project(models.Model):
                 parent_name = self.studyareas.get(id=i.parent_id).name
                 res.update({f"{parent_name}_{i.name}": [{'label': x.name, 'value': x.id} for x in i.deployment_set.all()]})
         return res
+
+    def count_deployment_journal(self, year_list=[]):
+        years = {}
+        if len(year_list) == 0:
+            mnx = DeploymentJournal.objects.filter(project_id=self.id, is_effective=True).aggregate(Max('working_end'), Min('working_start'))
+            end_year = mnx['working_end__max'].year
+            start_year = mnx['working_start__min'].year
+            year_list = list(range(start_year, end_year+1))
+
+        for year in year_list:
+            year_idx = str(year)
+            years[year_idx] = []
+            deps = self.get_deployment_list(as_object=True)
+            for sa in deps:
+                items_d = []
+                for d in sa['deployments']:
+                    dep_id = d['deployment_id']
+                    month_list = []
+                    ratio_year = 0
+                    for m in range(1, 13):
+                        days_in_month = monthrange(year, m)[1]
+                        ret = d['object'].count_working_day(year, m)
+                        #ret_species = d['object'].count_species_images(year, m)
+                        working_day = ret[0]
+                        month_cal = monthcalendar(year, m)
+                        count_working_day = sum(working_day)
+                        data = [
+                            year,
+                            m,
+                            d['name'],
+                            count_working_day,
+                            days_in_month,
+                            month_cal,
+                            working_day,
+                            ret[1],
+                        ]
+                        ratio = count_working_day * 100.0 / days_in_month
+                        ratio_year += ratio
+                        month_list.append([ratio, json.dumps(data)])
+                    items_d.append({
+                        'name': d['name'],
+                        'items': month_list,
+                        'ratio_year': ratio_year / 12.0,
+                    })
+                years[year_idx].append({
+                    'name': sa['name'],
+                    'items': items_d
+                })
+
+        return years
 
 
 class StudyArea(models.Model):
@@ -240,7 +325,65 @@ class Deployment(models.Model):
             'altitude': self.altitude,
         }
 
+    def count_working_day(self, year, month):
+        '''計算相機工作時數
+        根據 DeploymentJournal 記錄
+        '''
+        num_month = monthrange(year, month)[1]
+        month_start = make_aware(datetime(year, month, 1))
+        month_end = make_aware(datetime(year, month, num_month))
+        month_stat = [0] * num_month
 
+        query = DeploymentJournal.objects.filter(
+            is_effective=True,
+            deployment_id=self.id,
+            working_start__lte=month_end,
+            working_end__gte=month_start).order_by('working_start')
+
+        ret = []
+        for i in query.all():
+            # updated
+            #print ('-------')
+            #print (i.working_start.toordinal(), i.working_end.toordinal(), dt1.toordinal(), dt2.toordinal())
+            month_stat_part = [0] * num_month
+            overlap_range = [max(i.working_start, month_start), min(i.working_end, month_end)]
+            gap_days = (overlap_range[0]-month_start).days
+            duration_days = (overlap_range[1]-overlap_range[0]).days+1
+            for index, stat in enumerate(month_stat):
+                if index >= gap_days and index < gap_days + duration_days:
+                    month_stat[index] = 1
+                    month_stat_part[index] = 1
+
+            ret.append([i.working_start.strftime('%Y-%m-%d'), i.working_end.strftime('%Y-%m-%d')])
+
+        return month_stat, ret
+
+    def count_species_images(self, year, month):
+        '''計算該月有物種的照片數/全部照片數
+        '''
+        k = f'{self.id}__{year}__{month}'
+        k_all= f'{k}__all'
+        k_sp = f'{k}__sp'
+        v_all = 0
+        v_sp = 0
+        if x := cache.get(k_all):
+            v_all = x
+        else:
+            r = Image.objects.values('image_uuid').filter(datetime__year=year, datetime__month=month).aggregate(Count('image_uuid'))
+            v_all = r['image_uuid__count']
+            cache.set(k_all, v_all, 86400) # 1d
+
+        if x := cache.get(k_sp):
+            v_sp = x
+        else:
+            r = Image.objects.values('image_uuid').filter(datetime__year=year, datetime__month=month).exclude(species='').aggregate(Count('image_uuid'))
+            v_sp = r['image_uuid__count']
+            cache.set(k_all, v_sp, 86400) # 1d
+
+        print(self.id, year, month, v_sp, k_all)
+        return [v_sp, v_all]
+
+    
 class Image(models.Model):
     '''if is_sequence, ex: 5 Images, set last 4 Images's is_sequence to True (wouldn't  count)'''
     PHOTO_TYPE_CHOICES = (
