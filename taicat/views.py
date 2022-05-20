@@ -5,6 +5,7 @@ from django.http import (
     StreamingHttpResponse,
 )
 from django.shortcuts import redirect, render, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
 from pandas.core.groupby.generic import DataFrameGroupBy
 from taicat.models import *
 from django.db import connection  # for executing raw SQL
@@ -971,6 +972,7 @@ def project_oversight(request, pk):
     相機有運作天數 / 當月天數
     '''
     if request.method == 'GET':
+        year = request.GET.get('year')
         is_authorized = check_if_authorized(request, pk)
         public_ids = Project.published_objects.values_list(
             'id', flat=True).all()
@@ -978,89 +980,45 @@ def project_oversight(request, pk):
         if (pk in list(public_ids)) or is_authorized:
             project = Project.objects.get(pk=pk)
 
-            # min/max 超慢?
-            mnx = Image.objects.filter(project_id=pk).aggregate(
-                Max('datetime'), Min('datetime'))
-            mnx2 = DeploymentJournal.objects.filter(project_id=pk, is_effective=True).aggregate(
-                Max('working_end'), Min('working_start'))
-
-            year = request.GET.get('year')
-            end_year = mnx['datetime__max'].year
-            start_year = mnx['datetime__min'].year
-            end_year2 = mnx2['working_end__max'].year
-            start_year2 = mnx2['working_start__min'].year
-
-            year_list = list(range(start_year, end_year+1))
-            year_list2 = list(range(start_year2, end_year2+1))
-            # imax = Image.objects.values('datetime').filter(project_id=pk).order_by('datetime')[:1]
-            # imin = Image.objects.filter(project_id=pk).order_by('-datetime')[:1]
-            # print(imax)
-            # print(mn.first(), mn.last())
-            # year_list = list(range(2010, 2022))
-            '''
-            move to Project.count_deployment_journal
-            result = []
-            if year:
-                year = int(year)
-                deps = project.get_deployment_list()
-                for sa in deps:
-                    items_d = []
-                    for d in sa['deployments']:
-                        dep_id = d['deployment_id']
-                        month_list = []
-                        ratio_year = 0
-                        for m in range(1, 13):
-                            days_in_month = monthrange(year, m)[1]
-                            ret = find_deployment_working_day(year, m, dep_id)
-                            working_day = ret[0]
-                            # print(year, m, dep_id, working_day)
-                            # display_day_list = ['{}:{}'.format(index+1, 'Y' if yes else 'N') for index, yes in enumerate(working_day)]
-                            month_cal = monthcalendar(year, m)
-                            # display_working_day_in_calendar(year, m, working_day)
-                            count_working_day = sum(working_day)
-                            data = [
-                                year,
-                                m,
-                                d['name'],
-                                count_working_day,
-                                days_in_month,
-                                month_cal,
-                                working_day,
-                                ret[1],
-                            ]
-                            ratio = count_working_day * 100.0 / days_in_month
-                            ratio_year += ratio
-                            month_list.append([ratio, json.dumps(data)])
-                        # query = Image.objects.values('datetime').filter(project_id=pk, deployment_id=dep_id).annotate(year=Trunc('datetime', 'year')).filter(datetime__year=year).annotate(day=Trunc('datetime', 'day')).annotate(count=Count('day'))
-                        # print(query.query)
-
-                        # with connection.cursor() as cursor:
-                        #    query = f"SELECT DATE_TRUNC('day', datetime) AS day FROM taicat_image WHERE deployment_id={dep_id} AND datetime BETWEEN '{year}-01-01' AND '{year}-12-31' GROUP BY day ORDER BY day;"
-                        #    cursor.execute(query)
-                        #    data = cursor.fetchall()
-                        #    for i in data:
-                        #        month_idx = i[0].month - 1
-                        #        month_list[month_idx][1][0] += 1
-                        #        month_list[month_idx][0] = month_list[month_idx][1][0] * \
-                        #            100.0 / month_list[month_idx][1][1]
-                        items_d.append({
-                            'name': d['name'],
-                            'items': month_list,
-                            'ratio_year': ratio_year / 12.0,
-                        })
-                    result.append({
-                        'name': sa['name'],
-                        'items': items_d
-                    })
-                    # print(result)
-            '''
-            result = project.count_deployment_journal([int(year)]) if year else []
+            proj_stats = project.get_or_count_stats()
             return render(request, 'project/project_oversight.html', {
                 'project': project,
-                'year_list': year_list,
-                'year_list2': year_list2,
+                'gap_caused_choices': DeploymentJournal.GAP_CHOICES,
                 'month_label_list': [f'{x} 月'for x in range(1, 13)],
-                'result': result[year] if year else [],
+                'result': proj_stats['years'][year] if year else [],
             })
         else:
             return ''
+
+@csrf_exempt
+def api_update_deployment_journals(request, pk):
+    if request.method == 'PUT':
+        # update
+        ret = {
+            'message': ''
+        }
+        if dj := DeploymentJournal.objects.get(pk=pk):
+            data = json.loads(request.body)
+            #print(data)
+            is_changed = False
+            if text := data.get('text'):
+                dj.gap_caused = text
+                is_changed = True
+            if choice := data.get('choice'):
+                dj.gap_caused = choice
+                is_changed = True
+
+            if is_changed:
+                dj.last_updated = datetime.datetime.now()
+                dj.save()
+                ret['message'] = 'updated'
+                try:
+                    stats = dj.project.get_or_count_stats()
+                    gap = stats['years'][str(data['year'])][int(data['saIndex'])]['items'][int(data['dIndex'])]['gaps'][int(data['gapIndex'])]
+                    gap['caused'] = dj.gap_caused
+                    dj.project.write_stats(stats)
+                    ret['message'] = 'updated database, updated ucache'
+                except Exception as e:
+                    ret['message'] = 'updated database, update cache error: {}'.format(e)
+
+        return JsonResponse(ret)

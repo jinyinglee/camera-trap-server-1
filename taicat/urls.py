@@ -14,6 +14,7 @@ urlpatterns = [
     path('project/details/<pk>/', views.project_detail, name='project_detail'),
     path('project/oversight/<pk>/', views.project_oversight, name='project_oversight'),
     path('project/oversight/<pk>/download/', views.download_project_oversight, name='download_project_oversight'),
+    path('api/deployment_journals/<pk>/', views.api_update_deployment_journals, name='update-deployment-journals'),
     path('search/', search_view.index, name='search'),
     path('api/data', views.data, name='data'),
     path('api/update_datatable', views.update_datatable, name='update_datatable'),
