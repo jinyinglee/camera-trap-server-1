@@ -914,20 +914,20 @@ def generate_download_excel(request, pk):
 def download_project_oversight(request, pk):
     # TODO auth
     project = Project.objects.get(pk=pk)
-    mnx = DeploymentJournal.objects.filter(project_id=project.id, is_effective=True).aggregate(Max('working_end'), Min('working_start'))
-    end_year = mnx['working_end__max'].year
-    start_year = mnx['working_start__min'].year
-    res = project.count_deployment_journal(list(range(start_year, end_year+1)))
+    proj_stats = project.get_or_count_stats()
+    start_year = datetime.datetime.fromtimestamp(proj_stats['working__range'][0]).year
+    end_year = datetime.datetime.fromtimestamp(proj_stats['working__range'][1]).year
 
     wb = Workbook()
     ws1 = wb.active
     with NamedTemporaryFile() as tmp:
-        for index, (year, data) in enumerate(res.items()):
+        for index, (year, data) in enumerate(proj_stats['years'].items()):
             # each year
+            print(index, year)
             headers = ['樣區', '相機位置']
             for x in range(1, 13):
                 headers += [f'{x}月(%)', f'{x}月相機運作天數', f'{x}月天數']
-            headers += ['平均']
+            headers += ['平均', '缺失原因']
 
             if index == 0:
                 ws1.append(headers)
@@ -945,6 +945,7 @@ def download_project_oversight(request, pk):
                         values +=[x[0], detail[3], detail[4]]
 
                     values += [d['ratio_year']]
+                    values += [f"{x['label']}: {x['caused']}" for x in d['gaps']]
                     if index == 0:
                         ws1.append(values)
                     else:
