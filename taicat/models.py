@@ -91,7 +91,7 @@ class ProjectMember(models.Model):
         ('uploader', '資料上傳者'),
         #('general', '一般使用者'),
     )
-    project = models.ForeignKey('Project', on_delete=models.SET_NULL, null=True, blank=True)
+    project = models.ForeignKey('Project', on_delete=models.SET_NULL, null=True, blank=True, related_name='members')
     member = models.ForeignKey('Contact', on_delete=models.SET_NULL, null=True, blank=True)
     role = models.CharField(max_length=1000, choices=ROLE_CHOICES, null=True, blank=True)
 
@@ -760,6 +760,10 @@ class DeploymentJournal(models.Model):
     local_source_id = models.CharField(max_length=1000, null=True, blank=True, default='') # client local database (sqlite)'s folder id, 用來檢查是否上傳過
     created = models.DateTimeField(auto_now_add=True, null=True)
     last_updated = models.DateTimeField(null=True, auto_now_add=True)
+
+    @property
+    def display_range(self):
+        return '{}/{}'.format(self.working_start.strftime('%Y-%m-%d'), self.working_end.strftime('%Y-%m-%d'))
 
 class DeploymentStat(models.Model):
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)

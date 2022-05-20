@@ -8,6 +8,7 @@ from django.shortcuts import redirect, render, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from pandas.core.groupby.generic import DataFrameGroupBy
 from taicat.models import *
+from base.models import UploadNotification
 from django.db import connection  # for executing raw SQL
 import re
 import json
@@ -50,6 +51,7 @@ from operator import itemgetter
 from dateutil import parser
 from django.test.utils import CaptureQueriesContext
 from base.utils import DecimalEncoder
+from taicat.utils import half_year_ago
 
 from openpyxl import Workbook
 
@@ -923,7 +925,6 @@ def download_project_oversight(request, pk):
     with NamedTemporaryFile() as tmp:
         for index, (year, data) in enumerate(proj_stats['years'].items()):
             # each year
-            print(index, year)
             headers = ['樣區', '相機位置']
             for x in range(1, 13):
                 headers += [f'{x}月(%)', f'{x}月相機運作天數', f'{x}月天數']
@@ -1023,3 +1024,47 @@ def api_update_deployment_journals(request, pk):
                     ret['message'] = 'updated database, update cache error: {}'.format(e)
 
         return JsonResponse(ret)
+
+def api_check_data_gap(request):
+    now = datetime.datetime.now()
+
+    # test
+    range_list = half_year_ago(2017, 6)
+
+    #range_list = half_year_ago(now.year, now.month)
+    rows = DeploymentJournal.objects.filter(
+        is_gap=True,
+        working_end__gt=range_list[0],
+        working_start__lt=range_list[1]
+    ).filter(Q(gap_caused__exact='') | Q(gap_caused__isnull=True)).all()
+
+    # send notification to each project members
+    # TODO: email project membor 權限?
+    projects = {}
+    for dj in rows:
+        pid = dj.project_id
+        if pid not in projects:
+            projects[pid] = {
+                'name': dj.project.name,
+                'gaps': [],
+                'emails': [x.member.email for x in dj.project.members.filter(role='project_admin', member__email__isnull=False).all()],
+                'members': [x.member for x in dj.project.members.filter(role='project_admin').all()]
+            }
+        projects[pid]['gaps'].append(f'{dj.deployment.name}: {dj.display_range}')
+
+    for project_id, data in projects.items():
+        email_subject = '[臺灣自動相機資訊系統] | {} | 資料缺失: 尚未填寫列表'.format(data['name'])
+        email_body = '相機位置 缺失區間\n==========================\n' + '\n'.join(data['gaps'])
+        #print(email_subject, data['emails'])
+
+        # create notification
+        for m in data['members']:
+            print (m.id, m.name)
+            un = UploadNotification(
+                contact_id = m.id,
+                category='gap',
+            )
+            un.save()
+        #send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, data['emails'])
+
+    return HttpResponse('ok')
