@@ -1,0 +1,153 @@
+{% extends 'base/base.html' %}
+{% block head %}
+{% load static %} {% endblock head %} {% block style %}
+<style>
+
+  .flex-center{
+    display: flex;
+    align-items: center;
+  }
+
+  .up-icon {
+    width: 18px;
+    height: 18px
+  }
+
+  .link {
+    color: gray;
+    cursor: pointer;
+  }
+
+  .link:hover {
+    color: lightgrey;
+  }
+
+  table.t{
+  width: 100%;
+  border-collapse: collapse;
+  border: 0
+}
+
+  thead{
+    background: #E1E3E5;
+  }
+
+  thead tr th{
+    padding: 8px 20px;
+    font-size: 14px;
+  }
+
+  tr>td,
+  tr>th {
+    font-size: 14px;
+    padding: 10px 20px;
+    vertical-align: middle;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+</style>
+{% endblock %} {% block body %}
+<div class="container content">
+  <div class="row" style="margin-bottom: 10px">
+    <h4 class="title-dark">上傳紀錄</h4>
+  </div>
+  <div class="row">
+    <div class="bg-white shadow px-0 mx-2">
+      <table class="t m-0">
+        <thead>
+          <tr>
+            <th>建立時間</th>
+            <th>最後更新時間</th>
+            <th>上傳資料夾名稱</th>
+            <th>所屬計畫</th>
+            <th>樣區</th>
+            <th>相機位置</th>
+            <th style="padding-right: 10px">上傳結果</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if rows %}
+            {% for i in rows %}
+            <tr>
+              <td>{{ i.0 }}</td>
+              <td>{{ i.1 }}</td>
+              <td>{{ i.2 }}</td>
+              <td>{{ i.3 }}</td>
+              <td>{{ i.4 }}</td>
+              <td>{{ i.5 }}</td>
+              <td style="padding-right: 0px">
+                {% if i.6 == 'finished' %}
+                <div class="flex-center">
+                  已完成 <img class="up-icon ms-1" src="{% static 'icon/upload-success.png' %}" />
+                  </div>
+                {% elif i.6 == 'unfinished' %}
+                <div class="flex-center">
+                  未完成 <img class="up-icon ms-1" src="{% static 'icon/upload-fail.png' %}" />
+                </div>
+                <a class="link error" data-bs-toggle="modal" data-bs-target="#errorModal" onClick="setModal('{{ i.8 }}','{{ i.9 }}','{{ i.10 }}')">檢視錯誤</a>
+                {% elif i.6 == 'uploading' %}
+                <div class="flex-center">
+                  上傳中 <img class="up-icon ms-1" src="{% static 'icon/upload-gray.png' %}" />
+                </div>
+                {% endif %}
+              </td>
+              <td style="padding-left: 10px">
+                {% if i.2 != '' %}
+                  <a class="link" href="{% url 'project_detail' pk=i.7 %}?folder={{ i.2 }}" target="_blank">查看</a>
+                {% else %}
+                  <a class="link" href="{% url 'project_detail' pk=i.7 %}" target="_blank">查看</a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+          <tr>
+            <td colspan="8">暫無紀錄</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title title-dark" id=errorModalLabel">錯誤訊息</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="flex-center species-error">
+          <img class="up-icon me-1" src="{% static 'icon/upload-fail.png' %}" /> 物種欄位未完整填寫
+        </div>
+        <div class="flex-center upload-error">
+          <img class="up-icon me-1" src="{% static 'icon/upload-fail.png' %}" /> 影像未成功上傳
+        </div>
+        <div class="flex-center justify-content-end">
+          <img class="me-1 up-icon" src="{% static 'icon/download-green.png' %}" /><a href="" class="link">下載錯誤清單</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+{% endblock body %} {% block script %}
+<script>
+
+function setModal(deployment_journal_id, species_error, upload_error){
+  $('.error-link').attr("href", "{% url 'get_error_file_list' 1234 %}".replace(/1234/, deployment_journal_id ));
+  species_error=='True' ? $('.species-error').show() : $('.species-error').hide()
+  upload_error=='True' ? $('.upload-error').show() : $('.upload-error').hide()
+} 
+
+</script>
+{% endblock script %}

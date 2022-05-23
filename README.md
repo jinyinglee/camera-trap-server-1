@@ -1,8 +1,37 @@
 # CameraTrap 2021
 
-- `docker-compose.yml`: yml file for development 
+- `docker-compose.yml`: yml file for development
+- `docker-compose-initdb.yml`: yml file for development (start from xxx.sql.gz dump file)
 - `production.yml` yml file for for production
 - `Makefile` for command shortcuts
+
+## Development
+
+### Frontend (Search page)
+
+folder: `frontend-search`
+```bash
+$ cd frontend-search
+```
+
+Install packages
+
+```bash
+$ yarn install
+```
+
+Run for development
+
+```bash
+$ yarn start
+```
+
+### Data Model
+
+- DeploymentJournal: 相機行程
+- DeploymentStat: 相機位置工作時數
+- `script/import-deployment-stat.py` 計算/匯入工作時數
+
 
 ## Nginx & Let's Encrypt for HTTPS
 [Setup referece](https://pentacent.medium.com/nginx-and-lets-encrypt-with-docker-in-less-than-5-minutes-b4b8a60d3a71)

@@ -1,0 +1,38 @@
+<html>
+  <head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/standalone/selectize.js" integrity="sha512-pF+DNRwavWMukUv/LyzDyDMn8U2uvqYQdJN0Zvilr6DDo/56xPDZdDoyPDYZRSL4aOKO/FGKXTpzDyQJ8je8Qw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.bootstrap4.min.css" integrity="sha512-MMojOrCQrqLg4Iarid2YMYyZ7pzjPeXKRvhW9nZqLo6kPBBTuvNET9DBVWptAo/Q20Fy11EIHM5ig4WlIrJfQw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  </head>
+  <body>
+    <select id="select-links"></select>
+  </body>
+  <script>
+    $("#select-links").selectize({
+      theme: "links",
+      maxItems: null,
+      valueField: "id",
+      searchField: "title",
+      options: [
+        { id: 1, title: "DIY", url: "https://diy.org" },
+        { id: 2, title: "Google", url: "http://google.com" },
+        { id: 3, title: "Yahoo", url: "http://yahoo.com" },
+      ],
+      render: {
+        option: function (data, escape) {
+          return '<div class="option">' + '<span class="title">' + escape(data.title) + "</span>" + '<span class="url">' + escape(data.url) + "</span>" + "</div>";
+        },
+        item: function (data, escape) {
+          return '<div class="item"><a href="' + escape(data.url) + '">' + escape(data.title) + "</a></div>";
+        },
+      },
+      create: function (input) {
+        return {
+          id: 0,
+          title: input,
+          url: "#",
+        };
+      },
+    });
+  </script>
+</html>

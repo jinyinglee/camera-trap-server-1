@@ -15,4 +15,13 @@ urlpatterns = [
     path('permission', views.set_permission, name='set_permission'),
     path('add_org_admin', views.add_org_admin, name='add_org_admin'),
     path('policy', views.policy, name='policy'),
+    path('faq', views.faq, name='faq'),
+    path('contact-us', views.contact_us, name='contact-us'),
+    path('get_error_file_list/<deployment_journal_id>', views.get_error_file_list, name='get_error_file_list'),
+    path('upload-history', views.upload_history, name='upload-history'),
+    # path('send_feedback', views.send_feedback, name='send_feedback'),
+    path('feedback_request', views.feedback_request, name='feedback_request'),
+    path('send_upload_notification', views.send_upload_notification, name='send_upload_notification'),
+    path('update_upload_history/', views.update_upload_history, name='update_upload_history'),
+    path('update_is_read', views.update_is_read, name='update_is_read'),
 ]

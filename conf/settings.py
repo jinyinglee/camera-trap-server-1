@@ -25,7 +25,6 @@ MESSAGE_TAGS = {
     messages.ERROR: 'alert-danger',
 }
 
-TIME_ZONE = 'Asia/Taipei'
 
 # Build paths inside the taicat like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -75,6 +74,9 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'conf.urls'
+
+
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 
 TEMPLATES = [
     {
@@ -177,6 +179,7 @@ AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID', default='')
 AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY', default='')
 AWS_SES_REGION_NAME = env('AWS_SES_REGION_NAME', default='')
 AWS_SES_REGION_ENDPOINT = env('AWS_SES_REGION_ENDPOINT', default='')
+AWS_S3_BUCKET = env('AWS_S3_BUCKET', default='')
 
 CT_SERVICE_EMAIL = env('CT_SERVICE_EMAIL', default='')
 CT_BCC_EMAIL_LIST = env('CT_BCC_EMAIL_LIST', default='')

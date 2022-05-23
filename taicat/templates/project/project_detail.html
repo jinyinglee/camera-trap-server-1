@@ -1,989 +1,1410 @@
-{% extends 'base/base.html' %}
-{% block title %}
-{{ project_info.0 }} | {{ block.super }}
-{% endblock title %}
-{% block head %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta2/dist/css/bootstrap-select.min.css">
-{% load static %}
+{% extends 'base/base.html' %} {% load tag_library %}
+{% block title %} {{ project_info.0 }} | {{ block.super }} {% endblock title %} {% block head %} {% load static %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/standalone/selectize.js" integrity="sha512-pF+DNRwavWMukUv/LyzDyDMn8U2uvqYQdJN0Zvilr6DDo/56xPDZdDoyPDYZRSL4aOKO/FGKXTpzDyQJ8je8Qw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.bootstrap4.min.css" integrity="sha512-MMojOrCQrqLg4Iarid2YMYyZ7pzjPeXKRvhW9nZqLo6kPBBTuvNET9DBVWptAo/Q20Fy11EIHM5ig4WlIrJfQw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
+<script src="{% static 'js/datatable-settings.js' %}"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.dataTables.min.css" />
 <style>
-    /* datatable loader */
-    .dataTables_wrapper .dataTables_processing {
-        content: '';
-        position: absolute;
-        width: 100%;
-        min-height: 150px;
-        height: 150px;
-        left: 0;
-        right: 0;
-        margin: auto;
-        background: url("{% static  'icon/Leaves-1.8s-200px.gif' %}") no-repeat center;
-        background-size: 150px;
-        z-index: 1099;
-        border: 0
+  /* datatable loader */
+  .dataTables_wrapper .dataTables_processing {
+    content: "";
+    position: absolute;
+    width: 100%;
+    min-height: 150px;
+    height: 150px;
+    left: 0;
+    right: 0;
+    margin: auto;
+    background: url("{% static  'icon/Leaves-1.8s-200px.gif' %}") no-repeat center;
+    background-size: 150px;
+    z-index: 1099;
+    border: 0;
+  }
+
+  .dataTables_wrapper .dataTables_processing:after {
+    content: "處理中";
+    position: absolute;
+    top: 160px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    color: rgb(37, 116, 85);
+    width: 100px;
+    height: 20px;
+    margin: auto;
+    z-index: 1199;
+    text-align: center;
+  }
+
+  /* datatable page button */
+  .page-item.active .page-link {
+    background-color: rgb(228, 224, 224) !important;
+    border: 1px solid rgb(228, 224, 224);
+  }
+  .page-link {
+    color: black !important;
+  }
+
+  .dataTables_wrapper {
+    background-color: white;
+  }
+
+  #img-table {
+    margin: 0 auto;
+  }
+
+  #img-table tbody tr:hover {
+    background: #f8f8f8;
+    cursor: pointer;
+  }
+
+  #img-table_wrapper {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  }
+
+  .oversight:hover {
+    color: lightgrey;
+  }
+
+  .back:hover {
+    color: lightgrey;
+  }
+
+  .btn-new {
+    background-color: white;
+    border: 1px solid #cccccc;
+    color: black !important;
+  }
+
+  .ui-autocomplete {
+    z-index: 2147483647;
+    max-height: 200px;
+    overflow-y: auto;
+    /* prevent horizontal scrollbar */
+    overflow-x: hidden;
+    /* add padding to account for vertical scrollbar */
+    padding-right: 20px;
+  }
+
+  /* radio style */
+  input[type="radio"] {
+    display: none;
+  }
+
+  
+  input[name="species-filter"] {
+    display: none;
+  }
+
+  label {
+    cursor: pointer;
+  }
+
+  /* window size */
+
+  .header {
+    height: 70px;
+  }
+
+  .remain.col-2 {
+    /*overflow-y: scroll;*/
+    height: calc(100vh - 126px);
+    background-color: yellow;
+  }
+
+  .scroll-part {
+    overflow-y: scroll;
+    height: calc(100vh - 180px);
+  }
+  .remain.col-10 {
+    position: relative;
+    height: calc(100vh - 126px);
+  }
+
+  footer {
+    display: none;
+  }
+
+  /* studyarea */
+  .studyarea-list-area ul {
+    padding: 0;
+    list-style: none;
+  }
+
+  .studyarea-list-area li {
+    padding: 15px 0;
+    cursor: pointer;
+  }
+
+  /* sub studyarea */
+  .collapse > li {
+    margin-left: 10%;
+  }
+
+  .collapse-s > li {
+    margin-left: 20%;
+  }
+
+  /* font small */
+  .font-sm {
+    font-size: 15px;
+  }
+
+.edit-next:hover, .edit-prev:hover{
+  color: lightgrey;
+}
+
+</style>
+{% endblock head %} {% block body %}
+<div class="container box">
+  {% if project_name > 35 %}
+  <div class="row pb-2 pt-4 header overflow-auto" style="height: 120px">
+    {% else %}
+    <div class="row pb-2 pt-4 header overflow-auto">
+      {% endif %}
+      <div class="col-2">
+        <a class="text-gray back text-decoration-none align-middle" href="{% url 'project_overview' %}"><i class="fa fa-chevron-left"></i> 返回計畫總覽</a>
+      </div>
+      <div class="col-10">
+        <div class="d-flex justify-content-between align-items-center">
+          <h4 class="title-dark p-0">{{ project_info.0 }} <i class="fa fa-info-circle" style="cursor: pointer" data-bs-toggle="modal" data-bs-target="#infoModal"></i></h4>
+          <div>
+            {% if editable %}
+            <button class="btn btn-outline-success" id="edit_button" data-edit="off"><i class="fa fa-xs fa-pencil"></i> 編輯模式</button>
+            {% endif %}
+            <a class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#downloadModal"><i class="fas fa-file-csv"></i> 下載篩選資料</a>
+            {% comment %} <a class="btn btn-outline-success download"><i class="fas fa-file-csv"></i> 下載篩選資料</a> {% endcomment %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-2 bg-white shadow-sm remain">
+        <form action="{% url 'download' pk %}" method="post" id="downloadForm">
+          {% csrf_token %}
+          <input type="hidden" name="email" value="" />
+          <div class="row">
+            <div class="mt-3 d-flex justify-content-between">
+              <p>篩選條件</p>
+              <div>
+                <button type="button" style="font-size: 14px" class="btn btn-orange py-0 px-1" onclick="submitSelect()">篩選</button>
+                <button type="button" style="font-size: 14px" class="btn btn-light border-secondary py-0 px-1 clear">清除</button>
+              </div>
+            </div>
+            <hr style="margin: auto; width: 90%" />
+            <div class="scroll-part">
+              <p class="mt-3 mb-1 d-flex justify-content-between">
+                <strong>物種</strong>
+              </p>
+              <ul style="list-style: none" id="species-list" class="font-sm">
+                <li id="species-list-all">
+                  <label class="form-check-label">
+                    <i class="fas fa-check title-dark"></i>
+                    <input id="species-all-option" class="filter all" type="checkbox" name="species-filter" value="all" checked />
+                    全部
+                  </label>
+                </li>
+                {% for i in species %}
+                <li>
+                  <label class="form-check-label w-100">
+                    <i class="fas fa-check title-dark"></i>
+                    <input class="filter" type="checkbox" name="species-filter" value="{{ i.1 }}" checked />
+                    {{ i.1 }} ({{i.0}})
+                  </label>
+                </li>
+                {% endfor %}
+              </ul>
+              <p class="mb-1"><strong>樣區 / 相機位置</strong></p>
+              <input type="hidden" id="checkbox-all-unchecked" value="false" />
+              <ul style="list-style: none" id="studyarea-list" class="font-sm">
+                <li>
+                  <label class="form-check-label">
+                    <i class="fas fa-check title-dark"></i>
+                    <input class="filter all" type="radio" name="sa-filter" value="" checked />
+                    全部
+                  </label>
+                </li>
+                {% for i in study_area %} {% if i.parent_id == None %}
+                <li>
+                  <label class="form-check-label w-100">
+                    <input class="filter studyarea-name" type="radio" name="sa-filter" value="{{ i.id }}" id="{{ i.id }}" data-bs-toggle="collapse" href="#collapse_{{ i.id }}" role="button" aria-expanded="false" aria-controls="collapse_{{ i.id }}" />
+                    {{ i.name }}
+                  </label>
+                </li>
+                <div class="collapse" id="collapse_{{ i.id }}">
+                  {% if i.deployment_set.all != None %}
+                  <li>
+                    <label class="form-check-label w-auto">
+                      <input class="filter all" type="checkbox" name="d-filter" value="all" data-parent-radio="{{ i.id }}" />
+                      全部
+                    </label>
+                  </li>
+                  {% for j in i.deployment_set.all %}
+                  <li>
+                    <label class="form-check-label w-auto">
+                      <input class="filter" type="checkbox" name="d-filter" value="{{ j.id }}" data-parent-radio="{{ i.id }}" />
+                      {{ j.name }}
+                    </label>
+                  </li>
+                  {% endfor %} {% endif %}
+                </div>
+                {% endif %} {% endfor %}
+              </ul>
+              <p class="mb-1"><strong>上傳目錄名稱</strong></p>
+              <select id="select-folder" class="mb-2" placeholder="請選擇目錄名稱">
+                <option value="">請選擇目錄名稱</option>
+              </select>
+              <p class="mb-1"><strong>拍攝時間</strong></p>
+              <div class="w-75 mx-auto mb-2">
+                <input type="time" id="times" name="times" step="2" />
+              </div>
+              <p class="mb-1"><strong>拍攝日期</strong></p>
+              <p id="date-content" class="font-sm"></p>
+              <input type="text" class="d-none" id="date" readonly />
+              <div id="date-slider" class="w-75 mx-auto mb-5"></div>
+            </div>
+          </div>
+          <input type="hidden" name="start_date" value="" />
+          <input type="hidden" name="end_date" value="" />
+        </form>
+      </div>
+      <div class="col-10 remain">
+        <table class="table table-borderless w-100 px-3 h-100" id="img-table">
+          <thead class="fw-bold title-dark">
+            <tr>
+              <td><input type="checkbox" id="edit-all" class="edit-checkbox" name="edit" onclick="checkAllEdit()" /></td>
+              <td>樣區</td>
+              <td>相機位置</td>
+              <td>檔名</td>
+              <td>日期時間</td>
+              <td>物種</td>
+              <td>年齡</td>
+              <td>性別</td>
+              <td>角況</td>
+              <td>個體ID</td>
+              <td>備註</td>
+              <td>影像</td>
+              <td>image_uuid</td>
+              <td>image_id</td>
+            </tr>
+          </thead>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content edit-content">
+        <div class="modal-body" id="modal-text">
+          <div class="row my-3 align-items-center">
+            <div class="col-1"><span class="edit-prev text-grey" style="cursor: pointer"><</span></div>
+            <div class="col-10" id="edit-image"></div>
+            <div class="col-1"><span class="edit-next text-grey" style="cursor: pointer">></span></div>
+          </div>
+          <form novalidate action="{% url 'edit_image' pk %}" method="post" autocomplete="off" id="editForm">
+            {% csrf_token %}
+            <div class="row my-3">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">樣區</div>
+              <div class="col-7">
+                <div class="autocomplete">
+                  <input id="edit-studyarea_id" type="hidden" name="studyarea_id" />
+                  <input class="form-control" id="edit-studyarea" type="text" />
+                </div>
+                <div class="notice d-none">
+                  必填欄位
+                </div>
+              </div>
+              <div class="col-1"></div>
+            </div>
+            <div class="row my-3">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">相機位置</div>
+              <div class="col-7">
+                <div class="autocomplete">
+                  <input class="form-control" id="edit-deployment" type="text" />
+                  <input id="edit-deployment_id" type="hidden" name="deployment_id" />
+                </div>
+                <div class="notice d-none">
+                  必填欄位
+                </div>
+              </div>
+              <div class="col-1"></div>
+            </div>
+            <div class="row my-3">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">檔名</div>
+              <div class="col-7" id="edit-filename"></div>
+              <div class="col-1"></div>
+            </div>
+            <div class="row my-3">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">日期時間</div>
+              <div class="col-7" id="edit-datetime">
+                <!--
+                <input class="form-control" style="height: 38px" id="edit-datetime" type="datetime-local" name="datetime" step="1">
+                <div class="notice d-none">
+                  時間格式錯誤，請至少填寫至分鐘
+                </div>
+                -->              
+              </div>
+              <div class="col-1"></div>
+            </div>
+            <div class="row my-3">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">物種</div>
+              <div class="col-7">
+                <div class="autocomplete">
+                  <input class="form-control" id="edit-species" type="text" name="species" />
+                </div>
+              </div>
+              <div class="col-1"></div>
+            </div>
+            <div class="row my-3">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">年齡</div>
+              <div class="col-7">
+                <div class="autocomplete">
+                  <input class="form-control" id="edit-lifestage" type="text" name="life_stage" />
+                </div>
+              </div>
+              <div class="col-1"></div>
+            </div>
+            <div class="row my-3">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">性別</div>
+              <div class="col-7">
+                <div class="autocomplete">
+                  <input class="form-control" id="edit-sex" type="text" name="sex" />
+                </div>
+              </div>
+              <div class="col-1"></div>
+            </div>
+            <div class="row my-3">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">角況</div>
+              <div class="col-7">
+                <div class="autocomplete">
+                  <input class="form-control" id="edit-antler" type="text" name="antler" />
+                </div>
+              </div>
+              <div class="col-1"></div>
+            </div>
+            <div class="row my-3">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">個體ID</div>
+              <div class="col-7">
+                <input class="form-control" id="edit-animal_id" type="text" name="animal_id" />
+              </div>
+              <div class="col-1"></div>
+            </div>
+            <div class="row my-3">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">備註</div>
+              <div class="col-7">
+                <input class="form-control" id="edit-remarks" type="text" name="remarks" />
+              </div>
+              <div class="col-1"></div>
+            </div>
+            <input type="hidden" id="edit-image_uuid" name="image_uuid" value="" />
+            <input type="hidden" id="edit-image_id" name="image_id" value="" />
+            <input type="hidden" id="edit-page_info" name="page_info" value="" />
+          </form>
+        </div>
+        <div class="modal-footer edit-footer">
+          <a class="btn btn-outline-success" data-bs-dismiss="modal">取消</a>
+          <a class="btn btn-orange edit-submit">儲存</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info Modal -->
+  <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title title-dark">計畫基本資訊</h5>
+          {% if is_authorized %}
+          <a class="btn btn-outline-success ms-2" href="{% url 'edit_project_basic' pk %}"><i class="fa fa-xs fa-pencil"></i> 計畫管理</a>
+          {% endif %}
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <table class="table table-borderless">
+            <tr>
+              <td class="px-3">委辦單位</td>
+              {% if project_info.1 != None and project_info.1 != 'None' %}
+              <td class="text-gray">{{ project_info.1 }}</td>
+              {% else %}
+              <td></td>
+              {% endif %}
+            </tr>
+            <tr>
+              <td class="px-3">計畫編號</td>
+              {% if project_info.1 != None and project_info.2 != 'None' %}
+              <td class="text-gray">{{ project_info.2 }}</td>
+              {% else %}
+              <td></td>
+              {% endif %}
+            </tr>
+            <tr>
+              <td class="px-3">計畫主持人</td>
+              {% if project_info.1 != None and project_info.3 != 'None' %}
+              <td class="text-gray">{{ project_info.3 }}</td>
+              {% else %}
+              <td></td>
+              {% endif %}
+            </tr>
+            <tr>
+              <td class="px-3">計畫時間</td>
+              <td class="text-gray">{{ project_info.4 }} 至 {{ project_info.5 }}</td>
+            </tr>
+            <tr>
+              <td class="px-3">相機樣點運作及缺失比例</td>
+              <td><a class="oversight text-green text-decoration-none" href="{% url 'project_oversight' pk %}">查看</a></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Download Modal -->
+  <div class="modal fade" id="downloadModal" tabindex="-1" aria-labelledby="downloadModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title title-dark">下載篩選資料</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>檔案為離線產生，處理完成後，系統會寄下載資訊到您輸入的電子郵件信箱。如未收到信件，請檢查您的郵件設定，如仍未收到信件，請聯絡我們。</p>
+          <p>請輸入您的電子郵件：</p>
+          <div class="d-flex justify-content-start">
+            <input class="form-control w-75" type="text" id="download-email" onkeyup="ValidateEmail(this.value)" />
+            <svg id="email-check" xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="lightgrey" class="bi bi-check my-auto" viewBox="0 0 16 16">
+              <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
+            </svg>
+            <button class="ms-1 btn btn-outline-success download">送出</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- delete modal -->
+  <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-body">
+          <p style="font-size: 20px">確定刪除？</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+          <a class="btn btn-danger" id="deleteData"">刪除</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% endblock body %} {% block script %}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/selectize.min.js" integrity="sha512-JiDSvppkBtWM1f9nPRajthdgTCZV3wtyngKUqVHlAs0d5q72n5zpM3QMOLmuNws2vkYmmLn4r1KfnPzgC/73Mw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+
+    function checkAllEdit(){
+      if($('#edit-all').is(':checked')) {
+        $('.edit-checkbox').prop('checked', true)
+      } else {
+          $('.edit-checkbox').each(function() {
+            $('.edit-checkbox').prop('checked', false)
+          });
+      }
     }
 
-    .dataTables_wrapper .dataTables_processing:after {
-        content:'處理中';
-        position: absolute;
-        top: 160px;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        color: rgb(37, 116, 85);
-        width: 100px;
-        height: 20px;
-        margin: auto;
-        z-index: 1199;
-        text-align: center;
+    //https://emailregex.com
+    function ValidateEmail(inputText){
+        let mailformat = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/
+        if(inputText.match(mailformat)){
+            $('#email-check').attr('fill', 'green');
+            $('button.download').prop('disabled', false);
+        } else {
+            $('#email-check').attr('fill', 'lightgrey');
+            $('button.download').prop('disabled', true);
+        }
     }
 
-    /* datatable page button */
-    .page-item.active .page-link {
-        background-color: rgb(228, 224, 224) !important;
-        border: 1px solid rgb(228, 224, 224) ;
-    }
-    .page-link {
-        color: black !important;
+    // autocomplete
+    var species = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠', '無法辨識', '空拍', '工作照', '測試', '台灣山鷓鴣', '台灣竹雞', '黑長尾雉', '藍腹鷴', '黑冠麻鷺', '環頸雉', '山鷸', '灰林鴿', '金背鳩', '珠頸斑鳩', '翠翼鳩', '黃痣藪眉', '台灣噪眉', '台灣紫嘯鶇', '虎鶇', '白眉鶇', '白腹鶇', '赤腹鶇', '白頭鶇'].sort()
+    var antler = ['初茸','茸角一尖','茸角一岔二尖','茸角二岔三尖','茸角三岔四尖','硬角一尖','硬角一岔二尖','硬角二岔三尖','硬角三岔四尖','解角']
+    var sex = ['雄性','雌性','無法判定']
+    var lifestage = ['成體','亞成體','幼體','無法判定']
+
+    $('#edit-species').autocomplete({
+        minLength: 0,
+        source: function(request, response) {
+            var data = $.grep(species, function(value) {
+                return value.substring(0, request.term.length).toLowerCase() == request.term.toLowerCase();
+            });
+            response(data);
+        }
+        }).focus(function () {
+            $(this).autocomplete("search", "");
+    });
+
+
+    // dependent dropdown menu
+    var $dep = $("#edit-deployment").autocomplete({
+      source: [],
+      minLength: 0,
+      change: function(event,ui){
+        // only allow deployments in the list
+        $(this).val((ui.item ? ui.item.label : ""));
+        $( "#edit-deployment_id" ).val((ui.item ? ui.item.value : ""));
+      },      
+      select: function( event, ui ) {
+          $( "#edit-deployment" ).val( ui.item.label );
+          $( "#edit-deployment_id" ).val( ui.item.value );
+          return false;
+      }
+    }).focus(function () {
+      $(this).autocomplete("search", "");
+    });
+
+
+    $( "#edit-studyarea" ).autocomplete({
+      minLength: 0,
+      source: {{ sa_list | safe }},
+      open: function( event, ui ) {
+        window.pre_select = $('#edit-studyarea').val();
+      },
+      change: function(event,ui){
+        // only allow studyarea in the list
+        $( "#edit-studyarea" ).val((ui.item ? ui.item.label : ""));
+        $( "#edit-studyarea_id" ).val((ui.item ? ui.item.value : ""));
+        if ($( "#edit-studyarea" ).val()==''){
+          $('#edit-deployment, #edit-deployment_id').val('')
+          $dep.autocomplete('option', 'source', '');
+        } 
+      },      
+      select: function( event, ui ) {
+          $( "#edit-studyarea_id" ).val( ui.item.value );
+          $( "#edit-studyarea" ).val( ui.item.label )
+          if (pre_select != ui.item.label) {
+            $('#edit-deployment, #edit-deployment_id').val('')
+          }
+          var src = ui.item.label;
+          $dep.autocomplete('option', 'source', {{ sa_d_list | safe }}[src]);
+          return false;
+      }
+    }).focus(function () {
+      $(this).autocomplete("search", "");
+    })
+
+
+    $('#edit-antler').autocomplete({
+        minLength: 0,
+        source: function(request, response) {
+            var data = $.grep(antler, function(value) {
+                return value.substring(0, request.term.length).toLowerCase() == request.term.toLowerCase();
+            });
+            response(data);
+        }
+        }).focus(function () {
+            $(this).autocomplete("search", "");
+    });
+
+    $('#edit-sex').autocomplete({
+        minLength: 0,
+        source: function(request, response) {
+            var data = $.grep(sex, function(value) {
+                return value.substring(0, request.term.length).toLowerCase() == request.term.toLowerCase();
+            });
+            response(data);
+        }
+        }).focus(function () {
+            $(this).autocomplete("search", "");
+    });
+
+    $('#edit-lifestage').autocomplete({
+        minLength: 0,
+        source: function(request, response) {
+            var data = $.grep(lifestage, function(value) {
+                return value.substring(0, request.term.length).toLowerCase() == request.term.toLowerCase();
+            });
+            response(data);
+        }
+        }).focus(function () {
+            $(this).autocomplete("search", "");
+    });
+
+    function submitSelect(){
+        window.conditions = {
+        times : $("input[name=times]").val(),
+        pk : "{{ pk }}",
+        species : $('input[name="species-filter"]:checked').map(function(){return $(this).val();}).get(),
+        sa :  $("input[name=sa-filter]:checked").val(),
+        //{% if earliest_date != None %}
+        start_date : (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10),
+        end_date : (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10),
+        //{% endif %}
+        deployment : $('input[name="d-filter"]:checked').map(function(){return $(this).val();}).get(),
+        folder_name : $('#select-folder option:selected').val(),
+      }
+      $('#img-table').DataTable().draw();
     }
 
-    .dataTables_wrapper {
-        background-color: white
-    }
+    const allEqual = arr => arr.every( v => v === arr[0] )
 
-    #img-table {
-        margin: 0 auto
-    }
+    $(document).ready(function() {
 
-    #img-table_wrapper {
-        box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
-    }
+      var $selectf = $("#select-folder").selectize({
+        valueField: "folder_name",
+        searchField: "folder_name",
+        options: {{ folder_list|safe }},
+        render: {
+          option: function (data, escape) {
+            return '<div class="option">' + '<span class="folder_name">' + escape(data.folder_name) + "</span>" + '<br><span style="color: grey; font-size:12px" class="last_updated">最後更新：' + escape(data.folder_last_updated) + "</span>" + "</div>";
+          },
+          item: function (data, escape) {
+            return '<div class="option">' + '<span class="folder_name">' + escape(data.folder_name) + "</span>" + "</div>";
+          },
+        },
+        });
+        
+        // select folder from url
+        $selectf[0].selectize.setValue("{{ folder }}");
 
-    .oversight:hover {
-        color: lightgrey;
-    }
+        /* sub studyarea */
+        {% for i in study_area %}
+            {% if i.parent_id != None %}
+                $("#collapse_{{ i.parent_id }}").append(`
+                <li>
+                    <label class="form-check-label">
+                        <input class="filter" type="radio" name="sa-filter" value="{{ i.id }}"  data-parent="{{ i.parent_id }}" id="{{ i.id }}" data-bs-toggle="collapse"
+                               href="#collapse_s_{{ i.id }}" role="button" aria-expanded="false" aria-controls="collapse_s_{{ i.id }}">
+                            - {{ i.name }}
+                    </label>
+                </li>
+                <div class="collapse collapse-s" id="collapse_s_{{ i.id }}">
+                {% if i.deployment_set.all != None %}
+                <li>
+                    <label class="form-check-label w-auto">
+                        <input class="filter all" type="checkbox" name="d-filter" value="all" data-parent-radio="{{ i.id }}">
+                            全部
+                    </label>
+                </li>
+                {% for j in i.deployment_set.all %}
+                    <li>
+                        <label class="form-check-label w-100">
+                            <input class="filter" type="checkbox" name="d-filter" value="{{ j.id }}" data-parent-radio="{{ i.id }}">
+                                {{ j.name }}
+                        </label>
+                    </li>
+                    {% endfor %}
+                {% endif %}
+                </div>
+                `);
+            {% endif %}
+        {% endfor %}
 
-    .back:hover {
-        color: lightgrey;
-    }
+        // date slider
+        
+        {% if earliest_date != None %}
+        $("#date-slider").slider({
+          range: true,
+          min: new Date('{{ earliest_date }}').getTime() / 1000,
+          max: new Date('{{ latest_date }}').getTime() / 1000,
+          step: 86400,
+          values: [ new Date('{{ earliest_date }}').getTime() / 1000, new Date('{{ latest_date }}').getTime() / 1000 ],
+          slide: function( event, ui ) {
+            $('#date-content').html((new Date(ui.values[ 0 ] *1000).toISOString().substring(0, 10)) + "至" +
+            (new Date(ui.values[1]*1000)).toISOString().substring(0, 10))
+          },
+        });
+        $("#date-content").html((new Date($("#date-slider").slider("values",0)*1000).toISOString().substring(0, 10)) + "至" +
+        (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
+        {% endif %}
 
-    .btn-new {
-        background-color: white;
-        border: 1px solid #cccccc;
-        color: black !important;
-    }
+        window.conditions = {
+          times : $("input[name=times]").val(),
+          pk : "{{ pk }}",
+          species : $('input[name="species-filter"]:checked').map(function(){return $(this).val();}).get(),
+          sa :  $("input[name=sa-filter]:checked").val(),
+          {% if earliest_date != None %}
+          start_date : (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10),
+          end_date : (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10),
+          {% endif %}
+          deployment : $('input[name="d-filter"]:checked').map(function(){return $(this).val();}).get(),
+          folder_name : $('#select-folder option:selected').val(),
+        }
 
-    .ui-autocomplete { 
-        z-index:2147483647; 
-        max-height: 200px;
-        overflow-y: auto;
-        /* prevent horizontal scrollbar */
-        overflow-x: hidden;
-        /* add padding to account for vertical scrollbar */
-        padding-right: 20px;
-    }
+        // initalize datatable & redraw table
+        let table = $('#img-table').DataTable({
+            dom:"<'row px-3 pt-3 text-end'<'col-6'B><'col-6'l>>" +
+                "<'row'<'col-sm-12'tr>>" +
+                "<'row p-3'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+            language: language_settings,
+            ordering: false,
+            processing: true,
+            serverSide: true,
+            searching: false,
+            scrollY: 100,
+            scrollResize: true,
+            scrollX: true,
+            scrollCollapse: true,
+            filter: false,
+            buttons: [
+              {
+                  text: '編輯',
+                  className: 'btn btn-outline-success btn-sm e-button d-none disabled',
+                  action: function ( e, dt, node, config ) {
 
-    /* radio style */
-    input[type="radio"] {
-        display: none
-    }
+                    let img_array = []
+                    let imguuid_array = []
+                    let sa_array = []
+                    let dep_array = []
+                    let species_array = []
+                    let sex_array = []
+                    let lifestage_array = []
+                    let antler_array = []
+                    let animal_id_array = []
+                    let remarks_array = []
+                    
+                    $( "input.edit-checkbox:checked").not('#edit-all').each(function(  ) {
+                      current_row = table.row($(this).parent()).data();
+                      img_array.push(current_row['image_id'])
+                      imguuid_array.push(current_row['image_uuid'])
+                      sa_array.push(current_row['saname'])
+                      dep_array.push(current_row['dname'])
+                      species_array.push(current_row['species'])
+                      sex_array.push(current_row['sex'])
+                      lifestage_array.push(current_row['lifestage'])
+                      antler_array.push(current_row['antler'])
+                      animal_id_array.push(current_row['animal_id'])
+                      remarks_array.push(current_row['remarks'])
+                    });  
 
-    label {
-        cursor: pointer
-    }
+                      $('#edit-image_id').val(img_array)                  
+                      // remove notice info
+                      $('#edit-studyarea, #edit-deployment').removeClass('notice-border')
+                      $('.notice').addClass('d-none');
+                      // clean studyarea & deployment id
+                      $('#edit-studyarea_id').val('')
+                      $('#edit-deployment_id').val('')
 
-    /* window size */
+                     if (allEqual(sa_array)){
+                        $('#edit-studyarea').val(sa_array[0])
+                        $dep.autocomplete('option', 'source', {{ sa_d_list | safe }}[current_row['saname']]);
+                      } else {
+                        $('#edit-studyarea').val('')
+                        $dep.autocomplete('option', 'source', '');
+                      }                      
+                      allEqual(dep_array) ? $('#edit-deployment').val(dep_array[0]) : $('#edit-deployment').val('');
+                      allEqual(species_array) ? $('#edit-species').val(species_array[0]) : $('#edit-species').val('');
+                      allEqual(lifestage_array) ? $('#edit-lifestage').val(lifestage_array[0]) : $('#edit-lifestage').val('');
+                      allEqual(sex_array) ? $('#edit-sex').val(sex_array[0]) : $('#edit-sex').val('');
+                      allEqual(antler_array) ? $('#edit-antler').val(antler_array[0]) : $('#edit-antler').val('');
+                      allEqual(animal_id_array) ? $('#edit-animal_id').val(animal_id_array[0]) : $('#edit-animal_id').val('');
+                      allEqual(remarks_array) ? $('#edit-remarks').val(remarks_array[0]) : $('#edit-remarks').val('');
 
-    .header {
-        height: 70px
-    }
+                      // image or videos
+                      if (allEqual(imguuid_array)){
+                        $('#edit-filename').html(current_row['filename'])
+                        $('#edit-datetime').html(current_row['datetime'])  
+                        $('#edit-image').html(current_row['file_url'])
+                      } else {
+                        $('#edit-filename').html('')
+                        $('#edit-datetime').html('')  
+                        $('#edit-image').html('')
+                      }
 
-    .remain.col-2{
-        overflow-y: scroll;
-        height:calc(100vh - 126px);
-        background-color: yellow;
+                      $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
+                      $('#edit-image video').attr('width', '100%');
+                      $('#edit-image video').attr('height', '');
+                      $('#edit-image video source').on('error',function(event) {
+                      $(this).parent().parent().html('<p align="center" style="color: darkgrey; margin: auto">無法載入</p>')
+                      })
+                      $('#edit-image video source, #edit-image img').on('error',function(event) {
+                      $(this).parent().html('<p align="center" style="color: darkgrey; margin: auto">無法載入</p>')
+                      })  
+                      
+                      $('#editModal').modal('show');
+
+                      // disable edit
+                      let editable = '{{ editable }}';
+                      if ((editable!='True')||($('#edit_button').data('edit')=='off')){
+                        $('.edit-content input').attr('disabled', 'disabled')
+                        $('.edit-footer').addClass('d-none')
+                      } else {
+                        $('.edit-content input').prop("disabled", false)
+                        $('.edit-footer').removeClass('d-none')
+                      }
+
+                    }
+                  
+              },
+              {
+                text: '刪除',
+                className: 'btn btn-outline-secondary btn-sm d-button d-none disabled',
+                action: function ( e, dt, node, config ) {
+                    $('#deleteModal').modal('show')
+                }
+              }
+            ],
+            ajax: {
+                type: "POST",
+                dataType : 'json',        
+                url: "{% url 'data' %}",
+                headers:{'X-CSRFToken':'{{ csrf_token }}'},
+                data: function ( d ) {
+                  d.times = window.conditions.times;
+                  d.pk = "{{ pk }}";
+                  d.species = window.conditions.species;
+                  d.sa =  window.conditions.sa;
+                  d.start_date = window.conditions.start_date;
+                  d.end_date = window.conditions.end_date;
+                  d.deployment = window.conditions.deployment;
+                  d.folder_name = window.conditions.folder_name;
+              },
+            },
+            order: [[0, "asc"]],
+            drawCallback:function(){
+                // button style
+                var btns = $('.dt-button');
+                btns.removeClass('dt-button');
+
+                // uncheck select all button
+                $('#edit-all').prop('checked', false)
+
+                $('.e-button, .d-button').addClass('disabled')
+                // bind onclick event
+                $('input[name="edit"]').on('click', function(){
+                  if ($("input[name='edit']").is(":checked")){
+                    $('.e-button, .d-button').removeClass('disabled')
+                  } else {
+                    $('.e-button, .d-button').addClass('disabled')
+                  }
+                })
+                // remove last page button
+                $("a[data-dt-idx=7]").remove()
+
+                // lazy loading for images
+                var watcher = new IntersectionObserver(onEnterView);
+                var lazyImages = document.querySelectorAll("img.lazy");
+                for (let image of lazyImages) {
+                    watcher.observe(image); // 開始監視
+                }
+                function onEnterView(entries, observer) {
+                    for (let entry of entries) {
+                        if (entry.isIntersecting) {
+                            var img = entry.target;
+                            img.setAttribute("src", img.dataset.src);
+                            observer.unobserve(img);
+                        }
+                    }
+                }
+
+                // lazy loading for videos
+                var watcher2 = new IntersectionObserver(onEnterView2);
+                var lazyVideos = document.querySelectorAll("video");
+                for (let v of lazyVideos) {
+                    watcher2.observe(v); // 開始監視
+                    v.removeAttribute('controls');
+                }
+                function onEnterView2(entries, observer) {
+                    for (let entry of entries) {
+                        if (entry.isIntersecting) {
+                            var video = entry.target;
+                            video.setAttribute("preload", "");
+                            observer.unobserve(video);
+                        }
+                    }
+                }
+
+                // event listener for loading video & img
+                $('img').on('error',function(event) {
+                  $(this).parent().html('<p align="center" style="color: darkgrey; margin: auto">無法載入</p>')
+                })
+
+                $('video source').on('error',function(event) {
+                  $(this).parent().parent().html('<p align="center" style="color: darkgrey; margin: auto">無法載入</p>')
+                })
+
+                // adjust columns after 1000 ms
+                setTimeout(function(){
+                    $.fn.dataTable.tables( { visible: false, api: true } ).columns.adjust();
+                }, 1000);
+
+            },
+            columns: [
+                        {data: "edit"},
+                        {data: "saname"},
+                        {data: "dname"},
+                        {data: "filename" },
+                        {data: "datetime"},
+                        {data: "species"},
+                        {data: "lifestage"},
+                        {data: "sex"},
+                        {data: "antler"},
+                        {data: "animal_id"},
+                        {data: "remarks"},
+                        {data: "file_url"},
+                        {data: "image_uuid"},
+                        {data: "image_id"},
+                    ],
+            columnDefs: [
+                {
+                    "targets": [ 0, 12,13 ], // hidden columns
+                    "visible": false
+                }
+            ],
+        });
+
+        // edit
+        $('#edit_button').on('click', function(){
+          if ($('#edit_button').data('edit') == 'off'){
+            $('#edit_button').data('edit','on');
+            $($.fn.dataTable.tables( true ) ).DataTable().column( 0 ).visible(true);
+            $('#edit_button').html('<i class="fa fa-xs fa-pencil"></i> 結束編輯')
+            // show buttons
+            $('.d-button, .e-button').removeClass('d-none')
+            // bind onclick event
+            $('input[name="edit"]').on('click', function(){
+              if ($("input[name='edit']").is(":checked")){
+                $('.e-button, .d-button').removeClass('disabled')
+              } else {
+                $('.e-button, .d-button').addClass('disabled')
+              }
+            })
+          } else {
+            $('#edit_button').data('edit','off');
+            // uncheck all
+            $($.fn.dataTable.tables( true ) ).DataTable().column( 0 ).visible(false);
+            $('#edit_button').html('<i class="fa fa-xs fa-pencil"></i> 編輯模式')
+            $('.d-button, .e-button').addClass('d-none')
+          }
+          // adjust columns after 1000 ms
+          setTimeout(function(){
+            $.fn.dataTable.tables( { visible: false, api: true } ).columns.adjust();
+        }, 1000);
+        })
+
+
+        $('.clear').on('click', function() {
+            $('input[type=radio]').prop('checked', false);
+            $('input[type=radio].all').prop('checked', true);
+            $('input[type=checkbox].filter').prop('checked', false);
+            // radio
+            $('.fa-check').remove()
+            $('<i class="fas fa-check title-dark"></i>').insertBefore($("input[type=radio].all"))
+
+            {% if earliest_date != None %}
+            $("#date-slider").slider({
+            range: true,
+            min: new Date('{{ earliest_date }}').getTime() / 1000,
+            max: new Date('{{ latest_date }}').getTime() / 1000,
+            step: 86400,
+            values: [ new Date('{{ earliest_date }}').getTime() / 1000, new Date('{{ latest_date }}').getTime() / 1000 ],
+            slide: function( event, ui ) {
+                $('#date-content').html((new Date(ui.values[ 0 ] *1000).toISOString().substring(0, 10)) + "至" +
+                (new Date(ui.values[1]*1000)).toISOString().substring(0, 10))
+            },
+            });
+            $("#date-content").html((new Date($("#date-slider").slider("values",0)*1000).toISOString().substring(0, 10)) + "至" +
+            (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
+            {% endif %}
+        });
+
+        function changeEditContent(current_row, idx){
+          
+            // remove notice info
+            $('#edit-studyarea, #edit-deployment').removeClass('notice-border')
+            $('.notice').addClass('d-none');
+            // clean studyarea & deployment id
+            $('#edit-studyarea_id').val('')
+            $('#edit-deployment_id').val('')
+
+            let row = table.row(current_row).data();
+            $('.edit-next').unbind('click');
+            $('.edit-next').on('click', function(){
+              if (current_row.next().length!=0){
+                changeEditContent(current_row.next(), idx);
+              } else {
+                $('#img-table_next').trigger('click');
+                var table = $('#img-table').DataTable();
+                  // 等到table畫好再換, 預設第一個
+                  table.on( 'draw', function () {
+                    let change_row = $('#img-table tr').eq(1);
+                    changeEditContent(change_row, idx);
+                  });
+              }
+            })
+
+            $('.edit-prev').unbind('click');
+            $('.edit-prev').on('click', function(){
+              if (current_row.prev().length!=0){
+                changeEditContent(current_row.prev(), idx);
+              } else {
+                $('#img-table_previous').trigger('click');
+                var table = $('#img-table').DataTable();
+                  // 等到table畫好再換, 預設最後一個
+                  table.on( 'draw', function () {
+                    let change_row = $('#img-table tr:last');
+                    changeEditContent(change_row, idx);
+                  });
+              }
+            })
+
+            $('#editModal').off('keydown');        
+            $('#editModal').keydown(function (e) {
+              var arrow = { left: 37, right: 39};
+              switch (e.which) {
+                case arrow.left:
+                if (current_row.prev().length!=0){
+                  changeEditContent(current_row.prev(), idx);
+                } else {
+                  $('#img-table_previous').trigger('click');
+                  var table = $('#img-table').DataTable();
+                    // 等到table畫好再換, 預設最後一個
+                    table.on( 'draw', function () {
+                      let change_row = $('#img-table tr:last');
+                      changeEditContent(change_row, idx);
+                    });
+                }
+                  break;
+                case arrow.right:
+                  if (current_row.next().length!=0){
+                    changeEditContent(current_row.next(), idx);
+                  } else {
+                    $('#img-table_next').trigger('click');
+                    var table = $('#img-table').DataTable();
+                      // 等到table畫好再換, 預設第一個
+                      table.on( 'draw', function () {
+                        let change_row = $('#img-table tr').eq(1);
+                        changeEditContent(change_row, idx);
+                      });
+                  }
+                  break;
+              }
+            });
+            
+
+              if (idx != 0){
+                $dep.autocomplete('option', 'source', {{ sa_d_list | safe }}[row['saname']]);
+                $('#edit-studyarea').val(row['saname'])
+                $('#edit-deployment').val(row['dname'])
+                $('#edit-filename').html(row['filename'])
+                $('#edit-datetime').html(row['datetime'])
+                //$('#edit-datetime').val(row['datetime'].replace(' ','T'))
+                $('#edit-species').val(row['species'])
+                $('#edit-lifestage').val(row['lifestage'])
+                $('#edit-sex').val(row['sex'])
+                $('#edit-antler').val(row['antler'])
+                $('#edit-animal_id').val(row['animal_id'])
+                $('#edit-remarks').val(row['remarks'])
+                $('#edit-image_uuid').val(row['image_uuid'])
+                $('#edit-image_id').val(row['image_id'])
+                $('#edit-image').html(row['file_url'])
+                $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
+                $('#edit-image video').attr('width', '100%');
+                $('#edit-image video').attr('height', '');
+                $('#edit-image video source').on('error',function(event) {
+                  $(this).parent().parent().html('<p align="center" style="color: darkgrey; margin: auto">無法載入</p>')
+                })
+                $('#edit-image video source, #edit-image img').on('error',function(event) {
+                  $(this).parent().html('<p align="center" style="color: darkgrey; margin: auto">無法載入</p>')
+                })
+                $('#editModal').modal('show');
+                // disable edit
+                let editable = '{{ editable }}';
+                if ((editable!='True')||($('#edit_button').data('edit')=='off')){
+                  $('.edit-content input').attr('disabled', 'disabled')
+                  $('.edit-footer').addClass('d-none')
+                } else {
+                  $('.edit-content input').prop("disabled", false)
+                  $('.edit-footer').removeClass('d-none')
+                }
+              }
+  
+          
         }
 
 
-    .remain.col-10{
-        position: relative;
-        height:calc(100vh - 126px);
-    }
+        // ---------------------------------- //
 
-    footer {
-        display: none
-    }
-    
-    /* studyarea */
-    .studyarea-list-area ul {
-        padding: 0;
-        list-style: none;
-    }
+        // set permission: 計畫總管理人/個別計畫承辦人/系統管理員
+        $('#img-table tbody').on('click', 'td', function () {
+          let current_row = $(this);
+          let idx = table.column(current_row).index();
 
-   .studyarea-list-area li {
-        padding: 15px 0 ;
-        cursor: pointer
-    }
+          changeEditContent(current_row.parent(), idx);
+        });
 
-    /* sub studyarea */
-    .collapse > li {
-        margin-left: 10%
-    }
 
-    .collapse-s > li {
-        margin-left: 20%
-    }
+        $('#editModal').on('hidden.bs.modal', function () {
+          // remove next & prev event after modal close
+          $(this).off('keydown');        
+        })
+        
 
-    /* font small */
-    .font-sm {
-        font-size: 15px
-    }
+        // ---------------------------------- //
 
-</style>
-{% endblock head %}
-{% block body %}
-<div class="container box">
-    {% if project_name > 35 %}
-    <div class="row pb-2 pt-4 header overflow-auto" style="height: 120px">
-            {% else %}
-    <div class="row pb-2 pt-4 header overflow-auto">
-        {% endif %}
-        <div class="col-2">
-            <a class="text-gray back text-decoration-none align-middle" href="{% url 'project_overview' %}"><i class="fa fa-chevron-left"></i> 返回計畫總覽</a>
-        </div>
-        <div class="col-10">
-            <div class="d-flex justify-content-between align-items-center">
-              <h4 class="title-dark p-0">{{ project_info.0 }} <i class="fa fa-info-circle" style="cursor: pointer" data-bs-toggle="modal" data-bs-target="#infoModal"></i></h4>
-                <div>
-                {% if is_authorized %}
-                    <a class="btn btn-outline-success" href="{% url 'edit_project_basic' pk %}"><i class="fa fa-xs fa-pencil"></i> 計畫管理</a>
-                {% endif %}
-                    <a class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#downloadModal"><i class="fas fa-file-csv"></i> 下載篩選資料</a>
-                    {% comment %} <a class="btn btn-outline-success download"><i class="fas fa-file-csv"></i> 下載篩選資料</a> {% endcomment %}
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-2 bg-white shadow-sm remain">
-            <form action="{% url 'download' pk %}" method="post" id="downloadForm">
-            {% csrf_token %}
-            <input type="hidden" name="email" value="">
-                <div class="row">
-                    <div class="mt-3 d-flex justify-content-between">
-                        <p>篩選條件</p>
-                        <div>
-                        <button type="button" style="font-size: 14px" class="btn btn-orange py-0 px-1 select">篩選</button>
-                        <button type="button" style="font-size: 14px" class="btn btn-light border-secondary py-0 px-1 clear">清除</button>
-                        </div>
-                    </div>
-                    <hr style='margin: auto; width: 90%'>
-                    <p class="mt-3 mb-1 d-flex justify-content-between">
-                        <strong>物種</strong> 
-                    </p>
-                    <ul style="list-style: none" id="species-list" class="font-sm">
-                        <li id="species-list-all">       
+          $('.edit-submit').on('click', function() {
+              let checked = true
+              // studyarea
+              if (!$('#edit-studyarea').val()){
+                checked = false
+                $('#edit-studyarea').parent().next('.notice').removeClass('d-none')
+                $('#edit-studyarea').addClass('notice-border')
+              }
+              // deployment
+              if (!$('#edit-deployment').val()){
+                checked = false
+                $('#edit-deployment').parent().next('.notice').removeClass('d-none')
+                $('#edit-deployment').addClass('notice-border')
+              }
+              // datetime
+              /*
+              if (!$('input[name=datetime]').val()){
+                checked = false
+                $('input[name=datetime]').next('.notice').removeClass('d-none')
+                $('input[name=datetime]').addClass('notice-border')
+              }*/
+              if (checked){
+                $.ajax({
+                    data: $('#editForm').serialize(),
+                    type: "POST",
+                    url: "{% url 'edit_image' pk %}",
+                    success: function(data) {
+                        $('#editModal').modal('hide');
+                        table.draw(false); // stay in same page
+                        // update filter //
+                        let current_species = $("input[name=species-filter]:checked")
+                        $('#species-list-all').nextAll('li').remove();
+                        for (let i = 0; i < data['species'].length; i++) {
+                         $('#species-list').append(
+                            `<li>
                             <label class="form-check-label">
-                            <i class="fas fa-check title-dark"></i>
-                            <input id="species-all-option" class="filter all" type="radio" name="species-filter" value="" checked>
-                            全部
+                            <input class="filter" type="checkbox" name="species-filter" value="${data['species'][i]['name']}" checked>
+                                ${data['species'][i]['name']} (${data['species'][i]['count']})
                             </label>
-                        </li>
-                        {% for i in species %}
-                        <li>
-                            <label class="form-check-label w-100">
-                            <input class="filter" type="radio" name="species-filter" value="{{ i.1 }}">
-                                {{ i.1 }} ({{i.0}})
-                            </label>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                    <p class="mb-1"><strong>樣區 / 相機位置</strong></p>
-                    <input type="hidden" id="checkbox-all-unchecked" value="false">
-                    <ul style="list-style: none" id="studyarea-list" class="font-sm">
-                        <li>
-                            <label class="form-check-label">             
-                            <i class="fas fa-check title-dark"></i>
-                            <input class="filter all" type="radio" name="sa-filter" value="" checked>
-                            全部
-                            </label>
-                        </li>
-                        {% for i in study_area %}
-                            {% if i.parent_id == None %}
-                            <li>
-                                <label class="form-check-label w-100">
-                                <input class="filter studyarea-name" type="radio" name="sa-filter" value="{{ i.id }}" 
-                                       id="{{ i.id }}" data-bs-toggle="collapse" href="#collapse_{{ i.id }}" role="button" 
-                                       aria-expanded="false" aria-controls="collapse_{{ i.id }}">
-                                    {{ i.name }}
-                                </label>
-                            </li>
-                            <div class="collapse" id="collapse_{{ i.id }}">
-                                {% if i.deployment_set.all != None %}
-                                    <li>
-                                        <label class="form-check-label w-auto">
-                                            <input class="filter all" type="checkbox" name="d-filter" value="all" data-parent-radio="{{ i.id }}">
-                                                全部
-                                        </label>
-                                    </li>
-                                    {% for j in i.deployment_set.all %}
-                                    <li>
-                                        <label class="form-check-label w-auto">
-                                            <input class="filter" type="checkbox" name="d-filter" value="{{ j.id }}" data-parent-radio="{{ i.id }}">
-                                                {{ j.name }}
-                                        </label>
-                                    </li>
-                                    {% endfor %}
-                                {% endif %}
-                            </div>
-                            {% endif %}
-                        {% endfor %}
-                    </ul>
-                    <p class="mb-1"><strong>拍攝日期</strong></p>
-                    <p id="date-content" class="font-sm"></p>
-                    <input type="text" class="d-none" id="date" readonly>
-                    <div id="date-slider" class="w-75 mx-auto mb-5"></div>
-                </div>
-            <input type="hidden" name="start_date" value="">
-            <input type="hidden" name="end_date" value="">
-            </form>
-        </div>
-        <div class="col-10 remain">
-            <table class="table table-borderless w-100 px-3 h-100" id="img-table">
-                <thead class="fw-bold title-dark">
-                    <tr>
-                        <td>樣區</td>
-                        <td>相機位置</td>
-                        <td>檔名</td>
-                        <td>拍攝時間</td>
-                        <td>物種</td>
-                        <td>年齡</td>
-                        <td>性別</td>
-                        <td>角況</td>
-                        <td>個體ID</td>
-                        <td>備註</td>
-                        <td>影像</td>
-                        <td>group_id</td>
-                        <td>id</td>
-                    </tr>
-                </thead>
-            </table>
-        </div>
-    </div>
-</div>
-
-<!-- Edit Modal -->
-<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content edit-content">
-            <div class="modal-body" id="modal-text">
-                <div class="row my-3">
-                    <div class="col-12" id="edit-image">
-                    </div>
-                </div>            
-                <form novalidate action="{% url 'edit_image' pk %}" method="post" autocomplete="off" id="editForm">
-                {% csrf_token %}
-                <div class="row my-3">
-                    <div class="col-3 text-end my-auto ">樣區</div>
-                    <div class="col-9" id="edit-studyarea">
-                    </div>
-                </div>
-                <div class="row my-3">
-                    <div class="col-3 text-end my-auto ">相機位置</div>
-                    <div class="col-9" id="edit-deployment">
-                    </div>
-                </div>
-                <div class="row my-3">
-                    <div class="col-3 text-end my-auto ">檔名</div>
-                    <div class="col-9" id="edit-filename">
-                    </div>
-                </div>
-                <div class="row my-3">
-                    <div class="col-3 text-end my-auto ">拍攝時間</div>
-                    <div class="col-9" id="edit-datetime">
-                    </div>
-                </div>
-                <div class="row my-3">
-                    <div class="col-3 text-end my-auto ">物種</div>
-                    <div class="col-9">
-                        <div class="autocomplete">
-                            <input class="form-control" id="edit-species" type="text" name="species">
-                        </div>
-                    </div>
-                </div>
-                <div class="row my-3">
-                    <div class="col-3 text-end my-auto ">年齡</div>
-                    <div class="col-9">
-                        <div class="autocomplete">
-                            <input class="form-control" id="edit-lifestage" type="text" name="lifestage">
-                        </div>
-                    </div>
-                </div>
-                <div class="row my-3">
-                    <div class="col-3 text-end my-auto ">性別</div>
-                    <div class="col-9">
-                        <div class="autocomplete">
-                            <input class="form-control" id="edit-sex" type="text" name="sex">
-                        </div>
-                    </div>
-                </div>
-                <div class="row my-3">
-                    <div class="col-3 text-end my-auto ">角況</div>
-                    <div class="col-9">
-                        <div class="autocomplete">
-                            <input class="form-control" id="edit-antler" type="text" name="antler">
-                        </div>
-                    </div>
-                </div>
-                <div class="row my-3">
-                    <div class="col-3 text-end my-auto ">個體ID</div>
-                    <div class="col-9">
-                        <div class="autocomplete">
-                            <input class="form-control" id="edit-animal_id" type="text" name="animal_id">
-                        </div>
-                    </div>
-                </div>                
-                <div class="row my-3">
-                    <div class="col-3 text-end my-auto ">備註</div>
-                    <div class="col-9">
-                        <div class="autocomplete">
-                            <input class="form-control" id="edit-remarks" type="text" name="remarks">
-                        </div>
-                    </div>
-                </div>
-                <input type="hidden" id="edit-group_id" name="group_id" value="">
-                <input type="hidden" id="edit-id" name="id" value="">
-                <input type="hidden" id="edit-page_info" name="page_info" value="">
-                </form>
-            </div>
-            <div class="modal-footer edit-footer">
-                <a class="btn btn-outline-success" data-bs-dismiss="modal">取消</a>
-                <a class="btn btn-orange edit-submit" >儲存</a>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-
-<!-- Info Modal -->
-<div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title title-dark">計畫基本資訊</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <table class="table table-borderless">
-                    <tr>
-                        <td class="px-3">委辦單位</td>
-                        {% if project_info.1 != None and project_info.1 != 'None' %}
-                        <td class="text-gray">{{ project_info.1 }}</td>
-                        {% else %}
-                        <td></td>
-                        {% endif %}
-                    </tr>
-                    <tr>
-                        <td class="px-3">計畫編號</td>
-                        {% if project_info.1 != None and project_info.2 != 'None' %}
-                        <td class="text-gray">{{ project_info.2 }}</td>
-                        {% else %}
-                        <td></td>
-                        {% endif %}
-                    </tr>
-                    <tr>
-                        <td class="px-3">計畫主持人</td>
-                        {% if project_info.1 != None and project_info.3 != 'None' %}
-                        <td class="text-gray">{{ project_info.3 }}</td>
-                        {% else %}
-                        <td></td>
-                        {% endif %}
-                    </tr>
-                    <tr>
-                        <td class="px-3">計畫時間</td>
-                        <td class="text-gray">{{ project_info.4 }} 至 {{ project_info.5 }}</td>
-                    </tr>
-                    <tr>
-                        <td class="px-3">相機樣點運作及缺失比例</td>
-                        <td><a class="oversight text-green text-decoration-none" href="{% url 'project_oversight' pk %}">查看</a></td>
-                    </tr>
-                </table> 
-            </div>
-        </div>
-    </div>
-</div>
-
-
-
-<!-- Download Modal -->
-<div class="modal fade" id="downloadModal" tabindex="-1" aria-labelledby="downloadModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title title-dark">下載篩選資料</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>檔案為離線產生，處理完成後，系統會寄下載資訊到您輸入的電子郵件信箱。如未收到信件，請檢查您的郵件設定，如仍未收到信件，請聯絡我們。</p>
-                <p>請輸入您的電子郵件：</p>
-                <div class="d-flex justify-content-start">
-                    <input class="form-control w-75" type="text" id="download-email" onkeyup="ValidateEmail(this.value)">                       
-                     <svg id="email-check" xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="lightgrey" class="bi bi-check my-auto " viewBox="0 0 16 16">
-                            <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                    </svg>
-                    <button class="ms-1 btn btn-outline-success download">送出</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock body %}
-
-{% block script %}
-<script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta2/dist/js/bootstrap-select.min.js"></script>
-<script>
-//https://emailregex.com
-function ValidateEmail(inputText){
-    let mailformat = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/
-    if(inputText.match(mailformat)){
-        $('#email-check').attr('fill', 'green');
-        $('button.download').prop('disabled', false);
-    } else {
-        $('#email-check').attr('fill', 'lightgrey');
-        $('button.download').prop('disabled', true);
-    }
-}
-
-// autocomplete
-var species = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠', '無法辨識', '空拍', '工作照', '測試', '台灣山鷓鴣', '台灣竹雞', '黑長尾雉', '藍腹鷴', '黑冠麻鷺', '環頸雉', '山鷸', '灰林鴿', '金背鳩', '珠頸斑鳩', '翠翼鳩', '黃痣藪眉', '台灣噪眉', '台灣紫嘯鶇', '虎鶇', '白眉鶇', '白腹鶇', '赤腹鶇', '白頭鶇'].sort()
-var antler = ['初茸','茸角一尖','茸角一岔二尖','茸角二岔三尖','茸角三岔四尖','硬角一尖','硬角一岔二尖','硬角二岔三尖','硬角三岔四尖','解角']
-var sex = ['雄性','雌性','無法判定']
-var lifestage = ['成體','亞成體','幼體','無法判定']
-
-$('#edit-species').autocomplete({
-    minLength: 0,
-    source: function(request, response) {            
-        var data = $.grep(species, function(value) {
-            return value.substring(0, request.term.length).toLowerCase() == request.term.toLowerCase();
-        });            
-        response(data);
-    }
-    }).focus(function () {
-        $(this).autocomplete("search", "");
-});
-
-$('#edit-antler').autocomplete({
-    minLength: 0,
-    source: function(request, response) {            
-        var data = $.grep(antler, function(value) {
-            return value.substring(0, request.term.length).toLowerCase() == request.term.toLowerCase();
-        });            
-        response(data);
-    }
-    }).focus(function () {
-        $(this).autocomplete("search", "");
-});
-
-$('#edit-sex').autocomplete({
-    minLength: 0,
-    source: function(request, response) {            
-        var data = $.grep(sex, function(value) {
-            return value.substring(0, request.term.length).toLowerCase() == request.term.toLowerCase();
-        });            
-        response(data);
-    }
-    }).focus(function () {
-        $(this).autocomplete("search", "");
-});
-
-$('#edit-lifestage').autocomplete({
-    minLength: 0,
-    source: function(request, response) {            
-        var data = $.grep(lifestage, function(value) {
-            return value.substring(0, request.term.length).toLowerCase() == request.term.toLowerCase();
-        });            
-        response(data);
-    }
-    }).focus(function () {
-        $(this).autocomplete("search", "");
-});
-
-
-// datatable
-let language_settings = {
-    "decimal":        "",
-    "emptyTable":     "查無資料",
-    "info":           "共 _TOTAL_ 筆",
-    "infoEmpty":      "共 0 筆",
-    "infoFiltered":   "",
-    "infoPostFix":    "",
-    "thousands":      ",",
-    "lengthMenu":     `每頁顯示 _MENU_ 筆`,
-    "loadingRecords": "載入中...",
-    "processing":     "",
-    "zeroRecords":    "查無符合資料",
-    "paginate": {
-        "next":       "下一頁",
-        "previous":   "上一頁"
-    }
-};
-
-
-$(document).ready(function() {
-
-    /* sub studyarea */
-    {% for i in study_area %}
-        {% if i.parent_id != None %}
-            $("#collapse_{{ i.parent_id }}").append(`
-            <li>
-                <label class="form-check-label">
-                    <input class="filter" type="radio" name="sa-filter" value="{{ i.id }}"  data-parent="{{ i.parent_id }}" id="{{ i.id }}" data-bs-toggle="collapse" 
-                           href="#collapse_s_{{ i.id }}" role="button" aria-expanded="false" aria-controls="collapse_s_{{ i.id }}">
-                        - {{ i.name }}
-                </label>
-            </li>
-            <div class="collapse collapse-s" id="collapse_s_{{ i.id }}">
-            {% if i.deployment_set.all != None %}
-            <li>
-                <label class="form-check-label w-auto">
-                    <input class="filter all" type="checkbox" name="d-filter" value="all" data-parent-radio="{{ i.id }}">
-                        全部
-                </label>
-            </li>
-            {% for j in i.deployment_set.all %}
-                <li>
-                    <label class="form-check-label w-100">
-                        <input class="filter" type="checkbox" name="d-filter" value="{{ j.id }}" data-parent-radio="{{ i.id }}">
-                            {{ j.name }}
-                    </label>
-                </li>
-                {% endfor %}
-            {% endif %}
-            </div>            
-            `);
-        {% endif %}
-    {% endfor %}
-
-    // date slider
-    {% if earliest_date != None %}
-    $("#date-slider").slider({
-      range: true,
-      min: new Date('{{ earliest_date }}').getTime() / 1000,
-      max: new Date('{{ latest_date }}').getTime() / 1000,
-      step: 86400,
-      values: [ new Date('{{ earliest_date }}').getTime() / 1000, new Date('{{ latest_date }}').getTime() / 1000 ],
-      slide: function( event, ui ) {
-        $('#date-content').html((new Date(ui.values[ 0 ] *1000).toISOString().substring(0, 10)) + "至" + 
-        (new Date(ui.values[1]*1000)).toISOString().substring(0, 10))
-      },
-    });
-    $("#date-content").html((new Date($("#date-slider").slider("values",0)*1000).toISOString().substring(0, 10)) + "至" + 
-    (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
-    {% endif %}
-
-    // initalize datatable
-    let table = $("#img-table").DataTable({
-        dom:"<'row px-3 pt-3'<'col-sm-12 col-md-5'l>>" +
-            "<'row'<'col-sm-12'tr>>" +
-            "<'row p-3'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-        language: language_settings,
-        ordering: false,
-        processing: true,
-        serverSide: true,
-        searching: false,
-        scrollY: 100,
-        scrollResize: true,
-        scrollX: true,
-        scrollCollapse: true,
-        ajax: {
-            type: "POST",
-            url: "{% url 'data' %}",
-            headers:{'X-CSRFToken':'{{ csrf_token }}'},
-            data: function ( d ) {
-                d.pk = "{{ pk }}";
-                d.species = $("input[name=species-filter]:checked").val()
-                d.sa =  $("input[name=sa-filter]:checked").val()
-                {% if earliest_date != None %}
-                d.start_date = (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10)
-                d.end_date = (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10)
-                {% endif %}
-                d.deployment =  $('input[name="d-filter"]:checked').map(function(){return $(this).val();}).get();
-            },
-
-        }, 
-        order: [[0, "asc"]], 
-        drawCallback:function(){
-            // lazy loading for images
-            var watcher = new IntersectionObserver(onEnterView);
-            var lazyImages = document.querySelectorAll("img.lazy");
-            for (let image of lazyImages) {
-                watcher.observe(image); // 開始監視
-            }
-            function onEnterView(entries, observer) {
-                for (let entry of entries) {
-                    if (entry.isIntersecting) {
-                        var img = entry.target;
-                        img.setAttribute("src", img.dataset.src);
-                        observer.unobserve(img); 
-                    }
-                }
-            }
-            // adjust columns after 1000 ms
-            setTimeout(function(){
-                $.fn.dataTable.tables( { visible: false, api: true } ).columns.adjust();
-            }, 1000);
-        },
-        columns: [
-                    {data: "saname"},
-                    {data: "dname"},
-                    {data: "filename" },
-                    {data: "datetime"},
-                    {data: "species"},
-                    {data: "lifestage"},
-                    {data: "sex"},
-                    {data: "antler"},
-                    {data: "animal_id"},
-                    {data: "remarks"},
-                    {data: "file_url"},
-                    {data: "group_id"},
-                    {data: "image_id"},
-                ], 
-        columnDefs: [ 
-            {
-                "targets": [ 11,12 ], // hidden columns
-                "visible": false
-            }
-        ],
-    });
-
-    // submit select
-    $('.select').on('click', function() {
-        $($.fn.dataTable.tables( true ) ).DataTable().columns.adjust().draw();
-    });
-    
-    $('.clear').on('click', function() {
-        $('input[type=radio]').prop('checked', false);
-        $('input[type=radio].all').prop('checked', true);
-        $('input[type=checkbox].filter').prop('checked', false);
-        // radio
-        $('.fa-check').remove()
-        $('<i class="fas fa-check title-dark"></i>').insertBefore($("input[type=radio].all"))
-
-        {% if earliest_date != None %}
-        $("#date-slider").slider({
-        range: true,
-        min: new Date('{{ earliest_date }}').getTime() / 1000,
-        max: new Date('{{ latest_date }}').getTime() / 1000,
-        step: 86400,
-        values: [ new Date('{{ earliest_date }}').getTime() / 1000, new Date('{{ latest_date }}').getTime() / 1000 ],
-        slide: function( event, ui ) {
-            $('#date-content').html((new Date(ui.values[ 0 ] *1000).toISOString().substring(0, 10)) + "至" + 
-            (new Date(ui.values[1]*1000)).toISOString().substring(0, 10))
-        },
-        });
-        $("#date-content").html((new Date($("#date-slider").slider("values",0)*1000).toISOString().substring(0, 10)) + "至" + 
-        (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
-        {% endif %}
-        //$($.fn.dataTable.tables( true ) ).DataTable().columns.adjust().draw();        
-    });
-
-    // set permission: 計畫總管理人/個別計畫承辦人/系統管理員
-    $('#img-table').on('click', 'tbody tr', function () {
-        var row = table.row($(this)).data();
-        $('#edit-studyarea').html(row['saname'])
-        $('#edit-deployment').html(row['dname'])
-        $('#edit-filename').html(row['filename'])
-        $('#edit-datetime').html(row['datetime'])
-        $('#edit-species').val(row['species'])
-        $('#edit-lifestage').val(row['lifestage'])
-        $('#edit-sex').val(row['sex'])
-        $('#edit-antler').val(row['antler'])
-        $('#edit-animal_id').val(row['animal_id'])
-        $('#edit-remarks').val(row['remarks'])
-        $('#edit-group_id').val(row['group_id'])
-        $('#edit-id').val(row['id'])
-        $('#edit-image').html(row['file_url'])
-        $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
-        $('#edit-image video').attr('width', '100%');
-        $('#edit-image video').attr('height', '');
-        $('#editModal').modal('show');
-
-        // disable edit 
-        {% if not edit %}
-        $('.edit-content input').attr('disabled', 'disabled')
-        $('.edit-footer').remove()
-        {% endif %}
-        });
-
-        $('.edit-submit').on('click', function() {
-            $.ajax({
-                data: $('#editForm').serialize(),
-                type: "POST",
-                url: "{% url 'edit_image' pk %}",
-                success: function(data) {
-                    $('#editModal').modal('hide');
-                    table.draw(false); // stay in same page
-                    // update filter //
-                    current_species = $("input[name=species-filter]:checked").val()
-                    $('#species-list-all').nextAll('li').remove();
-                    for (let i = 0; i < data['species'].length; i++) {
-                     $('#species-list').append(
-                        `
-                        <li>
-                        <label class="form-check-label">
-                        <input class="filter" type="radio" name="species-filter" value="${data['species'][i][1]}">
-                            ${data['species'][i][1]} (${data['species'][i][0]})
-                        </label>
-                        </li>
-                        `
-                     )
-                    }
-                    if (current_species==''){
-                        $('#species-all-option').prop('checked', true);
-                    } else {
-                        $(`input[name=species-filter][value=${current_species}]`).attr("checked",true);
-                        $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=species-filter][value=${current_species}]`));
+                            </li>`)
                         }
-
-                    $("input[type=radio]").click( function () {
-                        let group = $(this).attr('name')
-                        $(`input[name=${group}]`).parent('label').children('i').remove()
-                        $('<i class="fas fa-check title-dark"></i>').insertBefore(this);
-                    });
-            }})
-        });
-
-    // download
-    $('.download').on('click', function(){
-        {% if earliest_date != None %}
-        $("input[name=start_date]").val((new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10));
-        $("input[name=end_date]").val((new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
-        {% endif %}
-        $("input[name=email]").val($("#download-email").val())
-        $.ajax({
-                data: $('#downloadForm').serialize(),
-                type: "POST",
-                url: "{% url 'download' pk %}",
-                success: function(){
-                    alert('請求已送出');
-                    $('#downloadModal').modal('hide')
+                        if ($("input[name=species-filter].all").is(':checked')){
+                          $("#species-list li label i").remove()
+                          $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
+                          $("input[name='species-filter']").prop('checked', true)
+                        } else {
+                          $("#species-list li label i").remove()
+                          $(`input[name=species-filter]`).prop("checked",false);
+                          current_species.each(function(){
+                            $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=species-filter][value="${this.value}"]`));
+                            $(`input[name=species-filter][value="${this.value}"]`).prop("checked",true);
+                          })
+                        }
+                  // bind click function
+                  // species: if other checkbox checked, uncheck 'all'
+                  $("input[name='species-filter'].filter:not(.all)").click (function(){
+                    $("#species-list-all label i").remove()
+                    // 先移除自己本身的再判斷
+                    $(this).prev('i').remove()
+                    if( $(this).is(':checked') ) {
+                        $('<i class="fas fa-check title-dark"></i>').insertBefore($(this));
+                    } 
+                    $("input[name='species-filter'].all").prop('checked', false)
+                })
+  
+                  // species: if 'all' checked, check all checkbox
+                  $("input[name='species-filter'].all").click (function(){
+                      // 先移除掉全部的再一次加上去
+                      $("#species-list li label i").remove()
+                      if( $(this).is(':checked') ) {
+                          $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
+                          $("input[name='species-filter']").prop('checked', true)
+                      } else {
+                          $("input[name='species-filter']").prop('checked', false)
+                      }
+                  })
                 },
                 error:function(){
-                    alert('未知錯誤，請聯繫管理員');
-                    $('#downloadModal').modal('hide')
+                  alert('未知錯誤，請聯繫管理員');
                 }
-                })
-                
-        //console.log($('#downloadForm').serialize())
-        //$('#downloadForm').submit()
-    })
+              })
+              }
+            });
 
+        // radio style for studyarea & cameralocation
+        $("input[name=sa-filter]").click( function () {
+            $(`input[type=checkbox][name=d-filter].filter`).prop('checked', false);
+            let radio_group = $(`input[name=sa-filter]:checked`).val();
+            if (radio_group){
+                $(`input[data-parent-radio=${radio_group}]`).prop('checked', true);
+                }
+            $(`input[name=sa-filter]`).parent('label').children('i').remove()
+            $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=sa-filter]:checked`));
+        });
 
-    // radio style for species
-    $("input[name=species-filter]").click( function () {
-        $(`input[name=species-filter]`).parent('label').children('i').remove()
-        $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=species-filter]:checked`));
-    });
+        // radio style for studyarea & cameralocation: checkbox toggle
+        $("input[type=checkbox][name=d-filter].filter.all").click (function(){
+            let parent_radio = $(this).data('parent-radio')
 
-    // radio style for studyarea & cameralocation
-    $("input[name=sa-filter]").click( function () {
-        $(`input[type=checkbox].filter`).prop('checked', false);
-        let radio_group = $(`input[name=sa-filter]:checked`).val();
-        if (radio_group){
-            $(`input[data-parent-radio=${radio_group}]`).prop('checked', true);
+            // uncheck other checkbox group
+            $(`input[type=checkbox][name=d-filter]:not([data-parent-radio=${parent_radio}])`).prop('checked', false)
+
+            if( $(this).is(':checked') ) {
+                $(`input[data-parent-radio=${parent_radio}][type=checkbox]`).prop('checked', true)
+            } else {
+                $(`input[data-parent-radio=${parent_radio}][type=checkbox]`).prop('checked', false)
             }
-        $(`input[name=sa-filter]`).parent('label').children('i').remove()
-        $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=sa-filter]:checked`));
+            // radio
+            $(`input[name=sa-filter]`).parent('label').children('i').remove()
+            $(`input[name=sa-filter]:checked`).prop('checked', false)
+            $(`input[name=sa-filter][id=${parent_radio}]`).prop('checked', true)
+            $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=sa-filter][id=${parent_radio}]`));
+        })
+
+        // deployment: if other checkbox checked, uncheck 'all'
+        $("input[type=checkbox][name=d-filter].filter:not(.all)").click (function(){
+            let parent_radio = $(this).data('parent-radio')
+            // uncheck other checkbox group
+            $(`input[type=checkbox][name=d-filter]:not([data-parent-radio=${parent_radio}])`).prop('checked', false)
+            // uncheck all
+            $(`input[data-parent-radio=${parent_radio}][type=checkbox].all`).prop('checked', false)
+            // radio
+            $(`input[name=sa-filter]`).parent('label').children('i').remove()
+            $(`input[name=sa-filter]:checked`).prop('checked', false)
+            $(`input[name=sa-filter][id=${parent_radio}]`).prop('checked', true)
+            $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=sa-filter][id=${parent_radio}]`));
+        })
+
+        $("input[name='species-filter'].filter:not(.all)").click (function(){
+
+          $("#species-list-all label i").remove()
+          // 先移除自己本身的再判斷
+          $(this).prev('i').remove()
+          if( $(this).is(':checked') ) {
+              $('<i class="fas fa-check title-dark"></i>').insertBefore($(this));
+          } 
+          $("input[name='species-filter'].all").prop('checked', false)
+      })
+
+        // species: if 'all' checked, check all checkbox
+
+        $("input[name='species-filter'].all").click (function(){
+            if( $(this).is(':checked') ) {
+                // 先移除掉全部的再一次加上去
+                $("#species-list li label i").remove()
+                $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
+                $("input[name='species-filter']").prop('checked', true)
+            } else {
+                $("#species-list li label i").remove()
+                $("input[name='species-filter']").prop('checked', false)
+            }
+        })
+
+        $('#deleteData').on('click', function() {
+
+          checkedvalue = [];
+          $("input[name=edit]").not('#edit-all').each(function () {
+              if ($(this).is(":checked")) {
+                  checkedvalue.push($(this).val());
+              }
+          });
+          $('#deleteModal').modal('hide')
+          // ajax to delete data
+          $.ajax({
+            data: {'image_id': checkedvalue},
+            headers:{'X-CSRFToken':'{{ csrf_token }}'},
+            type: "POST",
+            url: "{% url 'delete_data' pk %}",
+            success: function(data){
+              
+              table.draw(false); // stay in same page
+              // update filter //
+              let current_species = $("input[name=species-filter]:checked")
+              $('#species-list-all').nextAll('li').remove();
+              for (let i = 0; i < data['species'].length; i++) {
+               $('#species-list').append(
+                  `<li>
+                  <label class="form-check-label">
+                  <input class="filter" type="checkbox" name="species-filter" value="${data['species'][i]['name']}" checked>
+                      ${data['species'][i]['name']} (${data['species'][i]['count']})
+                  </label>
+                  </li>`)
+              }
+              if ($("input[name=species-filter].all").is(':checked')){
+                $("#species-list li label i").remove()
+                $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
+                $("input[name='species-filter']").prop('checked', true)
+              } else {
+                $("#species-list li label i").remove()
+                $(`input[name=species-filter]`).prop("checked",false);
+                current_species.each(function(){
+                  $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=species-filter][value="${this.value}"]`));
+                  $(`input[name=species-filter][value="${this.value}"]`).prop("checked",true);
+                })
+              }
+            // bind click function
+            // species: if other checkbox checked, uncheck 'all'
+            $("input[name='species-filter'].filter:not(.all)").click (function(){
+              $("#species-list-all label i").remove()
+              // 先移除自己本身的再判斷
+              $(this).prev('i').remove()
+              if( $(this).is(':checked') ) {
+                  $('<i class="fas fa-check title-dark"></i>').insertBefore($(this));
+              } 
+              $("input[name='species-filter'].all").prop('checked', false)
+            })
+
+            // species: if 'all' checked, check all checkbox
+            $("input[name='species-filter'].all").click (function(){
+                // 先移除掉全部的再一次加上去
+                $("#species-list li label i").remove()
+                if( $(this).is(':checked') ) {
+                    $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
+                    $("input[name='species-filter']").prop('checked', true)
+                } else {
+                    $("input[name='species-filter']").prop('checked', false)
+                }
+            })
+
+          },
+          error:function(){
+              alert('未知錯誤，請聯繫管理員');
+          }
+          })
+        })
+
+
+        // download
+        $('.download').on('click', function(){
+          {% if earliest_date != None %}
+          $("input[name=start_date]").val((new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10));
+          $("input[name=end_date]").val((new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
+          {% endif %}
+          $("input[name=email]").val($("#download-email").val())
+          $.ajax({
+                  data: $('#downloadForm').serialize(),
+                  type: "POST",
+                  url: "{% url 'download' pk %}",
+                  success: function(){
+                      alert('請求已送出');
+                      $('#downloadModal').modal('hide')
+                  },
+                  error:function(){
+                      alert('未知錯誤，請聯繫管理員');
+                      $('#downloadModal').modal('hide')
+                  }
+                })
+        })
+
     });
 
-    // radio style for studyarea & cameralocation: checkbox toggle
-    $("input[type=checkbox].filter.all").click (function(){
-        let parent_radio = $(this).data('parent-radio')
-
-        // uncheck other checkbox group
-        $(`input[type=checkbox]:not([data-parent-radio=${parent_radio}])`).prop('checked', false)
-
-        if( $(this).is(':checked') ) {
-            $(`input[data-parent-radio=${parent_radio}][type=checkbox]`).prop('checked', true)
-        } else {
-            $(`input[data-parent-radio=${parent_radio}][type=checkbox]`).prop('checked', false)
-        } 
-        // radio
-        $(`input[name=sa-filter]`).parent('label').children('i').remove()
-        $(`input[name=sa-filter]:checked`).prop('checked', false)
-        $(`input[name=sa-filter][id=${parent_radio}]`).prop('checked', true)
-        $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=sa-filter][id=${parent_radio}]`));
-    })
-
-    // if other checkbox checked, uncheck 'all'
-    $("input[type=checkbox].filter:not(.all)").click (function(){
-        let parent_radio = $(this).data('parent-radio')
-        // uncheck other checkbox group
-        $(`input[type=checkbox]:not([data-parent-radio=${parent_radio}])`).prop('checked', false)
-        // uncheck all
-        $(`input[data-parent-radio=${parent_radio}][type=checkbox].all`).prop('checked', false)
-        // radio
-        $(`input[name=sa-filter]`).parent('label').children('i').remove()
-        $(`input[name=sa-filter]:checked`).prop('checked', false)
-        $(`input[name=sa-filter][id=${parent_radio}]`).prop('checked', true)
-        $('<i class="fas fa-check title-dark"></i>').insertBefore($(`input[name=sa-filter][id=${parent_radio}]`));
-    })
-
-});
-
-
-
-
-//  datatable automatically fits window height
-(function( factory ){
-	if ( typeof define === 'function' && define.amd ) {
-		// AMD
-		define( ['jquery', 'datatables.net'], function ( $ ) {
-			return factory( $, window, document );
-		} );
-	}
-	else if ( typeof exports === 'object' ) {
-		// CommonJS
-		module.exports = function (root, $) {
-			if ( ! root ) {
-				root = window;
-			}
-
-			if ( ! $ || ! $.fn.dataTable ) {
-				$ = require('datatables.net')(root, $).$;
-			}
-
-			return factory( $, root, root.document );
-		};
-	}
-	else {
-		// Browser
-		factory( jQuery, window, document );
-	}
-}(function( $, window, document, undefined ) {
-'use strict';
-
-
-var ScrollResize = function ( dt )
-{
-	var that = this;
-	var table = dt.table();
-
-	this.s = {
-		dt:        dt,
-		host:      $(table.container()).parent(),
-		header:    $(table.header()),
-		footer:    $(table.footer()),
-		body:      $(table.body()),
-		container: $(table.container()),
-		table:     $(table.node())
-	};
-
-	var host = this.s.host;
-	if ( host.css('position') === 'static' ) {
-		host.css( 'position', 'relative' );
-	}
-
-	dt.on( 'draw', function () {
-		that._size();
-	} );
-
-	this._attach();
-	this._size();
-};
-
-
-ScrollResize.prototype = {
-	_size: function ()
-	{
-		var settings = this.s;
-		var dt = settings.dt;
-		var t = dt.table();
-		var offsetTop = $( settings.table ).offset().top;
-		var availableHeight = settings.host.height();
-		var scrollBody = $('div.dataTables_scrollBody', t.container());
-
-		// Subtract the height of the header, footer and the elements
-		// surrounding the table
-		availableHeight -= offsetTop;
-		availableHeight -= settings.container.height() - ( offsetTop + scrollBody.height() );
-
-		$('div.dataTables_scrollBody', t.container()).css( {
-			maxHeight: availableHeight,
-			height: availableHeight
-		} );
-
-		if ( dt.fixedColumns ) {
-			dt.fixedColumns().relayout();
-		}
-	},
-
-	_attach: function () {
-		// There is no `resize` event for elements, so to trigger this effect,
-		// create an empty HTML document using an <iframe> which will issue a
-		// resize event inside itself when the document resizes. Since it is
-		// 100% x 100% that will occur whenever the host element is resized.
-		var that = this;
-		var obj = $('<iframe/>')
-			.css( {
-				position: 'absolute',
-				top: 0,
-				left: 0,
-				height: '100%',
-				width: '100%',
-				zIndex: -1,
-				border: 0
-			} )
-			.attr( 'frameBorder', '0' )
-			.attr( 'src', 'about:blank' );
-
-		obj[0].onload = function () {
-			var body = this.contentDocument.body;
-			var height = body.offsetHeight;
-			var contentDoc = this.contentDocument;
-			var defaultView = contentDoc.defaultView || contentDoc.parentWindow;
-
-			defaultView.onresize = function () {
-				// Three methods to get the iframe height, to keep all browsers happy
-				var newHeight = body.clientHeight || body.offsetHeight;
-				var docClientHeight = contentDoc.documentElement.clientHeight;
-
-				if ( ! newHeight && docClientHeight ) {
-					newHeight = docClientHeight;
-				}
-
-				if ( newHeight !== height ) {
-					height = newHeight;
-
-					that._size();
-				}
-			};
-		};
-
-		obj
-			.appendTo( this.s.host )
-			.attr( 'data', 'about:blank' );
-	}
-};
-
-$.fn.dataTable.ScrollResize = ScrollResize;
-$.fn.DataTable.ScrollResize = ScrollResize;
-
-// Automatic initialisation listener
-$(document).on( 'init.dt', function ( e, settings ) {
-	if ( e.namespace !== 'dt' ) {
-		return;
-	}
-
-	var api = new $.fn.dataTable.Api( settings );
-
-	if ( settings.oInit.scrollResize || $.fn.dataTable.defaults.scrollResize ) {
-		new ScrollResize( api );
-	}
-} );
-
-
-}));
-
-</script>
-{% endblock script %}
+  </script>
+  {% endblock script %}
+</div>

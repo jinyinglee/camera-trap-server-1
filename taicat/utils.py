@@ -1,4 +1,7 @@
+import csv
+from tempfile import NamedTemporaryFile
 import collections
+
 from operator import itemgetter
 from datetime import (
     datetime,
@@ -16,8 +19,16 @@ from django.db.models import (
     Min,
     Count
 )
-from django.db.models.functions import Trunc
+from django.db.models.functions import (
+    Trunc,
+    ExtractDay,
+)
+from django.db import connection
+from django.utils import timezone
 from django.utils.timezone import make_aware
+
+from openpyxl import Workbook
+import requests
 
 from taicat.models import (
     Project,
@@ -25,7 +36,19 @@ from taicat.models import (
     StudyArea,
     Deployment,
     DeploymentJournal,
+    DeploymentStat,
+    ProjectMember,
+    Contact,
+    Organization,
+    Species,
+    ProjectSpecies,
+    ProjectStat,
+    HomePageStat,
+    DeletedImage,
 )
+
+
+
 
 # WIP
 def display_working_day_in_calendar_html(year, month, working_day):
@@ -386,3 +409,419 @@ def count_all_species_list():
     ret['all'] = all_species_list
 
     return ret
+
+def calc_by_species_deployments(species, deployment_id, query, calc_data, results):
+    '''
+    species: <str> species name: 山羌
+    deployment_id: <int>
+    query: <QuerySet>
+    calc_data: <json> calculation filter
+    results: <dict> calculated data
+    '''
+    query = query.values('datetime')
+    image_interval = int(calc_data['imageInterval'])
+    event_interval = int(calc_data['eventInterval'])
+    # count each deployment
+    for i in DeploymentStat.objects.filter(deployment_id=deployment_id, session='month'):
+        # find working hour
+        if i.year and str(i.year) in results[species] and i.month and i.count_working_hour:
+            results[species][str(i.year)][i.month-1]['working_hour'] = i.count_working_hour
+
+            # count image num
+            query_image = query.filter(
+                deployment_id=deployment_id,
+                datetime__year=i.year,
+                datetime__month=i.month,
+                species=species
+            )
+
+            last_datetime = None
+            image_count = 0
+            for image in query_image.all():
+                if last_datetime:
+                    delta = image['datetime'] - last_datetime
+                    if ((delta.days * 86400) + (delta.seconds / 3600)) > image_interval * 60:
+                        image_count += 1
+                else:
+                    # 第一張有效照片, 直接加 1
+                    image_count += 1
+
+                last_datetime = image['datetime']
+
+            oi3 = (image_count * 1.0 / i.count_working_hour) * 1000
+            results[species][str(i.year)][i.month-1]['oi3'] = oi3
+
+            # count event num
+            last_datetime = None
+            count = 0
+            for image in query_image.order_by('datetime').all():
+                delta = image['datetime'] - last_datetime if last_datetime else 0
+                if delta:
+                    if ((delta.days * 86400) + (delta.seconds / 3600)) > event_interval * 60:
+                        count += 1
+                last_datetime = image['datetime']
+
+            event_num = count * 1.0 / i.count_working_hour
+            results[species][str(i.year)][i.month-1]['num_event'] = event_num
+
+            # count pod & presence_absence
+            days_in_month = monthrange(i.year, i.month)[1]
+            results[species][str(i.year)][i.month-1]['days_in_month'] = days_in_month
+            image_group_by_day = query_image.values('datetime__day').annotate(count=Count('datetime__day')).order_by('datetime__day')
+            results[species][str(i.year)][i.month-1]['pod'] = image_group_by_day.count() / days_in_month # 用總台天算?
+            results[species][str(i.year)][i.month-1]['presence'] = 1 if results[species][str(i.year)][i.month-1]['pod'] > 0 else 0
+            # count apoa
+            image_group_by_hour = query_image.values('datetime__day', 'datetime__hour').annotate(count=Count('*')).order_by('datetime__day', 'datetime__hour')
+            # init apoa fill zero
+            results[species][str(i.year)][i.month-1]['apoa'] =  [[0 for hour in range(0, 24)] for day in range(0, 31)]
+            #[[0] * 24] * days_in_month => failed
+            for day_hour in image_group_by_hour:
+                results[species][str(i.year)][i.month-1]['apoa'][day_hour['datetime__day']-1][day_hour['datetime__hour']-1] = day_hour['count']
+
+    return results
+
+
+def calc(query, calc_data):
+    #print('query', calc_data)
+
+    agg = query.aggregate(Max('datetime'), Min('datetime'))
+
+    results = {} # by species/deployment/year/month
+    # group by species
+    species_list = query.values('species').annotate(count=Count('species')).order_by()
+    # group by deployment
+    deployment_list = query.values('deployment', 'deployment__name').annotate(count=Count('deployment')).order_by()
+
+    #print(species_list.query, species_list, flush=True)
+    #print(deployment_list, agg, query.query,flush=True)
+    for species in species_list:
+        species_name = species['species']
+        results[species_name] = {}
+        # default round: month
+        for dep in deployment_list:
+            # fill month year
+            for y in range(agg['datetime__min'].year, agg['datetime__max'].year+1):
+                results[species_name][str(y)] = []
+                for m in range(1, 13):
+                    item = {
+                        'year': y,
+                        'month': m,
+                        'species': species_name,
+                        'days_in_month': 0, # 總台天?
+                        'deployment': dep['deployment__name'],
+                        'working_hour': 0,
+                        'num_image': 0,
+                        'num_event': 0,
+                        'oi3': 0,
+                        'pod': 0,
+                        'presence': 0,
+                        'apoa': None,
+                    }
+                    results[species_name][str(y)].append(item)
+
+            # do calc by species/deployment
+            results = calc_by_species_deployments(
+                species_name,
+                dep['deployment'],
+                query,
+                calc_data,
+                results)
+
+
+    #print('----', results, flush=True)
+    return results
+
+def calc_output(results, file_format, filter_str, calc_str):
+    '''
+    filter_str, calc_str for display query condition
+    '''
+    if file_format == 'csv':
+        '''csv 多物種會全部放在一個大表
+        '''
+        #with tempfile.TemporaryFile('w+t') as fp:
+        with NamedTemporaryFile('w+t') as tmp:
+            tmp.write('filters:'+ filter_str + 'calc:' + calc_str + '\n')
+            tmp.write('==='+'\n')
+            tmp.write('year,month,物種,days in month,相機位置,相機工作時數,有效照片數,目擊事件數,OI3,捕獲回合比例,存缺,'+','.join(f'活動機率day{day}' for day in range(1, 32))+'\n')
+            for sp in results:
+                for y in results[sp]:
+                    for m, value in enumerate(results[sp][y]):
+                        row = []
+                        for x in value:
+                            if x != 'apoa':
+                                row.append(str(value[x]))
+                            else:
+                                if value[x] != None:
+                                    for day in value[x]:
+                                        hours = '|'.join([str(d) for d in day])
+                                        row.append(hours)
+
+                        #print (row)
+                        tmp.write(','.join(row) + '\n')
+
+            tmp.seek(0)
+            return tmp.read()
+
+    elif file_format == 'excel':
+        with NamedTemporaryFile() as tmp:
+            wb = Workbook()
+            ws = wb.active
+            query_condition = 'filters:'+ filter_str + 'calc:' + calc_str
+            ws.cell(row=1, column=1, value=query_condition)
+            sheets = []
+            sheet_index = 0
+            for sp in results:
+                row_index = 1
+                sheets.append(wb.create_sheet(title=sp))
+                header_str = 'year,month,物種,days in month,相機位置,相機工作時數,有效照片數,目擊事件數,OI3,捕獲回合比例,存缺,'+','.join(f'活動機率day{day}' for day in range(1, 32))
+                header_list = header_str.split(',')
+                for h, v in enumerate(header_list):
+                    sheets[sheet_index].cell(row=1, column=h+1, value=v)
+
+                for y in results[sp]:
+                    for m, value in enumerate(results[sp][y]):
+                        row_index += 1
+                        col_index = 0
+                        for x in value:
+                            if x != 'apoa':
+                                col_index += 1
+                                sheets[sheet_index].cell(row=row_index, column=col_index, value=str(value[x]))
+                            else:
+                                if value[x] != None:
+                                    for day in value[x]:
+                                        col_index += 1
+                                        hours = '|'.join([str(d) for d in day])
+                                        sheets[sheet_index].cell(row=row_index, column=col_index, value=hours)
+
+
+
+                sheet_index += 1
+
+            wb.save(tmp.name)
+            tmp.seek(0)
+            return tmp.read()
+
+def get_my_project_list(member_id, project_list=[]):
+    # 1. select from project_member table
+    with connection.cursor() as cursor:
+        query = "SELECT project_id FROM taicat_projectmember where member_id ={}"
+        cursor.execute(query.format(member_id))
+        temp = cursor.fetchall()
+        for i in temp:
+            if i[0]:
+                project_list += [i[0]]
+    # 2. check if the user is organization admin
+    if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
+    if if_organization_admin:
+        organization_id = if_organization_admin.values('organization').first()['organization']
+        temp = Organization.objects.filter(id=organization_id).values('projects')
+        for i in temp:
+            project_list += [i['projects']]
+    return project_list
+
+
+def get_project_member(project_id):
+    member_list = []
+    members = list(ProjectMember.objects.filter(project_id=project_id).all().values('id'))
+    organization_id = Organization.objects.filter(projects=project_id).values('id')
+    for i in organization_id:
+        members += list(Contact.objects.filter(organization=i['id'], is_organization_admin=True).all().values('id'))
+    for m in members:
+        if m['id'] not in members:
+            member_list += [m['id']]
+    return member_list
+
+
+def set_deployment_journal(data, deployment):
+    # if data.get('trip_start') and data.get('trip_end') and data.get('folder_name') and data.get('source_id'):  # 不要判斷了
+
+    dj_exist = DeploymentJournal.objects.filter(
+        deployment=deployment,
+        folder_name=data['folder_name'],
+        local_source_id=data['source_id']).first()
+
+    if dj_exist:
+        is_modified = False
+        if data.get('trip_start') and data.get('trip_end'):
+            if data['trip_start'] != dj_exist.working_start:
+                dj_exist.working_start = data['trip_start']
+                is_modified = True
+            if data['trip_end'] != dj_exist.working_end:
+                dj_exist.working_end = data['trip_end']
+                is_modified = True
+
+        if is_modified:
+            dj_exist.last_updated = timezone.now()
+            dj_exist.save()
+
+        deployment_journal_id = dj_exist.id
+
+    else:
+        dj_new = DeploymentJournal(
+            deployment_id=deployment.id,
+            project=deployment.project,
+            studyarea=deployment.study_area,
+            is_effective=False,
+            folder_name=data['folder_name'],
+            local_source_id=data['source_id'],
+            last_updated=timezone.now()
+        )
+
+        if x := data.get('trip_start'):
+            dj_new.trip_start = x
+        if x := data.get('trip_end'):
+            dj_new.trip_end = x
+
+        dj_new.save()
+
+        deployment_journal_id = dj_new.id
+
+    # 有時間才算有效
+    if data.get('trip_start') and data.get('trip_end'):
+        dj_new.is_effective = True
+
+    return deployment_journal_id
+
+def clone_image(obj):
+    new_img = Image(
+        deployment=obj.deployment,
+        project=obj.project,
+        studyarea=obj.studyarea,
+        file_url=obj.file_url,
+        filename=obj.filename,
+        datetime=obj.datetime,
+        count=obj.count,
+        image_hash=obj.image_hash,
+        image_uuid=obj.image_uuid,
+        has_storage=obj.has_storage,
+        folder_name=obj.folder_name,
+        specific_bucket=obj.specific_bucket,
+        deployment_journal=obj.deployment_journal
+    )
+    new_img.save()
+    return new_img
+
+def set_image_annotation(image_obj):
+    '''extract annotation (json field) to seperate field, ex: species, life_stage...
+    '''
+    def update_annotation_field(obj, values):
+        # (annotation_field, model field)
+        field_map = {
+            'species': 'species',
+            'lifestage': 'life_stage', # 該死的 _
+            'sex': 'sex',
+            'antler': 'antler',
+            'remark': 'remarks', # 該死的 s
+            'animal_id': 'animal_id',
+        }
+        for field in field_map:
+            if v := values.get(field):
+                setattr(obj, field_map[field], v)
+        obj.last_updated = timezone.now()
+
+    if annotation := image_obj.annotation:
+        related_images = Image.objects.filter(image_uuid=image_obj.image_uuid).order_by('annotation_seq').all()
+        num_related = len(related_images)
+        num_annotation = len(annotation)
+        # print (num_related, num_annotation, flush=True)
+        to_delete = []
+        for i in range(0, max(num_annotation, num_related)):
+            if i == 0:  # original image
+                update_annotation_field(image_obj, annotation[0])
+                image_obj.save()
+            elif num_related - num_annotation <=0:  # new annotation (cloned image)
+                if i < num_related:
+                    update_annotation_field(related_images[i], annotation[i])
+                    related_images[i].save()
+                else:
+                    cloned = clone_image(image_obj)
+                    update_annotation_field(cloned, annotation[i])
+                    cloned.annotation_seq = i
+                    cloned.save()
+            elif num_related - num_annotation > 0: # delete cloned image
+                if i < num_annotation:
+                    update_annotation_field(related_images[i], annotation[i])
+                    related_images[i].save()
+                else:
+                    to_delete = [x.id for x in related_images if x.annotation_seq > 0]
+                    break
+
+        if len(to_delete) > 0:
+            #print(to_delete, flush=True)
+            delete_image_by_ids(to_delete, image_obj.project_id)
+            # 全部刪掉再重建
+            for i, a in enumerate(image_obj.annotation):
+                if i > 0:
+                    cloned = clone_image(image_obj)
+                    update_annotation_field(cloned, annotation[i])
+                    cloned.annotation_seq = i
+                    cloned.save()
+
+
+def delete_image_by_ids(image_list=[], pk=None):
+    now = timezone.now()
+    image_objects = Image.objects.filter(id__in=image_list)
+    # species的資料先用id抓回來計算再扣掉
+    query = image_objects.values('species').annotate(total=Count('species')).order_by('-total')
+    for q in query:
+        # taicat_species
+        if sp := Species.objects.filter(name=q['species']).first():
+            if sp.count == q['total']:
+                sp.delete()
+            else:
+                sp.count -= q['total']
+                sp.last_updated = now
+                sp.save()
+        # taicat_projectspecies
+        if p_sp := ProjectSpecies.objects.filter(name=q['species'], project_id=pk).first():
+            if p_sp.count == q['total']:
+                p_sp.delete()
+            else:
+                p_sp.count -= q['total']
+                p_sp.last_updated = now
+                p_sp.save()
+
+    if ProjectStat.objects.filter(project_id=pk).exists():
+        p = ProjectStat.objects.get(project_id=pk)
+        p.num_data -= image_objects.count()
+        p.last_updated = now
+        p.save()
+
+    year = image_objects.aggregate(Min('datetime'))['datetime__min'].strftime("%Y")
+    home = HomePageStat.objects.filter(year__gte=year)
+    for h in home:
+        h.count -= image_objects.count()
+        h.last_updated = now
+        h.save()
+
+    # move deleted image to DeletedImage table
+    image_dict = image_objects.values()
+    for d in image_dict:
+        di = DeletedImage(**d)
+        di.save()
+    Image.objects.filter(id__in=image_list).delete()
+
+    species = ProjectSpecies.objects.filter(project_id=pk).order_by('count').values('count', 'name')
+    return list(species)
+
+def half_year_ago(year, month):
+    '''前一個月的前半年
+    '''
+    month_list = list(range(1, 13))
+    begin_year = year
+    begin_month = None
+    end_year = year
+    end_month = month_list[month-2]
+    if month < 2:
+        end_year = year - 1
+
+    if month - 8 > 0:
+        begin_month = month - 7
+    else:
+        begin_month = month_list[month-8]
+        begin_year = year-1
+
+    return [
+        datetime.strptime(f'{begin_year}-{begin_month}-01 01:01:01', "%Y-%m-%d %H:%M:%S"),
+        datetime.strptime(f'{end_year}-{end_month}-01 01:01:01', "%Y-%m-%d %H:%M:%S")
+    ]
