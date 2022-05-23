@@ -410,7 +410,6 @@ def count_all_species_list():
 
     return ret
 
-
 def calc_by_species_deployments(species, deployment_id, query, calc_data, results):
     '''
     species: <str> species name: 山羌
@@ -804,3 +803,25 @@ def delete_image_by_ids(image_list=[], pk=None):
 
     species = ProjectSpecies.objects.filter(project_id=pk).order_by('count').values('count', 'name')
     return list(species)
+
+def half_year_ago(year, month):
+    '''前一個月的前半年
+    '''
+    month_list = list(range(1, 13))
+    begin_year = year
+    begin_month = None
+    end_year = year
+    end_month = month_list[month-2]
+    if month < 2:
+        end_year = year - 1
+
+    if month - 8 > 0:
+        begin_month = month - 7
+    else:
+        begin_month = month_list[month-8]
+        begin_year = year-1
+
+    return [
+        datetime.strptime(f'{begin_year}-{begin_month}-01 01:01:01', "%Y-%m-%d %H:%M:%S"),
+        datetime.strptime(f'{end_year}-{end_month}-01 01:01:01', "%Y-%m-%d %H:%M:%S")
+    ]

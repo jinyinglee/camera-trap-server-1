@@ -21,4 +21,5 @@ class UploadNotification(models.Model):
     is_read = models.BooleanField(default=False, blank=True)
     upload_history = models.ForeignKey(UploadHistory, on_delete=models.SET_NULL, null=True, blank=True)
     contact = models.ForeignKey(Contact, on_delete=models.SET_NULL, null=True, blank=True)
+    category = models.CharField(max_length=100, null=True, blank=True,  default='upload') # upload | gap
 

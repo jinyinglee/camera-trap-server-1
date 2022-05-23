@@ -1,13 +1,21 @@
 from django.db.models.fields import PositiveBigIntegerField
-from django.http import response, JsonResponse
+from django.http import (
+    response,
+    JsonResponse,
+    StreamingHttpResponse,
+)
 from django.shortcuts import redirect, render, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
 from pandas.core.groupby.generic import DataFrameGroupBy
 from taicat.models import *
+from base.models import UploadNotification
 from django.db import connection  # for executing raw SQL
 import re
 import json
 import math
 import datetime
+from tempfile import NamedTemporaryFile
+from urllib.parse import quote
 # from datetime import datetime, timedelta, timezone
 from django.db.models import Count, Window, F, Sum, Min, Q, Max, Func, Value, CharField
 from django.db.models.functions import Trunc, ExtractYear
@@ -43,7 +51,9 @@ from operator import itemgetter
 from dateutil import parser
 from django.test.utils import CaptureQueriesContext
 from base.utils import DecimalEncoder
+from taicat.utils import half_year_ago
 
+from openpyxl import Workbook
 
 def delete_data(request, pk):
     species_list = []
@@ -903,12 +913,68 @@ def generate_download_excel(request, pk):
     send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, [email])
     # return response
 
+def download_project_oversight(request, pk):
+    # TODO auth
+    project = Project.objects.get(pk=pk)
+    proj_stats = project.get_or_count_stats()
+    start_year = datetime.datetime.fromtimestamp(proj_stats['working__range'][0]).year
+    end_year = datetime.datetime.fromtimestamp(proj_stats['working__range'][1]).year
+
+    wb = Workbook()
+    ws1 = wb.active
+    with NamedTemporaryFile() as tmp:
+        for index, (year, data) in enumerate(proj_stats['years'].items()):
+            # each year
+            headers = ['樣區', '相機位置']
+            for x in range(1, 13):
+                headers += [f'{x}月(%)', f'{x}月相機運作天數', f'{x}月天數']
+            headers += ['平均', '缺失原因']
+
+            if index == 0:
+                ws1.append(headers)
+                ws1.title = str(year)
+            else:
+                sheet = wb.create_sheet(year)
+                sheet.append(headers)
+
+            values = []
+            for sa in data:
+                for d in sa['items']:
+                    values = [sa['name'], d['name']]
+                    for x in d['items']:
+                        detail = json.loads(x[1])
+                        values +=[x[0], detail[3], detail[4]]
+
+                    values += [d['ratio_year']]
+                    values += [f"{x['label']}: {x['caused']}" for x in d['gaps']]
+                    if index == 0:
+                        ws1.append(values)
+                    else:
+                        sheet.append(values)
+
+        wb.save(tmp.name)
+
+        tmp.seek(0)
+        stream = tmp.read()
+        filename = quote(f'{project.name}_管考_{start_year}-{end_year}.xlsx')
+
+        #return StreamingHttpResponse(
+        #    stream,
+        #    headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        #    content_type="application/vnd.ms-excel",
+            #content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        #)
+        response = HttpResponse(content=stream, content_type='application/ms-excel', )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
 
 def project_oversight(request, pk):
     '''
     相機有運作天數 / 當月天數
     '''
     if request.method == 'GET':
+        year = request.GET.get('year')
         is_authorized = check_if_authorized(request, pk)
         public_ids = Project.published_objects.values_list(
             'id', flat=True).all()
@@ -916,77 +982,89 @@ def project_oversight(request, pk):
         if (pk in list(public_ids)) or is_authorized:
             project = Project.objects.get(pk=pk)
 
-            # min/max 超慢?
-            mnx = Image.objects.filter(project_id=pk).aggregate(
-                Max('datetime'), Min('datetime'))
-            # print(mnx)
-            year = request.GET.get('year')
-            end_year = mnx['datetime__max'].year
-            start_year = mnx['datetime__min'].year
-            year_list = list(range(start_year, end_year+1))
-            # imax = Image.objects.values('datetime').filter(project_id=pk).order_by('datetime')[:1]
-            # imin = Image.objects.filter(project_id=pk).order_by('-datetime')[:1]
-            # print(imax)
-            # print(mn.first(), mn.last())
-            # year_list = list(range(2010, 2022))
-
-            result = []
-            if year:
-                year = int(year)
-                deps = project.get_deployment_list()
-                for sa in deps:
-                    items_d = []
-                    for d in sa['deployments']:
-                        dep_id = d['deployment_id']
-                        month_list = []
-                        for m in range(1, 13):
-                            days_in_month = monthrange(year, m)[1]
-                            ret = find_deployment_working_day(year, m, dep_id)
-                            working_day = ret[0]
-                            # print(year, m, dep_id, working_day)
-                            # display_day_list = ['{}:{}'.format(index+1, 'Y' if yes else 'N') for index, yes in enumerate(working_day)]
-                            month_cal = monthcalendar(year, m)
-                            # display_working_day_in_calendar(year, m, working_day)
-                            count_working_day = sum(working_day)
-                            data = [
-                                year,
-                                m,
-                                d['name'],
-                                count_working_day,
-                                days_in_month,
-                                month_cal,
-                                working_day,
-                                ret[1],
-                            ]
-                            ratio = count_working_day * 100.0 / days_in_month
-                            month_list.append([ratio, json.dumps(data)])
-                        # query = Image.objects.values('datetime').filter(project_id=pk, deployment_id=dep_id).annotate(year=Trunc('datetime', 'year')).filter(datetime__year=year).annotate(day=Trunc('datetime', 'day')).annotate(count=Count('day'))
-                        # print(query.query)
-
-                        # with connection.cursor() as cursor:
-                        #    query = f"SELECT DATE_TRUNC('day', datetime) AS day FROM taicat_image WHERE deployment_id={dep_id} AND datetime BETWEEN '{year}-01-01' AND '{year}-12-31' GROUP BY day ORDER BY day;"
-                        #    cursor.execute(query)
-                        #    data = cursor.fetchall()
-                        #    for i in data:
-                        #        month_idx = i[0].month - 1
-                        #        month_list[month_idx][1][0] += 1
-                        #        month_list[month_idx][0] = month_list[month_idx][1][0] * \
-                        #            100.0 / month_list[month_idx][1][1]
-                        items_d.append({
-                            'name': d['name'],
-                            'items': month_list,
-                        })
-                    result.append({
-                        'name': sa['name'],
-                        'items': items_d
-                    })
-                    # print(result)
-
+            proj_stats = project.get_or_count_stats()
             return render(request, 'project/project_oversight.html', {
                 'project': project,
-                'year_list': year_list,
+                'gap_caused_choices': DeploymentJournal.GAP_CHOICES,
                 'month_label_list': [f'{x} 月'for x in range(1, 13)],
-                'result': result,
+                'result': proj_stats['years'][year] if year else [],
             })
         else:
             return ''
+
+@csrf_exempt
+def api_update_deployment_journals(request, pk):
+    if request.method == 'PUT':
+        # update
+        ret = {
+            'message': ''
+        }
+        if dj := DeploymentJournal.objects.get(pk=pk):
+            data = json.loads(request.body)
+            #print(data)
+            is_changed = False
+            if text := data.get('text'):
+                dj.gap_caused = text
+                is_changed = True
+            if choice := data.get('choice'):
+                dj.gap_caused = choice
+                is_changed = True
+
+            if is_changed:
+                dj.last_updated = datetime.datetime.now()
+                dj.save()
+                ret['message'] = 'updated'
+                try:
+                    stats = dj.project.get_or_count_stats()
+                    gap = stats['years'][str(data['year'])][int(data['saIndex'])]['items'][int(data['dIndex'])]['gaps'][int(data['gapIndex'])]
+                    gap['caused'] = dj.gap_caused
+                    dj.project.write_stats(stats)
+                    ret['message'] = 'updated database, updated ucache'
+                except Exception as e:
+                    ret['message'] = 'updated database, update cache error: {}'.format(e)
+
+        return JsonResponse(ret)
+
+def api_check_data_gap(request):
+    now = datetime.datetime.now()
+
+    # test
+    range_list = half_year_ago(2017, 6)
+
+    #range_list = half_year_ago(now.year, now.month)
+    rows = DeploymentJournal.objects.filter(
+        is_gap=True,
+        working_end__gt=range_list[0],
+        working_start__lt=range_list[1]
+    ).filter(Q(gap_caused__exact='') | Q(gap_caused__isnull=True)).all()
+
+    # send notification to each project members
+    # TODO: email project membor 權限?
+    projects = {}
+    for dj in rows:
+        pid = dj.project_id
+        if pid not in projects:
+            projects[pid] = {
+                'name': dj.project.name,
+                'gaps': [],
+                'emails': [x.member.email for x in dj.project.members.filter(role='project_admin', member__email__isnull=False).all()],
+                'members': [x.member for x in dj.project.members.filter(role='project_admin').all()]
+            }
+        projects[pid]['gaps'].append(f'{dj.deployment.name}: {dj.display_range}')
+
+    for project_id, data in projects.items():
+        email_subject = '[臺灣自動相機資訊系統] | {} | 資料缺失: 尚未填寫列表'.format(data['name'])
+        email_body = '相機位置 缺失區間\n==========================\n' + '\n'.join(data['gaps'])
+        #print(email_subject, data['emails'])
+
+        # create notification
+        for m in data['members']:
+            print (m.id, m.name)
+            un = UploadNotification(
+                contact_id = m.id,
+                category='gap',
+            )
+            un.save()
+        #send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, data['emails'])
+
+    return HttpResponse('ok')
