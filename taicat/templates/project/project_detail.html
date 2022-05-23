@@ -152,6 +152,10 @@
     font-size: 15px;
   }
 
+.edit-next:hover, .edit-prev:hover{
+  color: lightgrey;
+}
+
 </style>
 {% endblock head %} {% block body %}
 <div class="container box">
@@ -296,14 +300,17 @@
     <div class="modal-dialog">
       <div class="modal-content edit-content">
         <div class="modal-body" id="modal-text">
-          <div class="row my-3">
-            <div class="col-12" id="edit-image"></div>
+          <div class="row my-3 align-items-center">
+            <div class="col-1"><span class="edit-prev text-grey" style="cursor: pointer"><</span></div>
+            <div class="col-10" id="edit-image"></div>
+            <div class="col-1"><span class="edit-next text-grey" style="cursor: pointer">></span></div>
           </div>
           <form novalidate action="{% url 'edit_image' pk %}" method="post" autocomplete="off" id="editForm">
             {% csrf_token %}
             <div class="row my-3">
-              <div class="col-3 text-end my-auto">樣區</div>
-              <div class="col-9">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">樣區</div>
+              <div class="col-7">
                 <div class="autocomplete">
                   <input id="edit-studyarea_id" type="hidden" name="studyarea_id" />
                   <input class="form-control" id="edit-studyarea" type="text" />
@@ -312,10 +319,12 @@
                   必填欄位
                 </div>
               </div>
+              <div class="col-1"></div>
             </div>
             <div class="row my-3">
-              <div class="col-3 text-end my-auto">相機位置</div>
-              <div class="col-9">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">相機位置</div>
+              <div class="col-7">
                 <div class="autocomplete">
                   <input class="form-control" id="edit-deployment" type="text" />
                   <input id="edit-deployment_id" type="hidden" name="deployment_id" />
@@ -324,14 +333,18 @@
                   必填欄位
                 </div>
               </div>
+              <div class="col-1"></div>
             </div>
             <div class="row my-3">
-              <div class="col-3 text-end my-auto">檔名</div>
-              <div class="col-9" id="edit-filename"></div>
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">檔名</div>
+              <div class="col-7" id="edit-filename"></div>
+              <div class="col-1"></div>
             </div>
             <div class="row my-3">
-              <div class="col-3 text-end my-auto">日期時間</div>
-              <div class="col-9" id="edit-datetime">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">日期時間</div>
+              <div class="col-7" id="edit-datetime">
                 <!--
                 <input class="form-control" style="height: 38px" id="edit-datetime" type="datetime-local" name="datetime" step="1">
                 <div class="notice d-none">
@@ -339,50 +352,63 @@
                 </div>
                 -->              
               </div>
+              <div class="col-1"></div>
             </div>
             <div class="row my-3">
-              <div class="col-3 text-end my-auto">物種</div>
-              <div class="col-9">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">物種</div>
+              <div class="col-7">
                 <div class="autocomplete">
                   <input class="form-control" id="edit-species" type="text" name="species" />
                 </div>
               </div>
+              <div class="col-1"></div>
             </div>
             <div class="row my-3">
-              <div class="col-3 text-end my-auto">年齡</div>
-              <div class="col-9">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">年齡</div>
+              <div class="col-7">
                 <div class="autocomplete">
                   <input class="form-control" id="edit-lifestage" type="text" name="life_stage" />
                 </div>
               </div>
+              <div class="col-1"></div>
             </div>
             <div class="row my-3">
-              <div class="col-3 text-end my-auto">性別</div>
-              <div class="col-9">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">性別</div>
+              <div class="col-7">
                 <div class="autocomplete">
                   <input class="form-control" id="edit-sex" type="text" name="sex" />
                 </div>
               </div>
+              <div class="col-1"></div>
             </div>
             <div class="row my-3">
-              <div class="col-3 text-end my-auto">角況</div>
-              <div class="col-9">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">角況</div>
+              <div class="col-7">
                 <div class="autocomplete">
                   <input class="form-control" id="edit-antler" type="text" name="antler" />
                 </div>
               </div>
+              <div class="col-1"></div>
             </div>
             <div class="row my-3">
-              <div class="col-3 text-end my-auto">個體ID</div>
-              <div class="col-9">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">個體ID</div>
+              <div class="col-7">
                 <input class="form-control" id="edit-animal_id" type="text" name="animal_id" />
               </div>
+              <div class="col-1"></div>
             </div>
             <div class="row my-3">
-              <div class="col-3 text-end my-auto">備註</div>
-              <div class="col-9">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">備註</div>
+              <div class="col-7">
                 <input class="form-control" id="edit-remarks" type="text" name="remarks" />
               </div>
+              <div class="col-1"></div>
             </div>
             <input type="hidden" id="edit-image_uuid" name="image_uuid" value="" />
             <input type="hidden" id="edit-image_id" name="image_id" value="" />
@@ -801,10 +827,10 @@
                       $('#edit-image video').attr('width', '100%');
                       $('#edit-image video').attr('height', '');
                       $('#edit-image video source').on('error',function(event) {
-                      $(this).parent().parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
+                      $(this).parent().parent().html('<p align="center" style="color: darkgrey; margin: auto">無法載入</p>')
                       })
                       $('#edit-image video source, #edit-image img').on('error',function(event) {
-                      $(this).parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
+                      $(this).parent().html('<p align="center" style="color: darkgrey; margin: auto">無法載入</p>')
                       })  
                       
                       $('#editModal').modal('show');
@@ -902,11 +928,11 @@
 
                 // event listener for loading video & img
                 $('img').on('error',function(event) {
-                  $(this).parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
+                  $(this).parent().html('<p align="center" style="color: darkgrey; margin: auto">無法載入</p>')
                 })
 
                 $('video source').on('error',function(event) {
-                  $(this).parent().parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
+                  $(this).parent().parent().html('<p align="center" style="color: darkgrey; margin: auto">無法載入</p>')
                 })
 
                 // adjust columns after 1000 ms
@@ -994,53 +1020,139 @@
             {% endif %}
         });
 
-        // set permission: 計畫總管理人/個別計畫承辦人/系統管理員
-        $('#img-table tbody').on('click', 'td', function () {
+        function changeEditContent(current_row, idx){
+          
             // remove notice info
             $('#edit-studyarea, #edit-deployment').removeClass('notice-border')
             $('.notice').addClass('d-none');
             // clean studyarea & deployment id
             $('#edit-studyarea_id').val('')
             $('#edit-deployment_id').val('')
-            let row = table.row($(this)).data();
-            let idx = table.column($(this)).index();
-            if (idx != 0){
-              $dep.autocomplete('option', 'source', {{ sa_d_list | safe }}[row['saname']]);
-              $('#edit-studyarea').val(row['saname'])
-              $('#edit-deployment').val(row['dname'])
-              $('#edit-filename').html(row['filename'])
-              $('#edit-datetime').html(row['datetime'])
-              //$('#edit-datetime').val(row['datetime'].replace(' ','T'))
-              $('#edit-species').val(row['species'])
-              $('#edit-lifestage').val(row['lifestage'])
-              $('#edit-sex').val(row['sex'])
-              $('#edit-antler').val(row['antler'])
-              $('#edit-animal_id').val(row['animal_id'])
-              $('#edit-remarks').val(row['remarks'])
-              $('#edit-image_uuid').val(row['image_uuid'])
-              $('#edit-image_id').val(row['image_id'])
-              $('#edit-image').html(row['file_url'])
-              $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
-              $('#edit-image video').attr('width', '100%');
-              $('#edit-image video').attr('height', '');
-              $('#edit-image video source').on('error',function(event) {
-              $(this).parent().parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
-              })
-              $('#edit-image video source, #edit-image img').on('error',function(event) {
-              $(this).parent().html('<p align="center" style="color: darkgrey">無法載入<p>')
-              })
-              $('#editModal').modal('show');
-              // disable edit
-              let editable = '{{ editable }}';
-              if ((editable!='True')||($('#edit_button').data('edit')=='off')){
-                $('.edit-content input').attr('disabled', 'disabled')
-                $('.edit-footer').addClass('d-none')
+
+            let row = table.row(current_row).data();
+            $('.edit-next').unbind('click');
+            $('.edit-next').on('click', function(){
+              if (current_row.next().length!=0){
+                changeEditContent(current_row.next(), idx);
               } else {
-                $('.edit-content input').prop("disabled", false)
-                $('.edit-footer').removeClass('d-none')
+                $('#img-table_next').trigger('click');
+                var table = $('#img-table').DataTable();
+                  // 等到table畫好再換, 預設第一個
+                  table.on( 'draw', function () {
+                    let change_row = $('#img-table tr').eq(1);
+                    changeEditContent(change_row, idx);
+                  });
               }
-            }
+            })
+
+            $('.edit-prev').unbind('click');
+            $('.edit-prev').on('click', function(){
+              if (current_row.prev().length!=0){
+                changeEditContent(current_row.prev(), idx);
+              } else {
+                $('#img-table_previous').trigger('click');
+                var table = $('#img-table').DataTable();
+                  // 等到table畫好再換, 預設最後一個
+                  table.on( 'draw', function () {
+                    let change_row = $('#img-table tr:last');
+                    changeEditContent(change_row, idx);
+                  });
+              }
+            })
+
+            $('#editModal').off('keydown');        
+            $('#editModal').keydown(function (e) {
+              var arrow = { left: 37, right: 39};
+              switch (e.which) {
+                case arrow.left:
+                if (current_row.prev().length!=0){
+                  changeEditContent(current_row.prev(), idx);
+                } else {
+                  $('#img-table_previous').trigger('click');
+                  var table = $('#img-table').DataTable();
+                    // 等到table畫好再換, 預設最後一個
+                    table.on( 'draw', function () {
+                      let change_row = $('#img-table tr:last');
+                      changeEditContent(change_row, idx);
+                    });
+                }
+                  break;
+                case arrow.right:
+                  if (current_row.next().length!=0){
+                    changeEditContent(current_row.next(), idx);
+                  } else {
+                    $('#img-table_next').trigger('click');
+                    var table = $('#img-table').DataTable();
+                      // 等到table畫好再換, 預設第一個
+                      table.on( 'draw', function () {
+                        let change_row = $('#img-table tr').eq(1);
+                        changeEditContent(change_row, idx);
+                      });
+                  }
+                  break;
+              }
+            });
+            
+
+              if (idx != 0){
+                $dep.autocomplete('option', 'source', {{ sa_d_list | safe }}[row['saname']]);
+                $('#edit-studyarea').val(row['saname'])
+                $('#edit-deployment').val(row['dname'])
+                $('#edit-filename').html(row['filename'])
+                $('#edit-datetime').html(row['datetime'])
+                //$('#edit-datetime').val(row['datetime'].replace(' ','T'))
+                $('#edit-species').val(row['species'])
+                $('#edit-lifestage').val(row['lifestage'])
+                $('#edit-sex').val(row['sex'])
+                $('#edit-antler').val(row['antler'])
+                $('#edit-animal_id').val(row['animal_id'])
+                $('#edit-remarks').val(row['remarks'])
+                $('#edit-image_uuid').val(row['image_uuid'])
+                $('#edit-image_id').val(row['image_id'])
+                $('#edit-image').html(row['file_url'])
+                $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
+                $('#edit-image video').attr('width', '100%');
+                $('#edit-image video').attr('height', '');
+                $('#edit-image video source').on('error',function(event) {
+                  $(this).parent().parent().html('<p align="center" style="color: darkgrey; margin: auto">無法載入</p>')
+                })
+                $('#edit-image video source, #edit-image img').on('error',function(event) {
+                  $(this).parent().html('<p align="center" style="color: darkgrey; margin: auto">無法載入</p>')
+                })
+                $('#editModal').modal('show');
+                // disable edit
+                let editable = '{{ editable }}';
+                if ((editable!='True')||($('#edit_button').data('edit')=='off')){
+                  $('.edit-content input').attr('disabled', 'disabled')
+                  $('.edit-footer').addClass('d-none')
+                } else {
+                  $('.edit-content input').prop("disabled", false)
+                  $('.edit-footer').removeClass('d-none')
+                }
+              }
+  
+          
+        }
+
+
+        // ---------------------------------- //
+
+        // set permission: 計畫總管理人/個別計畫承辦人/系統管理員
+        $('#img-table tbody').on('click', 'td', function () {
+          let current_row = $(this);
+          let idx = table.column(current_row).index();
+
+          changeEditContent(current_row.parent(), idx);
         });
+
+
+        $('#editModal').on('hidden.bs.modal', function () {
+          // remove next & prev event after modal close
+          $(this).off('keydown');        
+        })
+        
+
+        // ---------------------------------- //
 
           $('.edit-submit').on('click', function() {
               let checked = true
