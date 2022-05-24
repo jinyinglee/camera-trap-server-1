@@ -267,10 +267,6 @@ const AppSearch = () => {
                    newArr[index].deployments = v;
                    setFormData({...formData, projectFilters: newArr})
                  }}
-                 filterOptions={(options) => {
-                   const projectIds = formData.projectFilters.filter(x=>x.project).map(x=>x.project.id);
-                   return options.filter(option => projectIds.indexOf(option.id)<0);
-                 }}
                />
              </Grid>
              : null}
