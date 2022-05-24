@@ -13,6 +13,28 @@ status: finished/uploading
 deployment_journal_id:
 ```
 
+## Search
+
+URL: `/api/search`
+
+Source: `taicat/search_view.py`: api_search
+
+Parameter:
+
+- filter
+
+  - projects
+  - species
+  - startDate / endDate
+  - deployments
+  - studyareas
+
+### Calculation
+
+Source: `taicat.utils` calc, calc_output
+
+calc -> calc_by_species_deployments
+
 ## Model
 
 ### Project
@@ -22,7 +44,6 @@ deployment_journal_id:
 **count_deployment_journal**: 算某年度下的行程資訊 (月曆) （沒給年份就全算）
 
 **get_or_count_stats**: 抓算好的 project stats，如果沒有，就重新算一次，就是去執行 `count_deployment_journal`
-
 
 ### Deployment 
 

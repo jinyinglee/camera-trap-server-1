@@ -2,6 +2,7 @@ import json
 import math
 import logging
 import time
+from datetime import datetime
 import re
 
 from django.shortcuts import render, redirect
@@ -13,6 +14,7 @@ from django.http import (
 from django.core.paginator import Paginator
 from django.urls import reverse
 from django.utils.http import urlencode
+from django.utils.timezone import make_aware
 from django.db import connection
 from django.conf import settings
 from django.db.models import (
@@ -262,19 +264,20 @@ def api_search(request):
         start = 0
         end = 20
         query = Image.objects.filter()
-        #print(request.GET)
         # TODO: 考慮 auth
         if request.GET.get('filter'):
             filter_dict = json.loads(request.GET['filter'])
-            #print(filter_dict, flush=True)
+            print(filter_dict, flush=True)
             if values := filter_dict.get('projects'):
                 query = query.filter(project_id__in=values)
             if values := filter_dict.get('species'):
                 query = query.filter(species__in=values)
             if value := filter_dict.get('startDate'):
-                query = query.filter(datetime__gte=value)
+                dt = make_aware(datetime.strptime(value, '%Y-%m-%d'))
+                query = query.filter(datetime__gte=dt)
             if value := filter_dict.get('endDate'):
-                query = query.filter(datetime__lte=value)
+                dt = make_aware(datetime.strptime(value, '%Y-%m-%d'))
+                query = query.filter(datetime__lte=dt)
             if values := filter_dict.get('deployments'):
                 query = query.filter(deployment_id__in=values)
             elif values := filter_dict.get('studyareas'):
