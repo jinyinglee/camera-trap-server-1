@@ -4,7 +4,7 @@
 
 URL: `/update_upload_history`
 
-source: `base\views.update_upload_history`
+source: `base/views.update_upload_history`
 
 用POST傳
 
@@ -35,6 +35,14 @@ Source: `taicat.utils` calc, calc_output
 
 calc -> calc_by_species_deployments
 
+## 管考相關
+
+URL: `/api/api/check_data_gap/`
+
+source: `taicat/views.py` *api_check_data_gap*
+
+檢查前一個月的前半年，列出: 各計畫下的相機位置，還沒填寫缺失原因的缺失範圍
+
 ## Model
 
 ### Project
@@ -63,6 +71,10 @@ calc -> calc_by_species_deployments
 
 `scripts/count-project-stats.py` 產生計畫的管考需要的資料 (stats)
 
+```python
+project.find_and_create_deployment_journal_gap() # 產生 “缺失” 的資料
+project.get_or_count_stats(force=True) #  產生暫存檔
+```
 
 資料結構:
 

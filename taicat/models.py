@@ -195,6 +195,7 @@ class Project(models.Model):
 
             res.append({
                 'studyarea_id': i.id,
+                ''
                 'name': i.name,
                 'substudyarea': children,
                 'deployments': deployments
@@ -439,7 +440,7 @@ class Deployment(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     source_data = models.JSONField(default=dict, blank=True)
 
-    geodetic_datum = models.CharField(max_length=10, default='TWD97', choices=GEODETIC_DATUM_CHOICES)
+    geodetic_datum = models.CharField(max_length=10, default='WGS84', choices=GEODETIC_DATUM_CHOICES)
     landcover = models.CharField('土地覆蓋類型', max_length=1000, blank=True, null=True)
     vegetation = models.CharField('植被類型', max_length=1000, blank=True, null=True)
     verbatim_locality = models.CharField(max_length=1000, blank=True, null=True)
@@ -837,6 +838,7 @@ class DeploymentJournal(models.Model):
     def display_range(self):
         return '{}/{}'.format(self.working_start.strftime('%Y-%m-%d'), self.working_end.strftime('%Y-%m-%d'))
 
+
 class DeploymentStat(models.Model):
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
     deployment = models.ForeignKey(Deployment, on_delete=models.SET_NULL, null=True)
@@ -852,3 +854,34 @@ class ImageFolder(models.Model):
     folder_name = models.CharField(max_length=1000, default='', blank=True)
     folder_last_updated = models.DateTimeField(null=True, db_index=True)
     last_updated = models.DateTimeField(null=True, db_index=True, auto_now_add=True)
+
+
+class GeoStat(models.Model):
+    # deployment = models.ForeignKey(Deployment, on_delete=models.SET_NULL, null=True)
+    county = models.CharField(max_length=10, db_index=True)
+    num_project = models.IntegerField(null=True, blank=True)
+    num_deployment = models.IntegerField(null=True, blank=True)
+    num_image = models.IntegerField(null=True, blank=True)
+    num_working_hour = models.IntegerField(null=True, blank=True)
+    identified = models.FloatField(null=True, blank=True)
+    species = models.CharField(max_length=1000, default='', blank=True, null=True)
+    studyarea = models.TextField(default='', blank=True, null=True)
+    last_updated = models.DateTimeField(null=True, db_index=True, auto_now_add=True)
+
+
+class StudyAreaStat(models.Model):
+    studyarea = models.ForeignKey(StudyArea, on_delete=models.SET_NULL, null=True)
+    # 用相機位置算出樣區中心點
+    longitude = models.DecimalField(decimal_places=8, max_digits=20, null=True, blank=True)
+    latitude = models.DecimalField(decimal_places=8, max_digits=20, null=True, blank=True)
+    last_updated = models.DateTimeField(null=True, db_index=True, auto_now_add=True)
+
+
+# taicat_deploymentstat count_working_hour
+
+# 計畫總數
+# 相機位置
+# 總辨識進度
+# 總相片數
+# 相機總工時
+# 出現物種

@@ -11,7 +11,7 @@ RUN yarn build
 ##
 # stage 2
 ##
-FROM python:3.8-slim-buster as final
+FROM python:3.10-slim-buster as final
 
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
@@ -43,6 +43,11 @@ ENV TZ=Asia/Taipei
 #RUN pipenv install --dev --ignore-pipfile --system
 
 WORKDIR /code
+
+# # Package
+# COPY requirements requirements
+# RUN pip install --upgrade pip
+# RUN pip install --no-cache --user -r requirements/base.txt
 
 # Install Poetry
 RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | POETRY_HOME=/opt/poetry python && \

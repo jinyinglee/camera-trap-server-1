@@ -87,17 +87,31 @@ def get_notif(contact_id):
     notifications = UploadNotification.objects.filter(contact_id=contact_id).order_by('-created')[:20]
     results = ""
     for n in notifications:
-        dj = n.upload_history.deployment_journal
-        results += f"""
-        <div class="notification-item">
-        <div class="notification-item-content">
-            <div class='notification-item-date'>{n.created.strftime('%Y-%m-%d %H:%M:%S')}</div>
-            <div class="notification-item-message"> 
-                「{dj.project.name} > {dj.studyarea.name} > {dj.deployment.name} > {dj.folder_name}」上傳狀態為：<strong>{status_map[n.upload_history.status]}</strong>
+        # 上傳狀態通知
+        if n.category == 'upload': 
+            dj = n.upload_history.deployment_journal
+            results += f"""
+            <div class="notification-item">
+            <div class="notification-item-content">
+                <div class='notification-item-date'>{n.created.strftime('%Y-%m-%d %H:%M:%S')}</div>
+                <div class="notification-item-message"> 
+                    「{dj.project.name} > {dj.studyarea.name} > {dj.deployment.name} > {dj.folder_name}」上傳狀態為：<strong>{status_map[n.upload_history.status]}</strong>
+                </div>
             </div>
-        </div>
-        </div>
-        """
+            </div>
+            """
+        # 資料缺失通知
+        elif n.category == 'gap': 
+            results += f"""
+            <div class="notification-item">
+            <div class="notification-item-content">
+                <div class='notification-item-date'>{n.created.strftime('%Y-%m-%d %H:%M:%S')}</div>
+                <div class="notification-item-message"> 
+                    「{n.project.name}」有缺失資料，請至管考介面填寫缺失原因
+                </div>
+            </div>
+            </div>
+            """
     if not results:
         results = """
         <div class="notification-item">

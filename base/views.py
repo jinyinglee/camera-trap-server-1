@@ -1,8 +1,9 @@
+from lib2to3.pgen2.token import INDENT
 from django.http import response
 from django.shortcuts import render, HttpResponse, redirect
 import json
 from django.db import connection
-from taicat.models import Deployment, HomePageStat, Image, Contact, Organization, Project, Species
+from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Organization, Project, Species
 from django.db.models import Count, Window, F, Sum, Min, Q, Max
 from django.db.models.functions import ExtractYear
 from django.template import loader
@@ -25,6 +26,7 @@ from taicat.utils import get_my_project_list, get_project_member
 from django.db.models.functions import Trunc, TruncDate
 from .utils import DecimalEncoder
 from django.views.decorators.csrf import csrf_exempt
+# from django.core import serializers
 
 
 def update_is_read(request):
@@ -524,16 +526,59 @@ def get_growth_data(request):
     return HttpResponse(json.dumps(response), content_type='application/json')
 
 
-# ------ deprecated ------ #
-# def stat_county(request):
-#     city = request.GET.get('city')
-#     with connection.cursor() as cursor:
-#         query = """SELECT COUNT(DISTINCT(d.project_id)), COUNT (i.id)
-#         FROM taicat_deployment d
-#          JOIN taicat_image i ON i.deployment_id = d.id
-#          where d.source_data->>'city' = '{}';"""
+def stat_county(request):
+    if request.method == 'GET':
+        county = request.GET.get('county')
+        county = county.replace('台','臺')
+        response = GeoStat.objects.filter(county = county).values('num_project','num_deployment','identified','num_image','num_working_hour','species', 'studyarea')
+        response = response[0]
+        response.update({'species':response.get('species').replace(',','、')})
 
-#         cursor.execute(query.format(city))
-#         response = cursor.fetchone()
-#     response = {"no_proj": response[0], "no_img": response[1]}
-#     return HttpResponse(json.dumps(response), content_type='application/json')
+        sa_points = []
+        if response['studyarea']:
+            with connection.cursor() as cursor:
+                query = f"""SELECT sas.longitude, sas.latitude, p.name, sa.name, sa.id  
+                            FROM taicat_studyareastat sas  
+                            JOIN taicat_studyarea sa ON sas.studyarea_id = sa.id
+                            JOIN taicat_project p ON p.id = sa.project_id
+                            WHERE sas.studyarea_id IN ({response['studyarea']});"""
+                cursor.execute(query)
+                sa_points = cursor.fetchall()
+        response.update({'studyarea': sa_points})
+
+        return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
+
+
+def stat_studyarea(request):
+    if request.method == 'GET':
+        said = request.GET.get('said')
+        query = f"""SELECT id, longitude, latitude, name FROM taicat_deployment WHERE study_area_id = {said}"""
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            sa = cursor.fetchall()
+        name = []
+        count = []
+        for s in sa:
+            query = f"""
+                    SELECT d.name, COUNT(DISTINCT(i.image_uuid))
+                    FROM taicat_image i
+                    JOIN taicat_deployment d ON i.deployment_id = d.id
+                    WHERE i.deployment_id = {s[0]}
+                    GROUP BY d.name
+                    ORDER BY d.name
+                    """
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                data = cursor.fetchall()
+                if len(data):
+                    name += [data[0][0]]
+                    count += [data[0][1]]
+        with connection.cursor() as cursor:
+            query = f"""SELECT sas.longitude, sas.latitude  
+                        FROM taicat_studyareastat sas  
+                        WHERE sas.studyarea_id = ({said});"""
+            cursor.execute(query)
+            sa_center = cursor.fetchall()        
+        response = {'name': name, 'count': count, 'deployment_points': sa, 'center': sa_center[0]}
+        
+        return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
