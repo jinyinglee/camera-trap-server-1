@@ -1040,9 +1040,9 @@ def api_check_data_gap(request):
     now = datetime.datetime.now()
 
     # test
-    range_list = half_year_ago(2017, 6)
+    # range_list = half_year_ago(2017, 6)
 
-    #range_list = half_year_ago(now.year, now.month)
+    range_list = half_year_ago(now.year, now.month)
     rows = DeploymentJournal.objects.filter(
         is_gap=True,
         working_end__gt=range_list[0],
@@ -1074,6 +1074,7 @@ def api_check_data_gap(request):
             un = UploadNotification(
                 contact_id = m.id,
                 category='gap',
+                project_id = project_id
             )
             un.save()
         #send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, data['emails'])

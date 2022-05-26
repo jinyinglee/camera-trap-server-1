@@ -1,5 +1,5 @@
 from django.db import models
-from taicat.models import DeploymentJournal, Contact
+from taicat.models import DeploymentJournal, Contact, Project
 
 
 class UploadHistory(models.Model):
@@ -20,6 +20,7 @@ class UploadNotification(models.Model):
     created = models.DateTimeField(auto_now_add=True, null=True, db_index=True)
     is_read = models.BooleanField(default=False, blank=True)
     upload_history = models.ForeignKey(UploadHistory, on_delete=models.SET_NULL, null=True, blank=True)
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True, blank=True)
     contact = models.ForeignKey(Contact, on_delete=models.SET_NULL, null=True, blank=True)
     category = models.CharField(max_length=100, null=True, blank=True,  default='upload') # upload | gap
 
