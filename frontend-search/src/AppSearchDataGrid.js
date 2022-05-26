@@ -43,6 +43,9 @@ const columns = [
 ];
 
 
+const CellContent = (value) => {
+}
+
 const AppSearchDataGrid = ({result, pagination, handleChangePage, handleChangeRowsPerPage}) => {
   //console.log('result', result);
   return (
@@ -69,10 +72,7 @@ const AppSearchDataGrid = ({result, pagination, handleChangePage, handleChangeRo
                   const value = row[column.id];
                   return (
                     <TableCell key={column.id} align={column.align}>
-                      {column.id === 'media' ? <img src={value} width="50"/> :
-                       (column.format && typeof value === 'number')
-                       ? column.format(value)
-                       : value }
+                      {column.id === 'media' ? <img src={value} width="50"/> : value }
                     </TableCell>
                   );
                 })}

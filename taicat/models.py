@@ -702,7 +702,7 @@ class Image(models.Model):
             'id': self.id,
             'species': self.species,
             'filename': self.filename,
-            'datetime': self.datetime,
+            'datetime': self.datetime.strftime('%Y-%m-%d %H:%M:%S') if self.datetime else '',
             'project__name': self.project.name if self.project else None,
             'studyarea__name': self.studyarea.name if self.studyarea_id else None,
             'deployment__name': self.deployment.name if self.deployment_id else None,
