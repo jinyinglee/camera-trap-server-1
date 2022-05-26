@@ -313,10 +313,9 @@ def edit_project_deployment(request, pk):
 
     if is_authorized:
         project = Project.objects.filter(id=pk)
-
         study_area = StudyArea.objects.filter(project_id=pk)
 
-        return render(request, 'project/edit_project_deployment.html', {'project': project, 'pk': pk,
+        return render(request, 'project/edit_project_deployment.html', {'project': project, 'pk': pk, 
                                                                         'study_area': study_area, 'is_authorized': is_authorized})
     else:
         messages.error(request, '您的權限不足')
@@ -328,7 +327,7 @@ def get_deployment(request):
         id = request.POST.get('study_area_id')
 
         with connection.cursor() as cursor:
-            query = """SELECT id, name, longitude, latitude, altitude, landcover, vegetation, verbatim_locality FROM taicat_deployment WHERE study_area_id = {};"""
+            query = """SELECT id, name, longitude, latitude, altitude, landcover, vegetation, verbatim_locality, geodetic_datum FROM taicat_deployment WHERE study_area_id = {};"""
             cursor.execute(query.format(id))
             data = cursor.fetchall()
 
@@ -349,13 +348,25 @@ def add_deployment(request):
         altitudes = res.getlist('altitudes[]')
         landcovers = res.getlist('landcovers[]')
         vegetations = res.getlist('vegetations[]')
+        did = res.getlist('did[]')
 
         for i in range(len(names)):
             if altitudes[i] == "":
                 altitudes[i] = None
-            Deployment.objects.create(project_id=project_id, study_area_id=study_area_id, geodetic_datum=geodetic_datum,
-                                      name=names[i], longitude=longitudes[i], latitude=latitudes[i], altitude=altitudes[i],
-                                      landcover=landcovers[i], vegetation=vegetations[i])
+            if did[i]:
+                if Deployment.objects.filter(id=did[i]).exists():
+                    Deployment.objects.filter(id=did[i]).update(
+                        geodetic_datum=geodetic_datum,
+                        name=names[i], 
+                        longitude=longitudes[i], 
+                        latitude=latitudes[i], 
+                        altitude=altitudes[i],
+                        landcover=landcovers[i], 
+                        vegetation=vegetations[i])
+            else:
+                Deployment.objects.create(project_id=project_id, study_area_id=study_area_id, geodetic_datum=geodetic_datum,
+                            name=names[i], longitude=longitudes[i], latitude=latitudes[i], altitude=altitudes[i],
+                            landcover=landcovers[i], vegetation=vegetations[i])
 
         return HttpResponse(json.dumps({'d': 'done'}), content_type='application/json')
 
