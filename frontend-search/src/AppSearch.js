@@ -47,9 +47,10 @@ const AppSearch = () => {
   const [result, setResult] = useState(null);
   const [calcData, setCalcData] = React.useState({
     session: 'month',
-    imageInterval: '',
-    eventInterval: '',
-    fileFormat: '',
+    imageInterval: '60',
+    eventInterval: '60',
+    fileFormat: 'excel',
+    calcType: 'basic',
   });
 
   useEffect(() => {

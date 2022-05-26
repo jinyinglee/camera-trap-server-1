@@ -160,6 +160,14 @@ CACHES = {
             "CLIENT_CLASS": "django_redis.client.DefaultClient"
         },
         "KEY_PREFIX": "basdb"
+    },
+    'file': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': '/bucket/cache-files',
+        'TIMEOUT': None,
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000
+        }
     }
 }
 

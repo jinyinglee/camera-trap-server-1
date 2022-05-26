@@ -8,12 +8,11 @@ import Select from '@mui/material/Select';
 import Grid from '@mui/material/Grid';
 
 const AppSearchCalculation = ({calcData, setCalcData}) => {
-
   return (
     <>
       <h3 style={{ marginTop: '50px'}}>分析與計算</h3>
       <Grid container spacing={2}>
-        <Grid item xs={3}>
+        <Grid item xs={2}>
           <FormControl fullWidth>
             <InputLabel id="label-session">回合</InputLabel>
             <Select
@@ -26,7 +25,7 @@ const AppSearchCalculation = ({calcData, setCalcData}) => {
             </Select>
           </FormControl>
         </Grid>
-        <Grid item xs={3}>
+        <Grid item xs={2}>
           <FormControl required fullWidth>
             <InputLabel id="label-image-interval">有效照片間隔</InputLabel>
             <Select
@@ -35,15 +34,12 @@ const AppSearchCalculation = ({calcData, setCalcData}) => {
               label="有效照片間隔"
               onChange={(e)=>setCalcData({...calcData, imageInterval: e.target.value})}
             >
-              <MenuItem value="2">2 分鐘</MenuItem>
-              <MenuItem value="5">5 分鐘</MenuItem>
-              <MenuItem value="10">10 分鐘</MenuItem>
               <MenuItem value="30">30 分鐘</MenuItem>
               <MenuItem value="60">60 分鐘</MenuItem>
             </Select>
           </FormControl>
         </Grid>
-        <Grid item xs={3}>
+        <Grid item xs={2}>
           <FormControl required fullWidth>
             <InputLabel id="label-event-interval">目擊事件間隔</InputLabel>
             <Select
@@ -60,7 +56,22 @@ const AppSearchCalculation = ({calcData, setCalcData}) => {
             </Select>
           </FormControl>
         </Grid>
-        <Grid item xs={3}>
+        <Grid item xs={4}>
+          <FormControl fullWidth>
+            <InputLabel id="label-calc-type">計算項目</InputLabel>
+            <Select
+              labelId="label-calc-type"
+              value={calcData.calcType}
+              label="計算項目"
+              onChange={(e)=>setCalcData({...calcData, calcType: e.target.value})}
+            >
+              <MenuItem value="basic">基本（相機工作時數, 有效照片數, 目擊事件數, OI3）</MenuItem>
+              <MenuItem value="pod">捕獲回合比例、存缺</MenuItem>
+              <MenuItem value="apoa">活動機率(APOA)</MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid item xs={2}>
           <FormControl fullWidth>
             <InputLabel id="label-file-format">檔案格式</InputLabel>
             <Select
@@ -69,7 +80,7 @@ const AppSearchCalculation = ({calcData, setCalcData}) => {
               label="檔案格式"
               onChange={(e)=>setCalcData({...calcData, fileFormat: e.target.value})}
             >
-              <MenuItem value="csv">csv</MenuItem>
+              {/*<MenuItem value="csv">csv</MenuItem>*/}
               <MenuItem value="excel">Excel (xlsx)</MenuItem>
             </Select>
           </FormControl>

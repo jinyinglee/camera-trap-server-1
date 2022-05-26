@@ -68,7 +68,7 @@ calc -> calc_by_species_deployments
 
 ```
   data -> years -> studyareas -> items -> deployments -> items -> month_list
-  data: dict (datetime__range, working_range, updated, elapsed, years)
+  data: dict (datetime__range, working__range, updated, elapsed, years)
   years: dict, ex: str(2019)
   studyareas: list (item dict: {name, items, sa_idx})
   deployments: list (item dict: {name, items, d_idx, ratio_year, gaps})

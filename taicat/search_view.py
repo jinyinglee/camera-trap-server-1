@@ -34,6 +34,8 @@ from .utils import (
     Calculation,
     calc,
     calc_output,
+    calc_output2,
+    calc_from_cache,
 )
 
 from .views import check_if_authorized
@@ -258,7 +260,7 @@ def api_deployments(request):
 
 def api_search(request):
     rows = []
-    #request.is_ajax() and 
+    #request.is_ajax() and
     if request.method == 'GET':
         start_time = time.time()
         start = 0
@@ -267,7 +269,7 @@ def api_search(request):
         # TODO: 考慮 auth
         if request.GET.get('filter'):
             filter_dict = json.loads(request.GET['filter'])
-            print(filter_dict, flush=True)
+            #print(filter_dict, flush=True)
             if values := filter_dict.get('projects'):
                 query = query.filter(project_id__in=values)
             if values := filter_dict.get('species'):
@@ -294,9 +296,11 @@ def api_search(request):
             calc_data = json.loads(calc_data)
 
         if download and calc_data:
-            results = calc(query, calc_data)
             calc_dict = json.loads(request.GET['calc'])
             out_format = calc_dict['fileFormat']
+            results = calc(query, calc_data)
+            #results = calc_from_cache(filter_dict, calc_dict)
+            #content = calc_output2(results, out_format, request.GET.get('filter'), request.GET.get('calc'))
             content = calc_output(results, out_format, request.GET.get('filter'), request.GET.get('calc'))
 
             response = HttpResponse(content)
