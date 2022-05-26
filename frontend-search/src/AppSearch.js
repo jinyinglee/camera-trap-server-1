@@ -168,7 +168,7 @@ const AppSearch = () => {
         const href = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = href;
-        link.setAttribute('download', `camera-trap-calculation.${ext_name}`);
+        link.setAttribute('download', `camera-trap-calculation-${calcData.calcType}.${ext_name}`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

@@ -616,8 +616,28 @@ def calc_output(results, file_format, filter_str, calc_str):
                         sheets[sheet_index].cell(row=row_index, column=8, value=i['calc'][5])
                         for day_index, working in enumerate(i['calc'][0]):
                             sheets[sheet_index].cell(row=row_index, column=9+day_index, value=working)
+
                 elif calcData.get('calcType') == 'pod':
-                    header_str = '相機位置,物種,date,' + ','.join(f'{hour:02}' for hour in range(0, 24))
+                    header_str = 'year,month,物種,相機位置,拍到天數,相機工作天數,POD' # + ','.join(f'{hour:02}' for hour in range(0, 24))
+                    header_list = header_str.split(',')
+                    for h, v in enumerate(header_list):
+                        sheets[sheet_index].cell(row=1, column=h+1, value=v)
+
+                    for i in results[sp]:
+                        row_index += 1
+                        count = 0
+                        for d in i['calc'][7]:
+                            if d[0]:
+                                count += 1
+                        sum_working_days = sum(i['calc'][0])
+                        sheets[sheet_index].cell(row=row_index, column=1, value=i['year'])
+                        sheets[sheet_index].cell(row=row_index, column=2, value=i['month'])
+                        sheets[sheet_index].cell(row=row_index, column=3, value=sp)
+                        sheets[sheet_index].cell(row=row_index, column=4, value=i['name'])
+                        sheets[sheet_index].cell(row=row_index, column=5, value=count)
+                        sheets[sheet_index].cell(row=row_index, column=6, value=sum_working_days)
+                        sheets[sheet_index].cell(row=row_index, column=7, value=count*1.0/sum_working_days)
+
                 elif calcData.get('calcType') == 'apoa':
                     header_str = '相機位置,物種,date,' + ','.join(f'{hour:02}' for hour in range(0, 24))  # ,捕獲回合比例,存缺,'+','.join(f'活動機率day{day}' for day in range(1, 32))
                     header_list = header_str.split(',')

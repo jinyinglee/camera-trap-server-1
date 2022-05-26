@@ -298,6 +298,7 @@ def api_search(request):
         if download and calc_data:
             calc_dict = json.loads(request.GET['calc'])
             out_format = calc_dict['fileFormat']
+            calc_type = calc_dict['calcType']
             results = calc(query, calc_data)
             #results = calc_from_cache(filter_dict, calc_dict)
             #content = calc_output2(results, out_format, request.GET.get('filter'), request.GET.get('calc'))
@@ -305,7 +306,9 @@ def api_search(request):
 
             response = HttpResponse(content)
             response['Content-Type'] = 'text/plain'
-            response['Content-Disposition'] = 'attachment; filename=camera-trap-calculation.{}'.format('csv' if out_format == 'csv' else 'xlsx')
+            response['Content-Disposition'] = 'attachment; filename=camera-trap-calculation-{}.{}'.format(
+                calc_type,
+                'csv' if out_format == 'csv' else 'xlsx')
             #print ('--------------', flush=True)
             return response
 
