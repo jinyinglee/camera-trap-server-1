@@ -122,7 +122,7 @@
                                 <span style="font-size: 10px; display: inline-block">●</span> <div style="display: inline-block" class="studyarea-name">{{ i.name }}</div>
                             </li>
                             <div class="collapse d-none" id="collapse_{{ i.id }}">
-                            <!-- 新增子樣區 -->
+                            <!-- 新增子樣區 -->
                             <!-- <li><input id="collapse_{{ i.id }}_add" data-parent="{{ i.id }}" class="addSubStudyArea border-0 shadow-none form-control bg-light" style="width: 90%;" type="text" placeholder=" + 新增子樣區"> 
                                     <div class="invalid-feedback addSubStudyArea-feedback" id="addSubStudyArea-feedback">
                                     </div></li>-->
@@ -145,8 +145,8 @@
                             <div class="d-flex flex-row align-items-center justify-content-end my-3">
                                 <span class="required">*</span>座標大地基準：
                                 <select class="selectpicker form-control" data-width="13%" data-style="btn-new">
-                                    <option>TWD97</option>
                                     <option>WGS84</option>
+                                    <option>TWD97</option>
                                 </select>
                                 <img class="text-green mx-2" src="{% static 'icon/info.png' %}" style="height: 18px;" data-bs-toggle="tooltip" data-bs-placement="right" title="為準確呈現圖籍，請指明相機位置座標的大地基準。單一樣區內所有相機位置必須一致，因此更改設定會全部覆寫喔。"></i>
                             </div>
@@ -325,25 +325,32 @@ function addDepolymentSubmit(){
             vegetations.push($(this).val());
         });
 
+        did = []
+        $('#deployment [name="id"]').each(function(){
+            did.push($(this).val());
+        });
+
         $.ajax({
         type: 'POST',
         url: "{% url 'add_deployment' %}",
         data: {'project_id': {{ pk }},
                'study_area_id': $('li.title-dark').attr('id'),
                'geodetic_datum': $('select').val(),
-               'names': JSON.stringify(names),
-               'longitudes': JSON.stringify(longitudes),
-               'latitudes': JSON.stringify(latitudes),
-               'altitudes': JSON.stringify(altitudes),
-               'landcovers' : JSON.stringify(landcovers),
-               'vegetations': JSON.stringify(vegetations),
+               'names': names,
+               'longitudes': longitudes,
+               'latitudes': latitudes,
+               'altitudes': altitudes,
+               'landcovers' : landcovers,
+               'vegetations': vegetations,
+               'did': did,
                 },
         headers:{"X-CSRFToken": $crf_token},
         success: function (response) {
-            alert('設定已儲存')
+            alert('設定已儲存');
 
         },
         error: function (response) {
+            alert('未知錯誤，請聯繫管理員');
         }
     })
        
@@ -375,11 +382,15 @@ function selectStudyArea(id){
             //let data = JSON.parse(response.replace(/'/g, '"'))
             let i;
             for (i = 0; i < response.length; i++) {
-                // altitude
-                if (response[i][4] == null){
-                    response[i][4] = ""
+                // 如果是null顯示空值
+                for (j = 0; j < 7; j++ ){
+                    if ((response[i][j] == null)|(response[i][j] == 'null')){
+                        response[i][j] = ""}
                 }
-                $('#deployment').append(`<tr><td style="width: 20%"><input type="text" name="name" class="form-control" value="${response[i][1]}">
+                $('#deployment').append(`
+                <tr><td style="width: 20%">
+                    <input type="hidden" name="id" value="${response[i][0]}">
+                    <input type="text" name="name" class="form-control text-truncate" value="${response[i][1]}">
                 </td>
                                         <td style="width: 17.5%"><input type="text" name="longitude" class="form-control" value="${response[i][2]}"></td>
                                         <td style="width: 17.5%"><input type="text" name="latitude" class="form-control" value="${response[i][3]}"></td>
@@ -387,7 +398,8 @@ function selectStudyArea(id){
                                         <td style="width: 15%"><input type="text" name="vegetation" class="form-control" value="${response[i][5]}"></td>
                                         <td style="width: 15%"><input type="text" name="landcover" class="form-control" value="${response[i][6]}"></td></tr>`)
             }
-
+            // geodetic_datum
+            $('.selectpicker').selectpicker('val', response[0][8]);
         },
         error: function (response) {
         }
@@ -395,7 +407,9 @@ function selectStudyArea(id){
 }
 
 function addDeployment(){
-        $('#deployment').append(`<tr><td style="width: 20%"><input type="text" name="name" class="form-control"></td>
+        $('#deployment').append(`<tr><td style="width: 20%">
+                            <input type="hidden" name="id">
+                            <input type="text" name="name" class="form-control"></td>
                             <td style="width: 15%"><input type="text" name="longitude" class="form-control"></td>
                             <td style="width: 15%"><input type="text" name="latitude" class="form-control"></td>
                             <td style="width: 15%"><input type="text" name="altitude" value="" class="form-control"></td>
@@ -441,7 +455,6 @@ $("#addStudyArea").keypress(function(e){
             headers:{"X-CSRFToken": $crf_token},
             success: function (response) {
                 let new_id = response.study_area_id;
-                console.log(new_id);
                 $('#addStudyArea-li').before(`
                                     <li id="${new_id}" onClick="selectStudyArea(${new_id})" data-bs-toggle="collapse" href="#collapse_${new_id}" role="button" aria-expanded="false" aria-controls="collapse_">
                                         <span style="font-size: 10px">●</span> ${name}
@@ -483,7 +496,6 @@ $(".addSubStudyArea").keypress(function(e){
         $(`li[data-parent=${parent}] div.substudyarea-name`).each(function(){
             name_list.push($(this).text());
         });
-        console.log(name_list)
 
 
         if (name=='' ){
@@ -502,7 +514,6 @@ $(".addSubStudyArea").keypress(function(e){
         headers:{"X-CSRFToken": $crf_token},
         success: function (response) {
             let new_id = response.study_area_id;
-            console.log(new_id);
             $(`#collapse_${parent} li:last`).before(`<li id="${new_id}" onClick="selectStudyArea(${new_id})"><span style="font-size: 10px">●</span> ${name}</li>`);
         },
         error: function (response) {

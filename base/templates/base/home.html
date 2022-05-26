@@ -11,6 +11,27 @@
     display: flex;
     flex-direction: column;
   }
+
+  .desp {
+    color: #8B8B8B;
+    font-size: 18px;
+    line-height: 30px;
+  }
+  
+  .leaflet-pane .leaflet-tooltip-pane .leaflet-tooltip {
+    background: none !important;
+    border: 0;
+    box-shadow: none;
+    color: #FFF; }
+
+    .leaflet-pane .leaflet-tooltip-pane .leaflet-tooltip.leaflet-tooltip-top {
+    color: black;
+    margin-top: -35px;
+    font-size: 11px; }
+
+    .leaflet-pane .leaflet-tooltip-pane .leaflet-tooltip.leaflet-tooltip-top:before {
+      display: none; }
+  
 </style>
 {% endblock style %} {% block head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin="" />
@@ -37,17 +58,12 @@
   <div class="row">
     <!-- MAP -->
     <div class="col-xs-12 col-sm-12 col-md-6">
-      <h6 class="title-light">資料分布</h6>
-      <div id="map" style="height: 600px; width: 80%"></div>
+      <h6 class="title-light map-explore">點擊地圖區塊進行資料探索</h6>
+      <div id="map" style="height: 600px; width: 95%"></div>
     </div>
-    <!-- <div class="col-xs-12 col-sm-12 col-md-6 text-right mt-5 pt-3">
-                <h2 id="click-county"></h2>
-                <ul style="list-style: none;">
-                    <li><span id="click-no-proj"></span></li>
-                    <li><span id="click-no-img"></span></li>
-                </ul>
-            </div> -->
-    <div class="col-xs-12 col-sm-12 col-md-6 text-end mt-5 pt-3">
+    <div id="map-info" class="col-xs-12 col-sm-12 col-md-6 text-right mt-5 d-none">
+    </div> 
+    <div id="default-info" class="col-xs-12 col-sm-12 col-md-6 text-end mt-5 pt-3">
       <h1 class="title-light" style="font-size: 54px">自動相機資料庫</h1>
       <h2 class="title-dark">共享的資料平台</h2>
       <p class="text-gray text-start">Camera Trap提供研究人員自動相機影像統一倉儲、管理、 查詢及分析的便利性，透過公開資源的共享，與其他專業人士交流、探索生態與開創更多研究可能性。</p>
@@ -104,25 +120,6 @@
 {% endblock body %} {% block script %}
 <script>
   $(function () {
-    // get data by ajax separately
-    $.ajax({
-      url: "{% url 'get_geo_data' %}",
-      success: function (data) {
-        // map
-        data.deployment_points.forEach(
-          (i) =>
-            (marker = new L.marker([i[1], i[0]], { icon: fontAwesomeIcon })
-              .bindPopup(i[2])
-              .on("mouseover", function (e) {
-                this.openPopup();
-              })
-              .on("mouseout", function (e) {
-                this.closePopup();
-              })
-              .addTo(map))
-        );
-      },
-    });
 
     $.ajax({
       url: "{% url 'get_growth_data' %}",
@@ -188,7 +185,7 @@
               title: {
                 align: "high",
                 offset: 0,
-                text: "照片累積張數(萬)",
+                text: "影像累積筆數(萬)",
                 rotation: 0,
                 y: -20,
                 x: 30,
@@ -209,7 +206,7 @@
           },
           series: [
             {
-              name: "照片累積張數(萬)",
+              name: "影像累積筆數(萬)",
               type: "column",
               yAxis: 1,
               data: data_growth_image_count,
@@ -352,18 +349,42 @@
   });
 
   // map
-  const fontAwesomeIcon = L.divIcon({
+  
+  const StudyAreaIcon = L.divIcon({
     html: '<i class="fa fa-circle" style="color: darkorange; opacity: 0.5"></i>',
     iconSize: [0.5, 0.5],
     className: "myDivIcon",
   });
 
-  let map = L.map("map").setView([23.5, 121.2], 7);
+
+  const DeploymentIcon = L.icon({
+    iconUrl: '{% static "icon/marker-icon.png" %}',
+    iconSize: [66, 120],
+    iconAnchor: [33, 80],
+    popupAnchor: [-3, -76],
+    shadowSize: [66, 120],
+    shadowAnchor: [31, 77],
+    className: "myDeploymentIcon",
+  });
+  
+  const DeploymentIconSelect = L.icon({
+    iconUrl: '{% static "icon/marker-icon-select@2x.png" %}',
+    iconSize: [66, 120],
+    iconAnchor: [33, 80],
+    popupAnchor: [-3, -76],
+    shadowSize: [66, 120],
+    shadowAnchor: [31, 77],
+    className: "myDeploymentIcon",
+  });
+  
+
+
+  let map = L.map("map", {tap: false}).setView([23.5, 121.2], 7);
   L.tileLayer("https://{s}.tile.osm.org/{z}/{x}/{y}.png", {
     attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors',
   }).addTo(map);
 
-  /*function onEachFeature(feature, layer) {
+  function onEachFeature(feature, layer) {
         layer.on({
             mouseover: e => {
                 e.target.setStyle({
@@ -376,30 +397,213 @@
                 });
             },
             click: e => {
-                $('#click-county').html(e.target.feature.properties.COUNTYNAME);
-                $.ajax({
-                    data: {"city": e.target.feature.properties.COUNTYNAME},
-                    dataType: "json",
-                    success: function(data) {
-                        $('#click-no-proj').html(`計畫總數：${data.no_proj}`);
-                        $('#click-no-img').html(`影像總數：${data.no_img}`);
-                }})
+              $('#map-info').removeClass('d-none');
+              $('#default-info').addClass('d-none');
+                let county = e.target.feature.properties.COUNTYNAME;
+                $('#click-county').html(county);
+                countyOnClick(county);
             },
             
         })
-    }*/
+    }
+
+
+  function countyOnClick(county){
+    $.ajax({
+      url: '{% url "stat_county" %}',
+      data: {"county": county},
+      dataType: "json",
+      success: function(response) {
+        //map.removeLayer(marker);
+        $('.myDivIcon').remove();
+        response.studyarea.forEach(
+          (i) =>
+            (marker = new L.marker([i[1], i[0]], { icon: StudyAreaIcon })
+              .bindPopup(
+                `${i[3]}<small style="color: grey">${i[2]}</small>`
+              )
+              .on("mouseover", function (e) {
+                this.openPopup();
+              })
+              .on("mouseout", function (e) {
+                this.closePopup();
+              })
+              .on("click", function (e) {
+                $('#map-info').html('<div class="loader"></div>');
+                $.ajax({
+                  url: '{% url "stat_studyarea" %}',
+                  data: {"said": i[4]},
+                  dataType: "json",
+                  success: function(response) {
+                    // 返回鍵
+                    $('.map-explore').html(`<a class="link" onClick="resetMapExplore('${county}')">返回</a>`)
+                    // 更換右側統計圖
+                    $('#map-info').html(`
+                      <h1 id="click-county" class="title-light mb-3" style="font-size: 54px">${i[3]}</h1>
+                      <h4 class="mb-3" style="color: gray">${i[2]}</h4>
+                      <div id="deployment_data" class="mx-auto"></div>
+                    `);
+                    Highcharts.chart("deployment_data", {
+                      chart: {
+                        type: "column",
+                        marginTop: 40,
+                        backgroundColor: null,
+                      },
+                      exporting: { enabled: false },
+                      credits: { enabled: false },
+                      title: { text: "" },
+                      xAxis: {
+                        categories: response.name,
+                        tickInterval: 1,
+                        title: {
+                          text: "相機位置",
+                          style: {
+                            fontSize: "14px",
+                          },
+                        },
+                        labels: {
+                          style: {
+                            fontSize: "14px",
+                          },
+                        },
+                      },
+                      yAxis: {
+                        allowDecimals: false,
+                        min: 0,
+                        title: {
+                          align: "high",
+                          offset: 0,
+                          text: "影像累積筆數",
+                          rotation: 0,
+                          y: -20,
+                          style: {
+                            fontSize: "14px",
+                          },                        
+                        },
+                        labels: {
+                          format: "{value}",
+                          overflow: "justify",
+                          style: {
+                            fontSize: "14px",
+                          },
+                        },
+                      },
+                      tooltip: {
+                        pointFormatter: function () {
+                          var string = this.series.name + "：" + this.y + "<br>";
+                          return string;
+                        },
+                      },
+                      series: [
+                        {
+                          name: "影像累積筆數",
+                          data: response.count,
+                          color: "#AECC82",
+                        },
+                      ],
+                      legend:{ enabled:false },
+                    });
+                    // 更換左側地圖
+                    // 重設縮放 & 移除其他icon
+                    map.setView([response.center[1], response.center[0]], 10);
+                    $('.myDivIcon').remove();
+                    $('.countyPoly').addClass('d-none');
+                    response.deployment_points.forEach(
+                      (r) =>
+                        (marker = new L.marker([r[2], r[1]], { icon: DeploymentIcon })
+                          .on("mouseover", function (e) {
+                            e.target.setIcon(DeploymentIconSelect);                                 
+                          })
+                          .on("mouseout", function (e) {
+                            e.target.setIcon(DeploymentIcon);                                     
+                          })                        
+                          .bindTooltip(r[3], { permanent: true, direction: 'top' })
+                          .addTo(map)));
+                    console.log(response);
+                  }})
+              })
+              .addTo(map))
+        );
+
+        $('#map-info').html(
+          `<h1 id="click-county" class="title-light mb-3" style="font-size: 54px">${county}</h1>
+          <div class="row desp">
+            <div class="col-3 text-left">
+              計畫總數
+            </div>
+            <div class="col-9 text-left">
+              ${response.num_project}
+            </div>
+          </div>
+          <div class="row desp">
+            <div class="col-3 text-left">
+              相機位置
+            </div>
+            <div class="col-9 text-left">
+              ${response.num_deployment}
+            </div>
+          </div>
+          <div class="row desp">
+            <div class="col-3 text-left">
+              總辨識進度
+            </div>
+            <div class="col-9 text-left">
+              ${response.identified} %
+            </div>
+          </div>
+          <div class="row desp">
+            <div class="col-3 text-left">
+              總相片數
+            </div>
+            <div class="col-9 text-left">
+              ${response.num_image}
+            </div>
+          </div>
+          <div class="row desp">
+            <div class="col-3 text-left">
+              相機總工時
+            </div>
+            <div class="col-9 text-left">
+              ${response.num_working_hour}
+            </div>
+          </div>
+          <div class="row desp">
+            <div class="col-3 text-left">
+              出現物種
+            </div>
+            <div class="col-9 text-left">
+              ${response.species}
+            </div>
+          </div>
+          `
+        )
+      }
+  })
+  }
 
   function polystyle(feature) {
     return {
       fillColor: "#7C9C2D",
       weight: 1.2,
       color: "white",
+      className: "countyPoly",
     };
   }
 
-  $.getJSON("https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json", function (ret) {
-    //L.geoJSON(ret, {onEachFeature: onEachFeature, style: polystyle}).addTo(map);
-    L.geoJSON(ret, { style: polystyle }).addTo(map);
+  $.getJSON("{% static 'map/twCounty2010.geo.json' %}", function (ret) {
+    L.geoJSON(ret, {onEachFeature: onEachFeature, style: polystyle}).addTo(map);
+    //L.geoJSON(ret, { style: polystyle }).addTo(map);
   });
+
+    function resetMapExplore(county){
+      $('.myDeploymentIcon').remove();
+      $('.leaflet-tooltip').remove();
+      map.setView([23.5, 121.2], 7);
+      $('.countyPoly').removeClass('d-none');
+      // trigger event
+      countyOnClick(county);
+    
+    }
+  
 </script>
 {% endblock script %}

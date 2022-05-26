@@ -15,3 +15,5 @@ openpyxl==3.0.9
 pandas==1.4.2
 requests==2.27.1
 boto3==1.22.0
+geopandas==0.10.2
+pygeos==0.12.0
