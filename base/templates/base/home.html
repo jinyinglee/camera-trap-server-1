@@ -442,6 +442,7 @@
                       <h1 id="click-county" class="title-light mb-3" style="font-size: 54px">${i[3]}</h1>
                       <h4 class="mb-3" style="color: gray">${i[2]}</h4>
                       <div id="deployment_data" class="mx-auto"></div>
+                      <img style="width: 16px; height: auto" src='{% static "icon/marker-icon.png" %}'> 相機位置
                     `);
                     Highcharts.chart("deployment_data", {
                       chart: {
@@ -575,6 +576,7 @@
               ${response.species}
             </div>
           </div>
+          <i class="fa fa-circle mt-3" style="color: darkorange;"></i> 樣區
           `
         )
       }
