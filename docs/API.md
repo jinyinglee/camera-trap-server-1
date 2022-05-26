@@ -4,7 +4,7 @@
 
 URL: `/update_upload_history`
 
-source: `base\views.update_upload_history`
+source: `base/views.update_upload_history`
 
 用POST傳
 
@@ -12,6 +12,14 @@ source: `base\views.update_upload_history`
 status: finished/uploading
 deployment_journal_id:
 ```
+
+## 管考相關
+
+URL: `/api/api/check_data_gap/`
+
+source: `taicat/views.py` *api_check_data_gap*
+
+檢查前一個月的前半年，列出: 各計畫下的相機位置，還沒填寫缺失原因的缺失範圍
 
 ## Model
 
@@ -47,7 +55,7 @@ deployment_journal_id:
 
 ```
   data -> years -> studyareas -> items -> deployments -> items -> month_list
-  data: dict (datetime__range, working_range, updated, elapsed, years)
+  data: dict (datetime__range, working__range, updated, elapsed, years)
   years: dict, ex: str(2019)
   studyareas: list (item dict: {name, items, sa_idx})
   deployments: list (item dict: {name, items, d_idx, ratio_year, gaps})
