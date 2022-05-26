@@ -4,7 +4,7 @@
 
 URL: `/update_upload_history`
 
-source: `base\views.update_upload_history`
+source: `base/views.update_upload_history`
 
 用POST傳
 
@@ -12,6 +12,14 @@ source: `base\views.update_upload_history`
 status: finished/uploading
 deployment_journal_id:
 ```
+
+## 管考相關
+
+URL: `/api/api/check_data_gap/`
+
+source: `taicat/views.py` *api_check_data_gap*
+
+檢查前一個月的前半年，列出: 各計畫下的相機位置，還沒填寫缺失原因的缺失範圍
 
 ## Model
 
