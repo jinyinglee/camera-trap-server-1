@@ -1052,6 +1052,7 @@ def api_check_data_gap(request):
 
     # send notification to each project members
     # TODO: email project membor 權限?
+    notify_roles = ['project_admin', 'organization_admin']
     projects = {}
     for dj in rows:
         pid = dj.project_id
@@ -1059,8 +1060,8 @@ def api_check_data_gap(request):
             projects[pid] = {
                 'name': dj.project.name,
                 'gaps': [],
-                'emails': [x.member.email for x in dj.project.members.filter(role__in=['project_admin', 'organization_admin'], member__email__isnull=False).all()],
-                'members': [x.member for x in dj.project.members.filter(role='project_admin').all()]
+                'emails': [x.member.email for x in dj.project.members.filter(role__in=notify_roles, member__email__isnull=False).all()],
+                'members': [x.member for x in dj.project.members.filter(role__in=notify_roles).all()]
             }
         projects[pid]['gaps'].append(f'{dj.deployment.name}: {dj.display_range}')
 
@@ -1071,7 +1072,7 @@ def api_check_data_gap(request):
 
         # create notification
         for m in data['members']:
-            print (m.id, m.name)
+            # print (m.id, m.name)
             un = UploadNotification(
                 contact_id = m.id,
                 category='gap',
