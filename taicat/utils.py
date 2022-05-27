@@ -755,22 +755,34 @@ def get_project_member(project_id):
     return member_list
 
 
+def sanitize_date(input):
+    if len(input) != 8:
+        return ''
+
+    year = input[0:4]
+    month = input[4:6]
+    day = input[6:8]
+    return f'{year}-{month}-{day}'
+
 def set_deployment_journal(data, deployment):
     # if data.get('trip_start') and data.get('trip_end') and data.get('folder_name') and data.get('source_id'):  # 不要判斷了
 
+    is_new = None
     dj_exist = DeploymentJournal.objects.filter(
         deployment=deployment,
         folder_name=data['folder_name'],
         local_source_id=data['source_id']).first()
 
+    trip_start = sanitize_date(data['trip_start'])
+    trip_end = sanitize_date(data['trip_end'])
+
     if dj_exist:
+        is_new = False
         is_modified = False
         if data.get('trip_start') and data.get('trip_end'):
-            if data['trip_start'] != dj_exist.working_start:
-                dj_exist.working_start = data['trip_start']
-                is_modified = True
-            if data['trip_end'] != dj_exist.working_end:
-                dj_exist.working_end = data['trip_end']
+            if trip_start and trip_end:
+                dj_exist.working_start = trip_start
+                dj_exist.working_end = trip_end
                 is_modified = True
 
         if is_modified:
@@ -790,18 +802,23 @@ def set_deployment_journal(data, deployment):
             last_updated=timezone.now()
         )
 
-        if x := data.get('trip_start'):
-            dj_new.trip_start = x
-        if x := data.get('trip_end'):
-            dj_new.trip_end = x
+        is_new = True
+
+        if trip_start:
+            dj_new.working_start = trip_start
+        if trip_end:
+            dj_new.working_end = trip_end
 
         dj_new.save()
 
         deployment_journal_id = dj_new.id
 
     # 有時間才算有效
-    if data.get('trip_start') and data.get('trip_end'):
-        dj_new.is_effective = True
+    if trip_start and trip_end:
+        if is_new is True:
+            dj_new.is_effective = True
+        elif is_new is False:
+            dj_exist.is_effective = True
 
     return deployment_journal_id
 
