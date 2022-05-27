@@ -38,8 +38,8 @@ const AppSearch = () => {
   });
   const [formData, setFormData] = useState({
     species: [],
-    startDate: null,
-    endDate: null,
+    startDate: '2014-01-01',
+    endDate: Date(),
     projects: [],
     projectFilters: [{project: null}],
     keywoard: '',
