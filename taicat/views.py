@@ -999,6 +999,7 @@ def project_oversight(request, pk):
                 'gap_caused_choices': DeploymentJournal.GAP_CHOICES,
                 'month_label_list': [f'{x} 月'for x in range(1, 13)],
                 'result': proj_stats['years'][year] if year else [],
+                'year_list': [ y for y in proj_stats['years']]
             })
         else:
             return ''
