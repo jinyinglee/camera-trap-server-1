@@ -29,11 +29,6 @@ Parameter:
   - deployments
   - studyareas
 
-### Calculation
-
-Source: `taicat.utils` calc, calc_output
-
-calc -> calc_by_species_deployments
 
 ## 管考相關
 
