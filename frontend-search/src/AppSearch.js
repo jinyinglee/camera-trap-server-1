@@ -25,6 +25,9 @@ import { cleanFormData } from './Utils';
 
 
 const AppSearch = () => {
+  const today = new Date();
+  const todayYMD = `${today.getFullYear()}-${today.getMonth().toString().padStart(2, '0')}-${today.getDay().toString().padStart(2, '0')}`;
+  console.log(todayYMD);
   const apiPrefix = process.env.API_PREFIX;
   const [isLoading, setIsLoading] = React.useState(false);
   const [pagination, setPagination] = React.useState({
@@ -36,13 +39,14 @@ const AppSearch = () => {
     projects: [],
     deployments: null,
   });
+
   const [formData, setFormData] = useState({
     species: [],
     startDate: null,
     endDate: null,
     projects: [],
     projectFilters: [{project: null}],
-    keywoard: '',
+    keyword: '',
   });
   const [result, setResult] = useState(null);
   const [calcData, setCalcData] = React.useState({
@@ -341,7 +345,7 @@ const AppSearch = () => {
             label="計畫關鍵字"
             variant="standard"
             value={formData.keyword}
-            onChange={(e)=> setFormData({...formData, keywoard: e.target.value})}
+            onChange={(e)=> setFormData({...formData, keyword: e.target.value})}
           />
         </Grid>
         <Grid item xs={3}>
@@ -370,7 +374,7 @@ const AppSearch = () => {
                </button>
              </div>
            </>
-           : null}
+           : <h2>查無資料</h2>}
         </Grid>
 
       </Grid>

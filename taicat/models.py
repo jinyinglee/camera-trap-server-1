@@ -589,15 +589,20 @@ class Deployment(models.Model):
         image_count = 0
         event_count = 0
         delta_count = 0
+        exist_animals = []
         for image in query_ym_sp.all():
             if last_datetime:
                 delta = image.datetime - last_datetime
                 delta_seconds = (delta.days * 86400) + delta.seconds
                 delta_count += delta_seconds
                 # print (image.id, image.datetime, delta_seconds, delta_count)
-                # TODO: OI1 考慮 animal_id, animal_id 跟上一個不同, image_count 加 1
                 # TODO: OI2 考慮 個體數, 有個體數 iamge_count 加 個體數
-                if delta_count >= image_interval_seconds:
+                if image.animal_id:
+                    # 考慮 animal_id, animal_id 跟上一個不同, image_count 加 1
+                    if len(exist_animals) > 0 and image.animal_id != exist_animals[-1]:
+                        image_count += 1
+                        delta_count = 0
+                elif delta_count >= image_interval_seconds:
                     image_count += 1
                     delta_count = 0
                 if delta_seconds >= event_interval_seconds:  # 相鄰照片
