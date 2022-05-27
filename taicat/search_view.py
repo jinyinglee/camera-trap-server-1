@@ -270,6 +270,13 @@ def api_search(request):
         if request.GET.get('filter'):
             filter_dict = json.loads(request.GET['filter'])
             #print(filter_dict, flush=True)
+
+            project_ids = []
+            if value := filter_dict.get('keyword'):
+                project_ids = Project.objects.values_list('id', flat=True).filter(keyword__icontains=value)
+                project_ids = list(project_ids)
+            if len(project_ids) > 0:
+                query = query.filter(project_id__in=project_ids)
             if values := filter_dict.get('projects'):
                 query = query.filter(project_id__in=values)
             if values := filter_dict.get('species'):
