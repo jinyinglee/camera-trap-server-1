@@ -1059,7 +1059,7 @@ def api_check_data_gap(request):
             projects[pid] = {
                 'name': dj.project.name,
                 'gaps': [],
-                'emails': [x.member.email for x in dj.project.members.filter(role='project_admin', member__email__isnull=False).all()],
+                'emails': [x.member.email for x in dj.project.members.filter(role__in=['project_admin', 'organization_admin'], member__email__isnull=False).all()],
                 'members': [x.member for x in dj.project.members.filter(role='project_admin').all()]
             }
         projects[pid]['gaps'].append(f'{dj.deployment.name}: {dj.display_range}')
