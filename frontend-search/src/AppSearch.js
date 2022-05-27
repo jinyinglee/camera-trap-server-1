@@ -47,9 +47,10 @@ const AppSearch = () => {
   const [result, setResult] = useState(null);
   const [calcData, setCalcData] = React.useState({
     session: 'month',
-    imageInterval: '',
-    eventInterval: '',
-    fileFormat: '',
+    imageInterval: '60',
+    eventInterval: '60',
+    fileFormat: 'excel',
+    calcType: 'basic',
   });
 
   useEffect(() => {
@@ -167,7 +168,7 @@ const AppSearch = () => {
         const href = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = href;
-        link.setAttribute('download', `camera-trap-calculation.${ext_name}`);
+        link.setAttribute('download', `camera-trap-calculation-${calcData.calcType}.${ext_name}`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -266,10 +267,6 @@ const AppSearch = () => {
                    const newArr = [...formData.projectFilters];
                    newArr[index].deployments = v;
                    setFormData({...formData, projectFilters: newArr})
-                 }}
-                 filterOptions={(options) => {
-                   const projectIds = formData.projectFilters.filter(x=>x.project).map(x=>x.project.id);
-                   return options.filter(option => projectIds.indexOf(option.id)<0);
                  }}
                />
              </Grid>

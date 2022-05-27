@@ -23,7 +23,7 @@ from django.utils import timezone
 from django.utils.timezone import make_aware
 from django.contrib.postgres.indexes import GinIndex
 from django.conf import settings
-from django.core.cache import cache
+from django.core.cache import cache, caches
 
 
 def find_the_gap(year, array):
@@ -552,6 +552,7 @@ class Deployment(models.Model):
                 'all': by_year_month_all,
                 'species': by_year_month_sp
             }
+
     def get_deployment_journal_gaps(self, year):
         query = DeploymentJournal.objects.filter(
             is_gap=True,
@@ -562,6 +563,72 @@ class Deployment(models.Model):
         #print (self.name, year, rows)
         return rows
 
+    def calculate(self, year, month, species, image_interval, event_interval):
+        '''default
+        POD: occasion (回合): 1 天, session (期間): 1 月
+        APOA: occation: 1 小時
+        '''
+        working_days = self.count_working_day(year, month)[0]
+        sum_working_hours = sum(working_days) * 24
+        image_interval_seconds = image_interval * 60
+        event_interval_seconds = event_interval * 60
+        days_in_month = monthrange(year, month)[1]
+
+        # print(year, month, working_days, sum_working_hours)
+
+        # count image num
+        query_ym_sp = Image.objects.filter(
+            deployment_id=self.id,
+            datetime__year=year,
+            datetime__month=month,
+            species=species
+        )
+
+        # by_species = query_ym.values('species').annotate(count=Count('species'))
+        last_datetime = None
+        image_count = 0
+        event_count = 0
+        delta_count = 0
+        for image in query_ym_sp.all():
+            if last_datetime:
+                delta = image.datetime - last_datetime
+                delta_seconds = (delta.days * 86400) + delta.seconds
+                delta_count += delta_seconds
+                # print (image.id, image.datetime, delta_seconds, delta_count)
+                # TODO: OI1 考慮 animal_id, animal_id 跟上一個不同, image_count 加 1
+                # TODO: OI2 考慮 個體數, 有個體數 iamge_count 加 個體數
+                if delta_count >= image_interval_seconds:
+                    image_count += 1
+                    delta_count = 0
+                if delta_seconds >= event_interval_seconds:  # 相鄰照片
+                    event_count += 1
+            else:
+                # 第一次事件, 直接加 1
+                event_count = 1
+                # 第一張照片, 直接加 1
+                image_count = 1
+
+            last_datetime = image.datetime
+
+        by_day = query_ym_sp.values('datetime__day').annotate(count=Count('datetime__day')).order_by('datetime__day')
+        by_hour = query_ym_sp.values('datetime__day', 'datetime__hour').annotate(count=Count('*')).order_by('datetime__day', 'datetime__hour')
+        oi3 = (image_count * 1.0 / sum_working_hours) * 1000 if sum_working_hours > 0 else 'N/A'
+        pod = by_day.count() * 1.0 / sum(working_days) if sum(working_days) > 0 else 'N/A'
+        # month, day, hour
+        # note: [[0, [0]*24]] * days_in_month => call by reference error (一個改全部變)
+        mdh = [[0, [0 for h in range(24)]] for x in range(days_in_month)]
+        for day in by_day:
+            mdh[day['datetime__day']-1][0] = 1
+        for hour in by_hour:
+            mdh[hour['datetime__day']-1][1][hour['datetime__hour']] = 1
+
+        #print (i['species'], image_count, event_count, oi3, pod, by_day.count(), mdh)
+        return [working_days, image_count, event_count, None, None, oi3, pod, mdh]
+
+    def get_calc_cache(self):
+        if rows := caches['file'].get(f'calc-dep-{self.id}'):
+            return rows
+        return None
 
 class Image(models.Model):
     '''if is_sequence, ex: 5 Images, set last 4 Images's is_sequence to True (wouldn't  count)'''
@@ -617,10 +684,14 @@ class Image(models.Model):
     deployment_journal = models.ForeignKey('DeploymentJournal', on_delete=models.SET_NULL, null=True, blank=True) # 知道是那次上傳的
 
     def get_associated_media(self, thumbnail='m'):
-        bucket_name = settings.AWS_S3_BUCKET
-        if self.specific_bucket:
-            bucket_name = specific_bucket
-        return f'https://{bucket_name}.s3.ap-northeast-1.amazonaws.com/{self.image_uuid}-{thumbnail}.jpg'
+        if self.from_mongo:
+            return f'https://d3gg2vsgjlos1e.cloudfront.net/annotation-images/{self.file_url}'
+        else:
+            bucket_name = settings.AWS_S3_BUCKET
+            if self.specific_bucket:
+                bucket_name = specific_bucket
+
+            return f'https://{bucket_name}.s3.ap-northeast-1.amazonaws.com/{self.image_uuid}-{thumbnail}.jpg'
 
     @property
     def species_list(self):
@@ -631,10 +702,11 @@ class Image(models.Model):
             'id': self.id,
             'species': self.species,
             'filename': self.filename,
-            'datetime': self.datetime,
+            'datetime': self.datetime.strftime('%Y-%m-%d %H:%M:%S') if self.datetime else '',
             'project__name': self.project.name if self.project else None,
             'studyarea__name': self.studyarea.name if self.studyarea_id else None,
             'deployment__name': self.deployment.name if self.deployment_id else None,
+            'media': self.get_associated_media(),
         }
 
     class Meta:

@@ -2,6 +2,7 @@ import json
 import math
 import logging
 import time
+from datetime import datetime
 import re
 
 from django.shortcuts import render, redirect
@@ -13,6 +14,7 @@ from django.http import (
 from django.core.paginator import Paginator
 from django.urls import reverse
 from django.utils.http import urlencode
+from django.utils.timezone import make_aware
 from django.db import connection
 from django.conf import settings
 from django.db.models import (
@@ -32,6 +34,8 @@ from .utils import (
     Calculation,
     calc,
     calc_output,
+    calc_output2,
+    calc_from_cache,
 )
 
 from .views import check_if_authorized
@@ -256,13 +260,12 @@ def api_deployments(request):
 
 def api_search(request):
     rows = []
-    #request.is_ajax() and 
+    #request.is_ajax() and
     if request.method == 'GET':
         start_time = time.time()
         start = 0
         end = 20
         query = Image.objects.filter()
-        #print(request.GET)
         # TODO: 考慮 auth
         if request.GET.get('filter'):
             filter_dict = json.loads(request.GET['filter'])
@@ -272,9 +275,11 @@ def api_search(request):
             if values := filter_dict.get('species'):
                 query = query.filter(species__in=values)
             if value := filter_dict.get('startDate'):
-                query = query.filter(datetime__gte=value)
+                dt = make_aware(datetime.strptime(value, '%Y-%m-%d'))
+                query = query.filter(datetime__gte=dt)
             if value := filter_dict.get('endDate'):
-                query = query.filter(datetime__lte=value)
+                dt = make_aware(datetime.strptime(value, '%Y-%m-%d'))
+                query = query.filter(datetime__lte=dt)
             if values := filter_dict.get('deployments'):
                 query = query.filter(deployment_id__in=values)
             elif values := filter_dict.get('studyareas'):
@@ -291,14 +296,19 @@ def api_search(request):
             calc_data = json.loads(calc_data)
 
         if download and calc_data:
-            results = calc(query, calc_data)
             calc_dict = json.loads(request.GET['calc'])
             out_format = calc_dict['fileFormat']
+            calc_type = calc_dict['calcType']
+            results = calc(query, calc_data)
+            #results = calc_from_cache(filter_dict, calc_dict)
+            #content = calc_output2(results, out_format, request.GET.get('filter'), request.GET.get('calc'))
             content = calc_output(results, out_format, request.GET.get('filter'), request.GET.get('calc'))
 
             response = HttpResponse(content)
             response['Content-Type'] = 'text/plain'
-            response['Content-Disposition'] = 'attachment; filename=camera-trap-calculation.{}'.format('csv' if out_format == 'csv' else 'xlsx')
+            response['Content-Disposition'] = 'attachment; filename=camera-trap-calculation-{}.{}'.format(
+                calc_type,
+                'csv' if out_format == 'csv' else 'xlsx')
             #print ('--------------', flush=True)
             return response
 
