@@ -427,7 +427,10 @@ function getSaPoints(sa_list){
                         e.target.setIcon(StudyAreaIcon);                                   
                     })
                     .on("click", function (e) {
+                        // 如果是子樣區？
                         $('.sa-select').val(i[3]);
+                        updateSpeciesPie();
+                        /*
                         $('#species-pie').html('<div class="loader"></div>');
                         $.ajax({
                             data: {'said': i[3]},            
@@ -440,6 +443,7 @@ function getSaPoints(sa_list){
                                 // show deployment
                             }
                         })
+                        */
                     })
                     .addTo(map))
               );
