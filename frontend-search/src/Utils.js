@@ -7,20 +7,22 @@ const cleanFormData = (formData) => {
       if (formData[v].length > 0) {
         cleaned[v] = formData[v].map(x=>x.name);
       }
-    } else if (v === 'projects') {
+    } else if (v === 'projects_depricated') {
       if (formData[v].length > 0) {
         cleaned[v] = formData[v].map(x=>x.id);
       }
     } else if (['startDate', 'endDate'].indexOf(v) >= 0 && formData[v] != null) {
       cleaned[v] = format(formData[v], 'yyyy-MM-dd');
-    } else if ( v === 'projectFilters') {
+    } else if ( v === 'projects') {
       const studyareaIds = [];
       const deploymentIds = [];
-      for (const i in formData[v]) {
-        if (formData[v][i].deployments) {
-          cleaned['deployments'] = formData[v][i].deployments.map(x=>x.deployment_id);
-        } else if (formData[v][i].studyareas) {
-          cleaned['studyareas'] = formData[v][i].studyareas.map(x=>x.studyarea_id);
+      for (const i in formData['projects']) {
+        if (formData['projects'][i].deployments && formData['projects'][i].deployments.length > 0) {
+          cleaned['deployments'] = formData['projects'][i].deployments.map(x=>x.deployment_id);
+        } else if (formData[v][i].studyareas && formData[v][i].studyareas.length > 0) {
+          cleaned['studyareas'] = formData['projects'][i].studyareas.map(x=>x.studyarea_id);
+        } else {
+          cleaned['projects'] = formData['projects'].map(x => x.project.id);
         }
       }
     } else if (formData[v]) {

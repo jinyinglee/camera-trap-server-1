@@ -23,39 +23,103 @@ import { AppSearchCalculation } from './AppSearchCalculation';
 import { cleanFormData } from './Utils';
 
 
-
-const AppSearch = () => {
-  const today = new Date();
-  const todayYMD = `${today.getFullYear()}-${today.getMonth().toString().padStart(2, '0')}-${today.getDay().toString().padStart(2, '0')}`;
-  console.log(todayYMD);
-  const apiPrefix = process.env.API_PREFIX;
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [pagination, setPagination] = React.useState({
-    page: 0,
-    perPage: 10
-  });
-  const [options, setOptions] = useState({
-    species: [],
-    projects: [],
-    deployments: null,
-  });
-
-  const [formData, setFormData] = useState({
+const initialState = {
+  filter: {
     species: [],
     startDate: null,
     endDate: null,
-    projects: [],
-    projectFilters: [{project: null}],
+    projects: [{project: null}],
     keyword: '',
-  });
-  const [result, setResult] = useState(null);
-  const [calcData, setCalcData] = React.useState({
+  },
+  pagination: {
+    page: 0,
+    perPage: 10,
+  },
+  options: {
+    species: [],
+    projects: [],
+    deploymentDict: null,
+  },
+  isLoading: false,
+  result: null,
+  calculation: {
     session: 'month',
     imageInterval: '60',
     eventInterval: '60',
     fileFormat: 'excel',
     calcType: 'basic',
-  });
+  }
+};
+
+function reducer(state, action) {
+  console.log(state,action);
+  switch (action.type) {
+  case 'startLoading':
+    return {
+      ...state,
+      isLoading: true,
+    };
+  case 'stopLoading':
+    return {
+      ...state,
+      isLoading: false,
+    };
+  case 'initOptions':
+    return {
+      ...state,
+      options: {
+        ...state.options,
+        projects: action.value.projects,
+        species: action.value.species,
+      }
+    };
+  case 'setDeploymentOptions':
+    return {
+      ...state,
+      options: {
+        ...state.options,
+        deploymentDict: action.value,
+      },
+      isLoading: false,
+    }
+  case 'setFilter':
+    return {
+      ...state,
+      filter: {
+        ...state.filter,
+        [action.name]: action.value
+      },
+      pagination: {
+        page: 0,
+        perPage: state.pagination.perPage,
+      }
+    }
+  case 'setResult':
+    return {
+      ...state,
+      result: action.value,
+      isLoading: false,
+    }
+  case 'setPagination':
+    return {
+      ...state,
+      pagination: {
+        page: action.page,
+        perPage: action.perPage,
+      }
+    }
+  default:
+    //throw new Error();
+    console.error('reducer errr!!!');
+  }
+}
+
+const AppSearch = () => {
+  const today = new Date();
+  const todayYMD = `${today.getFullYear()}-${today.getMonth().toString().padStart(2, '0')}-${today.getDay().toString().padStart(2, '0')}`;
+  //console.log(todayYMD);
+  const apiPrefix = process.env.API_PREFIX;
+  const [state, dispatch] = React.useReducer(reducer, initialState);
 
   useEffect(() => {
     fetch(`${apiPrefix}species`)
@@ -64,34 +128,30 @@ const AppSearch = () => {
       fetch(`${apiPrefix}projects`)
         .then(resp2 => resp2.json())
         .then(data2 => {
-          setOptions({
-            ...options,
-            species: data.data,
-            projects: data2.data
-          });
+          dispatch({type: 'initOptions', value: {species: data.data, projects: data2.data}});
         });
     });
   }, []);
 
   useEffect(() => {
-    if (pagination.page !== 0 || pagination.perPage !== 10) {
+    if (state.pagination.page !== 0 || state.pagination.perPage !== 10) {
       // prevent first time fetch (not press submit button yet!)
       fetchData();
     }
-  }, [pagination]);
+  }, [state.pagination]);
 
   const fetchData = () => {
-    const formDataCleaned = cleanFormData(formData);
+    const formDataCleaned = cleanFormData(state.filter);
     console.log('cleaned', formDataCleaned);
     //const csrftoken = getCookie('csrftoken');
     const d = JSON.stringify(formDataCleaned);
     let searchApiUrl = `${apiPrefix}search?filter=${d}`;
 
-    const pagination2 = (pagination.perPage === 10) ? {page: 0, perPage: 20} : pagination;
-    const p = JSON.stringify(pagination2);
-    searchApiUrl = `${searchApiUrl}&pagination=${p}`;
+    const p1 = (state.pagination.perPage === 10) ? {page: 0, perPage: 20} : state.pagination;
+    const p2 = JSON.stringify(p1);
+    searchApiUrl = `${searchApiUrl}&pagination=${p2}`;
 
-    setIsLoading(true);
+    dispatch({type: 'startLoading'});
     console.log('fetch:', searchApiUrl);
     fetch(encodeURI(searchApiUrl), {
       //body: JSON.stringify({filter: formData}),
@@ -106,15 +166,14 @@ const AppSearch = () => {
       .then(resp => resp.json())
       .then(data => {
         console.log('resp', data)
-        setResult(data);
-        setIsLoading(false);
+        dispatch({type: 'setResult', value: data});
       });
   };
 
   const fetchDeploymentList = (projectId) => {
     let studyareaApiUrl = `${apiPrefix}deployments?project_id=${projectId}`;
 
-    setIsLoading(true);
+    dispatch({type: 'startLoading'});
     fetch(encodeURI(studyareaApiUrl), {
       //body: JSON.stringify({filter: formData}),
       mode: 'same-origin',
@@ -128,10 +187,9 @@ const AppSearch = () => {
       .then(resp => resp.json())
       .then(data => {
         //console.log('resp sa', data)
-        let newDeployments = options.deployments || {};
-        newDeployments[projectId] = data.data;
-        setOptions({...options, deployments: newDeployments})
-        setIsLoading(false);
+        let newDeploymentDict = state.options.deploymentDict || {};
+        newDeploymentDict[projectId] = data.data;
+        dispatch({type: 'setDeploymentOptions', value: newDeploymentDict});
       });
   };
 
@@ -140,20 +198,21 @@ const AppSearch = () => {
   }
 
   const handleChangePage = (e, page) => {
-    const pp = (pagination.perPage === 10) ? 20 : pagination.perPage;
-    setPagination({page: page, perPage: pp});
+    const pp = (state.pagination.perPage === 10) ? 20 : state.pagination.perPage;
+    dispatch({type:'setPagination', page: page, perPage: pp});
   }
 
   const handleChangeRowsPerPage = (e) => {
-    setPagination({page: 0, perPage: parseInt(e.target.value, 10)});
+    dispatch({type:'setPagination', page: 0, perPage: parseInt(e.target.value, 10)});
   }
 
   const handleCalc = () => {
-    const formDataCleaned = cleanFormData(formData);
-    const calc = JSON.stringify(calcData);
+    const formDataCleaned = cleanFormData(state.filter);
+    const calc = JSON.stringify(state.calculation);
     const d = JSON.stringify(formDataCleaned);
     const searchApiUrl = `${apiPrefix}search?filter=${d}&calc=${calc}&download=1`;
-    setIsLoading(true);
+    //setIsLoading(true);
+    dispatch({type: 'startLoading'});
     console.log('fetch:', searchApiUrl);
     fetch(encodeURI(searchApiUrl), {
       //body: JSON.stringify({filter: formData}),
@@ -167,23 +226,23 @@ const AppSearch = () => {
     })
       .then(resp => resp.blob())
       .then(blob => {
-        const ext_name = (calcData.fileFormat === 'csv') ? 'csv' : 'xlsx';
+        const ext_name = (state.calculation.fileFormat === 'csv') ? 'csv' : 'xlsx';
         // code via: https://stackoverflow.com/a/65609170/644070
         const href = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = href;
-        link.setAttribute('download', `camera-trap-calculation-${calcData.calcType}.${ext_name}`);
+        link.setAttribute('download', `camera-trap-calculation-${state.calculation.calcType}.${ext_name}`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
 
-        setIsLoading(false);
+        //setIsLoading(false); TODO
       });
   }
 
   const ProjectFilterBox = ({index}) => {
-    const projectId = (formData.projectFilters[index].project) ? formData.projectFilters[index].project.id : null;
-    const studyareas = formData.projectFilters[index].studyareas || [];
+    const projectId = (state.filter.projects[index].project) ? state.filter.projects[index].project.id : null;
+    const studyareas = state.filter.projects[index].studyareas || [];
     let deploymentOptions = [];
     for (let i in studyareas) {
       const values = studyareas[i].deployments.map(x=> {x.groupBy = studyareas[i].name; return x});
@@ -196,9 +255,9 @@ const AppSearch = () => {
           <Grid container spacing={2}>
             <Grid item xs={10}>
               <Autocomplete
-                options={options.projects}
+                options={state.options.projects}
                 getOptionLabel={(option) => option.name}
-                value={formData.projectFilters[index].project || null}
+                value={state.filter.projects[index].project || null}
                 groupBy={(option)=> option.group_by}
                 renderInput={(params) => (
                   <TextField
@@ -209,34 +268,32 @@ const AppSearch = () => {
                 )}
                 onChange={(e, v) => {
                   if (v && v.id) {
-                    const newArr = [...formData.projectFilters];
+                    const newArr = [...state.filter.projects];
                     newArr[index].project = v;
-                    setFormData({...formData, projectFilters: newArr});
+                    dispatch({type: 'setFilter', name: 'projects', value: newArr});
                     fetchDeploymentList(v.id);
                   }
-                }}
-                filterOptions={(options, {inputValue}) => {
-                  const projectIds = formData.projectFilters.filter(x=>x.project).map(x=>x.project.id);
-                  return options.filter(option => (projectIds.indexOf(option.id)<0) && (option.name.indexOf(inputValue) >=0));
                 }}
               />
             </Grid>
             <Grid item xs={2} align="right">
               <Button startIcon={<RemoveCircleOutlineIcon/>} onClick={(e)=> {
-                const newArr = [...formData.projectFilters];
-                newArr.splice(index, 1);
-                setFormData({...formData, projectFilters: newArr});
-              }}>
+                const newArr = [...state.filter.projects];
+                if (newArr.length > 1) {
+                  newArr.splice(index, 1);
+                  dispatch({type: 'setFilter', name: 'projects', value: newArr});
+                }
+                }}>
                 移除
               </Button>
             </Grid>
-            {(formData.projectFilters[index].project && options.deployments && options.deployments[projectId]) ?
+            {(state.filter.projects[index].project && state.options.deploymentDict && state.options.deploymentDict[projectId]) ?
              <Grid item xs={6}>
                <Autocomplete
                  multiple
-                 options={options.deployments[projectId]}
+                 options={state.options.deploymentDict[projectId]}
                  getOptionLabel={(option) => option.name}
-                 value={formData.projectFilters[index].studyareas || []}
+                 value={state.filter.projects[index].studyareas || []}
                  renderInput={(params) => (
                    <TextField
                      {...params}
@@ -245,20 +302,21 @@ const AppSearch = () => {
                    />
                  )}
                  onChange={(e, v) => {
-                   const newArr = [...formData.projectFilters];
+                   const newArr = [...state.filter.projects];
                    newArr[index].studyareas = v;
-                   setFormData({...formData, projectFilters: newArr})
+                   newArr[index].deployments = [];
+                   dispatch({type: 'setFilter', name: 'projects', value: newArr});
                  }}
                />
              </Grid>
              : null}
-            {(formData.projectFilters[index].project && options.deployments && formData.projectFilters[index].studyareas && formData.projectFilters[index].studyareas) ?
+            {(state.filter.projects[index].project && state.options.deploymentDict && state.filter.projects[index].studyareas && state.filter.projects[index].studyareas) ?
              <Grid item xs={6}>
                <Autocomplete
                  multiple
                  options={deploymentOptions}
                  getOptionLabel={(option) => `${option.groupBy}: ${option.name}`}
-                 value={formData.projectFilters[index].deployments || []}
+                 value={state.filter.projects[index].deployments || []}
                  groupBy={(option)=> option.groupBy}
                  renderInput={(params) => (
                    <TextField
@@ -268,9 +326,9 @@ const AppSearch = () => {
                    />
                  )}
                  onChange={(e, v) => {
-                   const newArr = [...formData.projectFilters];
+                   const newArr = [...state.filter.projects];
                    newArr[index].deployments = v;
-                   setFormData({...formData, projectFilters: newArr})
+                   dispatch({type: 'setFilter', name: 'projects', value: newArr});
                  }}
                />
              </Grid>
@@ -281,14 +339,13 @@ const AppSearch = () => {
     );
   }
 
-  console.log('render ', formData, result, options, calcData);
-
+  console.log('state', state);
 
   return (
     <>
       <Backdrop
         sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
-        open={isLoading}
+        open={state.isLoading}
       >
         <CircularProgress color="inherit" />
       </Backdrop>
@@ -299,10 +356,10 @@ const AppSearch = () => {
           <Autocomplete
             multiple
             filterSelectedOptions
-            options={options.species}
+            options={state.options.species}
             getOptionLabel={(option) => option.name}
-            value={formData.species}
-            onChange={(e, value) => setFormData({...formData, species: value})}
+            value={state.filter.species}
+            onChange={(e, value) => dispatch({type: 'setFilter', name: 'species', value: value})}
             renderInput={(params) => (
               <TextField
                 {...params}
@@ -319,10 +376,10 @@ const AppSearch = () => {
             openTo="year"
             clearable={true}
             views={['year', 'month', 'day']}
-            value={formData.startDate}
+            value={state.filter.startDate}
             inputFormat="yyyy-MM-dd"
             mask='____-__-__'
-            onChange={(v) => setFormData({...formData, startDate: v})}
+            onChange={(v) => dispatch({type: 'setFilter', name: 'startDate', value: v})}
             renderInput={(params) => <TextField {...params} variant="standard"/>}
           />
         </Grid>
@@ -333,10 +390,10 @@ const AppSearch = () => {
             clearable={true}
             openTo="year"
             views={['year', 'month', 'day']}
-            value={formData.endDate}
+            value={state.filter.endDate}
             inputFormat="yyyy-MM-dd"
             mask='____-__-__'
-            onChange={(v) => setFormData({...formData, endDate: v})}
+            onChange={(v) => dispatch({type: 'setFilter', name: 'endDate', value: v})}
             renderInput={(params) => <TextField {...params} variant="standard" />}
           />
         </Grid>
@@ -344,16 +401,16 @@ const AppSearch = () => {
           <TextField
             label="計畫關鍵字"
             variant="standard"
-            value={formData.keyword}
-            onChange={(e)=> setFormData({...formData, keyword: e.target.value})}
+            value={state.filter.keyword}
+            onChange={(e)=> dispatch({type: 'setFilter', name: 'keyword', value: e.target.value})}
           />
         </Grid>
         <Grid item xs={3}>
-          <Button variant="outlined" startIcon={<AddCircleOutlineIcon />} onClick={(e)=>setFormData({...formData, projectFilters:[...formData.projectFilters, {}]})}>
+          <Button variant="outlined" startIcon={<AddCircleOutlineIcon />} onClick={(e)=>dispatch({type:'setFilter', name: 'projects', value: [...state.filter.projects, {}]})}>
             新增計畫篩選
           </Button>
         </Grid>
-        {formData.projectFilters.map((x, index)=>
+        {state.filter.projects.map((x, index)=>
           <Grid item key={index} xs={12}>
             <ProjectFilterBox index={index}/>
           </Grid>
@@ -363,10 +420,10 @@ const AppSearch = () => {
           <Button variant="contained" onClick={handleSubmit}>搜尋</Button>
         </Grid>
         <Grid item xs={12}>
-          {(result && result.data.length > 0) ?
+          {(state.result && state.result.data.length > 0) ?
            <>
-           <AppSearchDataGrid result={result} handleChangePage={handleChangePage} handleChangeRowsPerPage={handleChangeRowsPerPage} pagination={pagination}/>
-             <AppSearchCalculation calcData={calcData} setCalcData={setCalcData} />
+           <AppSearchDataGrid result={state.result} handleChangePage={handleChangePage} handleChangeRowsPerPage={handleChangeRowsPerPage} pagination={state.pagination}/>
+             <AppSearchCalculation calcData={state.calculation} setCalcData={state.calculation} />
            <Button variant="contained" onClick={handleCalc} style={{marginTop: '10px'}}>下載計算</Button>
              <div>
            <button type="button" className="btn btn-warning" data-bs-toggle="modal" data-bs-target="#exampleModal" style={{marginTop: '24px'}}>

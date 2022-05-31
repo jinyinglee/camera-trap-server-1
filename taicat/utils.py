@@ -538,20 +538,22 @@ def calc(query, calc_data):
     deployment_list = query.values('deployment', 'deployment__name').annotate(count=Count('deployment')).order_by()
 
     #print(species_list.query, species_list, flush=True)
-    # print(deployment_list, agg, query.query)
+    #print(deployment_list, agg, query.query)
     for species in species_list:
         species_name = species['species']
         results[species_name] = []
         # default round: month
-        for dep in deployment_list:
-            deployment = Deployment.objects.get(pk=dep['deployment'])
-            res = deployment.calculate(2017, 1, species_name, 60, 60)
-            results[species_name].append({
-                'name': deployment.name,
-                'year': 2017,
-                'month': 1,
-                'calc': res,
-            })
+        for year in range(2017, 2018):
+            for month in range(1, 13):
+                for dep in deployment_list:
+                    deployment = Deployment.objects.get(pk=dep['deployment'])
+                    res = deployment.calculate(year, month, species_name, 60, 60) # TODO
+                    results[species_name].append({
+                        'name': deployment.name,
+                        'year': year,
+                        'month': month,
+                        'calc': res,
+                    })
 
     return results
 
@@ -636,7 +638,7 @@ def calc_output(results, file_format, filter_str, calc_str):
                         sheets[sheet_index].cell(row=row_index, column=4, value=i['name'])
                         sheets[sheet_index].cell(row=row_index, column=5, value=count)
                         sheets[sheet_index].cell(row=row_index, column=6, value=sum_working_days)
-                        sheets[sheet_index].cell(row=row_index, column=7, value=count*1.0/sum_working_days)
+                        sheets[sheet_index].cell(row=row_index, column=7, value=count*1.0/sum_working_days if sum_working_days > 0 else '')
 
                 elif calcData.get('calcType') == 'apoa':
                     header_str = '相機位置,物種,date,' + ','.join(f'{hour:02}' for hour in range(0, 24))  # ,捕獲回合比例,存缺,'+','.join(f'活動機率day{day}' for day in range(1, 32))

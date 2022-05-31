@@ -628,6 +628,7 @@ class Deployment(models.Model):
             mdh[hour['datetime__day']-1][1][hour['datetime__hour']] = 1
 
         #print (i['species'], image_count, event_count, oi3, pod, by_day.count(), mdh)
+        print(year, month, species, working_days)
         return [working_days, image_count, event_count, None, None, oi3, pod, mdh]
 
     def get_calc_cache(self):
