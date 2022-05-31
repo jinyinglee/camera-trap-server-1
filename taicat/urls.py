@@ -32,6 +32,6 @@ urlpatterns = [
     path('api/search', search_view.api_search, name='get_search'),
     path('delete/<pk>/', views.delete_data, name='delete_data'),
     path('get_sa_points', views.get_sa_points, name='get_sa_points'),
-    path('get_subsa_dj', views.get_subsa_dj, name='get_subsa_dj'),
+    path('get_subsa', views.get_subsa, name='get_subsa'),
     path('update_species_pie', views.update_species_pie, name='update_species_pie'),
 ]

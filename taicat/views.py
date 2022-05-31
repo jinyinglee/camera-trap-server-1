@@ -72,11 +72,10 @@ def get_sa_points(request):
     return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
 
 
-def get_subsa_dj(request):
+def get_subsa(request):
     # 取得子樣區及行程列表
     said = request.GET.get('said')
     subsas = []
-    dj = []
     if said:
         with connection.cursor() as cursor:
             query = f"""SELECT id, name
@@ -84,22 +83,29 @@ def get_subsa_dj(request):
                         WHERE parent_id = {said};"""
             cursor.execute(query)
             subsas = cursor.fetchall()
-        with connection.cursor() as cursor:
-            query = f"""SELECT id, to_char(working_start AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD'),
-                        to_char(working_end AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD')
-                        FROM taicat_deploymentjournal   
-                        WHERE studyarea_id = {said};"""
-            cursor.execute(query)
-            dj = cursor.fetchall()
         
-    response = {'subsas': subsas, 'dj': dj}
+    response = {'subsas': subsas}
     return HttpResponse(json.dumps(response), content_type='application/json')
 
 
 def update_species_pie(request):
 
-    # TODO project 300 會有樣區本身沒資料，但sub有資料
     # 根據filter (樣區,子樣區, 行程) 更新物種圓餅圖
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    date_filter = ''
+    if (start_date and end_date):
+        start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+        end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
+        date_filter = " AND datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
+    elif start_date:
+        date_filter = " AND datetime > '{}'".format(start_date)
+    elif end_date:
+        end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
+        date_filter = " AND datetime < '{}'".format(start_date)
+
+    # print(date_filter)
+
     species_count = 0
     species_last_updated = None
     species_total_count = 0
@@ -110,11 +116,14 @@ def update_species_pie(request):
         # 確定有沒有子樣區
         subsa = StudyArea.objects.filter(parent_id=sa)
         sa_list = [str(s.id) for s in subsa]
+        # TODO 加上日期filter
         # pie data
         if sa_list:
-            query = f"select count(*) from taicat_image where studyarea_id IN ({','.join(sa_list)});"
+            query = f"select count(*) from taicat_image where studyarea_id IN ({','.join(sa_list)})"
         else:
-            query = f"select count(*) from taicat_image where studyarea_id={sa};"
+            query = f"select count(*) from taicat_image where studyarea_id={sa}"
+        if date_filter:
+            query += date_filter
         with connection.cursor() as cursor:
             cursor.execute(query)
             species_total_count = cursor.fetchall()
@@ -125,10 +134,17 @@ def update_species_pie(request):
         if species_total_count:
             species_last_updated = timezone.now() + timedelta(hours=8)
             species_last_updated = datetime.datetime.strftime(species_last_updated,'%Y-%m-%d') 
+            pre_q = Image.objects
             if sa_list:
-                query = Image.objects.filter(studyarea_id__in=sa_list).values('species').annotate(total=Count('species')).order_by('-total')
+                pre_q = pre_q.filter(studyarea_id__in=sa_list)
             else:
-                query = Image.objects.filter(studyarea_id=sa).values('species').annotate(total=Count('species')).order_by('-total')
+                pre_q = pre_q.filter(studyarea_id=sa)
+            if start_date:
+                pre_q = pre_q.filter(datetime__gte=start_date)
+            if end_date:
+                pre_q = pre_q.filter(datetime__lt=end_date)
+
+            query = pre_q.values('species').annotate(total=Count('species')).order_by('-total')
             c = 0
             for i in query:
                 if i['species'] == '':
@@ -152,10 +168,49 @@ def update_species_pie(request):
         else:
             query = f"""SELECT id, longitude, latitude, name FROM taicat_deployment WHERE study_area_id = {sa} ORDER BY longitude DESC;"""
 
-        # query = f"""SELECT id, longitude, latitude, name FROM taicat_deployment WHERE study_area_id = {sa}"""
         with connection.cursor() as cursor:
             cursor.execute(query)
             deployment_points = cursor.fetchall()
+            
+    elif pk := request.GET.get('said[project]'):
+        deployment_points = []
+        query = f"select count(*) from taicat_image where project_id={pk}"
+        if date_filter:
+            query += date_filter
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            species_total_count = cursor.fetchall()
+            species_total_count = species_total_count[0][0]
+        
+        others = {'name': '其他物種', 'count': 0, 'y': 0}
+        # 取前8名，剩下的統一成其他
+        if species_total_count:
+            species_last_updated = timezone.now() + timedelta(hours=8)
+            species_last_updated = datetime.datetime.strftime(species_last_updated,'%Y-%m-%d') 
+            pre_q = Image.objects.filter(project_id=pk)
+            if start_date:
+                pre_q = pre_q.filter(datetime__gte=start_date)
+            if end_date:
+                pre_q = pre_q.filter(datetime__lt=end_date)
+
+            query = pre_q.values('species').annotate(total=Count('species')).order_by('-total')
+            c = 0
+            for i in query:
+                if i['species'] == '':
+                    s_name = '未填寫'
+                else:
+                    s_name = i['species']
+                    species_count += 1
+                c += 1
+                if c < 9:
+                    pie_data += [{'name': s_name, 'y': round(i['total']/species_total_count*100, 2), 'count': i['total']}]
+                else:
+                    other_data += [{'name': s_name, 'y': round(i['total']/species_total_count*100, 2), 'count': i['total']}]
+                    others.update({'count': others['count']+i['total']})
+            if others['count'] > 0:
+                others.update({'y': round(others['count']/species_total_count*100, 2)})
+                pie_data += [others]
+
 
     response = {'pie_data': pie_data, 'other_data': other_data, 'species_count': species_count, 
                 'species_last_updated': species_last_updated, 'deployment_points': deployment_points}
