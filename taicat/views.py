@@ -17,7 +17,7 @@ import datetime
 from tempfile import NamedTemporaryFile
 from urllib.parse import quote
 # from datetime import datetime, timedelta, timezone
-from django.db.models import Count, Window, F, Sum, Min, Q, Max, Func, Value, CharField
+from django.db.models import Count, Window, F, Sum, Min, Q, Max, Func, Value, CharField, DateTimeField, ExpressionWrapper
 from django.db.models.functions import Trunc, ExtractYear
 from django.contrib import messages
 from django.core import serializers
@@ -54,6 +54,168 @@ from base.utils import DecimalEncoder
 from taicat.utils import half_year_ago
 
 from openpyxl import Workbook
+
+
+def get_sa_points(request):
+    sa_list = request.GET.getlist('sa[]')
+    sa_points = []
+    if sa_list:
+        with connection.cursor() as cursor:
+            query = f"""SELECT sas.longitude, sas.latitude, sa.name, sa.id  
+                        FROM taicat_studyareastat sas  
+                        JOIN taicat_studyarea sa ON sas.studyarea_id = sa.id
+                        WHERE sas.studyarea_id IN ({','.join(sa_list)});"""
+            cursor.execute(query)
+            sa_points = cursor.fetchall()
+        
+    response = {'sa_points': sa_points}
+    return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
+
+
+def get_subsa_dj(request):
+    # 取得子樣區及行程列表
+    said = request.GET.get('said')
+    subsas = []
+    dj = []
+    if said:
+        with connection.cursor() as cursor:
+            query = f"""SELECT id, name
+                        FROM taicat_studyarea   
+                        WHERE parent_id = {said};"""
+            cursor.execute(query)
+            subsas = cursor.fetchall()
+        with connection.cursor() as cursor:
+            query = f"""SELECT id, to_char(working_start AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD'),
+                        to_char(working_end AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD')
+                        FROM taicat_deploymentjournal   
+                        WHERE studyarea_id = {said};"""
+            cursor.execute(query)
+            dj = cursor.fetchall()
+        
+    response = {'subsas': subsas, 'dj': dj}
+    return HttpResponse(json.dumps(response), content_type='application/json')
+
+
+def update_species_pie(request):
+
+    # TODO project 300 會有樣區本身沒資料，但sub有資料
+    # 根據filter (樣區,子樣區, 行程) 更新物種圓餅圖
+    species_count = 0
+    species_last_updated = None
+    species_total_count = 0
+    pie_data = []
+    other_data = []
+    deployment_points = []
+    if sa := request.GET.get('said'):
+        # 確定有沒有子樣區
+        subsa = StudyArea.objects.filter(parent_id=sa)
+        sa_list = [str(s.id) for s in subsa]
+        # pie data
+        if sa_list:
+            query = f"select count(*) from taicat_image where studyarea_id IN ({','.join(sa_list)});"
+        else:
+            query = f"select count(*) from taicat_image where studyarea_id={sa};"
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            species_total_count = cursor.fetchall()
+            species_total_count = species_total_count[0][0]
+
+        others = {'name': '其他物種', 'count': 0, 'y': 0}
+        # 取前8名，剩下的統一成其他
+        if species_total_count:
+            species_last_updated = timezone.now() + timedelta(hours=8)
+            species_last_updated = datetime.datetime.strftime(species_last_updated,'%Y-%m-%d') 
+            if sa_list:
+                query = Image.objects.filter(studyarea_id__in=sa_list).values('species').annotate(total=Count('species')).order_by('-total')
+            else:
+                query = Image.objects.filter(studyarea_id=sa).values('species').annotate(total=Count('species')).order_by('-total')
+            c = 0
+            for i in query:
+                if i['species'] == '':
+                    s_name = '未填寫'
+                else:
+                    s_name = i['species']
+                    species_count += 1
+                c += 1
+                if c < 9:
+                    pie_data += [{'name': s_name, 'y': round(i['total']/species_total_count*100, 2), 'count': i['total']}]
+                else:
+                    other_data += [{'name': s_name, 'y': round(i['total']/species_total_count*100, 2), 'count': i['total']}]
+                    others.update({'count': others['count']+i['total']})
+            if others['count'] > 0:
+                others.update({'y': round(others['count']/species_total_count*100, 2)})
+                pie_data += [others]
+
+        # deployments
+        if sa_list:
+            query = f"SELECT id, longitude, latitude, name FROM taicat_deployment WHERE study_area_id IN ({','.join(sa_list)}) ORDER BY longitude DESC;"
+        else:
+            query = f"""SELECT id, longitude, latitude, name FROM taicat_deployment WHERE study_area_id = {sa} ORDER BY longitude DESC;"""
+
+        # query = f"""SELECT id, longitude, latitude, name FROM taicat_deployment WHERE study_area_id = {sa}"""
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            deployment_points = cursor.fetchall()
+
+    response = {'pie_data': pie_data, 'other_data': other_data, 'species_count': species_count, 
+                'species_last_updated': species_last_updated, 'deployment_points': deployment_points}
+
+    return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
+
+
+def project_info(request, pk):
+    project = Project.objects.get(id=pk)
+    is_authorized = check_if_authorized(request, pk)
+    sa = StudyArea.objects.filter(project_id=pk, parent_id__isnull=True)
+    sa_list = [str(s.id) for s in sa]
+    sa_center = [23.5, 121.2]
+    zoom = 6
+    if sa:
+        sa_point = Deployment.objects.filter(study_area_id__in=sa_list, latitude__isnull = False, longitude__isnull = False).order_by('-latitude').values('latitude', 'longitude').first()
+        if sa_point:
+            sa_center = [float(sa_point['latitude']),float(sa_point['longitude'])]
+            zoom = 8
+
+    species_count = 0
+    species_last_updated = None
+
+    query = f"select sum(count) from taicat_projectspecies where project_id={pk};"
+    with connection.cursor() as cursor:
+        cursor.execute(query)
+        species_total_count = cursor.fetchall()
+        species_total_count = species_total_count[0][0]
+
+    pie_data = []
+    others = {'name': '其他物種', 'count': 0, 'y': 0}
+    other_data = []
+    # 取前8名，剩下的統一成其他
+    if species_total_count:
+        if ProjectSpecies.objects.filter(project_id=pk).exists():
+            species_count = ProjectSpecies.objects.filter(project_id=pk).exclude(name='').values('name').distinct().count()
+            species_last_updated = ProjectSpecies.objects.filter(project_id=pk).annotate(
+                last_updated_8=ExpressionWrapper(
+                    F('last_updated') + timedelta(hours=8),
+                    output_field=DateTimeField()
+                )).latest('last_updated_8').last_updated_8
+            c = 0
+            for i in ProjectSpecies.objects.filter(project_id=pk).order_by('-count'):
+                s_name = '未填寫' if i.name == '' else i.name
+                c += 1
+                if c < 9:
+                    pie_data += [{'name': s_name, 'y': round(i.count/species_total_count*100, 2), 'count': i.count}]
+                else:
+                    other_data += [{'name': s_name, 'y': round(i.count/species_total_count*100, 2), 'count': i.count}]
+                    others.update({'count': others['count']+i.count})
+            if others['count'] > 0:
+                others.update({'y': round(others['count']/species_total_count*100, 2)})
+                pie_data += [others]
+
+
+    return render(request, 'project/project_info.html', {'pk': pk, 'project': project, 'is_authorized': is_authorized,
+                                                        'sa_point': sa_center, 'species_count': species_count, 'sa': sa,
+                                                        'species_last_updated': species_last_updated, 'pie_data': pie_data,
+                                                        'other_data': other_data, 'sa_list': sa_list, 'zoom':zoom})
+
 
 def delete_data(request, pk):
     species_list = []
