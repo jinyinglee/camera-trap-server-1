@@ -1,0 +1,755 @@
+{% extends 'base/base.html' %}
+{% load static %} {% block style %}
+
+<style>
+
+    .checkbox__container {
+        display: flex;
+        justify-content: space-between;
+
+    }
+
+      .checkbox__container > div {
+        position: relative;
+
+      }
+      .checkbox__container > div > label {
+        font-size: 16px;
+
+      }
+
+      
+    .project-map .leaflet-pane .leaflet-tooltip-pane .leaflet-tooltip.leaflet-tooltip-center {
+        color: black;
+        margin-top: 12px;
+        margin-left: 12px;
+        font-size: 11px; }
+
+
+    .project-map .leaflet-pane .leaflet-tooltip-pane .leaflet-tooltip {
+        background: none !important;
+        border: 0;
+        box-shadow: none;
+        color: #FFF; }
+
+        .project-map .leaflet-pane .leaflet-tooltip-pane .leaflet-tooltip.leaflet-tooltip-top {
+          color: black;
+          margin-top: -35px;
+          font-size: 11px; }
+
+          .project-map .leaflet-pane .leaflet-tooltip-pane .leaflet-tooltip.leaflet-tooltip-top:before {
+            display: none; }
+      
+
+    .oversight:hover {
+        color: lightgrey;
+    }
+    
+    h1 {
+        margin: 20px 0;
+        font-size: 24px;
+        font-weight: 600; 
+    }
+      
+    .panel {
+        position: relative;
+        display: block;
+        border: 1px solid #E9E9E9;
+        background: #FFF;
+        box-shadow: 0 2px 4px 0 rgba(170, 191, 181, 0.3);
+        border-radius: 4px; 
+    }
+
+    .panel .panel-heading {
+        background: rgb(37, 116, 85);
+        color: #FFF;
+        padding: 10px 20px; 
+    }
+
+    .panel .panel-heading h4 {
+        font-size: 16px;
+        margin: 0;
+        display: inline; 
+    }
+
+    .panel .panel-heading button {
+        width: 100px;
+        margin-left: 20px; 
+    }
+
+    .panel .panel-body {
+        padding: 20px 40px; 
+    }
+
+    .panel.panel-basic .panel-header {
+        padding: 20px; 
+    }
+        
+    .panel.panel-project {
+        margin-bottom: 40px; 
+    }
+
+    .panel.panel-project:before {
+        content: "";
+        height: 4px;
+        width: 100%;
+        display: block;
+        top: 0;
+        left: 0;
+        background-color: #2A7F60;
+        background: linear-gradient(to right, #2A7F60 50%, #8AC731); 
+    }
+
+    .panel.tab-panel .panel-header {
+        padding: 0; 
+    }
+
+    .panel.tab-panel .panel-header ul.nav-tab {
+        display: flex;
+        flex-direction: row;
+        margin: 0;
+        padding: 0;
+        list-style: none; 
+    }
+
+    .panel.tab-panel .panel-header ul.nav-tab li {
+        position: relative;
+        flex: 1;
+        box-shadow: inset 2px 0px 4px 0 rgba(66, 82, 43, 0.2); 
+    }
+
+    .panel.tab-panel .panel-header ul.nav-tab li:after {
+        content: "";
+        width: 100%;
+        height: 4px;
+        display: block;
+        background: transparent; 
+    }
+
+    .panel.tab-panel .panel-header ul.nav-tab li a {
+        text-decoration: none;
+        display: block;
+        height: 53px;
+        line-height: 53px;
+        color: black;
+        text-align: center;
+        cursor: pointer;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none; 
+    }
+        
+    .panel.tab-panel .panel-header ul.nav-tab li.active {
+        box-shadow: 0 1px 2px 0 rgba(170, 191, 181, 0.4); 
+    }
+
+    .panel.tab-panel .panel-header ul.nav-tab li.active a {
+        color: rgb(37, 116, 85); 
+    }
+
+    .panel.tab-panel .panel-header ul.nav-tab li.active:after {
+        content: "";
+        background: #AECC82; 
+    }
+
+    .panel.tab-panel .panel-body {
+        padding: 0; 
+    }
+
+    .panel.tab-panel .panel-body .tab-content {
+        display: none;
+        padding: 0 20px 20px; 
+    }
+
+    .panel.tab-panel .panel-body .tab-content.active {
+        display: block; 
+    }
+
+    .panel.tab-panel .panel-body .tab-content > .row.control-bar {
+        /*background: lightgrey;*/
+        margin-left: -20px;
+        margin-right: -20px;
+        padding-top: 5px;
+        padding-bottom: 5px; 
+    }
+
+    .panel.tab-panel .panel-body .tab-content > .row.control-bar .form-group > label {
+        line-height: 38px; 
+    }
+
+    .panel.tab-panel .panel-body .tab-content .map-container {
+        padding-top: 20px;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none; 
+    }
+          
+</style>
+{% endblock style %} 
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+<!-- plot -->
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<script src="https://code.highcharts.com/modules/series-label.js"></script>
+<script src="https://code.highcharts.com/modules/exporting.js"></script>
+<script src="https://code.highcharts.com/modules/export-data.js"></script>
+<script src="https://code.highcharts.com/modules/accessibility.js"></script>
+{% endblock head %}
+{% block body %} {% csrf_token %}
+<div class="container content">
+    <div class="panel panel-project">
+        <div class="panel-body">
+            <div class="row mb-3">
+                <div class="col-9">
+                    <h1 class="title-dark mt-0 mb-2">{{ project.name }}</h1>
+                </div>
+                <div class="col-3 text-end">
+                    <a class="btn btn-outline-success" href="{% url 'project_detail' pk %}"><i class="fa fa-xs fa-search"></i> 查看影像</a>
+                    {% if is_authorized %}
+                    <a class="btn btn-outline-success" href="{% url 'edit_project_basic' pk %}"><i class="fa fa-xs fa-pencil"></i> 計畫管理</a>
+                    {% endif %}
+                </div>
+            </div>
+            <!--
+            <div class="row mb-2">
+                <div class="col-12">
+                <a class="btn btn-outline-success" href="{% url 'project_detail' pk %}"><i class="fa fa-xs fa-search"></i> 查看影像</a>
+                {% if is_authorized %}
+                <a class="btn btn-outline-success" href="{% url 'edit_project_basic' pk %}"><i class="fa fa-xs fa-pencil"></i> 計畫管理</a>
+                {% endif %}
+                </div>
+            </div>
+            -->
+            <div class="row">
+                <div class="col-6">
+                    <div class="row mb-2">
+                        <div class="col-sm-4 col-md-3 text-gray">委辦單位</div>
+                        <div class="col-sm-8 col-md-9">{{ project.funding_agency|default_if_none:"" }}</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4 col-md-3 text-gray">計畫編號</div>
+                        <div class="col-sm-8 col-md-9">{{ project.code|default_if_none:"" }}</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4 col-md-3 text-gray">計畫主持人</div>
+                        <div class="col-sm-8 col-md-9">{{ project.principal_investigator|default_if_none:"" }}</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4 col-md-3 text-gray">計畫時間</div>
+                        <div class="col-sm-8 col-md-9">{{ project.start_date|date:'o-m-d' }} 至 {{ project.end_date|date:'o-m-d' }} </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="row mb-2">
+                        <div class="col-sm-6 col-md-6 text-gray">資料下載</div>
+                        <div class="col-sm-6 col-md-6">
+                            <a class="oversight text-green text-decoration-none" style="cursor: pointer" data-bs-toggle="modal" data-bs-target="#downloadModal">下載</a>
+                        </div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-6 col-md-6 text-gray">相機樣點運作及缺失比例	</div>
+                        <div class="col-sm-6 col-md-6"><a class="oversight text-green text-decoration-none" href="{% url 'project_oversight' pk %}">查看</a></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel tab-panel">
+        <div class="panel-header">
+          <ul class="nav-tab">
+            <!--
+            <li class="" id="identified-status">
+                <a class="">影像回收/辨識狀況</a>            
+            </li>-->
+            <li id="identified-species">
+                <a class="">已辨識物種</a>            
+            </li>
+          </ul>
+        </div>
+        <div class="panel-body">
+            <div class="tab-panel">
+                <div class="tab-content active">
+                    <!-- control bar -->
+                    <div class="row control-bar">
+                        <div class="col-4">
+                        <div class="form-group row mb-0">
+                            <label class="col-3 text-end">
+                            樣區
+                            </label>
+                            <div class="col-9">
+                            <select class="form-control sa-select filter">
+                                <option value="all">全部</option>
+                                {% for s in sa %}
+                                <option value="{{ s.id }}">{{ s.name }}</option>
+                                {% endfor %}
+                            </select>
+                            </div>
+                        </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group row mb-0">
+                                <label class="col-3 text-end">
+                                子樣區
+                                </label>
+                                <div class="col-9">
+                                <select class="form-control subsa-select filter">
+                                </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group row mb-0">
+                                <label class="col-3 text-end">
+                                行程
+                                </label>
+                                <div class="col-9">
+                                <select class="form-control dj-select filter">
+                                </select>
+                                </div>
+                            </div>
+                        </div>
+                        <!--
+                        <div class="col-3">
+                            <div class="form-group row mb-0">
+                                <label class="col-3 text-end">
+                                    年
+                                </label>
+                                <div class="col-9">
+                                    <select class="form-control year-select filter">
+                                        <option>
+                                        全部
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="form-group row mb-0">
+                                <label class="col-3 text-end">
+                                    月
+                                </label>
+                                <div class="col-9">
+                                    <select class="form-control month-select filter">
+                                        <option>
+                                        全部
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        -->
+                        </div>
+                    </div>
+                    <!-- content -->
+                    <div class="row map-container">
+                        <div class="col-5">
+                            <div id="map" class="project-map mx-3" style="height: 395px;">
+                            </div>
+                            <div class="checkbox__container checkbox mx-3 my-2">
+                                <div>
+                                  <input type="checkbox" class="form-check-input" name="show-species" id="show-species">
+                                  <label for="show-species">顯示物種</label>
+                                </div>
+                                <div>
+                                  <input type="checkbox" class="form-check-input" name="show-woods"/>
+                                  <label for="show-woods">在地圖顯示林班地範圍</label>
+                                </div>
+                                <div>
+                                    <img style="width: 16px; height: auto" src='{% static "icon/marker-icon-error.png" %}'> 樣區
+                                </div>
+                                <div>
+                                    <img style="width: 16px; height: auto" src='{% static "icon/marker-icon.png" %}'> 相機位置
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-7">
+                            <h1 class="m-0">
+                                <span id="sa-title">全部樣區</span>已辨識物種<span id="species-count-title" class="title-dark">{{ species_count }}</span>種
+                            </h1>
+                            <small id="species_last_updated" class="text-secondary mt-2">最後更新時間：{{ species_last_updated|date:'o-m-d' }}</small>
+                            <div class="row">
+                                <div class="col-7" id="species-pie"></div>
+                                <div class="col-5" id="species-percentage">
+                                </div>
+                            </div>
+                        </div>
+                    </div>                  
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Download Modal -->
+<div class="modal fade" id="downloadModal" tabindex="-1" aria-labelledby="downloadModalLabel" aria-hidden="true">
+<div class="modal-dialog">
+    <div class="modal-content">
+    <div class="modal-header">
+        <h5 class="modal-title title-dark">下載資料</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+        <p>檔案為離線產生，處理完成後，系統會寄下載資訊到您輸入的電子郵件信箱。如未收到信件，請檢查您的郵件設定，如仍未收到信件，請聯絡我們。</p>
+        <p>請輸入您的電子郵件：</p>
+        <div class="d-flex justify-content-start">
+        <input class="form-control w-75" type="text" id="download-email" onkeyup="ValidateEmail(this.value)" />
+        <svg id="email-check" xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="lightgrey" class="bi bi-check my-auto" viewBox="0 0 16 16">
+            <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
+        </svg>
+        <button class="ms-1 btn btn-outline-success download">送出</button>
+        </div>
+    </div>
+    </div>
+</div>
+</div>
+{% endblock body %} {% block script %}
+<script>
+// download
+
+
+$( document ).ready(function() {
+    // set active tab
+    $('#identified-species').trigger('click');
+    getSaPoints({{ sa_list | safe }});
+    setSpeciesPie({{ pie_data | safe }}, {{ other_data | safe }}, []);
+});
+
+
+function getSaPoints(sa_list){
+    $.ajax({
+        url: '{% url "get_sa_points" %}',
+        data: {"sa": sa_list},
+        dataType: "json",
+        success: function(response) {
+            response.sa_points.forEach(
+                (i) =>
+                  (marker = new L.marker([i[1], i[0]], { icon: StudyAreaIcon })
+                    .bindTooltip(
+                        `${i[2]}`, { permanent: true, direction: 'top' }
+                    )
+                    .on("mouseover", function (e) {
+                        e.target.setIcon(StudyAreaIconSelect);                                 
+                    })
+                    .on("mouseout", function (e) {
+                        e.target.setIcon(StudyAreaIcon);                                   
+                    })
+                    .on("click", function (e) {
+                        $('.sa-select').val(i[3]);
+                        $('#species-pie').html('<div class="loader"></div>');
+                        $.ajax({
+                            data: {'said': i[3]},            
+                            url: "{% url 'update_species_pie' %}",
+                            success: function(response){
+                                $('#sa-title').html(i[2]);
+                                $('#species-count-title').html(response.species_count);
+                                $('#species_last_updated').html(response.species_last_updated);
+                                setSpeciesPie(response.pie_data, response.other_data, response.deployment_points);
+                                // show deployment
+                            }
+                        })
+                    })
+                    .addTo(map))
+              );
+      
+
+        }
+    });  
+}
+
+//https://emailregex.com
+function ValidateEmail(inputText){
+    let mailformat = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/
+    if(inputText.match(mailformat)){
+        $('#email-check').attr('fill', 'green');
+        $('button.download').prop('disabled', false);
+    } else {
+        $('#email-check').attr('fill', 'lightgrey');
+        $('button.download').prop('disabled', true);
+    }
+}
+
+
+$('.sa-select').on('change', function(){
+    $('.subsa-select').html('');
+    $('.dj-select').html('');
+    let said = $(this).val();
+    if (said != 'all'){
+        $.ajax({
+            data: {'said': said},            
+            url: "{% url 'get_subsa_dj' %}",
+            success: function(response){
+                $('.subsa-select').append("<option value='all'>全部</option>");
+                response.subsas.forEach(
+                    (i) =>
+                      ($('.subsa-select').append(
+                          `<option value='${i[0]}'>${i[1]}</option>`
+                      ))
+                  );
+                $('.dj-select').append("<option value='all'>全部</option>");
+                response.dj.forEach(
+                    (i) =>
+                      ($('.dj-select').append(
+                          `<option value='${i[0]}'>${i[1]}-${i[2]}</option>`
+                      ))
+                  );
+            },
+        })
+        $('#species-pie').html('<div class="loader"></div>');
+        $.ajax({
+            data: {'said': said},            
+            url: "{% url 'update_species_pie' %}",
+            success: function(response){
+                $('#sa-title').html($( ".sa-select option:selected" ).text());
+                $('#species-count-title').html(response.species_count);
+                $('#species_last_updated').html(response.species_last_updated);
+                setSpeciesPie(response.pie_data, response.other_data, response.deployment_points);
+            }
+        })
+    } else {
+        setSpeciesPie({{ pie_data | safe }}, {{ other_data | safe }}, []);
+        getSaPoints({{ sa_list | safe }})
+        $('#sa-title').html('全部');
+        $('#species-count-title').html({{ species_count }});
+        $('#species_last_updated').html({{ response.species_last_updated }});
+    }
+})
+
+
+$('.download').on('click', function(){
+    
+    $.ajax({
+        data: {'email': $("#download-email").val()},            
+        type: "POST",
+        url: "{% url 'download' pk %}",
+        headers:{'X-CSRFToken':'{{ csrf_token }}'},
+        success: function(){
+            alert('請求已送出');
+            $('#downloadModal').modal('hide')
+        },
+        error:function(){
+            alert('未知錯誤，請聯繫管理員');
+            $('#downloadModal').modal('hide')
+        }
+        })
+        
+    })
+
+
+
+$('ul.nav-tab li').on('click', function(){
+    $('ul.nav-tab li').removeClass('active');
+    $(this).addClass('active');
+
+    // default species percentage
+
+})
+
+
+// map
+let map = L.map("map", {tap: false}).setView({{ sa_point | safe }}, {{ zoom }});
+L.tileLayer("https://{s}.tile.osm.org/{z}/{x}/{y}.png", {
+  attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors',
+}).addTo(map);
+
+
+const StudyAreaIcon = L.icon({
+    iconUrl: '{% static "icon/marker-icon-error.png" %}',
+    iconSize: [66, 120],
+    iconAnchor: [33, 80],
+    popupAnchor: [-3, -76],
+    shadowSize: [66, 120],
+    shadowAnchor: [31, 77],
+    className: "myStudyAreaIcon",
+  });
+  
+  const StudyAreaIconSelect = L.icon({
+    iconUrl: '{% static "icon/marker-icon-error-select.png" %}',
+    iconSize: [66, 120],
+    iconAnchor: [33, 80],
+    popupAnchor: [-3, -76],
+    shadowSize: [66, 120],
+    shadowAnchor: [31, 77],
+    className: "myStudyAreaIcon",
+  });
+
+
+const DeploymentIcon = L.icon({
+    iconUrl: '{% static "icon/marker-icon.png" %}',
+    iconSize: [66, 120],
+    iconAnchor: [33, 80],
+    popupAnchor: [-3, -76],
+    shadowSize: [66, 120],
+    shadowAnchor: [31, 77],
+    className: "myDeploymentIcon",
+  });
+  
+const DeploymentIconSelect = L.icon({
+    iconUrl: '{% static "icon/marker-icon-select@2x.png" %}',
+    iconSize: [66, 120],
+    iconAnchor: [33, 80],
+    popupAnchor: [-3, -76],
+    shadowSize: [66, 120],
+    shadowAnchor: [31, 77],
+    className: "myDeploymentIcon",
+  });
+  
+
+
+// species pie
+
+let chartColors = [
+    "#E8ECFB", 
+    "#B997C7",
+    "#824D99", 
+    "#4E78C4", 
+    "#57A2AC",
+    "#7EB875", 
+    "#D0B541",
+    "#E67F33", 
+    "#CE2220", 
+    "#521A13" ];
+  
+
+
+function setSpeciesPie(pie_data, other_data, deployment_points){
+    Highcharts.chart('species-pie', {
+        chart: {
+            backgroundColor: 'transparent',
+            plotBackgroundColor: null,
+            plotBorderWidth: null,
+            plotShadow: false,
+            type: 'pie',
+            height: 340,
+          },
+          colors: chartColors,
+        title: { text: "" },
+        exporting: { enabled: false },
+        credits: { enabled: false },
+        plotOptions: {
+            pie: {
+                name: 'speices',
+                size: '80%',
+                innerSize: '50%',
+        
+              allowPointSelect: true,
+              cursor: 'pointer',
+              dataLabels: {
+                enabled: false,
+              },
+            },
+        },
+        tooltip: {
+            headerFormat: '',
+            backgroundColor: 'rgba(70,70,70,.8)',
+            pointFormatter() {
+              return `<span style="color:#FFF">${this.name} ${
+                this.count
+              } 筆辨識紀錄 (${this.y}%)</span>`;
+            },
+            style: {
+              color: '#FFF',
+            },
+        },
+        series: [{
+            name: 'Browsers',
+            data: pie_data,
+            size: '80%',
+        }]
+    });
+
+    if (pie_data.length==0){
+        $('#species-pie').html('')
+    }
+
+    // species percentage
+    $('#species-percentage').html('');
+    for (i = 0; i < pie_data.length; i++) {
+        if (pie_data[i]['name'] != '其他物種'){
+            $('#species-percentage').append(
+                ` <span style="font-size: 14px"><i class="fa fa-circle mt-3" style="color: ${chartColors[i]};"></i> 
+                ${pie_data[i]['name']} ${pie_data[i]['y']} % </span> <br>`
+            )
+        } else {
+            $('#species-percentage').append(
+                ` <span><i class="fa fa-circle mt-3" style="color: ${chartColors[i]};"></i> 
+                </span> 
+                <span data-bs-toggle="collapse" href="#multiCollapseExample1" role="button" aria-expanded="false" aria-controls="multiCollapseExample1" style="font-size: 14px">${pie_data[i]['name']} <i class="arrow fas fa-angle-down"></i>
+                </span>        
+                <div class="collapse multi-collapse" id="multiCollapseExample1">
+                    <div class="card card-body px-3 pt-1 pb-3" id="other-card" style="border-color: transparent">
+                    </div>
+                </div>`)
+        }
+    }
+    $('#other-card').html('');
+    for (i = 0; i < other_data.length; i++) {
+        $('#other-card').append(`
+        <span style="font-size: 14px; color: grey">
+            ${other_data[i]['name']} ${other_data[i]['y']} % </span>
+        `)
+    }
+
+    // deployment
+    $('.myDeploymentIcon').remove();
+    $('.leaflet-tooltip').remove();
+    $('.myStudyAreaIcon').remove();
+
+    if (deployment_points.length > 0){
+        map.setView([deployment_points[0][2],deployment_points[0][1]]);
+        deployment_points.forEach(
+        (r) =>
+            (marker = new L.marker([r[2], r[1]], { icon: DeploymentIcon })
+            .on("mouseover", function (e) {
+                e.target.setIcon(DeploymentIconSelect);                                 
+            })
+            .on("mouseout", function (e) {
+                e.target.setIcon(DeploymentIcon);                                     
+            })                        
+            .bindTooltip(r[3], { permanent: true, direction: 'top' })
+            .addTo(map))
+        );
+    }
+}
+
+
+$('.subsa-select').on('change',function(){
+    $('.dj-select').html('');
+    let said = $(this).val();
+        $.ajax({
+            data: {'said': said},            
+            url: "{% url 'get_subsa_dj' %}",
+            success: function(response){
+                $('.dj-select').append("<option value='all'>全部</option>");
+                response.dj.forEach(
+                    (i) =>
+                      ($('.dj-select').append(
+                          `<option value='${i[0]}'>${i[1]}-${i[2]}</option>`
+                      ))
+                  );
+            },
+        })
+        $('#species-pie').html('<div class="loader"></div>');
+        $.ajax({
+            data: {'said': said},            
+            url: "{% url 'update_species_pie' %}",
+            success: function(response){
+                $('#sa-title').html($( ".subsa-select option:selected" ).text());
+                $('#species-count-title').html(response.species_count);
+                $('#species_last_updated').html(response.species_last_updated);
+                setSpeciesPie(response.pie_data, response.other_data, response.deployment_points);
+            }
+        })
+})
+
+
+</script>
+{% endblock script %}

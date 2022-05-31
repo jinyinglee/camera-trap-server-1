@@ -350,10 +350,24 @@
 
   // map
   
-  const StudyAreaIcon = L.divIcon({
-    html: '<i class="fa fa-circle" style="color: darkorange; opacity: 0.5"></i>',
-    iconSize: [0.5, 0.5],
-    className: "myDivIcon",
+  const StudyAreaIcon = L.icon({
+    iconUrl: '{% static "icon/marker-icon-error.png" %}',
+    iconSize: [33, 60],
+    iconAnchor: [33, 80],
+    popupAnchor: [-3, -76],
+    shadowSize: [33, 60],
+    shadowAnchor: [31, 77],
+    className: "myStudyAreaIcon",
+  });
+  
+  const StudyAreaIconSelect = L.icon({
+    iconUrl: '{% static "icon/marker-icon-error-select.png" %}',
+    iconSize: [33, 60],
+    iconAnchor: [33, 80],
+    popupAnchor: [-3, -76],
+    shadowSize: [33, 60],
+    shadowAnchor: [31, 77],
+    className: "myStudyAreaIcon",
   });
 
 
@@ -424,9 +438,11 @@
               )
               .on("mouseover", function (e) {
                 this.openPopup();
+                e.target.setIcon(StudyAreaIconSelect);                                 
               })
               .on("mouseout", function (e) {
                 this.closePopup();
+                e.target.setIcon(StudyAreaIcon);                                   
               })
               .on("click", function (e) {
                 $('#map-info').html('<div class="loader"></div>');
@@ -507,7 +523,7 @@
                     // 更換左側地圖
                     // 重設縮放 & 移除其他icon
                     map.setView([response.center[1], response.center[0]], 10);
-                    $('.myDivIcon').remove();
+                    $('.myStudyAreaIcon').remove();
                     $('.countyPoly').addClass('d-none');
                     response.deployment_points.forEach(
                       (r) =>
@@ -520,7 +536,6 @@
                           })                        
                           .bindTooltip(r[3], { permanent: true, direction: 'top' })
                           .addTo(map)));
-                    console.log(response);
                   }})
               })
               .addTo(map))
@@ -576,7 +591,7 @@
               ${response.species}
             </div>
           </div>
-          <i class="fa fa-circle mt-3" style="color: darkorange;"></i> 樣區
+          <img style="width: 16px; height: auto" src='{% static "icon/marker-icon-error.png" %}'> 樣區
           `
         )
       }
