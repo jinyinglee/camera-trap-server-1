@@ -35,8 +35,16 @@ const columns = [
     label: '相機位置名稱',
     minWidth: 90,
     },
+  {
+    id: 'media',
+    label: '照片',
+    minWidth: 90,
+  },
 ];
 
+
+const CellContent = (value) => {
+}
 
 const AppSearchDataGrid = ({result, pagination, handleChangePage, handleChangeRowsPerPage}) => {
   //console.log('result', result);
@@ -64,9 +72,7 @@ const AppSearchDataGrid = ({result, pagination, handleChangePage, handleChangeRo
                   const value = row[column.id];
                   return (
                     <TableCell key={column.id} align={column.align}>
-                      {column.format && typeof value === 'number'
-                       ? column.format(value)
-                       : value}
+                      {column.id === 'media' ? <img src={value} width="50"/> : value }
                     </TableCell>
                   );
                 })}

@@ -331,7 +331,7 @@
       <hr>
       {% endcomment %}
       <h6>行程年份篩選</h6>
-      {% for y in stats.years %}
+      {% for y in year_list %}
       {% if y|to_int == request.GET.year|to_int %}
       {{ y }}
       {% else %}

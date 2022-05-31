@@ -13,6 +13,23 @@ status: finished/uploading
 deployment_journal_id:
 ```
 
+## Search
+
+URL: `/api/search`
+
+Source: `taicat/search_view.py`: api_search
+
+Parameter:
+
+- filter
+
+  - projects
+  - species
+  - startDate / endDate
+  - deployments
+  - studyareas
+
+
 ## 管考相關
 
 URL: `/api/api/check_data_gap/`
@@ -20,6 +37,9 @@ URL: `/api/api/check_data_gap/`
 source: `taicat/views.py` *api_check_data_gap*
 
 檢查前一個月的前半年，列出: 各計畫下的相機位置，還沒填寫缺失原因的缺失範圍
+
+寄 email 跟加上小鈴鐺通知 `project_admin`, `organization_admin` （個別計畫承辦人, 計畫總管理人）
+
 
 ## Model
 
@@ -31,8 +51,18 @@ source: `taicat/views.py` *api_check_data_gap*
 
 **get_or_count_stats**: 抓算好的 project stats，如果沒有，就重新算一次，就是去執行 `count_deployment_journal`
 
+資料結構:
 
-### Deployment 
+```
+  data -> years -> studyareas -> items -> deployments -> items -> month_list
+  data: dict (datetime__range, working__range, updated, elapsed, years)
+  years: dict, ex: str(2019)
+  studyareas: list (item dict: {name, items, sa_idx})
+  deployments: list (item dict: {name, items, d_idx, ratio_year, gaps})
+  month_list: list (item list: [year, month, deployment_name, count_working_day, days_in_month, month_calendar, working_day, deployment_journal_range]
+```
+
+### Deployment
 
 **count_working_day**: 計算相機工作時數 (根據 DeploymentJournal 記錄)
 
@@ -50,18 +80,3 @@ source: `taicat/views.py` *api_check_data_gap*
 
 `scripts/count-project-stats.py` 產生計畫的管考需要的資料 (stats)
 
-```python
-project.find_and_create_deployment_journal_gap() # 產生 “缺失” 的資料
-project.get_or_count_stats(force=True) #  產生暫存檔
-```
-
-資料結構:
-
-```
-  data -> years -> studyareas -> items -> deployments -> items -> month_list
-  data: dict (datetime__range, working__range, updated, elapsed, years)
-  years: dict, ex: str(2019)
-  studyareas: list (item dict: {name, items, sa_idx})
-  deployments: list (item dict: {name, items, d_idx, ratio_year, gaps})
-  month_list: list (item list: [year, month, deployment_name, count_working_day, days_in_month, month_calendar, working_day, deployment_journal_range]
-```
