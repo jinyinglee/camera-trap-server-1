@@ -202,6 +202,7 @@
 <script src="https://code.highcharts.com/modules/exporting.js"></script>
 <script src="https://code.highcharts.com/modules/export-data.js"></script>
 <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+
 {% endblock head %}
 {% block body %} {% csrf_token %}
 <div class="container content">
@@ -276,11 +277,12 @@
           </ul>
         </div>
         <div class="panel-body">
+            <div id="p-loader" class="loader d-none"></div> 
             <div class="tab-panel">
                 <div class="tab-content active">
                     <!-- control bar -->
                     <div class="row control-bar">
-                        <div class="col-4">
+                        <div class="col-3">
                         <div class="form-group row mb-0">
                             <label class="col-3 text-end">
                             樣區
@@ -295,58 +297,39 @@
                             </div>
                         </div>
                         </div>
-                        <div class="col-4">
+                        <div class="col-3">
                             <div class="form-group row mb-0">
                                 <label class="col-3 text-end">
                                 子樣區
                                 </label>
                                 <div class="col-9">
                                 <select class="form-control subsa-select filter">
+                                    <option value="all">全部</option>
                                 </select>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="form-group row mb-0">
-                                <label class="col-3 text-end">
-                                行程
-                                </label>
-                                <div class="col-9">
-                                <select class="form-control dj-select filter">
-                                </select>
-                                </div>
-                            </div>
-                        </div>
-                        <!--
+                        </div>                        
                         <div class="col-3">
                             <div class="form-group row mb-0">
-                                <label class="col-3 text-end">
-                                    年
+                                <label class="col-4 text-end">
+                                    起始日期
                                 </label>
-                                <div class="col-9">
-                                    <select class="form-control year-select filter">
-                                        <option>
-                                        全部
-                                        </option>
-                                    </select>
+                                <div class="col-8">
+                                    <input type="date" class="form-control filter" name="start_date">
                                 </div>
                             </div>
                         </div>
                         <div class="col-3">
                             <div class="form-group row mb-0">
-                                <label class="col-3 text-end">
-                                    月
+                                <label class="col-4 text-end">
+                                    結束日期
                                 </label>
-                                <div class="col-9">
-                                    <select class="form-control month-select filter">
-                                        <option>
-                                        全部
-                                        </option>
-                                    </select>
+                                <div class="col-8">
+                                    <input type="date" class="form-control filter" name="end_date">
                                 </div>
                             </div>
                         </div>
-                        -->
+                        
                         </div>
                     </div>
                     <!-- content -->
@@ -360,7 +343,7 @@
                                   <label for="show-species">顯示物種</label>
                                 </div>
                                 <div>
-                                  <input type="checkbox" class="form-check-input" name="show-woods"/>
+                                  <input type="checkbox" class="form-check-input" name="show-woods" id="show-woods" />
                                   <label for="show-woods">在地圖顯示林班地範圍</label>
                                 </div>
                                 <div>
@@ -375,7 +358,7 @@
                             <h1 class="m-0">
                                 <span id="sa-title">全部樣區</span>已辨識物種<span id="species-count-title" class="title-dark">{{ species_count }}</span>種
                             </h1>
-                            <small id="species_last_updated" class="text-secondary mt-2">最後更新時間：{{ species_last_updated|date:'o-m-d' }}</small>
+                            <small class="text-secondary mt-2">最後更新時間：<span id="species_last_updated">{{ species_last_updated|date:'o-m-d' }}</span></small>
                             <div class="row">
                                 <div class="col-7" id="species-pie"></div>
                                 <div class="col-5" id="species-percentage">
@@ -421,6 +404,7 @@ $( document ).ready(function() {
     $('#identified-species').trigger('click');
     getSaPoints({{ sa_list | safe }});
     setSpeciesPie({{ pie_data | safe }}, {{ other_data | safe }}, []);
+
 });
 
 
@@ -479,49 +463,25 @@ function ValidateEmail(inputText){
 
 
 $('.sa-select').on('change', function(){
-    $('.subsa-select').html('');
-    $('.dj-select').html('');
+    $('.subsa-select').html('<option value="all">全部</option>');
     let said = $(this).val();
     if (said != 'all'){
         $.ajax({
             data: {'said': said},            
-            url: "{% url 'get_subsa_dj' %}",
+            url: "{% url 'get_subsa' %}",
             success: function(response){
-                $('.subsa-select').append("<option value='all'>全部</option>");
                 response.subsas.forEach(
                     (i) =>
                       ($('.subsa-select').append(
                           `<option value='${i[0]}'>${i[1]}</option>`
                       ))
                   );
-                $('.dj-select').append("<option value='all'>全部</option>");
-                response.dj.forEach(
-                    (i) =>
-                      ($('.dj-select').append(
-                          `<option value='${i[0]}'>${i[1]}-${i[2]}</option>`
-                      ))
-                  );
             },
         })
-        $('#species-pie').html('<div class="loader"></div>');
-        $.ajax({
-            data: {'said': said},            
-            url: "{% url 'update_species_pie' %}",
-            success: function(response){
-                $('#sa-title').html($( ".sa-select option:selected" ).text());
-                $('#species-count-title').html(response.species_count);
-                $('#species_last_updated').html(response.species_last_updated);
-                setSpeciesPie(response.pie_data, response.other_data, response.deployment_points);
-            }
-        })
-    } else {
-        setSpeciesPie({{ pie_data | safe }}, {{ other_data | safe }}, []);
-        getSaPoints({{ sa_list | safe }})
-        $('#sa-title').html('全部');
-        $('#species-count-title').html({{ species_count }});
-        $('#species_last_updated').html({{ response.species_last_updated }});
-    }
+    } 
 })
+
+
 
 
 $('.download').on('click', function(){
@@ -555,10 +515,71 @@ $('ul.nav-tab li').on('click', function(){
 
 
 // map
+  
+  function polystyle(feature) {
+    return {
+      fillColor: "#7C9C2D",
+      weight: 0.8,
+      color: "white",
+      className: "forestPoly",
+    };
+  }
+
+
+  function onEachFeature(feature, layer) {
+    layer.on({
+        mouseover: e => {
+            e.target.setStyle({
+                fillColor: '#8B0000',
+            });
+        },
+        mouseout: e => {
+            e.target.setStyle({
+                fillColor: '#7C9C2D',
+            });
+        },        
+    })
+}
+
+
+
 let map = L.map("map", {tap: false}).setView({{ sa_point | safe }}, {{ zoom }});
 L.tileLayer("https://{s}.tile.osm.org/{z}/{x}/{y}.png", {
   attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors',
 }).addTo(map);
+
+
+
+function addForestMap(){
+    $(forest.features).each(function(key, data) {
+        L.geoJSON(data, {onEachFeature: onEachFeature, style: polystyle})
+        .bindPopup(`${data['properties']['DIST_C']}-${data['properties']['WKNG_C']}`)
+        .on("mouseover", function (e) {
+            this.openPopup();
+        })
+        .on("mouseout", function (e) {
+        this.closePopup();
+        })
+        .addTo(map);
+    });
+
+}
+
+$("#show-woods").change(function() {
+    if(this.checked) {
+        if ($('.forestPoly').length){
+            $('.forestPoly').removeClass('d-none')
+        } else {
+            $('#p-loader').removeClass('d-none');
+            $.get("{% static 'map/forest_map.js' %}", function(data, status){
+                addForestMap();
+                $('#p-loader').addClass('d-none');
+              });
+        }
+    } else {
+        $('.forestPoly').addClass('d-none');
+    }        
+});
 
 
 const StudyAreaIcon = L.icon({
@@ -720,36 +741,125 @@ function setSpeciesPie(pie_data, other_data, deployment_points){
     }
 }
 
-
+/*
 $('.subsa-select').on('change',function(){
-    $('.dj-select').html('');
     let said = $(this).val();
-        $.ajax({
-            data: {'said': said},            
-            url: "{% url 'get_subsa_dj' %}",
-            success: function(response){
-                $('.dj-select').append("<option value='all'>全部</option>");
-                response.dj.forEach(
-                    (i) =>
-                      ($('.dj-select').append(
-                          `<option value='${i[0]}'>${i[1]}-${i[2]}</option>`
-                      ))
-                  );
-            },
-        })
+    let title;
+    if (said=='all'){
+        said = $('.sa-select').val();
+        title = $( ".sa-select option:selected" ).text()
+
+    } else {
+        title = $( ".subsa-select option:selected" ).text()
+    }
+
         $('#species-pie').html('<div class="loader"></div>');
         $.ajax({
             data: {'said': said},            
             url: "{% url 'update_species_pie' %}",
             success: function(response){
-                $('#sa-title').html($( ".subsa-select option:selected" ).text());
+                $('#sa-title').html(title);
                 $('#species-count-title').html(response.species_count);
                 $('#species_last_updated').html(response.species_last_updated);
                 setSpeciesPie(response.pie_data, response.other_data, response.deployment_points);
+            },
+            error: function(request){
+                alert('發生未知錯誤，請通知管理員')
             }
+            
         })
 })
 
 
+/*
+$('input[type="date"]').on('change',function(){
+    let said;
+    console.log($('.subsa-select option:selected').val())
+    // 子樣區優先
+    let subsa_select = $('.subsa-select option:selected').val();
+    let sa_select = $('.sa-select option:selected').val();
+    let title;
+    if ((subsa_select!='all') & (subsa_select!=undefined) ){
+        said = subsa_select
+        title = $( ".subsa-select option:selected" ).text()
+    } else if ((sa_select!='all') & (sa_select!=undefined) ) {
+        said = sa_select
+        title = $( ".sa-select option:selected" ).text()
+    } else {
+        said = {'project': {{ pk }}}
+        title = '全部'
+    }
+
+    // TODO title也要改
+    $.ajax({
+        data: {'start_date': $('input[name="start_date"]').val(), 
+               'end_date': $('input[name="end_date"]').val(),
+               'said': said,
+              }, 
+        url: "{% url 'update_species_pie' %}",
+        success: function(response){
+            $('#sa-title').html(title);
+            $('#species-count-title').html(response.species_count);
+            $('#species_last_updated').html(response.species_last_updated);
+            setSpeciesPie(response.pie_data, response.other_data, response.deployment_points);
+        }
+    })
+})*/
+
+
+function updateSpeciesPie(){
+    // 樣區 子樣區 日期
+    let said;
+    // 子樣區優先
+    let subsa_select = $('.subsa-select option:selected').val();
+    let sa_select = $('.sa-select option:selected').val();
+    let title;
+    if ((subsa_select!='all') & (subsa_select!=undefined) ){
+        said = subsa_select
+        title = $( ".subsa-select option:selected" ).text()
+    } else if ((sa_select!='all') & (sa_select!=undefined) ) {
+        said = sa_select
+        title = $( ".sa-select option:selected" ).text()
+    } else {
+        said = {'project': {{ pk }}}
+        title = '全部'
+    }
+
+    console.log(title)
+
+    let start_date = $('input[name="start_date"]').val()
+    let end_date = $('input[name="end_date"]').val()
+
+    if ((!start_date) & (!end_date) & (title == '全部')){
+        setSpeciesPie({{ pie_data | safe }}, {{ other_data | safe }}, []);
+        getSaPoints({{ sa_list | safe }})
+        $('#sa-title').html('全部');
+        $('#species-count-title').html({{ species_count }});
+        $('#species_last_updated').html({{ response.species_last_updated }});
+    } else {
+        $('#species-pie').html('<div class="loader"></div>');
+        $.ajax({
+            data: {'said': said, 'start_date': start_date, 'end_date': end_date},            
+            url: "{% url 'update_species_pie' %}",
+            success: function(response){
+                $('#sa-title').html(title);
+                $('#species-count-title').html(response.species_count);
+                $('#species_last_updated').html(response.species_last_updated);
+                setSpeciesPie(response.pie_data, response.other_data, response.deployment_points)
+                if (title=='全部'){
+                    getSaPoints({{ sa_list | safe }})
+                };
+            }
+        })
+    }
+
+}
+
+
+$('.filter').on('change', function(){
+    updateSpeciesPie();
+})
+
 </script>
 {% endblock script %}
+
