@@ -27,8 +27,8 @@ const DEFAULT_PER_PAGE = 20;
 const initialState = {
   filter: {
     species: [],
-    startDate: null,
-    endDate: null,
+    startDate: new Date(2014, 0, 1),
+    endDate: new Date(),
     projects: [{project: null}],
     keyword: '',
   },
