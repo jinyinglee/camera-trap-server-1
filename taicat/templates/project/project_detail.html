@@ -791,7 +791,19 @@
                       antler_array.push(current_row['antler'])
                       animal_id_array.push(current_row['animal_id'])
                       remarks_array.push(current_row['remarks'])
+                      
+                      if (img_array.length > 1 ) { // TODO 或是直接按row
+                        $('.edit-prev, .edit-next').addClass('d-none');
+                        $('#editModal').off('keydown');  
+                      } else {
+                        $('.edit-prev, .edit-next').removeClass('d-none');
+                        // 切換上下張的功能
+                        let c_row = $(this).parent()
+                        let idx = table.column(c_row).index();              
+                        changeEditContent(c_row.parent(), idx);
+                      }
                     });  
+
 
                       $('#edit-image_id').val(img_array)                  
                       // remove notice info
@@ -848,9 +860,7 @@
                         $('.edit-content input').prop("disabled", false)
                         $('.edit-footer').removeClass('d-none')
                       }
-
-                    }
-                  
+                    }  
               },
               {
                 text: '刪除',
@@ -1024,8 +1034,10 @@
             {% endif %}
         });
 
-        function changeEditContent(current_row, idx){
-          
+
+
+
+        function changeEditContent(current_row, idx){          
             // remove notice info
             $('#edit-studyarea, #edit-deployment').removeClass('notice-border')
             $('.notice').addClass('d-none');
@@ -1048,6 +1060,7 @@
                   });
               }
             })
+
 
             $('.edit-prev').unbind('click');
             $('.edit-prev').on('click', function(){
@@ -1098,7 +1111,6 @@
             });
             
 
-              if (idx != 0){
                 $dep.autocomplete('option', 'source', {{ sa_d_list | safe }}[row['saname']]);
                 $('#edit-studyarea').val(row['saname'])
                 $('#edit-deployment').val(row['dname'])
@@ -1123,8 +1135,12 @@
                 $('#edit-image video source, #edit-image img').on('error',function(event) {
                   $(this).parent().html('<p align="center" style="color: darkgrey; margin: auto">無法載入</p>')
                 })
+
+              if (idx != 0){
                 $('#editModal').modal('show');
                 // disable edit
+              } 
+
                 let editable = '{{ editable }}';
                 if ((editable!='True')||($('#edit_button').data('edit')=='off')){
                   $('.edit-content input').attr('disabled', 'disabled')
@@ -1133,8 +1149,6 @@
                   $('.edit-content input').prop("disabled", false)
                   $('.edit-footer').removeClass('d-none')
                 }
-              }
-  
           
         }
 
@@ -1147,6 +1161,8 @@
           let idx = table.column(current_row).index();
 
           changeEditContent(current_row.parent(), idx);
+          $('.edit-prev, .edit-next').removeClass('d-none');
+
         });
 
 
