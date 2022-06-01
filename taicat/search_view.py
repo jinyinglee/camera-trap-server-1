@@ -20,6 +20,7 @@ from django.conf import settings
 from django.db.models import (
     OuterRef,
     Subquery,
+    Q,
 )
 
 from taicat.models import (
@@ -271,14 +272,25 @@ def api_search(request):
             filter_dict = json.loads(request.GET['filter'])
             #print(filter_dict, flush=True)
 
-            project_ids = []
+
+            proj_keyword_ids = []
+            proj_select_ids = []
+            keyword_no_result = None
             if value := filter_dict.get('keyword'):
-                project_ids = Project.objects.values_list('id', flat=True).filter(keyword__icontains=value)
-                project_ids = list(project_ids)
-            if len(project_ids) > 0:
-                query = query.filter(project_id__in=project_ids)
+                rows = Project.objects.values_list('id', flat=True).filter(keyword__icontains=value)
+                proj_keyword_ids = list(rows)
+                keyword_no_result = False if len(proj_keyword_ids) > 0 else True
+
             if values := filter_dict.get('projects'):
-                query = query.filter(project_id__in=values)
+                proj_select_ids = values
+
+            if keyword_no_result is True and len(proj_select_ids) == 0:
+                query = query.filter(project_id=99999) # let result empty
+            else:
+                project_ids = proj_keyword_ids + proj_select_ids
+                if len(project_ids) > 0:
+                    query = query.filter(project_id__in=project_ids)
+
             if values := filter_dict.get('species'):
                 query = query.filter(species__in=values)
             if value := filter_dict.get('startDate'):

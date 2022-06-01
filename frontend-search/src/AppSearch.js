@@ -15,6 +15,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import LocalizationProvider from '@mui/lab/LocalizationProvider';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import Alert from '@mui/material/Alert';
 
 import { zhTW } from 'date-fns/locale';
 
@@ -22,7 +23,7 @@ import { AppSearchDataGrid } from './AppSearchDataGrid';
 import { AppSearchCalculation } from './AppSearchCalculation';
 import { cleanFormData } from './Utils';
 
-
+const DEFAULT_PER_PAGE = 20;
 const initialState = {
   filter: {
     species: [],
@@ -33,7 +34,7 @@ const initialState = {
   },
   pagination: {
     page: 0,
-    perPage: 10,
+    perPage: DEFAULT_PER_PAGE,
   },
   options: {
     species: [],
@@ -41,6 +42,8 @@ const initialState = {
     deploymentDict: null,
   },
   isLoading: false,
+  isSubmitted: false,
+  alertText: '',
   result: null,
   calculation: {
     session: 'month',
@@ -52,12 +55,13 @@ const initialState = {
 };
 
 function reducer(state, action) {
-  console.log(state,action);
+  //console.log(state,action);
   switch (action.type) {
   case 'startLoading':
     return {
       ...state,
       isLoading: true,
+      isInit: false
     };
   case 'stopLoading':
     return {
@@ -99,6 +103,7 @@ function reducer(state, action) {
       ...state,
       result: action.value,
       isLoading: false,
+      hasSubmitted: true,
     }
   case 'setPagination':
     return {
@@ -107,6 +112,11 @@ function reducer(state, action) {
         page: action.page,
         perPage: action.perPage,
       }
+    }
+  case 'setAlert':
+    return {
+      ...state,
+      alertText: action.value,
     }
   default:
     //throw new Error();
@@ -133,12 +143,8 @@ const AppSearch = () => {
     });
   }, []);
 
-  useEffect(() => {
-    if (state.pagination.page !== 0 || state.pagination.perPage !== 10) {
-      // prevent first time fetch (not press submit button yet!)
-      fetchData();
-    }
-  }, [state.pagination]);
+  //useEffect(() => {
+  //}, []);
 
   const fetchData = () => {
     const formDataCleaned = cleanFormData(state.filter);
@@ -147,7 +153,7 @@ const AppSearch = () => {
     const d = JSON.stringify(formDataCleaned);
     let searchApiUrl = `${apiPrefix}search?filter=${d}`;
 
-    const p1 = (state.pagination.perPage === 10) ? {page: 0, perPage: 20} : state.pagination;
+    const p1 = (state.pagination.perPage === 10) ? {page: 0, perPage: DEFAULT_PER_PAGE} : state.pagination;
     const p2 = JSON.stringify(p1);
     searchApiUrl = `${searchApiUrl}&pagination=${p2}`;
 
@@ -208,36 +214,40 @@ const AppSearch = () => {
 
   const handleCalc = () => {
     const formDataCleaned = cleanFormData(state.filter);
-    const calc = JSON.stringify(state.calculation);
-    const d = JSON.stringify(formDataCleaned);
-    const searchApiUrl = `${apiPrefix}search?filter=${d}&calc=${calc}&download=1`;
-    //setIsLoading(true);
-    dispatch({type: 'startLoading'});
-    console.log('fetch:', searchApiUrl);
-    fetch(encodeURI(searchApiUrl), {
-      //body: JSON.stringify({filter: formData}),
-      mode: 'same-origin',
-      headers: {
-        'content-type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest', // for Django request.is_ajax()
-        //'X-CSRFToken': csrftoken,
-      },
-      method: 'GET',
-    })
-      .then(resp => resp.blob())
-      .then(blob => {
-        const ext_name = (state.calculation.fileFormat === 'csv') ? 'csv' : 'xlsx';
-        // code via: https://stackoverflow.com/a/65609170/644070
-        const href = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = href;
-        link.setAttribute('download', `camera-trap-calculation-${state.calculation.calcType}.${ext_name}`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    console.log(formDataCleaned);
+    if (!formDataCleaned.species) {
+      dispatch({type: 'setAlert', value: '必須至少選一個物種'});
+    } else {
+      const calc = JSON.stringify(state.calculation);
+      const d = JSON.stringify(formDataCleaned);
+      const searchApiUrl = `${apiPrefix}search?filter=${d}&calc=${calc}&download=1`;
 
-        //setIsLoading(false); TODO
-      });
+      dispatch({type: 'startLoading'});
+      console.log('fetch:', searchApiUrl);
+      fetch(encodeURI(searchApiUrl), {
+        //body: JSON.stringify({filter: formData}),
+        mode: 'same-origin',
+        headers: {
+          'content-type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest', // for Django request.is_ajax()
+          //'X-CSRFToken': csrftoken,
+        },
+        method: 'GET',
+      })
+        .then(resp => resp.blob())
+        .then(blob => {
+          const ext_name = (state.calculation.fileFormat === 'csv') ? 'csv' : 'xlsx';
+          // code via: https://stackoverflow.com/a/65609170/644070
+          const href = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = href;
+          link.setAttribute('download', `camera-trap-calculation-${state.calculation.calcType}.${ext_name}`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          dispatch({type:'stopLoading'});
+        });
+    }
   }
 
   const ProjectFilterBox = ({index}) => {
@@ -267,10 +277,14 @@ const AppSearch = () => {
                   />
                 )}
                 onChange={(e, v) => {
-                  if (v && v.id) {
-                    const newArr = [...state.filter.projects];
+                  const newArr = [...state.filter.projects];
+                  if (v === null) {
+                    newArr[index] = {};
+                  } else {
                     newArr[index].project = v;
-                    dispatch({type: 'setFilter', name: 'projects', value: newArr});
+                  }
+                  dispatch({type: 'setFilter', name: 'projects', value: newArr});
+                  if (v !== null) {
                     fetchDeploymentList(v.id);
                   }
                 }}
@@ -424,14 +438,15 @@ const AppSearch = () => {
            <>
            <AppSearchDataGrid result={state.result} handleChangePage={handleChangePage} handleChangeRowsPerPage={handleChangeRowsPerPage} pagination={state.pagination}/>
              <AppSearchCalculation calcData={state.calculation} setCalcData={state.calculation} />
-           <Button variant="contained" onClick={handleCalc} style={{marginTop: '10px'}}>下載計算</Button>
+             <Button variant="contained" onClick={handleCalc} style={{marginTop: '10px'}}>下載計算</Button>
+             {(state.alertText !== '') ? <Alert severity="error" onClose={()=>{ dispatch({type: 'setAlert', value: ''})}}>{state.alertText}</Alert> : null}
              <div>
            <button type="button" className="btn btn-warning" data-bs-toggle="modal" data-bs-target="#exampleModal" style={{marginTop: '24px'}}>
                  計算項目說明
                </button>
              </div>
            </>
-           : <h2>查無資料</h2>}
+           :(state.hasSubmitted) ? <h2>查無資料</h2> : null}
         </Grid>
 
       </Grid>

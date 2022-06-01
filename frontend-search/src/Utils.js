@@ -22,7 +22,10 @@ const cleanFormData = (formData) => {
         } else if (formData[v][i].studyareas && formData[v][i].studyareas.length > 0) {
           cleaned['studyareas'] = formData['projects'][i].studyareas.map(x=>x.studyarea_id);
         } else {
-          cleaned['projects'] = formData['projects'].map(x => x.project.id);
+          cleaned['projects'] = formData['projects'].filter((x)=> x.project && x.project.id).map(x => x.project.id);
+          if (cleaned['projects'].length <= 0) {
+            delete cleaned.projects
+          }
         }
       }
     } else if (formData[v]) {

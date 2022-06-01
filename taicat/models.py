@@ -695,7 +695,7 @@ class Image(models.Model):
         else:
             bucket_name = settings.AWS_S3_BUCKET
             if self.specific_bucket:
-                bucket_name = specific_bucket
+                bucket_name = self.specific_bucket
 
             return f'https://{bucket_name}.s3.ap-northeast-1.amazonaws.com/{self.image_uuid}-{thumbnail}.jpg'
 
