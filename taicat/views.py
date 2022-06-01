@@ -647,6 +647,8 @@ def get_project_info(project_list):
                     earliest_date=earliest_date)
                 p.save()
     # update project species
+    # TODO 要改last_updated的判斷
+    last_updated = ProjectSpecies.objects.filter(project_id__in=list(project_info.id)).aggregate(Min('last_updated'))['last_updated__min']
     has_new = Image.objects.filter(last_updated__gte=last_updated, project_id__in=list(project_info.id))
     if has_new.exists():
         p_list = has_new.order_by('project_id').distinct('project_id').values_list('project_id', flat=True)
@@ -781,6 +783,8 @@ def project_detail(request, pk):
                 earliest_date=earliest_date)
             p.save()
     # update project species
+    # TODO last_updated 要改
+    last_updated = ProjectSpecies.objects.filter(project_id=pk).aggregate(Min('last_updated'))['last_updated__min']
     has_new = Image.objects.filter(last_updated__gte=last_updated, project_id=pk)
     if has_new.exists():
         ProjectSpecies.objects.filter(project_id=pk).update(last_updated=now)
@@ -801,6 +805,8 @@ def project_detail(request, pk):
                         project_id=pk)
                     p_sp.save()
     # update imagefolder table
+    # TODO last_updated 要改
+    last_updated = ImageFolder.objects.filter(project_id=pk).aggregate(Min('last_updated'))['last_updated__min']
     has_new = Image.objects.exclude(folder_name='').filter(last_updated__gte=last_updated, project_id=pk)
     if has_new.exists():
         ImageFolder.objects.filter(project_id=pk).update(last_updated=now)
