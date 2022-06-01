@@ -148,7 +148,7 @@ def update_upload_history(request):
                 except:
                     pass # contact已經不在則移除
             # 每次都寄信
-            res = send_upload_notification(upload_history_id,[6])
+            res = send_upload_notification(upload_history_id, final_members)
             if res.get('status') == 'fail':
                 response = {'messages': 'failed during sending email'}
                 return JsonResponse(response)

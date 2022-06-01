@@ -51,7 +51,7 @@ from operator import itemgetter
 from dateutil import parser
 from django.test.utils import CaptureQueriesContext
 from base.utils import DecimalEncoder
-from taicat.utils import half_year_ago
+from taicat.utils import half_year_ago, get_project_member
 
 from openpyxl import Workbook
 
@@ -116,7 +116,6 @@ def update_species_pie(request):
         # 確定有沒有子樣區
         subsa = StudyArea.objects.filter(parent_id=sa)
         sa_list = [str(s.id) for s in subsa]
-        # TODO 加上日期filter
         # pie data
         if sa_list:
             query = f"select count(*) from taicat_image where studyarea_id IN ({','.join(sa_list)})"
@@ -1274,11 +1273,12 @@ def api_check_data_gap(request):
     for dj in rows:
         pid = dj.project_id
         if pid not in projects:
+            project_members = get_project_member(pid)
             projects[pid] = {
                 'name': dj.project.name,
                 'gaps': [],
-                'emails': [x.member.email for x in dj.project.members.filter(role__in=notify_roles, member__email__isnull=False).all()],
-                'members': [x.member for x in dj.project.members.filter(role__in=notify_roles).all()]
+                'emails': [x.email for x in Contact.objects.filter(id__in=project_members)],
+                'members': project_members
             }
         projects[pid]['gaps'].append(f'{dj.deployment.name}: {dj.display_range}')
 
@@ -1291,11 +1291,11 @@ def api_check_data_gap(request):
         for m in data['members']:
             # print (m.id, m.name)
             un = UploadNotification(
-                contact_id = m.id,
+                contact_id = m,
                 category='gap',
                 project_id = project_id
             )
             un.save()
-        #send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, data['emails'])
+        send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, data['emails'])
 
     return HttpResponse('ok')

@@ -745,13 +745,13 @@ def get_my_project_list(member_id, project_list=[]):
 
 def get_project_member(project_id):
     member_list = []
-    members = list(ProjectMember.objects.filter(project_id=project_id).all().values('id'))
+    members = [m.member_id for m in ProjectMember.objects.filter(project_id=project_id)]
     organization_id = Organization.objects.filter(projects=project_id).values('id')
     for i in organization_id:
-        members += list(Contact.objects.filter(organization=i['id'], is_organization_admin=True).all().values('id'))
-    for m in members:
-        if m['id'] not in members:
-            member_list += [m['id']]
+        members += [c.id for c in Contact.objects.filter(organization=i['id'], is_organization_admin=True)]
+    for m in members: # 排除重複
+        if m not in member_list:
+            member_list += [m]
     return member_list
 
 
