@@ -77,12 +77,17 @@ function reducer(state, action) {
         species: action.value.species,
       }
     };
-  case 'setDeploymentOptions':
+  case 'setDeploymentFilter':
+    // update option & filter
     return {
       ...state,
       options: {
         ...state.options,
         deploymentDict: action.value,
+      },
+      filter: {
+        ...state.filter,
+        projects: action.projects,
       },
       isLoading: false,
     }
@@ -147,7 +152,7 @@ const AppSearch = () => {
   //}, []);
 
   const fetchData = () => {
-    const formDataCleaned = cleanFormData(state.filter);
+    const formDataCleaned = cleanFormData(state.filter, state.options.deploymentDict);
     console.log('cleaned', formDataCleaned);
     //const csrftoken = getCookie('csrftoken');
     const d = JSON.stringify(formDataCleaned);
@@ -157,7 +162,7 @@ const AppSearch = () => {
     const p2 = JSON.stringify(p1);
     searchApiUrl = `${searchApiUrl}&pagination=${p2}`;
 
-    dispatch({type: 'startLoading'});
+    //dispatch({type: 'startLoading'});
     console.log('fetch:', searchApiUrl);
     fetch(encodeURI(searchApiUrl), {
       //body: JSON.stringify({filter: formData}),
@@ -176,7 +181,7 @@ const AppSearch = () => {
       });
   };
 
-  const fetchDeploymentList = (projectId) => {
+  const fetchDeploymentList = (projectId, projects, index) => {
     let studyareaApiUrl = `${apiPrefix}deployments?project_id=${projectId}`;
 
     dispatch({type: 'startLoading'});
@@ -192,10 +197,9 @@ const AppSearch = () => {
     })
       .then(resp => resp.json())
       .then(data => {
-        //console.log('resp sa', data)
         let newDeploymentDict = state.options.deploymentDict || {};
         newDeploymentDict[projectId] = data.data;
-        dispatch({type: 'setDeploymentOptions', value: newDeploymentDict});
+        dispatch({type: 'setDeploymentFilter', value: newDeploymentDict, projects: projects});
       });
   };
 
@@ -206,14 +210,16 @@ const AppSearch = () => {
   const handleChangePage = (e, page) => {
     const pp = (state.pagination.perPage === 10) ? 20 : state.pagination.perPage;
     dispatch({type:'setPagination', page: page, perPage: pp});
+    fetchData();
   }
 
   const handleChangeRowsPerPage = (e) => {
     dispatch({type:'setPagination', page: 0, perPage: parseInt(e.target.value, 10)});
+    fetchData();
   }
 
   const handleCalc = () => {
-    const formDataCleaned = cleanFormData(state.filter);
+    const formDataCleaned = cleanFormData(state.filter, state.options.deploymentDict);
     console.log(formDataCleaned);
     if (!formDataCleaned.species) {
       dispatch({type: 'setAlert', value: '必須至少選一個物種'});
@@ -283,9 +289,9 @@ const AppSearch = () => {
                   } else {
                     newArr[index].project = v;
                   }
-                  dispatch({type: 'setFilter', name: 'projects', value: newArr});
+                  //dispatch({type: 'setFilter', name: 'projects', value: newArr});
                   if (v !== null) {
-                    fetchDeploymentList(v.id);
+                    fetchDeploymentList(v.id, newArr, index);
                   }
                 }}
               />
@@ -318,8 +324,17 @@ const AppSearch = () => {
                  onChange={(e, v) => {
                    const newArr = [...state.filter.projects];
                    newArr[index].studyareas = v;
-                   newArr[index].deployments = [];
-                   dispatch({type: 'setFilter', name: 'projects', value: newArr});
+                   const studyareaIds = [];
+                   const deploymentIds = [];
+                   for(const i in v) {
+                     studyareaIds.push(v[i].studyarea_id);
+                     for (const j in v[i].deployments) {
+                       deploymentIds.push(v[i].deployments[j].deployment_id);
+                     }
+                   }
+                   newArr[index].studyareaIds = studyareaIds;
+                   newArr[index].deploymentIds = deploymentIds;
+                   dispatch({type:'setFilter', name:'projects', value:newArr});
                  }}
                />
              </Grid>
@@ -342,6 +357,7 @@ const AppSearch = () => {
                  onChange={(e, v) => {
                    const newArr = [...state.filter.projects];
                    newArr[index].deployments = v;
+                   newArr[index].deploymentIds = v.map((x)=>x.deployment_id);
                    dispatch({type: 'setFilter', name: 'projects', value: newArr});
                  }}
                />

@@ -1,6 +1,6 @@
 import { format } from 'date-fns'
 
-const cleanFormData = (formData) => {
+const cleanFormData = (formData, depOptions) => {
   let cleaned = {};
   for (const v in formData) {
     if (v === 'species') {
@@ -14,20 +14,28 @@ const cleanFormData = (formData) => {
     } else if (['startDate', 'endDate'].indexOf(v) >= 0 && formData[v] != null) {
       cleaned[v] = format(formData[v], 'yyyy-MM-dd');
     } else if ( v === 'projects') {
-      const studyareaIds = [];
-      const deploymentIds = [];
+      let deploymentIds = [];
       for (const i in formData['projects']) {
+        deploymentIds = deploymentIds.concat(formData['projects'][i].deploymentIds);
+        /*
         if (formData['projects'][i].deployments && formData['projects'][i].deployments.length > 0) {
-          cleaned['deployments'] = formData['projects'][i].deployments.map(x=>x.deployment_id);
+          //cleaned['deployments'] = formData['projects'][i].deployments.map(x=>x.deployment_id);
+          cleaned['deployments'] = formData['projects'][i].deploymentIds;
         } else if (formData[v][i].studyareas && formData[v][i].studyareas.length > 0) {
-          cleaned['studyareas'] = formData['projects'][i].studyareas.map(x=>x.studyarea_id);
+          for (const j in formData['projects'][i].studyareas) {
+            //cleaned['studyareas'] = formData['projects'][i].studyareas.map(x=>x.studyarea_id);
+            cleaned['studyareas'] = formData['projects'][i].studyareaIds;
+          }
         } else {
-          cleaned['projects'] = formData['projects'].filter((x)=> x.project && x.project.id).map(x => x.project.id);
+          //cleaned['projects'] = formData['projects'].filter((x)=> x.project && x.project.id).map(x => x.project.id);
+          //console.log()
           if (cleaned['projects'].length <= 0) {
             delete cleaned.projects
           }
         }
+        */
       }
+      cleaned['deployments'] = deploymentIds;
     } else if (formData[v]) {
       // other
       cleaned[v] = formData[v];
