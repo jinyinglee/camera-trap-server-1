@@ -266,13 +266,14 @@ def api_search(request):
         start_time = time.time()
         start = 0
         end = 20
+        query_start = datetime(2014, 1, 1)
+        query_end = datetime.now()
         query = Image.objects.filter()
+
         # TODO: 考慮 auth
         if request.GET.get('filter'):
             filter_dict = json.loads(request.GET['filter'])
             #print(filter_dict, flush=True)
-
-
             project_ids = []
             if value := filter_dict.get('keyword'):
                 rows = Project.objects.values_list('id', flat=True).filter(keyword__icontains=value)
@@ -284,9 +285,11 @@ def api_search(request):
                 query = query.filter(species__in=values)
             if value := filter_dict.get('startDate'):
                 dt = make_aware(datetime.strptime(value, '%Y-%m-%d'))
+                query_start = dt
                 query = query.filter(datetime__gte=dt)
             if value := filter_dict.get('endDate'):
                 dt = make_aware(datetime.strptime(value, '%Y-%m-%d'))
+                query_end = dt
                 query = query.filter(datetime__lte=dt)
             if values := filter_dict.get('deployments'):
                 # query = query.filter(deployment_id__in=values)
@@ -311,7 +314,8 @@ def api_search(request):
             calc_dict = json.loads(request.GET['calc'])
             out_format = calc_dict['fileFormat']
             calc_type = calc_dict['calcType']
-            results = calc(query, calc_data)
+
+            results = calc(query, calc_data, query_start, query_end)
             #results = calc_from_cache(filter_dict, calc_dict)
             #content = calc_output2(results, out_format, request.GET.get('filter'), request.GET.get('calc'))
             content = calc_output(results, out_format, request.GET.get('filter'), request.GET.get('calc'))
@@ -329,7 +333,6 @@ def api_search(request):
 
             rows = query.all()[start:end]
             end_time = time.time() - start_time
-
             return JsonResponse({
                 'data': [x.to_dict() for x in rows],
                 'total': total,

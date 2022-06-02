@@ -16,6 +16,7 @@ import LocalizationProvider from '@mui/lab/LocalizationProvider';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
 
 import { zhTW } from 'date-fns/locale';
 
@@ -44,6 +45,7 @@ const initialState = {
   isLoading: false,
   isSubmitted: false,
   alertText: '',
+  alertTitle: '',
   result: null,
   calculation: {
     session: 'month',
@@ -67,6 +69,8 @@ function reducer(state, action) {
     return {
       ...state,
       isLoading: false,
+      alertText: action.text || null,
+      alertTitle: action.title || null,
     };
   case 'initOptions':
     return {
@@ -121,7 +125,16 @@ function reducer(state, action) {
   case 'setAlert':
     return {
       ...state,
-      alertText: action.value,
+      alertText: action.text,
+      alertTitle: action.title,
+    }
+  case 'setCalcData':
+    return {
+      ...state,
+      calculation: {
+        ...state.calculation,
+        [action.name]:  action.value,
+      }
     }
   default:
     //throw new Error();
@@ -180,7 +193,7 @@ const AppSearch = () => {
         dispatch({type: 'setResult', value: data});
       }).catch((error) => {
         console.log('fetchData error: ', error.message);
-        dispatch({type: 'stopLoading'});
+        dispatch({type: 'stopLoading', text: error.message, title: 'server_err'});
       });
   };
 
@@ -205,7 +218,7 @@ const AppSearch = () => {
         dispatch({type: 'setDeploymentFilter', value: newDeploymentDict, projects: projects});
       }).catch((error) => {
         console.log('fetchDeploymentList error: ', error.message);
-        dispatch({type: 'stopLoading'});
+        dispatch({type: 'stopLoading', text: error.message, title: 'server err'});
       });
 
         dispatch({type: 'startLoading'});
@@ -260,6 +273,9 @@ const AppSearch = () => {
           link.click();
           document.body.removeChild(link);
           dispatch({type:'stopLoading'});
+        }).catch((error)=>{
+          console.log('calc error:', error.message);
+          dispatch({type: 'stopLoading', text: error.message, title: 'server err'});
         });
     }
   }
@@ -459,9 +475,9 @@ const AppSearch = () => {
           {(state.result && state.result.data.length > 0) ?
            <>
            <AppSearchDataGrid result={state.result} handleChangePage={handleChangePage} handleChangeRowsPerPage={handleChangeRowsPerPage} pagination={state.pagination}/>
-             <AppSearchCalculation calcData={state.calculation} setCalcData={state.calculation} />
+             <AppSearchCalculation calcData={state.calculation} setCalcData={dispatch} />
              <Button variant="contained" onClick={handleCalc} style={{marginTop: '10px'}}>下載計算</Button>
-             {(state.alertText !== '') ? <Alert severity="error" onClose={()=>{ dispatch({type: 'setAlert', value: ''})}}>{state.alertText}</Alert> : null}
+             {(state.alertText) ? <Alert severity="error" onClose={()=>{ dispatch({type: 'setAlert', value: ''})}}><AlertTitle>{state.alertTitle}</AlertTitle>{state.alertText}</Alert> : null}
              <div>
            <button type="button" className="btn btn-warning" data-bs-toggle="modal" data-bs-target="#exampleModal" style={{marginTop: '24px'}}>
                  計算項目說明

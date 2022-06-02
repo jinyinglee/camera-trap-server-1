@@ -478,7 +478,6 @@ class Deployment(models.Model):
         ret = []
         for i in query.all():
             # updated
-            #print ('-------')
             #print (i.working_start.toordinal(), i.working_end.toordinal(), dt1.toordinal(), dt2.toordinal())
             month_stat_part = [0] * num_month
             overlap_range = [max(i.working_start, month_start), min(i.working_end, month_end)]
@@ -572,6 +571,7 @@ class Deployment(models.Model):
         APOA: occation: 1 小時
         '''
         working_days = self.count_working_day(year, month)[0]
+        #print(self.id, year, month, working_days)
         sum_working_hours = sum(working_days) * 24
         image_interval_seconds = image_interval * 60
         event_interval_seconds = event_interval * 60
@@ -591,23 +591,31 @@ class Deployment(models.Model):
         last_datetime = None
         image_count = 0
         event_count = 0
+        image_count_oi2 = 0
+        image_count_oi1 = 0
         delta_count = 0
+        delta_count_oi1 = 0
         exist_animals = []
         for image in query_ym_sp.all():
             if last_datetime:
                 delta = image.datetime - last_datetime
                 delta_seconds = (delta.days * 86400) + delta.seconds
                 delta_count += delta_seconds
+                delta_count_oi1 += delta_seconds
                 # print (image.id, image.datetime, delta_seconds, delta_count)
                 # TODO: OI2 考慮 個體數, 有個體數 iamge_count 加 個體數
+                '''
                 if image.animal_id:
                     # 考慮 animal_id, animal_id 跟上一個不同, image_count 加 1
                     if len(exist_animals) > 0 and image.animal_id != exist_animals[-1]:
-                        image_count += 1
+                        image_count_oi1 += 1
                         delta_count = 0
-                elif delta_count >= image_interval_seconds:
+                '''
+                if delta_count >= image_interval_seconds:
                     image_count += 1
+                    image_count_oi1 += 1
                     delta_count = 0
+
                 if delta_seconds >= event_interval_seconds:  # 相鄰照片
                     event_count += 1
             else:
@@ -615,12 +623,15 @@ class Deployment(models.Model):
                 event_count = 1
                 # 第一張照片, 直接加 1
                 image_count = 1
+                image_count_oi1 = 1
+                image_count_oi2 = 1
 
             last_datetime = image.datetime
 
         by_day = query_ym_sp.values('datetime__day').annotate(count=Count('datetime__day')).order_by('datetime__day')
         by_hour = query_ym_sp.values('datetime__day', 'datetime__hour').annotate(count=Count('*')).order_by('datetime__day', 'datetime__hour')
         oi3 = (image_count * 1.0 / sum_working_hours) * 1000 if sum_working_hours > 0 else 'N/A'
+        oi1 = (image_count_oi1 * 1.0 / sum_working_hours) * 1000 if sum_working_hours > 0 else 'N/A'
         pod = by_day.count() * 1.0 / sum(working_days) if sum(working_days) > 0 else 'N/A'
         # month, day, hour
         # note: [[0, [0]*24]] * days_in_month => call by reference error (一個改全部變)
@@ -631,8 +642,8 @@ class Deployment(models.Model):
             mdh[hour['datetime__day']-1][1][hour['datetime__hour']] = 1
 
         #print (i['species'], image_count, event_count, oi3, pod, by_day.count(), mdh)
-        print(year, month, species, working_days)
-        return [working_days, image_count, event_count, None, None, oi3, pod, mdh]
+        # print(year, month, species, working_days)
+        return [working_days, image_count, event_count, oi1, None, oi3, pod, mdh]
 
     def get_calc_cache(self):
         if rows := caches['file'].get(f'calc-dep-{self.id}'):

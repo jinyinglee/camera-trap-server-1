@@ -526,7 +526,7 @@ def calc_from_cache(filter_args, calc_args):
 
     return results
 
-def calc(query, calc_data):
+def calc(query, calc_data, query_start, query_end):
     #print('query', calc_data)
 
     #agg = query.aggregate(Max('datetime'), Min('datetime'))
@@ -540,40 +540,46 @@ def calc(query, calc_data):
     for d in deployment_list:
         if deployment := Deployment.objects.get(pk=d['deployment_id']):
             pid = deployment.project_id
-            if pid not in proj_cached:
-                cached = deployment.project.get_or_count_stats()
-                w = cached['working__range']
+            if pid not in proj_info:
+                # cached = deployment.project.get_or_count_stats()
+                # w = cached['working__range']
                 proj_info[pid] ={
                     'deployments': [],
                     #'cached': deployment.project.get_or_count_stats()
-                    'working_range': [datetime.fromtimestamp(w[0]), datetime.fromtimestamp(w[1])]
+                    #'working_range': [datetime.fraomtimestamp(w[0]), datetime.fromtimestamp(w[1])]
+                    'working_range': [query_start, query_end]
                 }
             proj_info[pid]['deployments'].append(deployment)
 
-    #print(species_list.query, species_list, flush=True)
-    print(deployment_list, query.query)
-    print(proj_info)
+    # print(deployment_list, query.query)
+    # print(proj_info)
     for species in species_list:
         species_name = species['species']
         results[species_name] = []
-        #for year in range(start_dt.year, end_dt.year+1):
-        #    for month in range(1, 13):
-        # default round: month
-        #for year in range(2017, 2018):
-        #    for month in range(1, 13):
-        #for dep in deployment_list:
-        #    deployment = Deployment.objects.get(pk=dep['deployment'])
-        #    print (deployment.project)
-        '''
-            res = deployment.calculate(year, month, species_name, 60, 60) # TODO
-            results[species_name].append({
-                'name': deployment.name,
-                'year': year,
-                'month': month,
-                'calc': res,
-            })
-        '''
-
+        for pid, info in proj_info.items():
+            for dep in info['deployments']:
+                for year in range(info['working_range'][0].year, info['working_range'][1].year+1):
+                    for month in range(1, 13):
+                        if year == info['working_range'][0].year and month <= info['working_range'][0].month -1:
+                            # first year, check start month
+                            # print(pid, year, month, 'start pass')
+                            pass
+                        elif year == info['working_range'][1].year and month > info['working_range'][1].month:
+                            # print(pid, year, month, 'end pass')
+                            pass
+                        else:
+                            # print (pid, dep.project.name, year, month, 'normal')
+                            res = deployment.calculate(year, month, species_name,
+                                                       int(calc_data['imageInterval']),
+                                                       int(calc_data['eventInterval']))
+                            results[species_name].append({
+                                'project': dep.project.name,
+                                'studyarea': dep.study_area.name,
+                                'name': dep.name,
+                                'year': year,
+                                'month': month,
+                                'calc': res,
+                            })
     return results
 
 def calc_output(results, file_format, filter_str, calc_str):
@@ -620,26 +626,30 @@ def calc_output(results, file_format, filter_str, calc_str):
                 row_index = 1
                 sheets.append(wb.create_sheet(title=sp))
                 if calcData.get('calcType') == 'basic':
-                    header_str = 'year,month,物種,相機位置,相機工作時數,有效照片數,目擊事件數,OI3,'+','.join(f'相機工作天{day}' for day in range(1, 32))  # ,捕獲回合比例,存缺,'+','.join(f'活動機率day{day}' for day in range(1, 32))
+                    header_str = '計劃,樣區,相機位置,年,月,物種,相機工作時數,有效照片數,目擊事件數,OI1,OI2,OI3,'+','.join(f'相機工作天{day}' for day in range(1, 32))  # ,捕獲回合比例,存缺,'+','.join(f'活動機率day{day}' for day in range(1, 32))
                     header_list = header_str.split(',')
                     for h, v in enumerate(header_list):
                         sheets[sheet_index].cell(row=1, column=h+1, value=v)
 
                     for i in results[sp]:
                         row_index += 1
-                        sheets[sheet_index].cell(row=row_index, column=1, value=i['year'])
-                        sheets[sheet_index].cell(row=row_index, column=2, value=i['month'])
-                        sheets[sheet_index].cell(row=row_index, column=3, value=sp)
-                        sheets[sheet_index].cell(row=row_index, column=4, value=i['name'])
-                        sheets[sheet_index].cell(row=row_index, column=5, value=sum(i['calc'][0])*24 if i['calc'][0] else '')
-                        sheets[sheet_index].cell(row=row_index, column=6, value=i['calc'][1])
-                        sheets[sheet_index].cell(row=row_index, column=7, value=i['calc'][2])
-                        sheets[sheet_index].cell(row=row_index, column=8, value=i['calc'][5])
+                        sheets[sheet_index].cell(row=row_index, column=1, value=i['project'])
+                        sheets[sheet_index].cell(row=row_index, column=2, value=i['studyarea'])
+                        sheets[sheet_index].cell(row=row_index, column=3, value=i['name'])
+                        sheets[sheet_index].cell(row=row_index, column=4, value=i['year'])
+                        sheets[sheet_index].cell(row=row_index, column=5, value=i['month'])
+                        sheets[sheet_index].cell(row=row_index, column=6, value=sp)
+                        sheets[sheet_index].cell(row=row_index, column=7, value=sum(i['calc'][0])*24 if i['calc'][0] else '')
+                        sheets[sheet_index].cell(row=row_index, column=8, value=i['calc'][1])
+                        sheets[sheet_index].cell(row=row_index, column=9, value=i['calc'][2])
+                        sheets[sheet_index].cell(row=row_index, column=10, value=i['calc'][3])
+                        sheets[sheet_index].cell(row=row_index, column=11, value='')
+                        sheets[sheet_index].cell(row=row_index, column=12, value=i['calc'][5])
                         for day_index, working in enumerate(i['calc'][0]):
-                            sheets[sheet_index].cell(row=row_index, column=9+day_index, value=working)
+                            sheets[sheet_index].cell(row=row_index, column=13+day_index, value=working)
 
                 elif calcData.get('calcType') == 'pod':
-                    header_str = 'year,month,物種,相機位置,拍到天數,相機工作天數,POD' # + ','.join(f'{hour:02}' for hour in range(0, 24))
+                    header_str = '計劃,樣區,相機位置,年,月,物種,拍到天數,相機工作天數,POD,' + ','.join(f'偵測到/未偵測到{day_index+1}' for day_index in range(0, 31))
                     header_list = header_str.split(',')
                     for h, v in enumerate(header_list):
                         sheets[sheet_index].cell(row=1, column=h+1, value=v)
@@ -651,16 +661,20 @@ def calc_output(results, file_format, filter_str, calc_str):
                             if d[0]:
                                 count += 1
                         sum_working_days = sum(i['calc'][0])
-                        sheets[sheet_index].cell(row=row_index, column=1, value=i['year'])
-                        sheets[sheet_index].cell(row=row_index, column=2, value=i['month'])
-                        sheets[sheet_index].cell(row=row_index, column=3, value=sp)
-                        sheets[sheet_index].cell(row=row_index, column=4, value=i['name'])
-                        sheets[sheet_index].cell(row=row_index, column=5, value=count)
-                        sheets[sheet_index].cell(row=row_index, column=6, value=sum_working_days)
-                        sheets[sheet_index].cell(row=row_index, column=7, value=count*1.0/sum_working_days if sum_working_days > 0 else '')
+                        sheets[sheet_index].cell(row=row_index, column=1, value=i['project'])
+                        sheets[sheet_index].cell(row=row_index, column=2, value=i['studyarea'])
+                        sheets[sheet_index].cell(row=row_index, column=3, value=i['name'])
+                        sheets[sheet_index].cell(row=row_index, column=4, value=i['year'])
+                        sheets[sheet_index].cell(row=row_index, column=5, value=i['month'])
+                        sheets[sheet_index].cell(row=row_index, column=6, value=sp)
+                        sheets[sheet_index].cell(row=row_index, column=7, value=count)
+                        sheets[sheet_index].cell(row=row_index, column=8, value=sum_working_days)
+                        sheets[sheet_index].cell(row=row_index, column=9, value=count*1.0/sum_working_days if sum_working_days > 0 else 'N/A')
+                        for day_index, d in enumerate(i['calc'][7]):
+                            sheets[sheet_index].cell(row=row_index, column=10 + day_index, value=d[0])
 
                 elif calcData.get('calcType') == 'apoa':
-                    header_str = '相機位置,物種,date,' + ','.join(f'{hour:02}' for hour in range(0, 24))  # ,捕獲回合比例,存缺,'+','.join(f'活動機率day{day}' for day in range(1, 32))
+                    header_str = '計劃,樣區,相機位置,物種,date,' + ','.join(f'{hour:02}' for hour in range(0, 24))  # ,捕獲回合比例,存缺,'+','.join(f'活動機率day{day}' for day in range(1, 32))
                     header_list = header_str.split(',')
                     for h, v in enumerate(header_list):
                         sheets[sheet_index].cell(row=1, column=h+1, value=v)
@@ -668,11 +682,13 @@ def calc_output(results, file_format, filter_str, calc_str):
                     for i in results[sp]:
                         for day_index, hours in enumerate(i['calc'][7]):
                             row_index += 1
-                            sheets[sheet_index].cell(row=row_index, column=1, value=i['name'])
-                            sheets[sheet_index].cell(row=row_index, column=2, value=sp)
-                            sheets[sheet_index].cell(row=row_index, column=3, value=f"{i['year']}-{i['month']}-{day_index+1}")
+                            sheets[sheet_index].cell(row=row_index, column=1, value=i['project'])
+                            sheets[sheet_index].cell(row=row_index, column=2, value=i['studyarea'])
+                            sheets[sheet_index].cell(row=row_index, column=3, value=i['name'])
+                            sheets[sheet_index].cell(row=row_index, column=4, value=sp)
+                            sheets[sheet_index].cell(row=row_index, column=5, value=f"{i['year']}-{i['month']}-{day_index+1}")
                             for hour_index, hour in enumerate(hours[1]):
-                                sheets[sheet_index].cell(row=row_index, column=4+hour_index, value=hour)
+                                sheets[sheet_index].cell(row=row_index, column=6+hour_index, value=hour)
 
                 sheet_index += 1
 
