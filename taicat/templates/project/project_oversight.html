@@ -368,7 +368,7 @@
                 {% endfor %}
                 <td>{{ deployment.ratio_year|floatformat:2  }}</td>
                 <td>{% for gap in deployment.gaps %}
-                  <div class="btn {%if gap.caused %}btn-secondary{% else %}btn-danger{% endif %} deployment-gap btn-lg" data-name="{{ deployment.name }}" data-gapid="{{ gap.id }}" data-caused="{{ gap.caused }}" data-saindex="{{ studyarea.sa_idx }}" data-dindex="{{ deployment.d_idx }}" data-gapindex="{{ gap.idx }}" data-bs-toggle="modal" data-bs-target="#gap-modal" style="font-size:12px;margin:2px;">{{ gap.label }}</div>{% endfor %}</td>
+                  <div class="btn {%if gap.caused != '' %}btn-secondary{% else %}btn-danger{% endif %} deployment-gap btn-lg" data-name="{{ deployment.name }}" data-gapid="{{ gap.id }}" data-caused="{{ gap.caused }}" data-saindex="{{ studyarea.sa_idx }}" data-dindex="{{ deployment.d_idx }}" data-gapindex="{{ gap.idx }}" data-bs-toggle="modal" data-bs-target="#gap-modal" style="font-size:12px;margin:2px;">{{ gap.label }}</div>{% endfor %}</td>
               </tr>
               {% endfor %}
           </tbody>
