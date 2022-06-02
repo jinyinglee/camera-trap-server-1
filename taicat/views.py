@@ -51,10 +51,49 @@ from operator import itemgetter
 from dateutil import parser
 from django.test.utils import CaptureQueriesContext
 from base.utils import DecimalEncoder
-from taicat.utils import half_year_ago, get_project_member
+from taicat.utils import half_year_ago, get_project_member, delete_image_by_ids
 
 from openpyxl import Workbook
 
+
+def edit_sa(request):
+    if request.method == 'GET':
+        name = request.GET.get('name')
+        id = request.GET.get('id')
+        StudyArea.objects.filter(id=id).update(name = name)
+        response = {'status': 'done'}
+        return HttpResponse(json.dumps(response), content_type='application/json')
+
+
+def delete_dep_sa(request):
+    if request.method == 'GET':
+        # TODO 先確認底下有沒有照片，如果有的話不能刪除
+        type = request.GET.get('type')
+        id = request.GET.get('id')
+        project_id = request.GET.get('project_id')
+        response = {}
+        if type == 'sa':
+            if Image.objects.filter(studyarea_id=id).exists():
+                response = {'status': 'exists'}
+            # StudyArea.objects.filter(id=id).delete()
+            # 修改樣區數量
+            else:
+                StudyArea.objects.filter(id=id).delete()
+                # 修改相機位置數量 
+                if ProjectStat.objects.filter(project_id=project_id).exists():
+                    ProjectStat.objects.filter(project_id=project_id).update(num_sa = StudyArea.objects.filter(project_id=project_id).count())
+                response = {'status': 'done'}
+        elif type =='dep':
+            if Image.objects.filter(deployment_id=id).exists():
+                response = {'status': 'exists'}
+            else:
+                Deployment.objects.filter(id=id).delete()
+                # 修改相機位置數量 
+                if ProjectStat.objects.filter(project_id=project_id).exists():
+                    ProjectStat.objects.filter(project_id=project_id).update(num_deployment = Deployment.objects.filter(project_id=project_id).count())
+                response = {'status': 'done'}
+        # response = {'d': 'done'}
+        return HttpResponse(json.dumps(response), content_type='application/json')
 
 def get_sa_points(request):
     sa_list = request.GET.getlist('sa[]')
@@ -277,7 +316,7 @@ def delete_data(request, pk):
         image_list = request.POST.getlist('image_id[]')
         species_list = delete_image_by_ids(image_list)
 
-    response = {'species': species}
+    response = {'species': species_list}
     return JsonResponse(response, safe=False)  # or JsonResponse({'data': data})
 
 
@@ -543,7 +582,9 @@ def get_deployment(request):
         id = request.POST.get('study_area_id')
 
         with connection.cursor() as cursor:
-            query = """SELECT id, name, longitude, latitude, altitude, landcover, vegetation, verbatim_locality, geodetic_datum FROM taicat_deployment WHERE study_area_id = {};"""
+            query = """SELECT id, name, longitude, latitude, altitude, landcover, vegetation, verbatim_locality, 
+                        geodetic_datum, deprecated FROM taicat_deployment 
+                        WHERE study_area_id = {} ORDER BY id ASC;"""
             cursor.execute(query.format(id))
             data = cursor.fetchall()
 
@@ -565,8 +606,13 @@ def add_deployment(request):
         landcovers = res.getlist('landcovers[]')
         vegetations = res.getlist('vegetations[]')
         did = res.getlist('did[]')
+        deprecated = res.getlist('deprecated[]')
 
         for i in range(len(names)):
+            if str(i) in deprecated:
+                dep = True
+            else:
+                dep = False
             if altitudes[i] == "":
                 altitudes[i] = None
             if did[i]:
@@ -578,11 +624,14 @@ def add_deployment(request):
                         latitude=latitudes[i], 
                         altitude=altitudes[i],
                         landcover=landcovers[i], 
-                        vegetation=vegetations[i])
+                        vegetation=vegetations[i],
+                        deprecated=dep)
             else:
                 Deployment.objects.create(project_id=project_id, study_area_id=study_area_id, geodetic_datum=geodetic_datum,
                             name=names[i], longitude=longitudes[i], latitude=latitudes[i], altitude=altitudes[i],
-                            landcover=landcovers[i], vegetation=vegetations[i])
+                            landcover=landcovers[i], vegetation=vegetations[i], deprecated=dep)
+                if ProjectStat.objects.filter(project_id=project_id).exists():
+                    ProjectStat.objects.filter(project_id=project_id).update(num_deployment=Deployment.objects.filter(project_id=project_id).count())
 
         return HttpResponse(json.dumps({'d': 'done'}), content_type='application/json')
 
@@ -647,7 +696,6 @@ def get_project_info(project_list):
                     earliest_date=earliest_date)
                 p.save()
     # update project species
-    # TODO 要改last_updated的判斷
     last_updated = ProjectSpecies.objects.filter(project_id__in=list(project_info.id)).aggregate(Min('last_updated'))['last_updated__min']
     has_new = Image.objects.filter(last_updated__gte=last_updated, project_id__in=list(project_info.id))
     if has_new.exists():
@@ -675,9 +723,10 @@ def get_project_info(project_list):
     project_info['num_studyarea'] = 0
     project_info['num_deployment'] = 0
     for i in project_info.id:
-        sa_c = StudyArea.objects.filter(project_id=i).count()
-        dep_c = Deployment.objects.filter(project_id=i).count()
-        img_c = ProjectStat.objects.get(project_id=i).num_data
+        obj = ProjectStat.objects.get(project_id=i)
+        sa_c = obj.num_sa
+        dep_c = obj.num_deployment
+        img_c = obj.num_data
         project_info.loc[project_info['id'] == i, 'num_data'] = img_c
         project_info.loc[project_info['id'] == i, 'num_studyarea'] = sa_c
         project_info.loc[project_info['id'] == i, 'num_deployment'] = dep_c

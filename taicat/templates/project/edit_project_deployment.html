@@ -72,6 +72,11 @@
         min-height: 540px;
     }
 
+    /*
+    .current_sa {
+        font-weight: bold;
+    }*/
+
 </style>
 {% endblock style %}
 {% block body %}
@@ -112,14 +117,16 @@
             <div class="bg-white shadow px-0 mx-2">
                 <p class="backgroud-dark text-white fw-bold px-3 py-2 mb-0">相機位置管理</p>
                 <div class="row px-3">
-                <div class="col-3 me-0 studyarea-list-area">
+                <div class="col-2 me-0 studyarea-list-area">
                     <form novalidate>
                     {% csrf_token %}
                         <ul id="studyarea-list">
                         {% for i in study_area %}
                             {% if i.parent_id == None %}
-                            <li id="{{ i.id }}" onClick="selectStudyArea({{ i.id }})" data-bs-toggle="collapse" href="#collapse_{{ i.id }}" role="button" aria-expanded="false" aria-controls="collapse_{{ i.id }}">
-                                <span style="font-size: 10px; display: inline-block">●</span> <div style="display: inline-block" class="studyarea-name">{{ i.name }}</div>
+                            <li>
+                                <div  id="{{ i.id }}" onClick="selectStudyArea({{ i.id }},'{{ i.name }}')" data-bs-toggle="collapse" href="#collapse_{{ i.id }}" role="button" aria-expanded="false" aria-controls="collapse_{{ i.id }}">
+                                    <div style="display: inline-block;" class="studyarea-name">{{ i.name }}</div>
+                                </div>
                             </li>
                             <div class="collapse d-none" id="collapse_{{ i.id }}">
                             <!-- 新增子樣區 -->
@@ -130,25 +137,31 @@
                             {% endif %}
                         {% endfor %}
                             <li id="addStudyArea-li">
-                                <input id="addStudyArea" class="border-0 shadow-none form-control bg-light" style="width: 90%;" type="text" placeholder=" + 新增樣區">
-                                <div class="invalid-feedback" id="addStudyArea-feedback">
-                                </div>
+                                <a class="link text-decoration-none" data-bs-toggle="modal" data-bs-target="#addSaModal">
+                                    + 新增樣區
+                                </a>
                             </li>
                         </ul>
                     </form>
                 </div>
-                <div class="col-9">
+                <div class="col-10">
                     <div id="deployment-list" class="d-none">
 
                         <!-- 相機位置 -->
                         <form id="deploymentForm">
-                            <div class="d-flex flex-row align-items-center justify-content-end my-3">
-                                <span class="required">*</span>座標大地基準：
-                                <select class="selectpicker form-control" data-width="13%" data-style="btn-new">
-                                    <option>WGS84</option>
-                                    <option>TWD97</option>
-                                </select>
-                                <img class="text-green mx-2" src="{% static 'icon/info.png' %}" style="height: 18px;" data-bs-toggle="tooltip" data-bs-placement="right" title="為準確呈現圖籍，請指明相機位置座標的大地基準。單一樣區內所有相機位置必須一致，因此更改設定會全部覆寫喔。"></i>
+                            <div class="d-flex flex-row align-items-center justify-content-between my-3">
+                                <div>
+                                    <div class="d-flex align-items-center"><span class="fs-4 sa-name"></span> 
+                                    <i class="icon fa fas fa-pencil px-2 link" style="cursor: pointer" data-bs-toggle="modal" data-bs-target="#editSaModal"></i></div>
+                                </div>
+                                <div class="w-50 text-end">
+                                    <span class="required">*</span>座標大地基準：
+                                    <select class="selectpicker form-control" data-width="40%" data-style="btn-new">
+                                        <option>WGS84</option>
+                                        <option>TWD97</option>
+                                    </select>
+                                    <img class="text-green ms-2" src="{% static 'icon/info.png' %}" style="height: 18px;" data-bs-toggle="tooltip" data-bs-placement="right" title="為準確呈現圖籍，請指明相機位置座標的大地基準。單一樣區內所有相機位置必須一致，因此更改設定會全部覆寫喔。">
+                                </div>
                             </div>
                             <div class="row">
                                 <div class="table-responsive">
@@ -161,7 +174,8 @@
                                                 <th>海拔(公尺)</th>
                                                 <th>植被類型</th>
                                                 <th>土地覆蓋類型</th>
-                                                <th></th>
+                                                <th>棄用</th>
+                                                <th>刪除</th>
                                             </tr>                            
                                         </thead>
                                         <tbody id="deployment">
@@ -198,6 +212,50 @@
         </div>     
     </div>
 </div>
+
+<!-- Add StudyArea Modal -->
+<div class="modal fade" id="addSaModal" tabindex="-1" aria-labelledby="addSaModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title title-dark">新增樣區</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input id="addStudyArea" class="form-control" type="text" placeholder="請輸入樣區名稱">
+                <div class="ms-1 invalid-feedback" id="addStudyArea-feedback"></div>
+            </div>
+            <div class="modal-footer">
+                <a class="btn btn-orange d-inline-block" onClick="addSa()">送出</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit StudyArea Modal -->
+<div class="modal fade" id="editSaModal" tabindex="-1" aria-labelledby="editSaModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title title-dark">編輯樣區</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input id="editStudyArea" class="form-control" type="text" value="" placeholder="請輸入樣區名稱">
+                <input id="editStudyArea-id" type="hidden" value="">
+                <div class="ms-1 invalid-feedback" id="editStudyArea-feedback"></div>
+            </div>
+            <div class="modal-footer">
+                <a class="btn btn-outline-danger d-inline-block" onClick="editSa('delete')">刪除</a>
+                <a class="btn btn-orange d-inline-block" onClick="editSa('edit')">儲存</a>
+            </div>
+        </div>
+    </div>
+</div>
+    
+
+
+
 {% else %}
 <div class="container content">
 <a class="btn btn-outline-success" onClick="goBack()">回上一頁</a></div>
@@ -214,8 +272,11 @@ $( function() {
     // study area
     {% for i in study_area %}
         {% if i.parent_id != None %}
-            $("#collapse_{{ i.parent_id }}").prepend(`<li data-parent="{{ i.parent_id }}" id="{{ i.id }}" onClick="selectStudyArea({{ i.id }})">
-                <span style="font-size: 10px; display: inline-block">●</span> <div style="display: inline-block" class="substudyarea-name">{{ i.name }}</div>
+            $("#collapse_{{ i.parent_id }}").prepend(`<li>
+                <div data-parent="{{ i.parent_id }}" id="{{ i.id }}" onClick="selectStudyArea({{ i.id }}, '{{ i.name }}')">
+                    <div style="display: inline-block" class="studyarea-name">{{ i.name }}
+                    </div>
+                </div>
             </li>`);
             $("#collapse_{{ i.parent_id }}").removeClass('d-none');
         //{% else %}
@@ -330,11 +391,16 @@ function addDepolymentSubmit(){
             did.push($(this).val());
         });
 
+        deprecated = []
+        $('input[name="deprecated"]:checked').each(function(){
+            deprecated.push($(this).val());
+        });
+
         $.ajax({
         type: 'POST',
         url: "{% url 'add_deployment' %}",
         data: {'project_id': {{ pk }},
-               'study_area_id': $('li.title-dark').attr('id'),
+               'study_area_id': $('.current_sa').attr('id'),
                'geodetic_datum': $('select').val(),
                'names': names,
                'longitudes': longitudes,
@@ -343,32 +409,31 @@ function addDepolymentSubmit(){
                'landcovers' : landcovers,
                'vegetations': vegetations,
                'did': did,
-                },
+               'deprecated': deprecated},
         headers:{"X-CSRFToken": $crf_token},
         success: function (response) {
             alert('設定已儲存');
-
         },
         error: function (response) {
             alert('未知錯誤，請聯繫管理員');
         }
     })
-       
+    
     } else {
         alert('請檢查輸入欄位是否正確');
-
     }
 }
 
-function selectStudyArea(id){
+function selectStudyArea(id, sa_name){
     // clear previous select
     $('#deployment').html('')
-    $('#studyarea-list .title-dark').removeClass("title-dark");
+    $('#studyarea-list .title-dark').removeClass("title-dark").removeClass('current_sa');
     $('#deployment-list').removeClass("d-none");
     $('#initial-content').addClass("d-none");
+    $('.sa-name').html(sa_name);
 
     let selector = '#' + id
-    $(selector).addClass("title-dark")
+    $(selector).addClass("title-dark").addClass('current_sa')
 
     // deployment
 
@@ -387,16 +452,24 @@ function selectStudyArea(id){
                     if ((response[i][j] == null)|(response[i][j] == 'null')){
                         response[i][j] = ""}
                 }
+                let d_checked
+                if (response[i][9]==true){
+                    d_checked='checked';
+                }
                 $('#deployment').append(`
-                <tr><td style="width: 20%">
-                    <input type="hidden" name="id" value="${response[i][0]}">
-                    <input type="text" name="name" class="form-control text-truncate" value="${response[i][1]}">
-                </td>
-                                        <td style="width: 17.5%"><input type="text" name="longitude" class="form-control" value="${response[i][2]}"></td>
-                                        <td style="width: 17.5%"><input type="text" name="latitude" class="form-control" value="${response[i][3]}"></td>
-                                        <td style="width: 15%"><input type="text" name="altitude" class="form-control" value="${response[i][4]}"></td>
-                                        <td style="width: 15%"><input type="text" name="vegetation" class="form-control" value="${response[i][5]}"></td>
-                                        <td style="width: 15%"><input type="text" name="landcover" class="form-control" value="${response[i][6]}"></td></tr>`)
+                <tr>
+                    <td>
+                        <input type="hidden" name="id" value="${response[i][0]}">
+                        <input type="text" name="name" class="form-control text-truncate" value="${response[i][1]}">
+                    </td>
+                    <td><input type="text" name="longitude" class="form-control" value="${response[i][2]}"></td>
+                    <td><input type="text" name="latitude" class="form-control" value="${response[i][3]}"></td>
+                    <td><input type="text" name="altitude" class="form-control" value="${response[i][4]}"></td>
+                    <td><input type="text" name="vegetation" class="form-control" value="${response[i][5]}"></td>
+                    <td><input type="text" name="landcover" class="form-control" value="${response[i][6]}"></td>
+                    <td><input type="checkbox" name="deprecated" value="${i}" ${d_checked}></td>
+                    <td><a class="removeButton btn bg-white text-gray" data-did="${response[i][0]}">x</a></td>
+                </tr>`)
             }
             // geodetic_datum
             $('.selectpicker').selectpicker('val', response[0][8]);
@@ -407,48 +480,151 @@ function selectStudyArea(id){
 }
 
 function addDeployment(){
-        $('#deployment').append(`<tr><td style="width: 20%">
-                            <input type="hidden" name="id">
-                            <input type="text" name="name" class="form-control"></td>
-                            <td style="width: 15%"><input type="text" name="longitude" class="form-control"></td>
-                            <td style="width: 15%"><input type="text" name="latitude" class="form-control"></td>
-                            <td style="width: 15%"><input type="text" name="altitude" value="" class="form-control"></td>
-                            <td style="width: 15%"><input type="text" name="vegetation" class="form-control"></td>
-                            <td style="width: 15%"><input type="text" name="landcover" class="form-control"></td>
-                            <td style="width: 5%"><a class="removeButton btn bg-white text-gray">x</a></td>
+    //目前的id到哪
+    let new_id = parseInt($('input[name=deprecated]').last().val()) + 1;
+    $('#deployment').append(`<tr>
+                                <td>
+                                    <input type="hidden" name="id">
+                                    <input type="text" name="name" class="form-control"></td>
+                                <td><input type="text" name="longitude" class="form-control"></td>
+                                <td><input type="text" name="latitude" class="form-control"></td>
+                                <td><input type="text" name="altitude" value="" class="form-control"></td>
+                                <td><input type="text" name="vegetation" class="form-control"></td>
+                                <td><input type="text" name="landcover" class="form-control"></td>
+                                <td><input type="checkbox" name="deprecated" value="${new_id}"></td>
+                                <td><a class="removeButton btn bg-white text-gray">x</a></td>
                             </tr>`)
-
 }
 
 
 
 $("#deployment-table").on("click", ".removeButton", function(event) {
-    $(this).closest("tr").remove();
+    let row = $(this).closest("tr");
+    if ($(this).data('did')==undefined){
+    // 如果是新增的相機位置 -> 直接刪除
+        row.remove();
+    } else {
+    // 如果是已存在的相機位置 -> 後端刪除
+        $.ajax({
+            type: 'GET',
+            url: "{% url 'delete_dep_sa' %}",
+            data: {'type': 'dep', 'id': $(this).data('did'), 'project_id': {{ pk }}},
+            success: function (response) {
+                if (response.status=='exists'){
+                    alert('欲刪除的相機位置下尚有影像，請先刪除影像或將影像搬移至其他相機位置')
+                } else if (response.status=='done') {
+                    alert('已成功刪除')
+                    row.remove();
+                }
+            },
+            error: function (response) {
+                alert('未知錯誤，請聯繫管理員');
+            }
+        })
+    }
 });
 
 
-$("#addStudyArea").keypress(function(e){
-    // remove last enter press
+
+$('#addSaModal').on('hidden.bs.modal', function() { 
     $(".is-invalid").removeClass("is-invalid").removeClass("was-validated");
+    $('#addStudyArea').val('');
+});
 
 
-  code = (e.keyCode ? e.keyCode : e.which);
+$('#editSaModal').on('shown.bs.modal', function() { 
+    $('#editStudyArea').val($('.current_sa .studyarea-name').html());
+    $('#editStudyArea-id').val($('.current_sa').attr('id'));
+});
 
-  if (code == 13)
-  {
-        let name = $(this).val();
+$('#editSaModal').on('hidden.bs.modal', function() { 
+    $(".is-invalid").removeClass("is-invalid").removeClass("was-validated");
+});
+
+
+function editSa(type){
+
+    $(".is-invalid").removeClass("is-invalid").removeClass("was-validated");
+    
+    if (type=='edit'){
+        let name = $('#editStudyArea').val();
+        // 也有可能是sub
+        let original_name = $('.current_sa .studyarea-name').html();
         name_list = []
         $('#studyarea-list div.studyarea-name').each(function(){
-            name_list.push($(this).text());
+            if ($(this).text() != original_name){
+            name_list.push($(this).text())
+            }
         });
         if (name=='' ){
-            $('#addStudyArea-feedback').html('請輸入樣區名稱');
-            $(this).addClass("is-invalid").addClass("was-validated");
+            $('#editStudyArea-feedback').html('樣區名稱為必填');
+            $('#editStudyArea').addClass("is-invalid").addClass("was-validated");
         } else if (name_list.includes(name)){
-            $('#addStudyArea-feedback').html('樣區名稱不得重複');
-            $(this).addClass("is-invalid").addClass("was-validated");
+            $('#editStudyArea-feedback').html('樣區名稱不得重複');
+            $('#editStudyArea').addClass("is-invalid").addClass("was-validated");
         } else {
+            
             $.ajax({
+                type: 'GET',
+                url: "{% url 'edit_sa' %}",
+                data: {'name': name, 'id': $('#editStudyArea-id').val()},
+                success: function (response) {
+                    // 修改左側列表名稱
+                    $('.current_sa .studyarea-name').html(name)
+                    // 修改右側大標
+                    $('.sa-name').html(name)
+                    $('#editSaModal').modal('hide');
+                    alert('設定已儲存')
+                },
+                error: function (response) {
+                    alert('未知錯誤，請聯繫管理員')
+                }
+            })
+            
+        }    
+    } else {
+        // delete
+        $.ajax({
+            type: 'GET',
+            url: "{% url 'delete_dep_sa' %}",
+            data: {'type': 'sa', 'id': $('#editStudyArea-id').val(), 'project_id': {{ pk }}},
+            success: function (response) {
+                if (response.status=='exists'){
+                    alert('欲刪除的樣區下尚有影像，請先刪除影像或將影像搬移至其他樣區')
+                } else if (response.status=='done') {
+                    alert('已成功刪除')
+                    $('.current_sa').parent().next('.collapse').remove()
+                    $('.current_sa').parent('li').remove()
+                    $('#editSaModal').modal('hide')
+                    // 右側恢復起始
+                    $('#initial-content').removeClass("d-none");
+                    $('#deployment-list').addClass("d-none");
+                }
+            },
+            error: function (response) {
+                alert('未知錯誤，請聯繫管理員');
+            }
+        })
+    }
+    
+}
+
+
+
+function addSa(){
+    let name = $('#addStudyArea').val();
+    name_list = []
+    $('#studyarea-list div.studyarea-name').each(function(){
+        name_list.push($(this).text());
+    });
+    if (name=='' ){
+        $('#addStudyArea-feedback').html('樣區名稱為必填');
+        $('#addStudyArea').addClass("is-invalid").addClass("was-validated");
+    } else if (name_list.includes(name)){
+        $('#addStudyArea-feedback').html('樣區名稱不得重複');
+        $('#addStudyArea').addClass("is-invalid").addClass("was-validated");
+    } else {
+        $.ajax({
             type: 'POST',
             url: "{% url 'add_studyarea' %}",
             data: {'name': name, 'project_id': {{ pk }}},
@@ -456,8 +632,8 @@ $("#addStudyArea").keypress(function(e){
             success: function (response) {
                 let new_id = response.study_area_id;
                 $('#addStudyArea-li').before(`
-                                    <li id="${new_id}" onClick="selectStudyArea(${new_id})" data-bs-toggle="collapse" href="#collapse_${new_id}" role="button" aria-expanded="false" aria-controls="collapse_">
-                                        <span style="font-size: 10px">●</span> ${name}
+                                    <li id="${new_id}" onClick="selectStudyArea(${new_id},'${name}')" data-bs-toggle="collapse" href="#collapse_${new_id}" role="button" aria-expanded="false" aria-controls="collapse_">
+                                        <div style="display: inline-block;" class="studyarea-name">${name}</div>
                                             </li>
                                     <div class="collapse" id="collapse_${new_id}">
                                         <!-- 新增子樣區 -->
@@ -469,16 +645,31 @@ $("#addStudyArea").keypress(function(e){
                                     </div>`)     
 
                 $('#addStudyArea').val('');
+                $('#addSaModal').modal('hide');
             },
             error: function (response) {
-                location.reload;
+                alert('未知錯誤，請聯繫管理員')
             }
-            })
-        }
+        })
+    }
+}
+
+/*
+$("#addStudyArea").keypress(function(e){
+    // remove last enter press
+    $(".is-invalid").removeClass("is-invalid").removeClass("was-validated");
+
+
+  code = (e.keyCode ? e.keyCode : e.which);
+
+  if (code == 13)
+  {
+
   }
-});
+});*/
 
 
+/*
 $(".addSubStudyArea").keypress(function(e){
     // remove last enter press
     $(".is-invalid").removeClass("is-invalid").removeClass("was-validated");
@@ -505,27 +696,22 @@ $(".addSubStudyArea").keypress(function(e){
             $('.addSubStudyArea-feedback').html('同一樣區內，子樣區名稱不得重複');
             $(this).addClass("is-invalid").addClass("was-validated");
         } else {
-
-
-        $.ajax({
-        type: 'POST',
-        url: "{% url 'add_studyarea' %}",
-        data: {'name': name, 'project_id': {{ pk }}, 'parent_id': parent},
-        headers:{"X-CSRFToken": $crf_token},
-        success: function (response) {
-            let new_id = response.study_area_id;
-            $(`#collapse_${parent} li:last`).before(`<li id="${new_id}" onClick="selectStudyArea(${new_id})"><span style="font-size: 10px">●</span> ${name}</li>`);
-        },
-        error: function (response) {
-            location.reload;
-        }
-
-        })
-        
-        
+            $.ajax({
+                type: 'POST',
+                url: "{% url 'add_studyarea' %}",
+                data: {'name': name, 'project_id': {{ pk }}, 'parent_id': parent},
+                headers:{"X-CSRFToken": $crf_token},
+                success: function (response) {
+                    let new_id = response.study_area_id;
+                    $(`#collapse_${parent} li:last`).before(`<li id="${new_id}" onClick="selectStudyArea(${new_id})"><span style="font-size: 10px">●</span> ${name}</li>`);
+                },
+                error: function (response) {
+                    alert('未知錯誤，請聯繫管理員')
+                }
+            })
         }
   }
-});
+});*/
 
 
 

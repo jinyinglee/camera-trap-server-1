@@ -34,4 +34,6 @@ urlpatterns = [
     path('get_sa_points', views.get_sa_points, name='get_sa_points'),
     path('get_subsa', views.get_subsa, name='get_subsa'),
     path('update_species_pie', views.update_species_pie, name='update_species_pie'),
+    path('delete_dep_sa', views.delete_dep_sa, name='delete_dep_sa'),
+    path('edit_sa', views.edit_sa, name='edit_sa'),
 ]
