@@ -213,9 +213,9 @@
        gapIndex: $('#form-gapindex').val(),
        year: {% if request.GET.year %}{{ request.GET.year }}{% endif %}
      };
-     console.log(e.target.dataset.saindex, '--');
+     //console.log(e.target.dataset.saindex, '--');
      const gapID = parseInt($('#form-gap-id').val(), 10);
-     const host = 'http://127.0.0.1:8000'
+     const host = `${window.location.protocol}//${window.location.host}`;
      const url = `${host}/api/deployment_journals/${gapID}/`;
      //console.log(url);
      fetch(url, {
@@ -303,7 +303,6 @@
   </div>
 </div>
 <!-- end Modal -->
-
 <div class="container box">
   <div class="row pb-2 pt-4 header overflow-auto">
         <div class="col-12">
@@ -343,7 +342,6 @@
       <hr>
     </div>
   </div>
-
   <div class="row">
     <div class="col-12">
       <h4>每月相機運作比例</h4>

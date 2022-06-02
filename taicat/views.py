@@ -1293,7 +1293,7 @@ def api_update_deployment_journals(request, pk):
             if text := data.get('text'):
                 dj.gap_caused = text
                 is_changed = True
-            if choice := data.get('choice'):
+            elif choice := data.get('choice'):
                 dj.gap_caused = choice
                 is_changed = True
 
