@@ -1296,6 +1296,9 @@ def api_update_deployment_journals(request, pk):
             elif choice := data.get('choice'):
                 dj.gap_caused = choice
                 is_changed = True
+            else:
+                dj.gap_caused = ''
+                is_changed = True
 
             if is_changed:
                 dj.last_updated = datetime.datetime.now()
