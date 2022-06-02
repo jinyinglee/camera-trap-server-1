@@ -202,9 +202,17 @@ def update_species_pie(request):
 
         # deployments
         if sa_list:
-            query = f"SELECT id, longitude, latitude, name FROM taicat_deployment WHERE study_area_id IN ({','.join(sa_list)}) ORDER BY longitude DESC;"
+            # 抓子樣區 
+            query = f"""SELECT sas.longitude, sas.latitude, sa.name, TRUE as sub, sa.id FROM taicat_studyareastat sas
+                        JOIN taicat_studyarea sa ON sas.studyarea_id = sa.id
+                        WHERE sas.studyarea_id IN ({','.join(sa_list)}) 
+                        UNION 
+                        SELECT longitude, latitude, name, FALSE as sub, NULL FROM taicat_deployment WHERE study_area_id = {sa} 
+                        ORDER BY longitude DESC;"""
+            # 抓該樣區底下的相機位置
+            
         else:
-            query = f"""SELECT id, longitude, latitude, name FROM taicat_deployment WHERE study_area_id = {sa} ORDER BY longitude DESC;"""
+            query = f"""SELECT longitude, latitude, name, FALSE as sub FROM taicat_deployment WHERE study_area_id = {sa} ORDER BY longitude DESC;"""
 
         with connection.cursor() as cursor:
             cursor.execute(query)

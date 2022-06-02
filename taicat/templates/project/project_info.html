@@ -729,18 +729,52 @@ function setSpeciesPie(pie_data, other_data, deployment_points){
     $('.myStudyAreaIcon').remove();
 
     if (deployment_points.length > 0){
-        map.setView([deployment_points[0][2],deployment_points[0][1]]);
-        deployment_points.forEach(
-        (r) =>
-            (marker = new L.marker([r[2], r[1]], { icon: DeploymentIcon })
-            .on("mouseover", function (e) {
-                e.target.setIcon(DeploymentIconSelect);                                 
-            })
-            .on("mouseout", function (e) {
-                e.target.setIcon(DeploymentIcon);                                     
-            })                        
-            .bindTooltip(r[3], { permanent: true, direction: 'top' })
-            .addTo(map))
+        map.setView([deployment_points[0][1],deployment_points[0][0]]);
+        deployment_points.forEach(function(r){
+                if (r[3] == false ){ // 不是子樣區, 是相機位置
+                    marker = new L.marker([r[1], r[0]], { icon: DeploymentIcon })
+                    .on("mouseover", function (e) {
+                        e.target.setIcon(DeploymentIconSelect);                                 
+                    })
+                    .on("mouseout", function (e) {
+                        e.target.setIcon(DeploymentIcon);                                     
+                    })                        
+                    .bindTooltip(r[2], { permanent: true, direction: 'top' })
+                    .addTo(map)
+                } else {
+                    marker = new L.marker([r[1], r[0]], { icon: StudyAreaIcon })
+                    .on("mouseover", function (e) {
+                        e.target.setIcon(StudyAreaIconSelect);                                 
+                    })
+                    .on("mouseout", function (e) {
+                        e.target.setIcon(StudyAreaIcon);                                     
+                    })
+                    .on("click", function (e) {
+                        // 如果是子樣區？
+                        $('.subsa-select').val(r[4]);
+                        updateSpeciesPie();
+                        /*
+                        $('#species-pie').html('<div class="loader"></div>');
+                        $.ajax({
+                            data: {'said': i[3]},            
+                            url: "{% url 'update_species_pie' %}",
+                            success: function(response){
+                                $('#sa-title').html(i[2]);
+                                $('#species-count-title').html(response.species_count);
+                                $('#species_last_updated').html(response.species_last_updated);
+                                setSpeciesPie(response.pie_data, response.other_data, response.deployment_points);
+                                // show deployment
+                            }
+                        })
+                        */
+                    })
+
+                    .bindTooltip(r[2], { permanent: true, direction: 'top' })
+                    .addTo(map)
+
+                }
+            
+        }
         );
     }
 }
@@ -769,6 +803,7 @@ $('.subsa-select').on('change',function(){
             },
             error: function(request){
                 alert('發生未知錯誤，請通知管理員')
+                
             }
             
         })
@@ -829,8 +864,6 @@ function updateSpeciesPie(){
         title = '全部'
     }
 
-    console.log(title)
-
     let start_date = $('input[name="start_date"]').val()
     let end_date = $('input[name="end_date"]').val()
 
@@ -841,7 +874,7 @@ function updateSpeciesPie(){
         $('#species-count-title').html({{ species_count }});
         $('#species_last_updated').html({{ response.species_last_updated }});
     } else {
-        $('#species-pie').html('<div class="loader"></div>');
+        $('#species-pie').append('<div class="loader"></div>');
         $.ajax({
             data: {'said': said, 'start_date': start_date, 'end_date': end_date},            
             url: "{% url 'update_species_pie' %}",
@@ -853,6 +886,11 @@ function updateSpeciesPie(){
                 if (title=='全部'){
                     getSaPoints({{ sa_list | safe }})
                 };
+            },
+            error: function(){
+                alert('未知錯誤，請聯繫管理員');
+                $('.loader').remove();
+
             }
         })
     }
