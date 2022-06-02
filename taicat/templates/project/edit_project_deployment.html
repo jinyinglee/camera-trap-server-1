@@ -545,7 +545,7 @@ $('#editSaModal').on('hidden.bs.modal', function() {
 function editSa(type){
 
     $(".is-invalid").removeClass("is-invalid").removeClass("was-validated");
-    
+
     if (type=='edit'){
         let name = $('#editStudyArea').val();
         // 也有可能是sub
@@ -632,9 +632,9 @@ function addSa(){
             success: function (response) {
                 let new_id = response.study_area_id;
                 $('#addStudyArea-li').before(`
-                                    <li id="${new_id}" onClick="selectStudyArea(${new_id},'${name}')" data-bs-toggle="collapse" href="#collapse_${new_id}" role="button" aria-expanded="false" aria-controls="collapse_">
-                                        <div style="display: inline-block;" class="studyarea-name">${name}</div>
-                                            </li>
+                                    <li>
+                                        <div style="display: inline-block;" class="studyarea-name" id="${new_id}" onClick="selectStudyArea(${new_id},'${name}')" data-bs-toggle="collapse" href="#collapse_${new_id}" role="button" aria-expanded="false" aria-controls="collapse_">${name}</div>
+                                    </li>
                                     <div class="collapse" id="collapse_${new_id}">
                                         <!-- 新增子樣區 -->
                                         <!--
