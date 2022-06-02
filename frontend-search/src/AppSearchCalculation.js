@@ -19,7 +19,7 @@ const AppSearchCalculation = ({calcData, setCalcData}) => {
               labelId="label-session"
               value={calcData.session}
               label="回合"
-              onChange={(e)=>setCalcData({...calcData, session: e.target.value})}
+              onChange={(e)=>setCalcData({type: 'setCalcData', name: 'session', value: e.target.value})}
             >
               <MenuItem value="month">月</MenuItem>
             </Select>
@@ -32,7 +32,7 @@ const AppSearchCalculation = ({calcData, setCalcData}) => {
               labelId="label-image-interval"
               value={calcData.imageInterval}
               label="有效照片間隔"
-              onChange={(e)=>setCalcData({...calcData, imageInterval: e.target.value})}
+              onChange={(e)=>setCalcData({type: 'setCalcData', name:'imageInterval', value: e.target.value})}
             >
               <MenuItem value="30">30 分鐘</MenuItem>
               <MenuItem value="60">60 分鐘</MenuItem>
@@ -46,7 +46,7 @@ const AppSearchCalculation = ({calcData, setCalcData}) => {
               labelId="label-event-interval"
               value={calcData.eventInterval}
               label="目擊事件間隔"
-              onChange={(e)=>setCalcData({...calcData, eventInterval: e.target.value})}
+              onChange={(e)=>setCalcData({type: 'setCalcData',name:'eventInterval', value: e.target.value})}
             >
               <MenuItem value="2">2 分鐘</MenuItem>
               <MenuItem value="5">5 分鐘</MenuItem>
@@ -63,7 +63,7 @@ const AppSearchCalculation = ({calcData, setCalcData}) => {
               labelId="label-calc-type"
               value={calcData.calcType}
               label="計算項目"
-              onChange={(e)=>setCalcData({...calcData, calcType: e.target.value})}
+              onChange={(e)=>setCalcData({type: 'setCalcData', name:'calcType', value: e.target.value})}
             >
               <MenuItem value="basic">基本（相機工作時數, 有效照片數, 目擊事件數, OI3）</MenuItem>
               <MenuItem value="pod">捕獲回合比例、存缺</MenuItem>
@@ -78,7 +78,7 @@ const AppSearchCalculation = ({calcData, setCalcData}) => {
               labelId="label-file-format"
               value={calcData.fileFormat}
               label="檔案格式"
-              onChange={(e)=>setCalcData({...calcData, fileFormat: e.target.value})}
+              onChange={(e)=>setCalcData({type: 'setCalcData', name:'fileFormat', value:e.target.value})}
             >
               {/*<MenuItem value="csv">csv</MenuItem>*/}
               <MenuItem value="excel">Excel (xlsx)</MenuItem>

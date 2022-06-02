@@ -366,7 +366,7 @@
               <tr>
                 <th scope="row">{{ deployment.name }}</th>
                 {% for x in deployment.items %}
-                <td>{#<span data-toggle="tooltip" data-placement="bottom" title="{{ x.1.0 }}/{{ x.1.1 }} （相機有運作天數 / 當月天數）<br/>{{ x.1.2 }}" data-bs-html="true">{{ x.0|floatformat:2 }}%</span>#}<button type="button" class="btn month-detail" data-bs-toggle="modaxl" data-bs-target="#exampleModal" data-detail="{{ x.1 }}">{{ x.0|floatformat:2 }} <br /> {{ x.2.0|floatformat:2 }}{% if x.2.0 > 0 %}<br/><small>({{ x.2.1}} / {{ x.2.2 }})</small>{% endif %}</button></td>
+                <td>{#<span data-toggle="tooltip" data-placement="bottom" title="{{ x.1.0 }}/{{ x.1.1 }} （相機有運作天數 / 當月天數）<br/>{{ x.1.2 }}" data-bs-html="true">{{ x.0|floatformat:2 }}%</span>#}<button type="button" class="btn month-detail" data-bs-toggle="modal" data-bs-target="#exampleModal" data-detail="{{ x.1 }}">{{ x.0|floatformat:2 }} <br /> {{ x.2.0|floatformat:2 }}{% if x.2.0 > 0 %}<br/><small>({{ x.2.1}} / {{ x.2.2 }})</small>{% endif %}</button></td>
                 {% endfor %}
                 <td>{{ deployment.ratio_year|floatformat:2  }}</td>
                 <td>{% for gap in deployment.gaps %}
