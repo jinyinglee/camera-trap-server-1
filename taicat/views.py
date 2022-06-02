@@ -993,14 +993,18 @@ def project_oversight(request, pk):
         if (pk in list(public_ids)) or is_authorized:
             project = Project.objects.get(pk=pk)
 
-            proj_stats = project.get_or_count_stats()
-            return render(request, 'project/project_oversight.html', {
-                'project': project,
-                'gap_caused_choices': DeploymentJournal.GAP_CHOICES,
-                'month_label_list': [f'{x} 月'for x in range(1, 13)],
-                'result': proj_stats['years'][year] if year else [],
-                'year_list': [ y for y in proj_stats['years']]
-            })
+            if proj_stats := project.get_or_count_stats():
+                return render(request, 'project/project_oversight.html', {
+                    'project': project,
+                    'gap_caused_choices': DeploymentJournal.GAP_CHOICES,
+                    'month_label_list': [f'{x} 月'for x in range(1, 13)],
+                    'result': proj_stats['years'][year] if year else [],
+                    'year_list': [ y for y in proj_stats['years']]
+                })
+            else:
+                return render(request, 'project/project_oversight.html', {
+                    'project': project,
+                })
         else:
             return ''
 

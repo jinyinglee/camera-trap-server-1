@@ -162,7 +162,7 @@ const AppSearch = () => {
     const p2 = JSON.stringify(p1);
     searchApiUrl = `${searchApiUrl}&pagination=${p2}`;
 
-    //dispatch({type: 'startLoading'});
+    dispatch({type: 'startLoading'});
     console.log('fetch:', searchApiUrl);
     fetch(encodeURI(searchApiUrl), {
       //body: JSON.stringify({filter: formData}),
@@ -178,10 +178,13 @@ const AppSearch = () => {
       .then(data => {
         console.log('resp', data)
         dispatch({type: 'setResult', value: data});
+      }).catch((error) => {
+        console.log('fetchData error: ', error.message);
+        dispatch({type: 'stopLoading'});
       });
   };
 
-  const fetchDeploymentList = (projectId, projects, index) => {
+  const fetchDeploymentList = (projectId, projects) => {
     let studyareaApiUrl = `${apiPrefix}deployments?project_id=${projectId}`;
 
     dispatch({type: 'startLoading'});
@@ -200,7 +203,12 @@ const AppSearch = () => {
         let newDeploymentDict = state.options.deploymentDict || {};
         newDeploymentDict[projectId] = data.data;
         dispatch({type: 'setDeploymentFilter', value: newDeploymentDict, projects: projects});
+      }).catch((error) => {
+        console.log('fetchDeploymentList error: ', error.message);
+        dispatch({type: 'stopLoading'});
       });
+
+        dispatch({type: 'startLoading'});
   };
 
   const handleSubmit = () => {
@@ -286,12 +294,10 @@ const AppSearch = () => {
                   const newArr = [...state.filter.projects];
                   if (v === null) {
                     newArr[index] = {};
+                    dispatch({type: 'setFilter', name: 'projects', value: newArr});
                   } else {
                     newArr[index].project = v;
-                  }
-                  //dispatch({type: 'setFilter', name: 'projects', value: newArr});
-                  if (v !== null) {
-                    fetchDeploymentList(v.id, newArr, index);
+                    fetchDeploymentList(v.id, newArr);
                   }
                 }}
               />
@@ -325,15 +331,15 @@ const AppSearch = () => {
                    const newArr = [...state.filter.projects];
                    newArr[index].studyareas = v;
                    const studyareaIds = [];
-                   const deploymentIds = [];
-                   for(const i in v) {
-                     studyareaIds.push(v[i].studyarea_id);
-                     for (const j in v[i].deployments) {
-                       deploymentIds.push(v[i].deployments[j].deployment_id);
-                     }
-                   }
-                   newArr[index].studyareaIds = studyareaIds;
-                   newArr[index].deploymentIds = deploymentIds;
+                   //const deploymentIds = [];
+                   //for(const i in v) {
+                   //  studyareaIds.push(v[i].studyarea_id);
+                   //  for (const j in v[i].deployments) {
+                   //    deploymentIds.push(v[i].deployments[j].deployment_id);
+                   //  }
+                   //}
+                   //newArr[index].studyareaIds = studyareaIds;
+                   //newArr[index].deploymentIds = deploymentIds;
                    dispatch({type:'setFilter', name:'projects', value:newArr});
                  }}
                />
@@ -357,7 +363,7 @@ const AppSearch = () => {
                  onChange={(e, v) => {
                    const newArr = [...state.filter.projects];
                    newArr[index].deployments = v;
-                   newArr[index].deploymentIds = v.map((x)=>x.deployment_id);
+                   //newArr[index].deploymentIds = v.map((x)=>x.deployment_id);
                    dispatch({type: 'setFilter', name: 'projects', value: newArr});
                  }}
                />

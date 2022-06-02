@@ -535,25 +535,44 @@ def calc(query, calc_data):
     # group by species
     species_list = query.values('species').annotate(count=Count('species')).order_by()
     # group by deployment
-    deployment_list = query.values('deployment', 'deployment__name').annotate(count=Count('deployment')).order_by()
+    deployment_list = query.values('deployment_id').annotate(count=Count('deployment')).order_by()
+    proj_info = {}
+    for d in deployment_list:
+        if deployment := Deployment.objects.get(pk=d['deployment_id']):
+            pid = deployment.project_id
+            if pid not in proj_cached:
+                cached = deployment.project.get_or_count_stats()
+                w = cached['working__range']
+                proj_info[pid] ={
+                    'deployments': [],
+                    #'cached': deployment.project.get_or_count_stats()
+                    'working_range': [datetime.fromtimestamp(w[0]), datetime.fromtimestamp(w[1])]
+                }
+            proj_info[pid]['deployments'].append(deployment)
 
     #print(species_list.query, species_list, flush=True)
-    #print(deployment_list, agg, query.query)
+    print(deployment_list, query.query)
+    print(proj_info)
     for species in species_list:
         species_name = species['species']
         results[species_name] = []
+        #for year in range(start_dt.year, end_dt.year+1):
+        #    for month in range(1, 13):
         # default round: month
-        for year in range(2017, 2018):
-            for month in range(1, 13):
-                for dep in deployment_list:
-                    deployment = Deployment.objects.get(pk=dep['deployment'])
-                    res = deployment.calculate(year, month, species_name, 60, 60) # TODO
-                    results[species_name].append({
-                        'name': deployment.name,
-                        'year': year,
-                        'month': month,
-                        'calc': res,
-                    })
+        #for year in range(2017, 2018):
+        #    for month in range(1, 13):
+        #for dep in deployment_list:
+        #    deployment = Deployment.objects.get(pk=dep['deployment'])
+        #    print (deployment.project)
+        '''
+            res = deployment.calculate(year, month, species_name, 60, 60) # TODO
+            results[species_name].append({
+                'name': deployment.name,
+                'year': year,
+                'month': month,
+                'calc': res,
+            })
+        '''
 
     return results
 

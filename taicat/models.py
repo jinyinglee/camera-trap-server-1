@@ -346,21 +346,23 @@ class Project(models.Model):
             Max('working_end'), Min('working_start'))
 
         # deploymeont journal
-        deps = self.get_deployment_list(as_object=True)
-        end_year = result2['working_end__max'].year
-        start_year = result2['working_start__min'].year
-        year_list = list(range(start_year, end_year+1))
-        data = self.count_deployment_journal(year_list)
+        if result2['working_end__max'] is not None and result2['working_start__min'] is not None:
+            deps = self.get_deployment_list(as_object=True)
+            end_year = result2['working_end__max'].year
+            start_year = result2['working_start__min'].year
+            year_list = list(range(start_year, end_year+1))
+            data = self.count_deployment_journal(year_list)
 
-        value = {
-            'datetime__range': [result['datetime__min'].timestamp(), result['datetime__max'].timestamp()],
-            'working__range': [result2['working_start__min'].timestamp(), result2['working_end__max'].timestamp()],
-            'updated': time.time(),
-            'elapsed': time.time() - start_count,
-            'years': data,
-        }
-
-        return value
+            value = {
+                'datetime__range': [result['datetime__min'].timestamp(), result['datetime__max'].timestamp()],
+                'working__range': [result2['working_start__min'].timestamp(), result2['working_end__max'].timestamp()],
+                'updated': time.time(),
+                'elapsed': time.time() - start_count,
+                'years': data,
+            }
+            return value
+        else:
+            return None
 
     def get_or_count_stats(self, force=False):
         key = f'project-{self.id}-stats'
@@ -370,9 +372,10 @@ class Project(models.Model):
             f = p.open()
             return json.loads(f.read())
         else:
-            value = self.count_stats()
-            self.write_stats(value)
-            return value
+            if value := self.count_stats():
+                self.write_stats(value)
+                return value
+            return None
 
     def write_stats(self, data):
         key = f'project-{self.id}-stats'

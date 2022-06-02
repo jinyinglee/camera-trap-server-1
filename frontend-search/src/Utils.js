@@ -15,27 +15,31 @@ const cleanFormData = (formData, depOptions) => {
       cleaned[v] = format(formData[v], 'yyyy-MM-dd');
     } else if ( v === 'projects') {
       let deploymentIds = [];
+      // console.log(formData);
       for (const i in formData['projects']) {
-        deploymentIds = deploymentIds.concat(formData['projects'][i].deploymentIds);
-        /*
-        if (formData['projects'][i].deployments && formData['projects'][i].deployments.length > 0) {
-          //cleaned['deployments'] = formData['projects'][i].deployments.map(x=>x.deployment_id);
-          cleaned['deployments'] = formData['projects'][i].deploymentIds;
-        } else if (formData[v][i].studyareas && formData[v][i].studyareas.length > 0) {
+        const projectId = formData['projects'][i].project.id;
+        if (formData['projects'][i].hasOwnProperty('deployments') && formData['projects'][i].deployments.length > 0) {
+          deploymentIds = formData['projects'][i].deployments.map(x => x.deployment_id);
+        } else if (formData['projects'][i].hasOwnProperty('studyareas') && formData['projects'][i].studyareas.length > 0) {
           for (const j in formData['projects'][i].studyareas) {
-            //cleaned['studyareas'] = formData['projects'][i].studyareas.map(x=>x.studyarea_id);
-            cleaned['studyareas'] = formData['projects'][i].studyareaIds;
+            const foundIndex = depOptions[projectId].findIndex( x => x.studyarea_id === formData['projects'][i].studyareas[j].studyarea_id);
+            if (foundIndex >= 0) {
+              const values = depOptions[projectId][foundIndex].deployments.map(x => x.deployment_id);
+              deploymentIds = deploymentIds.concat(values);
+            }
           }
-        } else {
-          //cleaned['projects'] = formData['projects'].filter((x)=> x.project && x.project.id).map(x => x.project.id);
-          //console.log()
-          if (cleaned['projects'].length <= 0) {
-            delete cleaned.projects
+
+        } else if (formData['projects'][i].hasOwnProperty('project')) {
+          for (const sa in depOptions[projectId]) {
+            const values = depOptions[projectId][sa].deployments.map(x => x.deployment_id);
+            deploymentIds = deploymentIds.concat(values);
           }
         }
-        */
       }
       cleaned['deployments'] = deploymentIds;
+      if (cleaned['deployments'].length <= 0) {
+        delete cleaned.deployments
+      }
     } else if (formData[v]) {
       // other
       cleaned[v] = formData[v];
