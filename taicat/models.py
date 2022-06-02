@@ -447,6 +447,8 @@ class Deployment(models.Model):
     landcover = models.CharField('土地覆蓋類型', max_length=1000, blank=True, null=True)
     vegetation = models.CharField('植被類型', max_length=1000, blank=True, null=True)
     verbatim_locality = models.CharField(max_length=1000, blank=True, null=True)
+    # 是否已棄用
+    deprecated = models.BooleanField(default=False, blank=True)
 
     def __str__(self):
         return f'<Deployment {self.name}>'

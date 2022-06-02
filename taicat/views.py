@@ -17,7 +17,7 @@ import datetime
 from tempfile import NamedTemporaryFile
 from urllib.parse import quote
 # from datetime import datetime, timedelta, timezone
-from django.db.models import Count, Window, F, Sum, Min, Q, Max, Func, Value, CharField
+from django.db.models import Count, Window, F, Sum, Min, Q, Max, Func, Value, CharField, DateTimeField, ExpressionWrapper
 from django.db.models.functions import Trunc, ExtractYear
 from django.contrib import messages
 from django.core import serializers
@@ -51,9 +51,264 @@ from operator import itemgetter
 from dateutil import parser
 from django.test.utils import CaptureQueriesContext
 from base.utils import DecimalEncoder
-from taicat.utils import half_year_ago
+from taicat.utils import half_year_ago, get_project_member, delete_image_by_ids
 
 from openpyxl import Workbook
+
+
+def edit_sa(request):
+    if request.method == 'GET':
+        name = request.GET.get('name')
+        id = request.GET.get('id')
+        StudyArea.objects.filter(id=id).update(name = name)
+        response = {'status': 'done'}
+        return HttpResponse(json.dumps(response), content_type='application/json')
+
+
+def delete_dep_sa(request):
+    if request.method == 'GET':
+        # TODO 先確認底下有沒有照片，如果有的話不能刪除
+        type = request.GET.get('type')
+        id = request.GET.get('id')
+        project_id = request.GET.get('project_id')
+        response = {}
+        if type == 'sa':
+            if Image.objects.filter(studyarea_id=id).exists():
+                response = {'status': 'exists'}
+            # StudyArea.objects.filter(id=id).delete()
+            # 修改樣區數量
+            else:
+                StudyArea.objects.filter(id=id).delete()
+                # 修改相機位置數量 
+                if ProjectStat.objects.filter(project_id=project_id).exists():
+                    ProjectStat.objects.filter(project_id=project_id).update(num_sa = StudyArea.objects.filter(project_id=project_id).count())
+                response = {'status': 'done'}
+        elif type =='dep':
+            if Image.objects.filter(deployment_id=id).exists():
+                response = {'status': 'exists'}
+            else:
+                Deployment.objects.filter(id=id).delete()
+                # 修改相機位置數量 
+                if ProjectStat.objects.filter(project_id=project_id).exists():
+                    ProjectStat.objects.filter(project_id=project_id).update(num_deployment = Deployment.objects.filter(project_id=project_id).count())
+                response = {'status': 'done'}
+        # response = {'d': 'done'}
+        return HttpResponse(json.dumps(response), content_type='application/json')
+
+def get_sa_points(request):
+    sa_list = request.GET.getlist('sa[]')
+    sa_points = []
+    if sa_list:
+        with connection.cursor() as cursor:
+            query = f"""SELECT sas.longitude, sas.latitude, sa.name, sa.id  
+                        FROM taicat_studyareastat sas  
+                        JOIN taicat_studyarea sa ON sas.studyarea_id = sa.id
+                        WHERE sas.studyarea_id IN ({','.join(sa_list)});"""
+            cursor.execute(query)
+            sa_points = cursor.fetchall()
+        
+    response = {'sa_points': sa_points}
+    return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
+
+
+def get_subsa(request):
+    # 取得子樣區及行程列表
+    said = request.GET.get('said')
+    subsas = []
+    if said:
+        with connection.cursor() as cursor:
+            query = f"""SELECT id, name
+                        FROM taicat_studyarea   
+                        WHERE parent_id = {said};"""
+            cursor.execute(query)
+            subsas = cursor.fetchall()
+        
+    response = {'subsas': subsas}
+    return HttpResponse(json.dumps(response), content_type='application/json')
+
+
+def update_species_pie(request):
+
+    # 根據filter (樣區,子樣區, 行程) 更新物種圓餅圖
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    date_filter = ''
+    if (start_date and end_date):
+        start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+        end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
+        date_filter = " AND datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
+    elif start_date:
+        date_filter = " AND datetime > '{}'".format(start_date)
+    elif end_date:
+        end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
+        date_filter = " AND datetime < '{}'".format(start_date)
+
+    # print(date_filter)
+
+    species_count = 0
+    species_last_updated = None
+    species_total_count = 0
+    pie_data = []
+    other_data = []
+    deployment_points = []
+    if sa := request.GET.get('said'):
+        # 確定有沒有子樣區
+        subsa = StudyArea.objects.filter(parent_id=sa)
+        sa_list = [str(s.id) for s in subsa]
+        # pie data
+        if sa_list:
+            query = f"select count(*) from taicat_image where studyarea_id IN ({','.join(sa_list)})"
+        else:
+            query = f"select count(*) from taicat_image where studyarea_id={sa}"
+        if date_filter:
+            query += date_filter
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            species_total_count = cursor.fetchall()
+            species_total_count = species_total_count[0][0]
+
+        others = {'name': '其他物種', 'count': 0, 'y': 0}
+        # 取前8名，剩下的統一成其他
+        if species_total_count:
+            species_last_updated = timezone.now() + timedelta(hours=8)
+            species_last_updated = datetime.datetime.strftime(species_last_updated,'%Y-%m-%d') 
+            pre_q = Image.objects
+            if sa_list:
+                pre_q = pre_q.filter(studyarea_id__in=sa_list)
+            else:
+                pre_q = pre_q.filter(studyarea_id=sa)
+            if start_date:
+                pre_q = pre_q.filter(datetime__gte=start_date)
+            if end_date:
+                pre_q = pre_q.filter(datetime__lt=end_date)
+
+            query = pre_q.values('species').annotate(total=Count('species')).order_by('-total')
+            c = 0
+            for i in query:
+                if i['species'] == '':
+                    s_name = '未填寫'
+                else:
+                    s_name = i['species']
+                    species_count += 1
+                c += 1
+                if c < 9:
+                    pie_data += [{'name': s_name, 'y': round(i['total']/species_total_count*100, 2), 'count': i['total']}]
+                else:
+                    other_data += [{'name': s_name, 'y': round(i['total']/species_total_count*100, 2), 'count': i['total']}]
+                    others.update({'count': others['count']+i['total']})
+            if others['count'] > 0:
+                others.update({'y': round(others['count']/species_total_count*100, 2)})
+                pie_data += [others]
+
+        # deployments
+        if sa_list:
+            query = f"SELECT id, longitude, latitude, name FROM taicat_deployment WHERE study_area_id IN ({','.join(sa_list)}) ORDER BY longitude DESC;"
+        else:
+            query = f"""SELECT id, longitude, latitude, name FROM taicat_deployment WHERE study_area_id = {sa} ORDER BY longitude DESC;"""
+
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            deployment_points = cursor.fetchall()
+            
+    elif pk := request.GET.get('said[project]'):
+        deployment_points = []
+        query = f"select count(*) from taicat_image where project_id={pk}"
+        if date_filter:
+            query += date_filter
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            species_total_count = cursor.fetchall()
+            species_total_count = species_total_count[0][0]
+        
+        others = {'name': '其他物種', 'count': 0, 'y': 0}
+        # 取前8名，剩下的統一成其他
+        if species_total_count:
+            species_last_updated = timezone.now() + timedelta(hours=8)
+            species_last_updated = datetime.datetime.strftime(species_last_updated,'%Y-%m-%d') 
+            pre_q = Image.objects.filter(project_id=pk)
+            if start_date:
+                pre_q = pre_q.filter(datetime__gte=start_date)
+            if end_date:
+                pre_q = pre_q.filter(datetime__lt=end_date)
+
+            query = pre_q.values('species').annotate(total=Count('species')).order_by('-total')
+            c = 0
+            for i in query:
+                if i['species'] == '':
+                    s_name = '未填寫'
+                else:
+                    s_name = i['species']
+                    species_count += 1
+                c += 1
+                if c < 9:
+                    pie_data += [{'name': s_name, 'y': round(i['total']/species_total_count*100, 2), 'count': i['total']}]
+                else:
+                    other_data += [{'name': s_name, 'y': round(i['total']/species_total_count*100, 2), 'count': i['total']}]
+                    others.update({'count': others['count']+i['total']})
+            if others['count'] > 0:
+                others.update({'y': round(others['count']/species_total_count*100, 2)})
+                pie_data += [others]
+
+
+    response = {'pie_data': pie_data, 'other_data': other_data, 'species_count': species_count, 
+                'species_last_updated': species_last_updated, 'deployment_points': deployment_points}
+
+    return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
+
+
+def project_info(request, pk):
+    project = Project.objects.get(id=pk)
+    is_authorized = check_if_authorized(request, pk)
+    sa = StudyArea.objects.filter(project_id=pk, parent_id__isnull=True)
+    sa_list = [str(s.id) for s in sa]
+    sa_center = [23.5, 121.2]
+    zoom = 6
+    if sa:
+        sa_point = Deployment.objects.filter(study_area_id__in=sa_list, latitude__isnull = False, longitude__isnull = False).order_by('-latitude').values('latitude', 'longitude').first()
+        if sa_point:
+            sa_center = [float(sa_point['latitude']),float(sa_point['longitude'])]
+            zoom = 8
+
+    species_count = 0
+    species_last_updated = None
+
+    query = f"select sum(count) from taicat_projectspecies where project_id={pk};"
+    with connection.cursor() as cursor:
+        cursor.execute(query)
+        species_total_count = cursor.fetchall()
+        species_total_count = species_total_count[0][0]
+
+    pie_data = []
+    others = {'name': '其他物種', 'count': 0, 'y': 0}
+    other_data = []
+    # 取前8名，剩下的統一成其他
+    if species_total_count:
+        if ProjectSpecies.objects.filter(project_id=pk).exists():
+            species_count = ProjectSpecies.objects.filter(project_id=pk).exclude(name='').values('name').distinct().count()
+            species_last_updated = ProjectSpecies.objects.filter(project_id=pk).annotate(
+                last_updated_8=ExpressionWrapper(
+                    F('last_updated') + timedelta(hours=8),
+                    output_field=DateTimeField()
+                )).latest('last_updated_8').last_updated_8
+            c = 0
+            for i in ProjectSpecies.objects.filter(project_id=pk).order_by('-count'):
+                s_name = '未填寫' if i.name == '' else i.name
+                c += 1
+                if c < 9:
+                    pie_data += [{'name': s_name, 'y': round(i.count/species_total_count*100, 2), 'count': i.count}]
+                else:
+                    other_data += [{'name': s_name, 'y': round(i.count/species_total_count*100, 2), 'count': i.count}]
+                    others.update({'count': others['count']+i.count})
+            if others['count'] > 0:
+                others.update({'y': round(others['count']/species_total_count*100, 2)})
+                pie_data += [others]
+
+
+    return render(request, 'project/project_info.html', {'pk': pk, 'project': project, 'is_authorized': is_authorized,
+                                                        'sa_point': sa_center, 'species_count': species_count, 'sa': sa,
+                                                        'species_last_updated': species_last_updated, 'pie_data': pie_data,
+                                                        'other_data': other_data, 'sa_list': sa_list, 'zoom':zoom})
+
 
 def delete_data(request, pk):
     species_list = []
@@ -61,7 +316,7 @@ def delete_data(request, pk):
         image_list = request.POST.getlist('image_id[]')
         species_list = delete_image_by_ids(image_list)
 
-    response = {'species': species}
+    response = {'species': species_list}
     return JsonResponse(response, safe=False)  # or JsonResponse({'data': data})
 
 
@@ -327,7 +582,9 @@ def get_deployment(request):
         id = request.POST.get('study_area_id')
 
         with connection.cursor() as cursor:
-            query = """SELECT id, name, longitude, latitude, altitude, landcover, vegetation, verbatim_locality, geodetic_datum FROM taicat_deployment WHERE study_area_id = {};"""
+            query = """SELECT id, name, longitude, latitude, altitude, landcover, vegetation, verbatim_locality, 
+                        geodetic_datum, deprecated FROM taicat_deployment 
+                        WHERE study_area_id = {} ORDER BY id ASC;"""
             cursor.execute(query.format(id))
             data = cursor.fetchall()
 
@@ -349,8 +606,13 @@ def add_deployment(request):
         landcovers = res.getlist('landcovers[]')
         vegetations = res.getlist('vegetations[]')
         did = res.getlist('did[]')
+        deprecated = res.getlist('deprecated[]')
 
         for i in range(len(names)):
+            if str(i) in deprecated:
+                dep = True
+            else:
+                dep = False
             if altitudes[i] == "":
                 altitudes[i] = None
             if did[i]:
@@ -362,11 +624,14 @@ def add_deployment(request):
                         latitude=latitudes[i], 
                         altitude=altitudes[i],
                         landcover=landcovers[i], 
-                        vegetation=vegetations[i])
+                        vegetation=vegetations[i],
+                        deprecated=dep)
             else:
                 Deployment.objects.create(project_id=project_id, study_area_id=study_area_id, geodetic_datum=geodetic_datum,
                             name=names[i], longitude=longitudes[i], latitude=latitudes[i], altitude=altitudes[i],
-                            landcover=landcovers[i], vegetation=vegetations[i])
+                            landcover=landcovers[i], vegetation=vegetations[i], deprecated=dep)
+                if ProjectStat.objects.filter(project_id=project_id).exists():
+                    ProjectStat.objects.filter(project_id=project_id).update(num_deployment=Deployment.objects.filter(project_id=project_id).count())
 
         return HttpResponse(json.dumps({'d': 'done'}), content_type='application/json')
 
@@ -431,6 +696,7 @@ def get_project_info(project_list):
                     earliest_date=earliest_date)
                 p.save()
     # update project species
+    last_updated = ProjectSpecies.objects.filter(project_id__in=list(project_info.id)).aggregate(Min('last_updated'))['last_updated__min']
     has_new = Image.objects.filter(last_updated__gte=last_updated, project_id__in=list(project_info.id))
     if has_new.exists():
         p_list = has_new.order_by('project_id').distinct('project_id').values_list('project_id', flat=True)
@@ -457,9 +723,10 @@ def get_project_info(project_list):
     project_info['num_studyarea'] = 0
     project_info['num_deployment'] = 0
     for i in project_info.id:
-        sa_c = StudyArea.objects.filter(project_id=i).count()
-        dep_c = Deployment.objects.filter(project_id=i).count()
-        img_c = ProjectStat.objects.get(project_id=i).num_data
+        obj = ProjectStat.objects.get(project_id=i)
+        sa_c = obj.num_sa
+        dep_c = obj.num_deployment
+        img_c = obj.num_data
         project_info.loc[project_info['id'] == i, 'num_data'] = img_c
         project_info.loc[project_info['id'] == i, 'num_studyarea'] = sa_c
         project_info.loc[project_info['id'] == i, 'num_deployment'] = dep_c
@@ -565,6 +832,8 @@ def project_detail(request, pk):
                 earliest_date=earliest_date)
             p.save()
     # update project species
+    # TODO last_updated 要改
+    last_updated = ProjectSpecies.objects.filter(project_id=pk).aggregate(Min('last_updated'))['last_updated__min']
     has_new = Image.objects.filter(last_updated__gte=last_updated, project_id=pk)
     if has_new.exists():
         ProjectSpecies.objects.filter(project_id=pk).update(last_updated=now)
@@ -585,6 +854,8 @@ def project_detail(request, pk):
                         project_id=pk)
                     p_sp.save()
     # update imagefolder table
+    # TODO last_updated 要改
+    last_updated = ImageFolder.objects.filter(project_id=pk).aggregate(Min('last_updated'))['last_updated__min']
     has_new = Image.objects.exclude(folder_name='').filter(last_updated__gte=last_updated, project_id=pk)
     if has_new.exists():
         ImageFolder.objects.filter(project_id=pk).update(last_updated=now)
@@ -1061,11 +1332,12 @@ def api_check_data_gap(request):
     for dj in rows:
         pid = dj.project_id
         if pid not in projects:
+            project_members = get_project_member(pid)
             projects[pid] = {
                 'name': dj.project.name,
                 'gaps': [],
-                'emails': [x.member.email for x in dj.project.members.filter(role__in=notify_roles, member__email__isnull=False).all()],
-                'members': [x.member for x in dj.project.members.filter(role__in=notify_roles).all()]
+                'emails': [x.email for x in Contact.objects.filter(id__in=project_members)],
+                'members': project_members
             }
         projects[pid]['gaps'].append(f'{dj.deployment.name}: {dj.display_range}')
 
@@ -1078,11 +1350,11 @@ def api_check_data_gap(request):
         for m in data['members']:
             # print (m.id, m.name)
             un = UploadNotification(
-                contact_id = m.id,
+                contact_id = m,
                 category='gap',
                 project_id = project_id
             )
             un.save()
-        #send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, data['emails'])
+        send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, data['emails'])
 
     return HttpResponse('ok')

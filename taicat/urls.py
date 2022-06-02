@@ -6,6 +6,7 @@ from . import (
 
 urlpatterns = [
     path('project/overview', views.project_overview, name='project_overview'),
+    path('project/info/<pk>/', views.project_info, name='project_info'),
     path('project/create', views.create_project, name='create_project'),
     path('project/edit/basic/<pk>/', views.edit_project_basic, name='edit_project_basic'),
     path('project/edit/deployment/<pk>/', views.edit_project_deployment, name='edit_project_deployment'),
@@ -30,4 +31,9 @@ urlpatterns = [
     path('api/deployments', search_view.api_deployments, name='get_deployments'),
     path('api/search', search_view.api_search, name='get_search'),
     path('delete/<pk>/', views.delete_data, name='delete_data'),
+    path('get_sa_points', views.get_sa_points, name='get_sa_points'),
+    path('get_subsa', views.get_subsa, name='get_subsa'),
+    path('update_species_pie', views.update_species_pie, name='update_species_pie'),
+    path('delete_dep_sa', views.delete_dep_sa, name='delete_dep_sa'),
+    path('edit_sa', views.edit_sa, name='edit_sa'),
 ]
