@@ -19,7 +19,7 @@ const cleanFormData = (formData, depOptions) => {
       for (const i in formData['projects']) {
         const projectId = formData['projects'][i].project.id;
         if (formData['projects'][i].hasOwnProperty('deployments') && formData['projects'][i].deployments.length > 0) {
-          deploymentIds = formData['projects'][i].deployments.map(x => x.deployment_id);
+          deploymentIds = deploymentIds.concat(formData['projects'][i].deployments.map(x => x.deployment_id));
         } else if (formData['projects'][i].hasOwnProperty('studyareas') && formData['projects'][i].studyareas.length > 0) {
           for (const j in formData['projects'][i].studyareas) {
             const foundIndex = depOptions[projectId].findIndex( x => x.studyarea_id === formData['projects'][i].studyareas[j].studyarea_id);
