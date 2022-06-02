@@ -23,6 +23,7 @@ import { zhTW } from 'date-fns/locale';
 import { AppSearchDataGrid } from './AppSearchDataGrid';
 import { AppSearchCalculation } from './AppSearchCalculation';
 import { cleanFormData } from './Utils';
+import { VERSION } from './Version'
 
 const DEFAULT_PER_PAGE = 20;
 const initialState = {
@@ -488,6 +489,7 @@ const AppSearch = () => {
         </Grid>
 
       </Grid>
+        {VERSION}
       </LocalizationProvider>
     </>
   );
