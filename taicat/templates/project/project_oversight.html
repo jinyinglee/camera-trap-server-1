@@ -213,9 +213,9 @@
        gapIndex: $('#form-gapindex').val(),
        year: {% if request.GET.year %}{{ request.GET.year }}{% endif %}
      };
-     console.log(e.target.dataset.saindex, '--');
+     //console.log(e.target.dataset.saindex, '--');
      const gapID = parseInt($('#form-gap-id').val(), 10);
-     const host = 'http://127.0.0.1:8000'
+     const host = `${window.location.protocol}//${window.location.host}`;
      const url = `${host}/api/deployment_journals/${gapID}/`;
      //console.log(url);
      fetch(url, {
@@ -303,7 +303,6 @@
   </div>
 </div>
 <!-- end Modal -->
-
 <div class="container box">
   <div class="row pb-2 pt-4 header overflow-auto">
         <div class="col-12">
@@ -343,7 +342,6 @@
       <hr>
     </div>
   </div>
-
   <div class="row">
     <div class="col-12">
       <h4>每月相機運作比例</h4>
@@ -366,11 +364,11 @@
               <tr>
                 <th scope="row">{{ deployment.name }}</th>
                 {% for x in deployment.items %}
-                <td>{#<span data-toggle="tooltip" data-placement="bottom" title="{{ x.1.0 }}/{{ x.1.1 }} （相機有運作天數 / 當月天數）<br/>{{ x.1.2 }}" data-bs-html="true">{{ x.0|floatformat:2 }}%</span>#}<button type="button" class="btn month-detail" data-bs-toggle="modaxl" data-bs-target="#exampleModal" data-detail="{{ x.1 }}">{{ x.0|floatformat:2 }} <br /> {{ x.2.0|floatformat:2 }}{% if x.2.0 > 0 %}<br/><small>({{ x.2.1}} / {{ x.2.2 }})</small>{% endif %}</button></td>
+                <td>{#<span data-toggle="tooltip" data-placement="bottom" title="{{ x.1.0 }}/{{ x.1.1 }} （相機有運作天數 / 當月天數）<br/>{{ x.1.2 }}" data-bs-html="true">{{ x.0|floatformat:2 }}%</span>#}<button type="button" class="btn month-detail" data-bs-toggle="modal" data-bs-target="#exampleModal" data-detail="{{ x.1 }}">{{ x.0|floatformat:2 }} <br /> {{ x.2.0|floatformat:2 }}{% if x.2.0 > 0 %}<br/><small>({{ x.2.1}} / {{ x.2.2 }})</small>{% endif %}</button></td>
                 {% endfor %}
                 <td>{{ deployment.ratio_year|floatformat:2  }}</td>
                 <td>{% for gap in deployment.gaps %}
-                  <div class="btn {%if gap.caused %}btn-secondary{% else %}btn-danger{% endif %} deployment-gap btn-lg" data-name="{{ deployment.name }}" data-gapid="{{ gap.id }}" data-caused="{{ gap.caused }}" data-saindex="{{ studyarea.sa_idx }}" data-dindex="{{ deployment.d_idx }}" data-gapindex="{{ gap.idx }}" data-bs-toggle="modal" data-bs-target="#gap-modal" style="font-size:12px;margin:2px;">{{ gap.label }}</div>{% endfor %}</td>
+                  <div class="btn {%if gap.caused != '' %}btn-secondary{% else %}btn-danger{% endif %} deployment-gap btn-lg" data-name="{{ deployment.name }}" data-gapid="{{ gap.id }}" data-caused="{{ gap.caused }}" data-saindex="{{ studyarea.sa_idx }}" data-dindex="{{ deployment.d_idx }}" data-gapindex="{{ gap.idx }}" data-bs-toggle="modal" data-bs-target="#gap-modal" style="font-size:12px;margin:2px;">{{ gap.label }}</div>{% endfor %}</td>
               </tr>
               {% endfor %}
           </tbody>
