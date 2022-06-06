@@ -48,8 +48,8 @@ def find_the_gap(year, array):
 
     for x in gap_list:
         gap_list_date.append([
-            (datetime(year, 1, 1) + timedelta(days=x[0])).strftime('%Y-%m-%d'),
-            (datetime(year, 1, 1) + timedelta(days=x[1])).strftime('%Y-%m-%d'),
+            (datetime(year, 1, 1) + timedelta(days=x[0])).timestamp(),
+            (datetime(year, 1, 1) + timedelta(days=x[1])).timestamp(),
         ])
     return gap_list_date
 
@@ -260,7 +260,7 @@ class Project(models.Model):
                             working_end=gap_range[1],
                             is_effective=False,
                             is_gap=True)
-                        dj.save()
+                        #dj.save()
                         results.append(dj)
         return results
 
@@ -314,14 +314,16 @@ class Project(models.Model):
                         month_list.append([ratio, json.dumps(data),  [ratio_sp_img, num_images[0], num_images[1]]])
                     #gaps = find_the_gap(year, year_stats)
                     # move to find_and_create_deployment_journal_gap
-                    rows = d['object'].get_deployment_journal_gaps(year)
-                    gaps = [{
-                        'id': x.id,
-                        'idx': x_idx,
-                        'caused': x.gap_caused if x.gap_caused else '',
-                        'label': '{} - {}'.format(
-                            x.working_start.strftime('%m/%d'),
-                            x.working_end.strftime('%m/%d'))} for x_idx, x in enumerate(rows)]
+                    # move to find_deployment_journal_gaps, lively not cached, 220606
+                    #rows = d['object'].get_deployment_journal_gaps(year)
+                    # gaps = [{
+                    #     'id': x.id,
+                    #     'idx': x_idx,
+                    #     'caused': x.gap_caused if x.gap_caused else '',
+                    #     'label': '{} - {}'.format(
+                    #         x.working_start.strftime('%m/%d'),
+                    #         x.working_end.strftime('%m/%d'))} for x_idx, x in enumerate(rows)]
+                    gaps = d['object'].find_deployment_journal_gaps(year)
                     items_d.append({
                         'name': d['name'],
                         'id': dep_id,
@@ -475,6 +477,7 @@ class Deployment(models.Model):
             is_effective=True,
             deployment_id=self.id,
             working_start__lte=month_end,
+            is_gap=False,
             working_end__gte=month_start).order_by('working_start')
 
         ret = []
@@ -557,15 +560,53 @@ class Deployment(models.Model):
                 'species': by_year_month_sp
             }
 
-    def get_deployment_journal_gaps(self, year):
+    def find_deployment_journal_gaps(self, year):
+        '''
+        get gap in database and count by working_day
+
+        returns: {
+                   id: deployment_journal.id,
+                   label: [start, end]
+                 }
+        '''
+        year = int(year)
+        gaps = []
         query = DeploymentJournal.objects.filter(
             is_gap=True,
             deployment_id=self.id,
             working_start__year__gte=year,
             working_end__year__lte=year)
         rows = query.all()
-        #print (self.name, year, rows)
-        return rows
+
+        for r in rows:
+            gaps.append({
+                'id': r.id,
+                'caused': r.gap_caused,
+                'range': [r.working_start.timestamp(), r.working_end.timestamp()],
+                'label': '{} - {}'.format(
+                    r.working_start.strftime('%m/%d'),
+                    r.working_end.strftime('%m/%d'))
+            })
+
+        year_stats = []
+        for m in range(1, 13):
+            ret = self.count_working_day(year, m)
+            year_stats += ret[0]
+
+        year_gap = find_the_gap(year, year_stats)
+        for i in year_gap:
+            found = list(filter(lambda x: x['range'][0] == i[0] and x['range'][1] == i[1], gaps))
+            if not found:
+                gaps.append({
+                    'range': i,
+                    'label': '{}/{} - {}/{}'.format(
+                        datetime.fromtimestamp(i[0]).month,
+                        datetime.fromtimestamp(i[0]).day,
+                        datetime.fromtimestamp(i[1]).month,
+                        datetime.fromtimestamp(i[1]).day
+                    )
+                })
+        return gaps
 
     def calculate(self, year, month, species, image_interval, event_interval):
         '''default

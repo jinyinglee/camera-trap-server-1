@@ -2,6 +2,7 @@ import csv
 import json
 from tempfile import NamedTemporaryFile
 import collections
+import threading
 
 from operator import itemgetter
 from datetime import (
@@ -850,12 +851,16 @@ def set_deployment_journal(data, deployment):
 
         deployment_journal_id = dj_new.id
 
+    obj = dj_new if is_new is True else dj_exist
+
     # 有時間才算有效
     if trip_start and trip_end:
-        if is_new is True:
-            dj_new.is_effective = True
-        elif is_new is False:
-            dj_exist.is_effective = True
+        obj.is_effective = True
+        obj.save()
+
+    # update cache
+    #task = threading.Thread(target=obj.project.get_or_count_stats, args=(True,))
+    #task.start()
 
     return deployment_journal_id
 
