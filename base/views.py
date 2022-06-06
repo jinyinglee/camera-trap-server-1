@@ -3,7 +3,7 @@ from django.http import response
 from django.shortcuts import render, HttpResponse, redirect
 import json
 from django.db import connection
-from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Organization, Project, Species
+from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Organization, Project, Species, StudyAreaStat
 from django.db.models import Count, Window, F, Sum, Min, Q, Max
 from django.db.models.functions import ExtractYear
 from django.template import loader
@@ -24,7 +24,7 @@ from django.http import response, JsonResponse
 from .models import *
 from taicat.utils import get_my_project_list, get_project_member
 from django.db.models.functions import Trunc, TruncDate
-from .utils import DecimalEncoder
+from .utils import DecimalEncoder, update_studyareastat
 from django.views.decorators.csrf import csrf_exempt
 # from django.core import serializers
 
@@ -528,6 +528,7 @@ def get_growth_data(request):
 
 def stat_county(request):
     if request.method == 'GET':
+
         county = request.GET.get('county')
         county = county.replace('台','臺')
         response = GeoStat.objects.filter(county = county).values('num_project','num_deployment','identified','num_image','num_working_hour','species', 'studyarea')
@@ -536,6 +537,13 @@ def stat_county(request):
 
         sa_points = []
         if response['studyarea']:
+            # print(response['studyarea'])
+            sa_list = response['studyarea'].split(',')
+            if last_updated := StudyAreaStat.objects.filter(studyarea_id__in=sa_list).aggregate(Min('last_updated'))['last_updated__min']:
+                if Deployment.objects.filter(last_updated__gte=last_updated, study_area_id__in=sa_list).exists():
+                    update_studyareastat(response['studyarea'])
+            else:
+                update_studyareastat(response['studyarea'])
             with connection.cursor() as cursor:
                 query = f"""SELECT sas.longitude, sas.latitude, p.name, sa.name, sa.id  
                             FROM taicat_studyareastat sas  
@@ -574,6 +582,11 @@ def stat_studyarea(request):
                     name += [data[0][0]]
                     count += [data[0][1]]
         with connection.cursor() as cursor:
+            if last_updated := StudyAreaStat.objects.filter(studyarea_id=said).aggregate(Min('last_updated'))['last_updated__min']:
+                if Deployment.objects.filter(last_updated__gte=last_updated, study_area_id=said).exists():
+                    update_studyareastat(said)
+            else:
+                update_studyareastat(said)
             query = f"""SELECT sas.longitude, sas.latitude  
                         FROM taicat_studyareastat sas  
                         WHERE sas.studyarea_id = ({said});"""
