@@ -1,3 +1,4 @@
+from curses import flash
 from django.db.models.fields import PositiveBigIntegerField
 from django.http import (
     response,
@@ -757,15 +758,25 @@ def get_project_info(project_list):
     # count data
     # update if new images
     now = timezone.now()
-    last_updated = ProjectStat.objects.filter(project_id__in=list(project_info.id)).aggregate(Min('last_updated'))['last_updated__min']
-    has_new = Image.objects.filter(created__gte=last_updated, project_id__in=list(project_info.id))
-    if has_new.exists():
+    update = False
+    if last_updated := ProjectStat.objects.filter(project_id__in=list(project_info.id)).aggregate(Min('last_updated'))['last_updated__min']:
+        if Image.objects.filter(created__gte=last_updated, project_id__in=list(project_info.id)).exists():
+            update = True
+    else:
+        update = True
+    if update:
         # update project stat
         ProjectStat.objects.filter(project_id__in=list(project_info.id)).update(last_updated=now)
-        p_list = has_new.order_by('project_id').distinct('project_id').values_list('project_id', flat=True)
+        if last_updated:
+            p_list = Image.objects.filter(created__gte=last_updated, project_id__in=list(project_info.id)).order_by('project_id').distinct('project_id').values_list('project_id', flat=True)
+        else:
+            p_list = list(project_info.id)
         for i in p_list:
             c = Image.objects.filter(project_id=i).count()
-            image_objects = Image.objects.filter(project_id=i, created__gte=last_updated)
+            if last_updated:
+                image_objects = Image.objects.filter(project_id=i, created__gte=last_updated)
+            else:
+                image_objects = Image.objects.filter(project_id=i)
             latest_date = image_objects.latest('datetime').datetime
             earliest_date = image_objects.earliest('datetime').datetime
             if ProjectStat.objects.filter(project_id=i).exists():
@@ -790,10 +801,18 @@ def get_project_info(project_list):
                     earliest_date=earliest_date)
                 p.save()
     # update project species
+    update = False
     last_updated = ProjectSpecies.objects.filter(project_id__in=list(project_info.id)).aggregate(Min('last_updated'))['last_updated__min']
-    has_new = Image.objects.filter(last_updated__gte=last_updated, project_id__in=list(project_info.id))
-    if has_new.exists():
-        p_list = has_new.order_by('project_id').distinct('project_id').values_list('project_id', flat=True)
+    if last_updated:
+        if Image.objects.filter(last_updated__gte=last_updated, project_id__in=list(project_info.id)).exists():
+            update = True
+    else:
+        update = True 
+    if update:
+        if last_updated:
+            p_list = Image.objects.filter(last_updated__gte=last_updated, project_id__in=list(project_info.id)).order_by('project_id').distinct('project_id').values_list('project_id', flat=True)
+        else: # 代表完全沒有資料 
+            p_list = list(project_info.id)
         ProjectSpecies.objects.filter(project_id__in=list(project_info.id)).update(last_updated=now)
         for i in p_list:
             query = Image.objects.filter(project_id=i).values('species').annotate(total=Count('species')).order_by('-total')
@@ -895,13 +914,21 @@ def project_detail(request, pk):
     # folder name takes long time
     # folder_list = Image.objects.filter(project_id=pk).order_by('folder_name').distinct('folder_name')
     now = timezone.now()
+    update = False
     last_updated = ProjectStat.objects.filter(project_id=pk).aggregate(Min('last_updated'))['last_updated__min']
-    has_new = Image.objects.filter(created__gte=last_updated, project_id=pk)
-    if has_new.exists():
+    if last_updated:
+        if Image.objects.filter(created__gte=last_updated, project_id=pk).exists():
+            update = True
+    else:
+        update = True
+    if update:
         # update project stat
         ProjectStat.objects.filter(project_id=pk).update(last_updated=now)
         c = Image.objects.filter(project_id=pk).count()
-        image_objects = Image.objects.filter(project_id=pk, created__gte=last_updated)
+        if last_updated:
+            image_objects = Image.objects.filter(project_id=pk, created__gte=last_updated)
+        else:
+            image_objects = Image.objects.filter(project_id=pk)
         latest_date = image_objects.latest('datetime').datetime
         earliest_date = image_objects.earliest('datetime').datetime
         if ProjectStat.objects.filter(project_id=pk).exists():
@@ -926,10 +953,14 @@ def project_detail(request, pk):
                 earliest_date=earliest_date)
             p.save()
     # update project species
-    # TODO last_updated 要改
+    update = False
     last_updated = ProjectSpecies.objects.filter(project_id=pk).aggregate(Min('last_updated'))['last_updated__min']
-    has_new = Image.objects.filter(last_updated__gte=last_updated, project_id=pk)
-    if has_new.exists():
+    if last_updated:
+        if Image.objects.filter(last_updated__gte=last_updated, project_id=pk).exists():
+            update = True
+    else:
+        update = True
+    if update:
         ProjectSpecies.objects.filter(project_id=pk).update(last_updated=now)
         query = Image.objects.filter(project_id=pk).values('species').annotate(total=Count('species')).order_by('-total')
         for q in query:
@@ -948,7 +979,7 @@ def project_detail(request, pk):
                         project_id=pk)
                     p_sp.save()
     # update imagefolder table
-    # TODO 這邊會有bug
+    # update = False
     last_updated = ImageFolder.objects.filter(project_id=pk).aggregate(Min('last_updated'))['last_updated__min']
     # has_new = Image.objects.exclude(folder_name='').filter(last_updated__gte=last_updated, project_id=pk)
     if last_updated:
@@ -957,9 +988,15 @@ def project_detail(request, pk):
         has_new = Image.objects.exclude(folder_name='').filter(project_id=pk)
     if has_new.exists():
         ImageFolder.objects.filter(project_id=pk).update(last_updated=now)
-        query = Image.objects.exclude(folder_name='').filter(last_updated__gte=last_updated, project_id=pk).order_by('folder_name').distinct('folder_name').values('folder_name')
+        if last_updated:
+            query = Image.objects.exclude(folder_name='').filter(last_updated__gte=last_updated, project_id=pk).order_by('folder_name').distinct('folder_name').values('folder_name')
+        else:
+            query = Image.objects.exclude(folder_name='').filter(project_id=pk).order_by('folder_name').distinct('folder_name').values('folder_name')
         for q in query:
-            f_last_updated = Image.objects.filter(last_updated__gte=last_updated, project_id=pk, folder_name=q['folder_name']).aggregate(Max('last_updated'))['last_updated__max']
+            if last_updated:
+                f_last_updated = Image.objects.filter(last_updated__gte=last_updated, project_id=pk, folder_name=q['folder_name']).aggregate(Max('last_updated'))['last_updated__max']
+            else:
+                f_last_updated = Image.objects.filter(project_id=pk, folder_name=q['folder_name']).aggregate(Max('last_updated'))['last_updated__max']
             if img_f := ImageFolder.objects.filter(folder_name=q['folder_name'], project_id=pk).first():
                 img_f.folder_last_updated = f_last_updated
                 img_f.last_updated = now

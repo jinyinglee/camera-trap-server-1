@@ -429,7 +429,8 @@
       dataType: "json",
       success: function(response) {
         //map.removeLayer(marker);
-        $('.myDivIcon').remove();
+        $('.myStudyAreaIcon').remove();
+
         response.studyarea.forEach(
           (i) =>
             (marker = new L.marker([i[1], i[0]], { icon: StudyAreaIcon })

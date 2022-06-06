@@ -251,7 +251,7 @@ def feedback_request(request):
         msg.content_subtype = "html"  # Main content is now text/html
         # # save files to temporary dir
         for f in files:
-            print(f.name)
+            # print(f.name)
             fs = FileSystemStorage()
             filename = fs.save(f'email-attachment/{user}_' + f.name, f)
             msg.attach_file(os.path.join('/ct22-volumes/media', filename))
@@ -275,7 +275,7 @@ def policy(request):
 
 def add_org_admin(request):
     if request.method == 'POST':
-        print('hi')
+        # print('hi')
         for i in request.POST:
             print(i)
         redirect(set_permission)
@@ -426,9 +426,14 @@ def home(request):
 
 def get_species_data(request):
     now = timezone.now()
+    update = False
     last_updated = Species.objects.filter(status='I').aggregate(Min('last_updated'))['last_updated__min']
-    has_new = Image.objects.filter(last_updated__gte=last_updated)
-    if has_new.exists():
+    if last_updated := Species.objects.filter(status='I').aggregate(Min('last_updated'))['last_updated__min']:
+        if Image.objects.filter(last_updated__gte=last_updated).exists():
+            update = True
+    else:
+        update = True
+    if update:
         Species.objects.filter(status='I').update(last_updated=now)
         for i in Species.DEFAULT_LIST:
             c = Image.objects.filter(species=i).count()
@@ -470,12 +475,20 @@ def get_geo_data(request):
 
 def get_growth_data(request):
     now = timezone.now()
+    update = False
     last_updated = HomePageStat.objects.all().aggregate(Min('last_updated'))['last_updated__min']
-    has_new = Image.objects.filter(created__gte=last_updated)
-    if has_new.exists():
+    if last_updated:
+        if Image.objects.filter(created__gte=last_updated).exists():
+            update = True
+    else:
+        update = True
+    if update:
         HomePageStat.objects.all().update(last_updated=now)
         # ------ update image --------- #
-        data_growth_image = Image.objects.filter(created__gte=last_updated).annotate(year=ExtractYear('datetime')).values('year').annotate(num_image=Count('image_uuid', distinct=True)).order_by()
+        if last_updated:
+            data_growth_image = Image.objects.filter(created__gte=last_updated).annotate(year=ExtractYear('datetime')).values('year').annotate(num_image=Count('image_uuid', distinct=True)).order_by()
+        else: # 完全沒有資料
+            data_growth_image = Image.objects.all().annotate(year=ExtractYear('datetime')).values('year').annotate(num_image=Count('image_uuid', distinct=True)).order_by()
         data_growth_image = pd.DataFrame(data_growth_image, columns=['year', 'num_image']).sort_values('year')
         year_min, year_max = int(data_growth_image.year.min()), int(data_growth_image.year.max())
         year_gap = pd.DataFrame([i for i in range(year_min, year_max)], columns=['year'])
@@ -532,28 +545,30 @@ def stat_county(request):
         county = request.GET.get('county')
         county = county.replace('台','臺')
         response = GeoStat.objects.filter(county = county).values('num_project','num_deployment','identified','num_image','num_working_hour','species', 'studyarea')
-        response = response[0]
-        response.update({'species':response.get('species').replace(',','、')})
+        if len(response):
+            response = response[0]
+            response.update({'species':response.get('species').replace(',','、')})
 
-        sa_points = []
-        if response['studyarea']:
-            # print(response['studyarea'])
-            sa_list = response['studyarea'].split(',')
-            if last_updated := StudyAreaStat.objects.filter(studyarea_id__in=sa_list).aggregate(Min('last_updated'))['last_updated__min']:
-                if Deployment.objects.filter(last_updated__gte=last_updated, study_area_id__in=sa_list).exists():
+            sa_points = []
+            if response['studyarea']:
+                # print(response['studyarea'])
+                sa_list = response['studyarea'].split(',')
+                if last_updated := StudyAreaStat.objects.filter(studyarea_id__in=sa_list).aggregate(Min('last_updated'))['last_updated__min']:
+                    if Deployment.objects.filter(last_updated__gte=last_updated, study_area_id__in=sa_list).exists():
+                        update_studyareastat(response['studyarea'])
+                else:
                     update_studyareastat(response['studyarea'])
-            else:
-                update_studyareastat(response['studyarea'])
-            with connection.cursor() as cursor:
-                query = f"""SELECT sas.longitude, sas.latitude, p.name, sa.name, sa.id  
-                            FROM taicat_studyareastat sas  
-                            JOIN taicat_studyarea sa ON sas.studyarea_id = sa.id
-                            JOIN taicat_project p ON p.id = sa.project_id
-                            WHERE sas.studyarea_id IN ({response['studyarea']});"""
-                cursor.execute(query)
-                sa_points = cursor.fetchall()
-        response.update({'studyarea': sa_points})
-
+                with connection.cursor() as cursor:
+                    query = f"""SELECT sas.longitude, sas.latitude, p.name, sa.name, sa.id  
+                                FROM taicat_studyareastat sas  
+                                JOIN taicat_studyarea sa ON sas.studyarea_id = sa.id
+                                JOIN taicat_project p ON p.id = sa.project_id
+                                WHERE sas.studyarea_id IN ({response['studyarea']});"""
+                    cursor.execute(query)
+                    sa_points = cursor.fetchall()
+            response.update({'studyarea': sa_points})
+        else:
+            response = {'species': '', 'studyarea': [], 'num_project': 0, 'num_deployment': 0,'identified': 0,'num_image': 0,'num_working_hour': 0}
         return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
 
 
