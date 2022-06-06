@@ -491,7 +491,12 @@ def get_growth_data(request):
             data_growth_image = Image.objects.all().annotate(year=ExtractYear('datetime')).values('year').annotate(num_image=Count('image_uuid', distinct=True)).order_by()
         data_growth_image = pd.DataFrame(data_growth_image, columns=['year', 'num_image']).sort_values('year')
         year_min, year_max = int(data_growth_image.year.min()), int(data_growth_image.year.max())
-        year_gap = pd.DataFrame([i for i in range(year_min, year_max)], columns=['year'])
+        # current_year_max = HomePageStat.objects.aggregate(Max('year')).year__max
+        current_year_max = HomePageStat.objects.aggregate(Max('year')).get('year__max')
+        if current_year_max:
+            if current_year_max > year_max:
+                year_max = current_year_max
+        year_gap = pd.DataFrame([i for i in range(year_min, year_max+1)], columns=['year'])
         data_growth_image = year_gap.merge(data_growth_image, how='left').fillna(0)
         data_growth_image['cumsum'] = data_growth_image.num_image.cumsum()
         data_growth_image = data_growth_image.drop(columns=['num_image'])
