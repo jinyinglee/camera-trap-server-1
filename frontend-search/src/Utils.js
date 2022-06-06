@@ -17,22 +17,23 @@ const cleanFormData = (formData, depOptions) => {
       let deploymentIds = [];
       // console.log(formData);
       for (const i in formData['projects']) {
-        const projectId = formData['projects'][i].project.id;
-        if (formData['projects'][i].hasOwnProperty('deployments') && formData['projects'][i].deployments.length > 0) {
-          deploymentIds = deploymentIds.concat(formData['projects'][i].deployments.map(x => x.deployment_id));
-        } else if (formData['projects'][i].hasOwnProperty('studyareas') && formData['projects'][i].studyareas.length > 0) {
-          for (const j in formData['projects'][i].studyareas) {
-            const foundIndex = depOptions[projectId].findIndex( x => x.studyarea_id === formData['projects'][i].studyareas[j].studyarea_id);
-            if (foundIndex >= 0) {
-              const values = depOptions[projectId][foundIndex].deployments.map(x => x.deployment_id);
+        if (formData['projects'][i].project !== null) {
+          const projectId = formData['projects'][i].project.id;
+          if (formData['projects'][i].hasOwnProperty('deployments') && formData['projects'][i].deployments.length > 0) {
+            deploymentIds = deploymentIds.concat(formData['projects'][i].deployments.map(x => x.deployment_id));
+          } else if (formData['projects'][i].hasOwnProperty('studyareas') && formData['projects'][i].studyareas.length > 0) {
+            for (const j in formData['projects'][i].studyareas) {
+              const foundIndex = depOptions[projectId].findIndex( x => x.studyarea_id === formData['projects'][i].studyareas[j].studyarea_id);
+              if (foundIndex >= 0) {
+                const values = depOptions[projectId][foundIndex].deployments.map(x => x.deployment_id);
+                deploymentIds = deploymentIds.concat(values);
+              }
+            }
+          } else if (formData['projects'][i].hasOwnProperty('project')) {
+            for (const sa in depOptions[projectId]) {
+              const values = depOptions[projectId][sa].deployments.map(x => x.deployment_id);
               deploymentIds = deploymentIds.concat(values);
             }
-          }
-
-        } else if (formData['projects'][i].hasOwnProperty('project')) {
-          for (const sa in depOptions[projectId]) {
-            const values = depOptions[projectId][sa].deployments.map(x => x.deployment_id);
-            deploymentIds = deploymentIds.concat(values);
           }
         }
       }

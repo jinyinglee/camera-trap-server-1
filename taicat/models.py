@@ -643,7 +643,7 @@ class Deployment(models.Model):
             if last_datetime:
                 delta = image.datetime - last_datetime
                 delta_seconds = (delta.days * 86400) + delta.seconds
-                delta_count += delta_seconds
+                delta_count += delta_seconds # 累加
                 delta_count_oi1 += delta_seconds
                 # print (image.id, image.datetime, delta_seconds, delta_count)
                 # TODO: OI2 考慮 個體數, 有個體數 iamge_count 加 個體數
@@ -651,7 +651,7 @@ class Deployment(models.Model):
                 if image.animal_id:
                     # 考慮 animal_id, animal_id 跟上一個不同, image_count 加 1
                     if len(exist_animals) > 0 and image.animal_id != exist_animals[-1]:
-                        image_count_oi1 += 1
+         2               image_count_oi1 += 1
                         delta_count = 0
                 '''
                 if delta_count >= image_interval_seconds:
