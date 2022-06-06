@@ -983,6 +983,7 @@ function updateSpeciesMap(species){
                     pre = `<img style="width: 16px; height: auto" src='{% static "icon/marker-icon-error.png" %}'>`
                 }
 
+                $('#species-map-stat').html('')
                 //$('#species-map-stat').append(`<h5>${response.type}</h5>`)
                 response.data.forEach(function(i) {
                     marker = pointToLayer(i[0], [i[2],i[1]])
