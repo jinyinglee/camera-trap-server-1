@@ -409,7 +409,7 @@ def delete_data(request, pk):
     species_list = []
     if request.method == "POST":
         image_list = request.POST.getlist('image_id[]')
-        species_list = delete_image_by_ids(image_list)
+        species_list = delete_image_by_ids(image_list, pk)
 
     response = {'species': species_list}
     return JsonResponse(response, safe=False)  # or JsonResponse({'data': data})

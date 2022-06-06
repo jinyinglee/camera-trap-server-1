@@ -483,7 +483,7 @@ def get_growth_data(request):
     else:
         update = True
     if update:
-        HomePageStat.objects.all().update(last_updated=now)
+        # HomePageStat.objects.all().update(last_updated=now)
         # ------ update image --------- #
         if last_updated:
             data_growth_image = Image.objects.filter(created__gte=last_updated).annotate(year=ExtractYear('datetime')).values('year').annotate(num_image=Count('image_uuid', distinct=True)).order_by()
@@ -500,6 +500,7 @@ def get_growth_data(request):
             if HomePageStat.objects.filter(year=row.year, type='image').exists():
                 h = HomePageStat.objects.get(year=row.year, type='image')
                 h.count += row['cumsum']
+                h.last_updated = now
                 h.save()
             else:
                 new_h = HomePageStat(
