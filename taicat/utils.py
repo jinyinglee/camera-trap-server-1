@@ -937,19 +937,22 @@ def set_image_annotation(image_obj):
 
 
 def delete_image_by_ids(image_list=[], pk=None):
+    # mode
+    mode = Project.objects.filter(id=pk).first().get('mode')
     now = timezone.now()
     image_objects = Image.objects.filter(id__in=image_list)
     # species的資料先用id抓回來計算再扣掉
     query = image_objects.values('species').annotate(total=Count('species')).order_by('-total')
     for q in query:
-        # taicat_species
-        if sp := Species.objects.filter(name=q['species']).first():
-            if sp.count == q['total']:
-                sp.delete()
-            else:
-                sp.count -= q['total']
-                sp.last_updated = now
-                sp.save()
+        if mode == 'official':
+            # taicat_species
+            if sp := Species.objects.filter(name=q['species']).first():
+                if sp.count == q['total']:
+                    sp.delete()
+                else:
+                    sp.count -= q['total']
+                    sp.last_updated = now
+                    sp.save()
         # taicat_projectspecies
         if p_sp := ProjectSpecies.objects.filter(name=q['species'], project_id=pk).first():
             if p_sp.count == q['total']:
@@ -965,12 +968,13 @@ def delete_image_by_ids(image_list=[], pk=None):
         p.last_updated = now
         p.save()
 
-    year = image_objects.aggregate(Min('datetime'))['datetime__min'].strftime("%Y")
-    home = HomePageStat.objects.filter(year__gte=year)
-    for h in home:
-        h.count -= image_objects.count()
-        h.last_updated = now
-        h.save()
+    if mode == 'official':
+        year = image_objects.aggregate(Min('datetime'))['datetime__min'].strftime("%Y")
+        home = HomePageStat.objects.filter(year__gte=year)
+        for h in home:
+            h.count -= image_objects.count()
+            h.last_updated = now
+            h.save()
 
     # move deleted image to DeletedImage table
     image_dict = image_objects.values()
@@ -981,6 +985,7 @@ def delete_image_by_ids(image_list=[], pk=None):
 
     species = ProjectSpecies.objects.filter(project_id=pk).order_by('count').values('count', 'name')
     return list(species)
+
 
 def half_year_ago(year, month):
     '''前一個月的前半年
@@ -1003,42 +1008,4 @@ def half_year_ago(year, month):
         datetime.strptime(f'{begin_year}-{begin_month}-01 01:01:01', "%Y-%m-%d %H:%M:%S"),
         datetime.strptime(f'{end_year}-{end_month}-01 01:01:01', "%Y-%m-%d %H:%M:%S")
     ]
-
-
-
-def update_studyareastat():
-    query = """
-        SELECT d.longitude, d.latitude, d.id, d.study_area_id FROM taicat_deployment d
-        JOIN taicat_project p ON d.project_id = p.id
-        WHERE p.mode = 'official';
-        """
-
-    with connection.cursor() as cursor:
-        cursor.execute(query)
-        sa_df = cursor.fetchall()
-        sa_df = pd.DataFrame(sa_df, columns=['longitude', 'latitude', 'did', 'said'])
-
-    # d_df = pd.DataFrame(Deployment.objects.all().values('longitude','latitude','id', 'geodetic_datum'))
-
-    sa_gdf = gpd.GeoDataFrame(sa_df,geometry=gpd.points_from_xy(sa_df.longitude,sa_df.latitude))
-    sa_list = sa_df.said.unique()
-
-    for i in sa_list:
-        # print(i)
-        # print(i, sa_gdf[sa_gdf['said']==i].dissolve().centroid)
-        long = sa_gdf[sa_gdf['said']==i].dissolve().centroid.x[0]
-        lat = sa_gdf[sa_gdf['said']==i].dissolve().centroid.y[0]
-        if StudyAreaStat.objects.filter(studyarea_id=i).exists():
-            StudyAreaStat.objects.filter(studyarea_id=i).update(
-                longitude = long,
-                latitude = lat,
-                last_updated = now
-            )
-        else:
-            StudyAreaStat.objects.create(
-                studyarea_id = i,
-                longitude = long,
-                latitude = lat,
-            )
-
 
