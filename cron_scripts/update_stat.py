@@ -9,8 +9,10 @@ now = timezone.now()
 print('start HOMEPAGE STAT', now)
 
 with connection.cursor() as cursor:
-    query = """SELECT EXTRACT (year FROM datetime) as year, count(distinct(image_uuid)) as count
-    FROM taicat_image
+    query = """SELECT EXTRACT (year FROM i.datetime) as year, count(distinct(i.image_uuid)) as count
+    FROM taicat_image i
+    JOIN taicat_project p ON i.project_id = p.id
+    WHERE p.mode = 'official'
     GROUP BY year"""
     cursor.execute(query)
     data_growth_image = cursor.fetchall()
@@ -97,7 +99,7 @@ for i in project_info.index:
 # ---------- SPECIES ---------- #
 now = timezone.now()
 print('start SPECIES STAT', now)
-query = Image.objects.all().values('species').annotate(total=Count('species')).order_by('-total')
+query = Image.objects.filter(project__mode='official').values('species').annotate(total=Count('species')).order_by('-total')
 for i in query:
     if sp := Species.objects.filter(name=i['species']).first():
         sp.count = i['total']
