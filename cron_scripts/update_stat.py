@@ -139,9 +139,11 @@ now = timezone.now()
 print('start IMAGE FOLDER', now)
 
 for p in Project.objects.all().values('id'):
+    f_names = []
     query = Image.objects.exclude(folder_name='').filter(project_id=p['id']).order_by('folder_name').distinct('folder_name').values('folder_name')
     for q in query:
         f_last_updated = Image.objects.filter(project_id=p['id'], folder_name=q['folder_name']).aggregate(Max('last_updated'))['last_updated__max']
+        f_names += [q['folder_name']]
         if img_f := ImageFolder.objects.filter(folder_name=q['folder_name'], project_id=p['id']).first():
             img_f.folder_last_updated = f_last_updated
             img_f.last_updated = now
@@ -152,6 +154,9 @@ for p in Project.objects.all().values('id'):
                 folder_last_updated=f_last_updated,
                 project_id=p['id'])
             img_f.save()
+    # 確定imagefolder是不是有空的
+    ImageFolder.objects.filter(project_id=p['id']).exclude(folder_name__in=f_names).delete()
+
 
 # ---------- HOMEPAGE MAP ----------- #
 import geopandas as gpd
