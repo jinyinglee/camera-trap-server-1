@@ -1,3 +1,4 @@
+from curses import flash
 from django.db.models.fields import PositiveBigIntegerField
 from django.http import (
     response,
@@ -28,7 +29,7 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 #from django.utils.encoding import force_bytes, force_str, force_text, DjangoUnicodeDecodeError
-from base.utils import generate_token
+from base.utils import generate_token, update_studyareastat
 from django.conf import settings
 import threading
 import time
@@ -54,6 +55,88 @@ from base.utils import DecimalEncoder
 from taicat.utils import half_year_ago, get_project_member, delete_image_by_ids
 
 from openpyxl import Workbook
+
+
+def update_species_map(request):
+
+    # 根據filter (樣區,子樣區, 行程) 更新物種地圖
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    date_filter = ''
+    if (start_date and end_date):
+        start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+        end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
+        date_filter = " AND i.datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
+    elif start_date:
+        date_filter = " AND i.datetime > '{}'".format(start_date)
+    elif end_date:
+        end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
+        date_filter = " AND i.datetime < '{}'".format(start_date)
+
+    species = request.GET.get('species')
+    
+    if species == '未填寫':
+        species = ''
+    # print(date_filter)
+
+    data = []
+    if sa := request.GET.get('said'):
+        type = '相機位置'
+        # 確定有沒有子樣區
+        subsa = StudyArea.objects.filter(parent_id=sa)
+        sa_list = [str(s.id) for s in subsa]
+        if sa_list:
+            query = f"""
+                    SELECT COUNT(*), d.longitude, d.latitude, d.name FROM taicat_image i 
+                    JOIN taicat_deployment d ON i.deployment_id = d.id
+                    WHERE i.species='{species}' AND i.studyarea_id IN ({','.join(sa_list)})"""
+        else:
+            query = f"""
+                    SELECT COUNT(*), d.longitude, d.latitude, d.name FROM taicat_image i 
+                    JOIN taicat_deployment d ON i.deployment_id = d.id
+                    WHERE i.species='{species}' AND i.studyarea_id={sa}"""
+    elif pk := request.GET.get('said[project]'):
+        type = '樣區'
+        # 抓樣區中心點 group by 樣區
+        sas = StudyArea.objects.filter(project_id=pk)
+        sa_list = [str(s.id) for s in sas]
+        # sa = StudyAreaStat.objects.filter(studyarea_id__in=sa_list)
+        if sa_list:
+            if last_updated := StudyAreaStat.objects.filter(studyarea_id__in=sa_list).aggregate(Min('last_updated'))['last_updated__min']:
+            # has_new = Deployment.objects.filter(last_updated__gte=last_updated, study_area_id__in=sa_list).exists()
+                if Deployment.objects.filter(last_updated__gte=last_updated, study_area_id__in=sa_list).exists():
+                    update_studyareastat(','.join(sa_list))
+            else:
+                update_studyareastat(','.join(sa_list))
+            query = f"""
+                    SELECT COUNT(*), sas.longitude, sas.latitude, sa.name FROM taicat_image i 
+                    JOIN taicat_studyareastat sas ON i.studyarea_id = sas.studyarea_id
+                    JOIN taicat_studyarea sa ON i.studyarea_id = sa.id
+                    WHERE i.species='{species}' AND i.studyarea_id IN ({','.join(sa_list)})"""
+
+    if query:
+        if date_filter:
+            query += date_filter
+
+        with connection.cursor() as cursor:
+            if sa:
+                query += ' group by i.deployment_id, d.longitude, d.latitude, d.name'
+            elif pk:
+                query += ' group by i.studyarea_id, sas.longitude, sas.latitude, sa.name'
+            cursor.execute(query)
+            data = cursor.fetchall()
+
+    last_updated = timezone.now() + timedelta(hours=8)
+    last_updated = datetime.datetime.strftime(last_updated,'%Y-%m-%d') 
+
+    total_count = 0
+    for d in data:
+        total_count += d[0]
+
+    response = {'data': data, 'last_updated': last_updated, 'total_count': total_count, 'type': type}
+
+    return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
+    
 
 
 def edit_sa(request):
@@ -99,6 +182,12 @@ def get_sa_points(request):
     sa_list = request.GET.getlist('sa[]')
     sa_points = []
     if sa_list:
+        if last_updated := StudyAreaStat.objects.filter(studyarea_id__in=sa_list).aggregate(Min('last_updated'))['last_updated__min']:
+            if Deployment.objects.filter(last_updated__gte=last_updated, study_area_id__in=sa_list).exists():
+                update_studyareastat(','.join(sa_list))
+        else:
+            update_studyareastat(','.join(sa_list))
+
         with connection.cursor() as cursor:
             query = f"""SELECT sas.longitude, sas.latitude, sa.name, sa.id  
                         FROM taicat_studyareastat sas  
@@ -202,9 +291,15 @@ def update_species_pie(request):
 
         # deployments
         if sa_list:
-            query = f"SELECT id, longitude, latitude, name FROM taicat_deployment WHERE study_area_id IN ({','.join(sa_list)}) ORDER BY longitude DESC;"
+            # 抓子樣區 & 該樣區底下的相機位置
+            query = f"""SELECT sas.longitude, sas.latitude, sa.name, TRUE as sub, sa.id FROM taicat_studyareastat sas
+                        JOIN taicat_studyarea sa ON sas.studyarea_id = sa.id
+                        WHERE sas.studyarea_id IN ({','.join(sa_list)}) 
+                        UNION 
+                        SELECT longitude, latitude, name, FALSE as sub, NULL FROM taicat_deployment WHERE study_area_id = {sa} 
+                        ORDER BY longitude DESC;"""
         else:
-            query = f"""SELECT id, longitude, latitude, name FROM taicat_deployment WHERE study_area_id = {sa} ORDER BY longitude DESC;"""
+            query = f"""SELECT longitude, latitude, name, FALSE as sub FROM taicat_deployment WHERE study_area_id = {sa} ORDER BY longitude DESC;"""
 
         with connection.cursor() as cursor:
             cursor.execute(query)
@@ -663,15 +758,25 @@ def get_project_info(project_list):
     # count data
     # update if new images
     now = timezone.now()
-    last_updated = ProjectStat.objects.filter(project_id__in=list(project_info.id)).aggregate(Min('last_updated'))['last_updated__min']
-    has_new = Image.objects.filter(created__gte=last_updated, project_id__in=list(project_info.id))
-    if has_new.exists():
+    update = False
+    if last_updated := ProjectStat.objects.filter(project_id__in=list(project_info.id)).aggregate(Min('last_updated'))['last_updated__min']:
+        if Image.objects.filter(created__gte=last_updated, project_id__in=list(project_info.id)).exists():
+            update = True
+    else:
+        update = True
+    if update:
         # update project stat
         ProjectStat.objects.filter(project_id__in=list(project_info.id)).update(last_updated=now)
-        p_list = has_new.order_by('project_id').distinct('project_id').values_list('project_id', flat=True)
+        if last_updated:
+            p_list = Image.objects.filter(created__gte=last_updated, project_id__in=list(project_info.id)).order_by('project_id').distinct('project_id').values_list('project_id', flat=True)
+        else:
+            p_list = list(project_info.id)
         for i in p_list:
             c = Image.objects.filter(project_id=i).count()
-            image_objects = Image.objects.filter(project_id=i, created__gte=last_updated)
+            if last_updated:
+                image_objects = Image.objects.filter(project_id=i, created__gte=last_updated)
+            else:
+                image_objects = Image.objects.filter(project_id=i)
             latest_date = image_objects.latest('datetime').datetime
             earliest_date = image_objects.earliest('datetime').datetime
             if ProjectStat.objects.filter(project_id=i).exists():
@@ -696,10 +801,18 @@ def get_project_info(project_list):
                     earliest_date=earliest_date)
                 p.save()
     # update project species
+    update = False
     last_updated = ProjectSpecies.objects.filter(project_id__in=list(project_info.id)).aggregate(Min('last_updated'))['last_updated__min']
-    has_new = Image.objects.filter(last_updated__gte=last_updated, project_id__in=list(project_info.id))
-    if has_new.exists():
-        p_list = has_new.order_by('project_id').distinct('project_id').values_list('project_id', flat=True)
+    if last_updated:
+        if Image.objects.filter(last_updated__gte=last_updated, project_id__in=list(project_info.id)).exists():
+            update = True
+    else:
+        update = True 
+    if update:
+        if last_updated:
+            p_list = Image.objects.filter(last_updated__gte=last_updated, project_id__in=list(project_info.id)).order_by('project_id').distinct('project_id').values_list('project_id', flat=True)
+        else: # 代表完全沒有資料 
+            p_list = list(project_info.id)
         ProjectSpecies.objects.filter(project_id__in=list(project_info.id)).update(last_updated=now)
         for i in p_list:
             query = Image.objects.filter(project_id=i).values('species').annotate(total=Count('species')).order_by('-total')
@@ -801,13 +914,21 @@ def project_detail(request, pk):
     # folder name takes long time
     # folder_list = Image.objects.filter(project_id=pk).order_by('folder_name').distinct('folder_name')
     now = timezone.now()
+    update = False
     last_updated = ProjectStat.objects.filter(project_id=pk).aggregate(Min('last_updated'))['last_updated__min']
-    has_new = Image.objects.filter(created__gte=last_updated, project_id=pk)
-    if has_new.exists():
+    if last_updated:
+        if Image.objects.filter(created__gte=last_updated, project_id=pk).exists():
+            update = True
+    else:
+        update = True
+    if update:
         # update project stat
         ProjectStat.objects.filter(project_id=pk).update(last_updated=now)
         c = Image.objects.filter(project_id=pk).count()
-        image_objects = Image.objects.filter(project_id=pk, created__gte=last_updated)
+        if last_updated:
+            image_objects = Image.objects.filter(project_id=pk, created__gte=last_updated)
+        else:
+            image_objects = Image.objects.filter(project_id=pk)
         latest_date = image_objects.latest('datetime').datetime
         earliest_date = image_objects.earliest('datetime').datetime
         if ProjectStat.objects.filter(project_id=pk).exists():
@@ -832,10 +953,14 @@ def project_detail(request, pk):
                 earliest_date=earliest_date)
             p.save()
     # update project species
-    # TODO last_updated 要改
+    update = False
     last_updated = ProjectSpecies.objects.filter(project_id=pk).aggregate(Min('last_updated'))['last_updated__min']
-    has_new = Image.objects.filter(last_updated__gte=last_updated, project_id=pk)
-    if has_new.exists():
+    if last_updated:
+        if Image.objects.filter(last_updated__gte=last_updated, project_id=pk).exists():
+            update = True
+    else:
+        update = True
+    if update:
         ProjectSpecies.objects.filter(project_id=pk).update(last_updated=now)
         query = Image.objects.filter(project_id=pk).values('species').annotate(total=Count('species')).order_by('-total')
         for q in query:
@@ -854,14 +979,24 @@ def project_detail(request, pk):
                         project_id=pk)
                     p_sp.save()
     # update imagefolder table
-    # TODO last_updated 要改
+    # update = False
     last_updated = ImageFolder.objects.filter(project_id=pk).aggregate(Min('last_updated'))['last_updated__min']
-    has_new = Image.objects.exclude(folder_name='').filter(last_updated__gte=last_updated, project_id=pk)
+    # has_new = Image.objects.exclude(folder_name='').filter(last_updated__gte=last_updated, project_id=pk)
+    if last_updated:
+        has_new = Image.objects.exclude(folder_name='').filter(last_updated__gte=last_updated, project_id=pk)
+    else:
+        has_new = Image.objects.exclude(folder_name='').filter(project_id=pk)
     if has_new.exists():
         ImageFolder.objects.filter(project_id=pk).update(last_updated=now)
-        query = Image.objects.exclude(folder_name='').filter(last_updated__gte=last_updated, project_id=pk).order_by('folder_name').distinct('folder_name').values('folder_name')
+        if last_updated:
+            query = Image.objects.exclude(folder_name='').filter(last_updated__gte=last_updated, project_id=pk).order_by('folder_name').distinct('folder_name').values('folder_name')
+        else:
+            query = Image.objects.exclude(folder_name='').filter(project_id=pk).order_by('folder_name').distinct('folder_name').values('folder_name')
         for q in query:
-            f_last_updated = Image.objects.filter(last_updated__gte=last_updated, project_id=pk, folder_name=q['folder_name']).aggregate(Max('last_updated'))['last_updated__max']
+            if last_updated:
+                f_last_updated = Image.objects.filter(last_updated__gte=last_updated, project_id=pk, folder_name=q['folder_name']).aggregate(Max('last_updated'))['last_updated__max']
+            else:
+                f_last_updated = Image.objects.filter(project_id=pk, folder_name=q['folder_name']).aggregate(Max('last_updated'))['last_updated__max']
             if img_f := ImageFolder.objects.filter(folder_name=q['folder_name'], project_id=pk).first():
                 img_f.folder_last_updated = f_last_updated
                 img_f.last_updated = now

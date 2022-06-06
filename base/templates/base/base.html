@@ -417,6 +417,27 @@
     right: 24px;
     top: 10px;
   }
+
+
+
+  @media (max-width: 992px) { 
+
+    .has-unread {
+      content: "";
+      width: 8px;
+      height: 8px;
+      background: #DC143C;
+      border-radius: 50%;
+      position: absolute;
+      left: 7px;
+      top: 10px;
+      margin: 0
+    }
+  
+  
+   }
+
+
     </style>
 
     {% block style %}{% endblock style %}
@@ -462,10 +483,11 @@
             <ul class="navbar-nav">
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle active notification" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                  <i class="fa fa-bell"></i>
+                  <i class="fa fa-bell"><div class="has-unread"></div></i>
+                  <!--
                   {% if request.session.id|has_unread_notif %}
                   <div class="has-unread"></div>
-                  {% endif %}
+                  {% endif %}-->
                 </a>
                 <div id="notification-container" class="dropdown-menu dropdown-menu-end" aria-labelledby="notification">
                   <div class="notification-head">

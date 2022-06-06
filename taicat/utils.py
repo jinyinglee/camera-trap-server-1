@@ -48,6 +48,7 @@ from taicat.models import (
     DeletedImage,
 )
 
+import geopandas as gpd
 
 
 # WIP
@@ -1002,3 +1003,42 @@ def half_year_ago(year, month):
         datetime.strptime(f'{begin_year}-{begin_month}-01 01:01:01', "%Y-%m-%d %H:%M:%S"),
         datetime.strptime(f'{end_year}-{end_month}-01 01:01:01', "%Y-%m-%d %H:%M:%S")
     ]
+
+
+
+def update_studyareastat():
+    query = """
+        SELECT d.longitude, d.latitude, d.id, d.study_area_id FROM taicat_deployment d
+        JOIN taicat_project p ON d.project_id = p.id
+        WHERE p.mode = 'official';
+        """
+
+    with connection.cursor() as cursor:
+        cursor.execute(query)
+        sa_df = cursor.fetchall()
+        sa_df = pd.DataFrame(sa_df, columns=['longitude', 'latitude', 'did', 'said'])
+
+    # d_df = pd.DataFrame(Deployment.objects.all().values('longitude','latitude','id', 'geodetic_datum'))
+
+    sa_gdf = gpd.GeoDataFrame(sa_df,geometry=gpd.points_from_xy(sa_df.longitude,sa_df.latitude))
+    sa_list = sa_df.said.unique()
+
+    for i in sa_list:
+        # print(i)
+        # print(i, sa_gdf[sa_gdf['said']==i].dissolve().centroid)
+        long = sa_gdf[sa_gdf['said']==i].dissolve().centroid.x[0]
+        lat = sa_gdf[sa_gdf['said']==i].dissolve().centroid.y[0]
+        if StudyAreaStat.objects.filter(studyarea_id=i).exists():
+            StudyAreaStat.objects.filter(studyarea_id=i).update(
+                longitude = long,
+                latitude = lat,
+                last_updated = now
+            )
+        else:
+            StudyAreaStat.objects.create(
+                studyarea_id = i,
+                longitude = long,
+                latitude = lat,
+            )
+
+
