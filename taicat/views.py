@@ -150,7 +150,6 @@ def edit_sa(request):
 
 def delete_dep_sa(request):
     if request.method == 'GET':
-        # TODO 先確認底下有沒有照片，如果有的話不能刪除
         type = request.GET.get('type')
         id = request.GET.get('id')
         project_id = request.GET.get('project_id')
@@ -417,6 +416,8 @@ def delete_data(request, pk):
 
 def edit_image(request, pk):
     if request.method == "POST":
+        mode = Project.objects.filter(id=pk).first().get('mode')
+
         now = timezone.now()
         requests = request.POST
         image_id = requests.get('image_id')
@@ -432,7 +433,6 @@ def edit_image(request, pk):
         if requests.get('deployment_id'):
             updated_dict.update({'deployment_id': requests.get('deployment_id')})
 
-        # TODO: update species stat
         obj = Image.objects.filter(id__in=image_id)
         c = obj.count()  # 更新的照片數量
 
@@ -441,13 +441,14 @@ def edit_image(request, pk):
         query = obj.values('species').annotate(total=Count('species')).order_by('-total')
         for q in query:
             # taicat_species
-            if sp := Species.objects.filter(name=q['species']).first():
-                if sp.count == q['total']:
-                    sp.delete()
-                else:
-                    sp.count -= q['total']
-                    sp.last_updated = now
-                    sp.save()
+            if mode == 'official':
+                if sp := Species.objects.filter(name=q['species']).first():
+                    if sp.count == q['total']:
+                        sp.delete()
+                    else:
+                        sp.count -= q['total']
+                        sp.last_updated = now
+                        sp.save()
             # taicat_projectspecies
             if p_sp := ProjectSpecies.objects.filter(name=q['species'], project_id=pk).first():
                 if p_sp.count == q['total']:
@@ -457,15 +458,16 @@ def edit_image(request, pk):
                     p_sp.last_updated = now
                     p_sp.save()
         # 新的加上去
-        if sp := Species.objects.filter(name=species).first():
-            sp.count += c
-            sp.last_updated = now
-            sp.save()
-        else:
-            sp = Species(name=species, last_updated=now, count=c)
-            if species in Species.DEFAULT_LIST:
-                sp.status = 'I'
-            sp.save()
+        if mode == 'official':
+            if sp := Species.objects.filter(name=species).first():
+                sp.count += c
+                sp.last_updated = now
+                sp.save()
+            else:
+                sp = Species(name=species, last_updated=now, count=c)
+                if species in Species.DEFAULT_LIST:
+                    sp.status = 'I'
+                sp.save()
 
         # taicat_projectspecies
         if p_sp := ProjectSpecies.objects.filter(name=species, project_id=pk).first():

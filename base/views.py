@@ -351,8 +351,8 @@ def set_permission(request):
 def get_auth_callback(request):
     original_page_url = request.GET.get('next')
     authorization_code = request.GET.get('code')
-    data = {'client_id': 'APP-F6POVPAP5L1JOUN1',
-            'client_secret': '20acec15-f58b-4653-9695-5e9d2878b673',
+    data = {'client_id': settings.ORCID_CLIENT_ID,
+            'client_secret': settings.ORCID_CLIENT_SECRET,
             'grant_type': 'authorization_code',
             'code': authorization_code}
     token_url = 'https://orcid.org/oauth/token'
@@ -429,14 +429,14 @@ def get_species_data(request):
     update = False
     last_updated = Species.objects.filter(status='I').aggregate(Min('last_updated'))['last_updated__min']
     if last_updated := Species.objects.filter(status='I').aggregate(Min('last_updated'))['last_updated__min']:
-        if Image.objects.filter(last_updated__gte=last_updated).exists():
+        if Image.objects.filter(last_updated__gte=last_updated, project__mode='official').exists():
             update = True
     else:
         update = True
     if update:
         Species.objects.filter(status='I').update(last_updated=now)
         for i in Species.DEFAULT_LIST:
-            c = Image.objects.filter(species=i).count()
+            c = Image.objects.filter(species=i, project__mode='official').count()
             if Species.objects.filter(status='I', name=i).exists():
                 # if exist, update
                 s = Species.objects.get(status='I', name=i)
@@ -478,7 +478,7 @@ def get_growth_data(request):
     update = False
     last_updated = HomePageStat.objects.all().aggregate(Min('last_updated'))['last_updated__min']
     if last_updated:
-        if Image.objects.filter(created__gte=last_updated).exists():
+        if Image.objects.filter(created__gte=last_updated, project__mode='official').exists():
             update = True
     else:
         update = True
@@ -486,9 +486,9 @@ def get_growth_data(request):
         # HomePageStat.objects.all().update(last_updated=now)
         # ------ update image --------- #
         if last_updated:
-            data_growth_image = Image.objects.filter(created__gte=last_updated).annotate(year=ExtractYear('datetime')).values('year').annotate(num_image=Count('image_uuid', distinct=True)).order_by()
+            data_growth_image = Image.objects.filter(created__gte=last_updated, project__mode='official').annotate(year=ExtractYear('datetime')).values('year').annotate(num_image=Count('image_uuid', distinct=True)).order_by()
         else: # 完全沒有資料
-            data_growth_image = Image.objects.all().annotate(year=ExtractYear('datetime')).values('year').annotate(num_image=Count('image_uuid', distinct=True)).order_by()
+            data_growth_image = Image.objects.filter(project__mode='official').annotate(year=ExtractYear('datetime')).values('year').annotate(num_image=Count('image_uuid', distinct=True)).order_by()
         data_growth_image = pd.DataFrame(data_growth_image, columns=['year', 'num_image']).sort_values('year')
         year_min, year_max = int(data_growth_image.year.min()), int(data_growth_image.year.max())
         # current_year_max = HomePageStat.objects.aggregate(Max('year')).year__max

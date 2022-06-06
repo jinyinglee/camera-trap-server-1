@@ -9,8 +9,10 @@ now = timezone.now()
 print('start HOMEPAGE STAT', now)
 
 with connection.cursor() as cursor:
-    query = """SELECT EXTRACT (year FROM datetime) as year, count(distinct(image_uuid)) as count
-    FROM taicat_image
+    query = """SELECT EXTRACT (year FROM i.datetime) as year, count(distinct(i.image_uuid)) as count
+    FROM taicat_image i
+    JOIN taicat_project p ON i.project_id = p.id
+    WHERE p.mode = 'official'
     GROUP BY year"""
     cursor.execute(query)
     data_growth_image = cursor.fetchall()
@@ -97,7 +99,7 @@ for i in project_info.index:
 # ---------- SPECIES ---------- #
 now = timezone.now()
 print('start SPECIES STAT', now)
-query = Image.objects.all().values('species').annotate(total=Count('species')).order_by('-total')
+query = Image.objects.filter(project__mode='official').values('species').annotate(total=Count('species')).order_by('-total')
 for i in query:
     if sp := Species.objects.filter(name=i['species']).first():
         sp.count = i['total']
@@ -139,9 +141,11 @@ now = timezone.now()
 print('start IMAGE FOLDER', now)
 
 for p in Project.objects.all().values('id'):
+    f_names = []
     query = Image.objects.exclude(folder_name='').filter(project_id=p['id']).order_by('folder_name').distinct('folder_name').values('folder_name')
     for q in query:
         f_last_updated = Image.objects.filter(project_id=p['id'], folder_name=q['folder_name']).aggregate(Max('last_updated'))['last_updated__max']
+        f_names += [q['folder_name']]
         if img_f := ImageFolder.objects.filter(folder_name=q['folder_name'], project_id=p['id']).first():
             img_f.folder_last_updated = f_last_updated
             img_f.last_updated = now
@@ -152,6 +156,9 @@ for p in Project.objects.all().values('id'):
                 folder_last_updated=f_last_updated,
                 project_id=p['id'])
             img_f.save()
+    # 確定imagefolder是不是有空的
+    ImageFolder.objects.filter(project_id=p['id']).exclude(folder_name__in=f_names).delete()
+
 
 # ---------- HOMEPAGE MAP ----------- #
 import geopandas as gpd
