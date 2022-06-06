@@ -43,7 +43,6 @@ import string
 import random
 from calendar import monthrange, monthcalendar
 from .utils import (
-    Calculation,
     find_deployment_working_day,
     get_my_project_list
 )

@@ -32,7 +32,6 @@ from taicat.models import (
 )
 from .utils import (
     get_species_list,
-    Calculation,
     calc,
     calc_output,
     calc_output2,

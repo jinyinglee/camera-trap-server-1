@@ -65,7 +65,7 @@ const AppSearchCalculation = ({calcData, setCalcData}) => {
               label="計算項目"
               onChange={(e)=>setCalcData({type: 'setCalcData', name:'calcType', value: e.target.value})}
             >
-              <MenuItem value="basic">基本（相機工作時數, 有效照片數, 目擊事件數, OI3）</MenuItem>
+              <MenuItem value="basic-oi">基本（相機工作時數, 有效照片數, 目擊事件數, OI）</MenuItem>
               <MenuItem value="pod">捕獲回合比例、存缺</MenuItem>
               <MenuItem value="apoa">活動機率(APOA)</MenuItem>
             </Select>
