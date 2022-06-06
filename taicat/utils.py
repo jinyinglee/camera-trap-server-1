@@ -938,7 +938,7 @@ def set_image_annotation(image_obj):
 
 def delete_image_by_ids(image_list=[], pk=None):
     # mode
-    mode = Project.objects.filter(id=pk).first().get('mode')
+    mode = Project.objects.filter(id=pk).first().mode
     now = timezone.now()
     image_objects = Image.objects.filter(id__in=image_list)
     # species的資料先用id抓回來計算再扣掉

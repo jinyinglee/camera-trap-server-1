@@ -416,7 +416,7 @@ def delete_data(request, pk):
 
 def edit_image(request, pk):
     if request.method == "POST":
-        mode = Project.objects.filter(id=pk).first().get('mode')
+        mode = Project.objects.filter(id=pk).first().mode
 
         now = timezone.now()
         requests = request.POST
