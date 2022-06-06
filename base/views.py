@@ -351,8 +351,8 @@ def set_permission(request):
 def get_auth_callback(request):
     original_page_url = request.GET.get('next')
     authorization_code = request.GET.get('code')
-    data = {'client_id': 'APP-F6POVPAP5L1JOUN1',
-            'client_secret': '20acec15-f58b-4653-9695-5e9d2878b673',
+    data = {'client_id': settings.ORCID_CLIENT_ID,
+            'client_secret': settings.ORCID_CLIENT_SECRET,
             'grant_type': 'authorization_code',
             'code': authorization_code}
     token_url = 'https://orcid.org/oauth/token'
