@@ -73,6 +73,9 @@ def update_species_map(request):
         date_filter = " AND i.datetime < '{}'".format(start_date)
 
     species = request.GET.get('species')
+    
+    if species == '未填寫':
+        species = ''
     # print(date_filter)
 
     data = []
