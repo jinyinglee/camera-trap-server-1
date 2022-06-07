@@ -3,10 +3,11 @@ import six
 from django.core.cache import cache
 import time
 from django.db import connection
-from taicat.models import Image
+from taicat.models import Image, StudyAreaStat
 import pandas as pd
 import json
 from decimal import Decimal
+from django.utils import timezone
 
 
 class TokenGenerator(PasswordResetTokenGenerator):
@@ -22,3 +23,43 @@ class DecimalEncoder(json.JSONEncoder):
         if isinstance(obj, Decimal):
             return float(obj)
         return json.JSONEncoder.default(self, obj)
+
+
+
+import geopandas as gpd
+
+
+def update_studyareastat(sa_list):
+    query = f"""
+        SELECT d.longitude, d.latitude, d.id, d.study_area_id FROM taicat_deployment d
+        WHERE d.study_area_id IN ({sa_list});"""
+
+    with connection.cursor() as cursor:
+        cursor.execute(query)
+        sa_df = cursor.fetchall()
+        sa_df = pd.DataFrame(sa_df, columns=['longitude', 'latitude', 'did', 'said'])
+
+    # d_df = pd.DataFrame(Deployment.objects.all().values('longitude','latitude','id', 'geodetic_datum'))
+
+    sa_gdf = gpd.GeoDataFrame(sa_df,geometry=gpd.points_from_xy(sa_df.longitude,sa_df.latitude))
+    sa_list = sa_df.said.unique()
+
+    for i in sa_list:
+        # print(i)
+        # print(i, sa_gdf[sa_gdf['said']==i].dissolve().centroid)
+        long = sa_gdf[sa_gdf['said']==i].dissolve().centroid.x[0]
+        lat = sa_gdf[sa_gdf['said']==i].dissolve().centroid.y[0]
+        if StudyAreaStat.objects.filter(studyarea_id=i).exists():
+            StudyAreaStat.objects.filter(studyarea_id=i).update(
+                longitude = long,
+                latitude = lat,
+                last_updated = timezone.now()
+            )
+        else:
+            StudyAreaStat.objects.create(
+                studyarea_id = i,
+                longitude = long,
+                latitude = lat,
+            )
+
+

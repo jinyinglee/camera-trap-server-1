@@ -3,7 +3,7 @@ from django.http import response
 from django.shortcuts import render, HttpResponse, redirect
 import json
 from django.db import connection
-from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Organization, Project, Species
+from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Organization, Project, Species, StudyAreaStat
 from django.db.models import Count, Window, F, Sum, Min, Q, Max
 from django.db.models.functions import ExtractYear
 from django.template import loader
@@ -24,7 +24,7 @@ from django.http import response, JsonResponse
 from .models import *
 from taicat.utils import get_my_project_list, get_project_member
 from django.db.models.functions import Trunc, TruncDate
-from .utils import DecimalEncoder
+from .utils import DecimalEncoder, update_studyareastat
 from django.views.decorators.csrf import csrf_exempt
 # from django.core import serializers
 
@@ -251,7 +251,7 @@ def feedback_request(request):
         msg.content_subtype = "html"  # Main content is now text/html
         # # save files to temporary dir
         for f in files:
-            print(f.name)
+            # print(f.name)
             fs = FileSystemStorage()
             filename = fs.save(f'email-attachment/{user}_' + f.name, f)
             msg.attach_file(os.path.join('/ct22-volumes/media', filename))
@@ -275,7 +275,7 @@ def policy(request):
 
 def add_org_admin(request):
     if request.method == 'POST':
-        print('hi')
+        # print('hi')
         for i in request.POST:
             print(i)
         redirect(set_permission)
@@ -351,8 +351,8 @@ def set_permission(request):
 def get_auth_callback(request):
     original_page_url = request.GET.get('next')
     authorization_code = request.GET.get('code')
-    data = {'client_id': 'APP-F6POVPAP5L1JOUN1',
-            'client_secret': '20acec15-f58b-4653-9695-5e9d2878b673',
+    data = {'client_id': settings.ORCID_CLIENT_ID,
+            'client_secret': settings.ORCID_CLIENT_SECRET,
             'grant_type': 'authorization_code',
             'code': authorization_code}
     token_url = 'https://orcid.org/oauth/token'
@@ -426,12 +426,17 @@ def home(request):
 
 def get_species_data(request):
     now = timezone.now()
+    update = False
     last_updated = Species.objects.filter(status='I').aggregate(Min('last_updated'))['last_updated__min']
-    has_new = Image.objects.filter(last_updated__gte=last_updated)
-    if has_new.exists():
+    if last_updated := Species.objects.filter(status='I').aggregate(Min('last_updated'))['last_updated__min']:
+        if Image.objects.filter(last_updated__gte=last_updated, project__mode='official').exists():
+            update = True
+    else:
+        update = True
+    if update:
         Species.objects.filter(status='I').update(last_updated=now)
         for i in Species.DEFAULT_LIST:
-            c = Image.objects.filter(species=i).count()
+            c = Image.objects.filter(species=i, project__mode='official').count()
             if Species.objects.filter(status='I', name=i).exists():
                 # if exist, update
                 s = Species.objects.get(status='I', name=i)
@@ -470,15 +475,28 @@ def get_geo_data(request):
 
 def get_growth_data(request):
     now = timezone.now()
+    update = False
     last_updated = HomePageStat.objects.all().aggregate(Min('last_updated'))['last_updated__min']
-    has_new = Image.objects.filter(created__gte=last_updated)
-    if has_new.exists():
-        HomePageStat.objects.all().update(last_updated=now)
+    if last_updated:
+        if Image.objects.filter(created__gte=last_updated, project__mode='official').exists():
+            update = True
+    else:
+        update = True
+    if update:
+        # HomePageStat.objects.all().update(last_updated=now)
         # ------ update image --------- #
-        data_growth_image = Image.objects.filter(created__gte=last_updated).annotate(year=ExtractYear('datetime')).values('year').annotate(num_image=Count('image_uuid', distinct=True)).order_by()
+        if last_updated:
+            data_growth_image = Image.objects.filter(created__gte=last_updated, project__mode='official').annotate(year=ExtractYear('datetime')).values('year').annotate(num_image=Count('image_uuid', distinct=True)).order_by()
+        else: # 完全沒有資料
+            data_growth_image = Image.objects.filter(project__mode='official').annotate(year=ExtractYear('datetime')).values('year').annotate(num_image=Count('image_uuid', distinct=True)).order_by()
         data_growth_image = pd.DataFrame(data_growth_image, columns=['year', 'num_image']).sort_values('year')
         year_min, year_max = int(data_growth_image.year.min()), int(data_growth_image.year.max())
-        year_gap = pd.DataFrame([i for i in range(year_min, year_max)], columns=['year'])
+        # current_year_max = HomePageStat.objects.aggregate(Max('year')).year__max
+        current_year_max = HomePageStat.objects.aggregate(Max('year')).get('year__max')
+        if current_year_max:
+            if current_year_max > year_max:
+                year_max = current_year_max
+        year_gap = pd.DataFrame([i for i in range(year_min, year_max+1)], columns=['year'])
         data_growth_image = year_gap.merge(data_growth_image, how='left').fillna(0)
         data_growth_image['cumsum'] = data_growth_image.num_image.cumsum()
         data_growth_image = data_growth_image.drop(columns=['num_image'])
@@ -487,6 +505,7 @@ def get_growth_data(request):
             if HomePageStat.objects.filter(year=row.year, type='image').exists():
                 h = HomePageStat.objects.get(year=row.year, type='image')
                 h.count += row['cumsum']
+                h.last_updated = now
                 h.save()
             else:
                 new_h = HomePageStat(
@@ -528,24 +547,34 @@ def get_growth_data(request):
 
 def stat_county(request):
     if request.method == 'GET':
+
         county = request.GET.get('county')
         county = county.replace('台','臺')
         response = GeoStat.objects.filter(county = county).values('num_project','num_deployment','identified','num_image','num_working_hour','species', 'studyarea')
-        response = response[0]
-        response.update({'species':response.get('species').replace(',','、')})
+        if len(response):
+            response = response[0]
+            response.update({'species':response.get('species').replace(',','、')})
 
-        sa_points = []
-        if response['studyarea']:
-            with connection.cursor() as cursor:
-                query = f"""SELECT sas.longitude, sas.latitude, p.name, sa.name, sa.id  
-                            FROM taicat_studyareastat sas  
-                            JOIN taicat_studyarea sa ON sas.studyarea_id = sa.id
-                            JOIN taicat_project p ON p.id = sa.project_id
-                            WHERE sas.studyarea_id IN ({response['studyarea']});"""
-                cursor.execute(query)
-                sa_points = cursor.fetchall()
-        response.update({'studyarea': sa_points})
-
+            sa_points = []
+            if response['studyarea']:
+                # print(response['studyarea'])
+                sa_list = response['studyarea'].split(',')
+                if last_updated := StudyAreaStat.objects.filter(studyarea_id__in=sa_list).aggregate(Min('last_updated'))['last_updated__min']:
+                    if Deployment.objects.filter(last_updated__gte=last_updated, study_area_id__in=sa_list).exists():
+                        update_studyareastat(response['studyarea'])
+                else:
+                    update_studyareastat(response['studyarea'])
+                with connection.cursor() as cursor:
+                    query = f"""SELECT sas.longitude, sas.latitude, p.name, sa.name, sa.id  
+                                FROM taicat_studyareastat sas  
+                                JOIN taicat_studyarea sa ON sas.studyarea_id = sa.id
+                                JOIN taicat_project p ON p.id = sa.project_id
+                                WHERE sas.studyarea_id IN ({response['studyarea']});"""
+                    cursor.execute(query)
+                    sa_points = cursor.fetchall()
+            response.update({'studyarea': sa_points})
+        else:
+            response = {'species': '', 'studyarea': [], 'num_project': 0, 'num_deployment': 0,'identified': 0,'num_image': 0,'num_working_hour': 0}
         return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
 
 
@@ -574,6 +603,11 @@ def stat_studyarea(request):
                     name += [data[0][0]]
                     count += [data[0][1]]
         with connection.cursor() as cursor:
+            if last_updated := StudyAreaStat.objects.filter(studyarea_id=said).aggregate(Min('last_updated'))['last_updated__min']:
+                if Deployment.objects.filter(last_updated__gte=last_updated, study_area_id=said).exists():
+                    update_studyareastat(said)
+            else:
+                update_studyareastat(said)
             query = f"""SELECT sas.longitude, sas.latitude  
                         FROM taicat_studyareastat sas  
                         WHERE sas.studyarea_id = ({said});"""

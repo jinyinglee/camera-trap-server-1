@@ -443,6 +443,7 @@ class Deployment(models.Model):
     camera_status = models.CharField(max_length=4, default='1', choices=CAMERA_STATUS_CHOICES)
     study_area = models.ForeignKey(StudyArea, on_delete=models.SET_NULL, null=True)
     created = models.DateTimeField(auto_now_add=True)
+    last_updated = models.DateTimeField(auto_now_add=True)
     source_data = models.JSONField(default=dict, blank=True)
 
     geodetic_datum = models.CharField(max_length=10, default='WGS84', choices=GEODETIC_DATUM_CHOICES)

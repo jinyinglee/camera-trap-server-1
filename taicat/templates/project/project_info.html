@@ -3,6 +3,15 @@
 
 <style>
 
+    .species-percentage-list:hover{
+        color: lightgrey !important;
+    }
+
+    .species-map-tooltip {
+        color: black !important;
+        font-size: 14px !important;
+    }
+
     .checkbox__container {
         display: flex;
         justify-content: space-between;
@@ -338,31 +347,44 @@
                             <div id="map" class="project-map mx-3" style="height: 395px;">
                             </div>
                             <div class="checkbox__container checkbox mx-3 my-2">
+                                <!--
                                 <div>
                                   <input type="checkbox" class="form-check-input" name="show-species" id="show-species">
                                   <label for="show-species">顯示物種</label>
                                 </div>
+                                -->
                                 <div>
                                   <input type="checkbox" class="form-check-input" name="show-woods" id="show-woods" />
                                   <label for="show-woods">在地圖顯示林班地範圍</label>
                                 </div>
                                 <div>
                                     <img style="width: 16px; height: auto" src='{% static "icon/marker-icon-error.png" %}'> 樣區
-                                </div>
-                                <div>
                                     <img style="width: 16px; height: auto" src='{% static "icon/marker-icon.png" %}'> 相機位置
                                 </div>
                             </div>
+                            <div class="species-map-legend mx-3 mt-1 mb-2 text-end d-none">
+                                <i class="fa fa-xs fa-circle" style="color: #AC92EB"></i> < 500
+                                <i class="fa fa-xs fa-circle" style="color: #4FC1E8"></i>  >= 500
+                                <i class="fa fa-xs fa-circle" style="color: #A0D568"></i>  >= 1000
+                                <i class="fa fa-xs fa-circle" style="color: #FFCE54"></i>  >= 5000
+                                <i class="fa fa-xs fa-circle" style="color: #ED5564"></i>  >= 10000
+                            </div>            
                         </div>
                         <div class="col-7">
-                            <h1 class="m-0">
+                            <h1 class="m-0 species-pie">
                                 <span id="sa-title">全部樣區</span>已辨識物種<span id="species-count-title" class="title-dark">{{ species_count }}</span>種
                             </h1>
-                            <small class="text-secondary mt-2">最後更新時間：<span id="species_last_updated">{{ species_last_updated|date:'o-m-d' }}</span></small>
-                            <div class="row">
+                            <small class="text-secondary mt-2 species-pie">最後更新時間：<span id="species_last_updated">{{ species_last_updated|date:'o-m-d' }}</span></small>
+                            <h1 class="m-0 species-map d-none">
+                                <span id="species-map-title"></span>共有<span id="species-map-count-title" class="title-dark"></span>筆辨識紀錄
+                            </h1>
+                            <small class="text-secondary mt-2 species-map d-none">最後更新時間：<span id="species_last_updated">{{ species_last_updated|date:'o-m-d' }}</span></small>
+                            <p class="text-gray link text-decoration-none species-map d-none my-2" onClick="updateSpeciesPie()"><i class="fa fa-chevron-left"></i> 返回</p>
+
+                            <div class="row ">
                                 <div class="col-7" id="species-pie"></div>
-                                <div class="col-5" id="species-percentage">
-                                </div>
+                                <div class="col-5" id="species-percentage"></div>
+                                <div class="col-12 d-none species-map mt-3" id="species-map-stat"></div>
                             </div>
                         </div>
                     </div>                  
@@ -664,12 +686,24 @@ function setSpeciesPie(pie_data, other_data, deployment_points){
                 name: 'speices',
                 size: '80%',
                 innerSize: '50%',
-        
-              allowPointSelect: true,
-              cursor: 'pointer',
-              dataLabels: {
-                enabled: false,
-              },
+                allowPointSelect: true,
+                cursor: 'pointer',
+                dataLabels: {
+                    enabled: false,
+                },
+                point: {
+                    events: {
+                        click: function(event) {
+                            // 修改左側地圖成heatmap
+                            if (this.name == '其他物種'){
+                                alert('請由右側「其他物種」折疊選單選擇物種')
+                            } else {
+                                updateSpeciesMap(this.name)
+                            }
+                            // 修改右側統計圖
+                        }
+                    }
+                }        
             },
         },
         tooltip: {
@@ -685,7 +719,7 @@ function setSpeciesPie(pie_data, other_data, deployment_points){
             },
         },
         series: [{
-            name: 'Browsers',
+            name: 'Speices',
             data: pie_data,
             size: '80%',
         }]
@@ -700,7 +734,7 @@ function setSpeciesPie(pie_data, other_data, deployment_points){
     for (i = 0; i < pie_data.length; i++) {
         if (pie_data[i]['name'] != '其他物種'){
             $('#species-percentage').append(
-                ` <span style="font-size: 14px"><i class="fa fa-circle mt-3" style="color: ${chartColors[i]};"></i> 
+                ` <span class="species-percentage-list" onClick="updateSpeciesMap('${pie_data[i]['name']}')" style="font-size: 14px; cursor: pointer"><i class="fa fa-circle mt-3" style="color: ${chartColors[i]};"></i> 
                 ${pie_data[i]['name']} ${pie_data[i]['y']} % </span> <br>`
             )
         } else {
@@ -718,7 +752,7 @@ function setSpeciesPie(pie_data, other_data, deployment_points){
     $('#other-card').html('');
     for (i = 0; i < other_data.length; i++) {
         $('#other-card').append(`
-        <span style="font-size: 14px; color: grey">
+        <span class="species-percentage-list" onClick="updateSpeciesMap('${other_data[i]['name']}')" style="font-size: 14px; color: grey; cursor: pointer">
             ${other_data[i]['name']} ${other_data[i]['y']} % </span>
         `)
     }
@@ -729,18 +763,52 @@ function setSpeciesPie(pie_data, other_data, deployment_points){
     $('.myStudyAreaIcon').remove();
 
     if (deployment_points.length > 0){
-        map.setView([deployment_points[0][2],deployment_points[0][1]]);
-        deployment_points.forEach(
-        (r) =>
-            (marker = new L.marker([r[2], r[1]], { icon: DeploymentIcon })
-            .on("mouseover", function (e) {
-                e.target.setIcon(DeploymentIconSelect);                                 
-            })
-            .on("mouseout", function (e) {
-                e.target.setIcon(DeploymentIcon);                                     
-            })                        
-            .bindTooltip(r[3], { permanent: true, direction: 'top' })
-            .addTo(map))
+        map.setView([deployment_points[0][1],deployment_points[0][0]]);
+        deployment_points.forEach(function(r){
+                if (r[3] == false ){ // 不是子樣區, 是相機位置
+                    marker = new L.marker([r[1], r[0]], { icon: DeploymentIcon })
+                    .on("mouseover", function (e) {
+                        e.target.setIcon(DeploymentIconSelect);                                 
+                    })
+                    .on("mouseout", function (e) {
+                        e.target.setIcon(DeploymentIcon);                                     
+                    })                        
+                    .bindTooltip(r[2], { permanent: true, direction: 'top' })
+                    .addTo(map)
+                } else {
+                    marker = new L.marker([r[1], r[0]], { icon: StudyAreaIcon })
+                    .on("mouseover", function (e) {
+                        e.target.setIcon(StudyAreaIconSelect);                                 
+                    })
+                    .on("mouseout", function (e) {
+                        e.target.setIcon(StudyAreaIcon);                                     
+                    })
+                    .on("click", function (e) {
+                        // 如果是子樣區？
+                        $('.subsa-select').val(r[4]);
+                        updateSpeciesPie();
+                        /*
+                        $('#species-pie').html('<div class="loader"></div>');
+                        $.ajax({
+                            data: {'said': i[3]},            
+                            url: "{% url 'update_species_pie' %}",
+                            success: function(response){
+                                $('#sa-title').html(i[2]);
+                                $('#species-count-title').html(response.species_count);
+                                $('#species_last_updated').html(response.species_last_updated);
+                                setSpeciesPie(response.pie_data, response.other_data, response.deployment_points);
+                                // show deployment
+                            }
+                        })
+                        */
+                    })
+
+                    .bindTooltip(r[2], { permanent: true, direction: 'top' })
+                    .addTo(map)
+
+                }
+            
+        }
         );
     }
 }
@@ -769,6 +837,7 @@ $('.subsa-select').on('change',function(){
             },
             error: function(request){
                 alert('發生未知錯誤，請通知管理員')
+                
             }
             
         })
@@ -812,6 +881,11 @@ $('input[type="date"]').on('change',function(){
 
 
 function updateSpeciesPie(){
+    // 地圖相關的移除
+    $('.species-map-legend').addClass('d-none')
+    $('.speciesMapIcon').remove()
+    $('.species-pie,#species-pie,#species-percentage').removeClass('d-none')
+    $('.species-map').addClass('d-none')
     // 樣區 子樣區 日期
     let said;
     // 子樣區優先
@@ -829,8 +903,6 @@ function updateSpeciesPie(){
         title = '全部'
     }
 
-    console.log(title)
-
     let start_date = $('input[name="start_date"]').val()
     let end_date = $('input[name="end_date"]').val()
 
@@ -841,7 +913,7 @@ function updateSpeciesPie(){
         $('#species-count-title').html({{ species_count }});
         $('#species_last_updated').html({{ response.species_last_updated }});
     } else {
-        $('#species-pie').html('<div class="loader"></div>');
+        $('#species-pie').append('<div class="loader"></div>');
         $.ajax({
             data: {'said': said, 'start_date': start_date, 'end_date': end_date},            
             url: "{% url 'update_species_pie' %}",
@@ -853,9 +925,91 @@ function updateSpeciesPie(){
                 if (title=='全部'){
                     getSaPoints({{ sa_list | safe }})
                 };
+            },
+            error: function(){
+                alert('未知錯誤，請聯繫管理員');
+                $('.loader').remove();
+
             }
         })
     }
+}
+
+function updateSpeciesMap(species){
+    // 樣區 子樣區 日期
+    let said;
+    // 子樣區優先
+    let subsa_select = $('.subsa-select option:selected').val();
+    let sa_select = $('.sa-select option:selected').val();
+    let title;
+    if ((subsa_select!='all') & (subsa_select!=undefined) ){
+        said = subsa_select
+        title = $( ".subsa-select option:selected" ).text()
+    } else if ((sa_select!='all') & (sa_select!=undefined) ) {
+        said = sa_select
+        title = $( ".sa-select option:selected" ).text()
+    } else {
+        said = {'project': {{ pk }}}
+        title = '全部'
+    }
+
+    let start_date = $('input[name="start_date"]').val()
+    let end_date = $('input[name="end_date"]').val()
+
+       /*
+    if ((!start_date) & (!end_date) ){
+        setSpeciesPie({{ pie_data | safe }}, {{ other_data | safe }}, []);
+        getSaPoints({{ sa_list | safe }})
+        $('#sa-title').html('全部');
+        $('#species-count-title').html({{ species_count }});
+        $('#species_last_updated').html({{ response.species_last_updated }});
+    } else {        */
+
+        $('#species-pie').append('<div class="loader"></div>');
+        $.ajax({
+            data: {'said': said, 'start_date': start_date, 'end_date': end_date, 'species': species},            
+            url: "{% url 'update_species_map' %}",
+            success: function(response){
+                // 先把所有地圖上的移除
+                $('.leaflet-marker-icon,.leaflet-tooltip,.speciesMapIcon').remove()
+                $('.species-map-legend').removeClass('d-none');
+
+                //$('#species-map-stat').html('<a class="text-gray link text-decoration-none mb-5" onClick="updateSpeciesPie()"><i class="fa fa-chevron-left"></i> 返回</a>')
+
+                let pre
+                if (response.type=='相機位置'){
+                    pre = `<img style="width: 16px; height: auto" src='{% static "icon/marker-icon.png" %}'>`
+                } else {
+                    pre = `<img style="width: 16px; height: auto" src='{% static "icon/marker-icon-error.png" %}'>`
+                }
+
+                $('#species-map-stat').html('')
+                //$('#species-map-stat').append(`<h5>${response.type}</h5>`)
+                response.data.forEach(function(i) {
+                    marker = pointToLayer(i[0], [i[2],i[1]])
+                            .bindTooltip(pre+i[3],{className: 'species-map-tooltip'})
+                            .addTo(map)
+                    $('#species-map-stat').append(
+                        `<p>${i[3]}：${i[0]}筆</p>`
+                    )
+                })                  
+
+                // 右側統計
+                $('.species-pie,#species-pie,#species-percentage').addClass('d-none')
+                $('.species-map').removeClass('d-none')
+
+                $('#species-map-title').html(species)
+                $('#species-map-count-title').html(response.total_count)
+
+
+                $('.loader').remove();
+            },
+            error: function(){
+                alert('未知錯誤，請聯繫管理員');
+                $('.loader').remove();
+            }
+        })
+    //}
 
 }
 
@@ -863,6 +1017,40 @@ function updateSpeciesPie(){
 $('.filter').on('change', function(){
     updateSpeciesPie();
 })
+
+
+// species point color 
+    /* marker style */
+function getColor(d) {
+    return  d > 10000  ? '#ED5564' :
+            d > 5000   ? '#FFCE54' :
+            d > 1000   ? '#A0D568' :
+            d > 500   ? '#4FC1E8' :
+                        '#AC92EB';
+}
+
+function getRadius(d) {
+    return  d > 1000 ? 20 :
+            d > 5000 ? 20 :
+            d > 1000 ? 18 :
+            d > 500  ? 16 :
+                       14;
+}  
+
+
+function pointToLayer(count, latlng) {
+    return L.circleMarker(latlng, {
+        radius: getRadius(count),
+        fillColor: getColor(count),
+        color: 'transparent',
+        weight: 1,
+        opacity: 1,
+        fillOpacity: 0.75,
+        className: 'speciesMapIcon',
+        }) // Change marker to circle
+    } 
+
+
 
 </script>
 {% endblock script %}
