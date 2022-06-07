@@ -229,7 +229,7 @@
        body: JSON.stringify(payload),
      }).then((resp) => {
        if (!resp.ok) {
-         console.error(response.status);
+         console.error(resp.status);
        }
        return resp.json()
      }).then((data) => {
