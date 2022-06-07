@@ -6,6 +6,7 @@ from django.http import (
     StreamingHttpResponse,
 )
 from django.shortcuts import redirect, render, HttpResponse
+from django.utils.timezone import make_aware
 from django.views.decorators.csrf import csrf_exempt
 from pandas.core.groupby.generic import DataFrameGroupBy
 from taicat.models import *
@@ -43,7 +44,6 @@ import string
 import random
 from calendar import monthrange, monthcalendar
 from .utils import (
-    Calculation,
     find_deployment_working_day,
     get_my_project_list
 )
@@ -1335,14 +1335,17 @@ def generate_download_excel(request, pk):
 def download_project_oversight(request, pk):
     # TODO auth
     project = Project.objects.get(pk=pk)
-    proj_stats = project.get_or_count_stats()
-    start_year = datetime.datetime.fromtimestamp(proj_stats['working__range'][0]).year
-    end_year = datetime.datetime.fromtimestamp(proj_stats['working__range'][1]).year
+    # proj_stats = project.get_or_count_stats()
+    # start_year = datetime.datetime.fromtimestamp(proj_stats['working__range'][0]).year
+    # end_year = datetime.datetime.fromtimestamp(proj_stats['working__range'][1]).year
+    year = request.GET.get('year')
+    year_int = int(year)
+    stats = project.count_deployment_journal([year_int])
 
     wb = Workbook()
     ws1 = wb.active
     with NamedTemporaryFile() as tmp:
-        for index, (year, data) in enumerate(proj_stats['years'].items()):
+        for index, (year, data) in enumerate(stats.items()):
             # each year
             headers = ['樣區', '相機位置']
             for x in range(1, 13):
@@ -1365,7 +1368,10 @@ def download_project_oversight(request, pk):
                         values +=[x[0], detail[3], detail[4]]
 
                     values += [d['ratio_year']]
-                    values += [f"{x['label']}: {x['caused']}" for x in d['gaps']]
+                    values += ['{}: {}'.format(
+                        x['label'],
+                        x.get('caused', '')
+                    ) for x in d['gaps']]
                     if index == 0:
                         ws1.append(values)
                     else:
@@ -1375,7 +1381,8 @@ def download_project_oversight(request, pk):
 
         tmp.seek(0)
         stream = tmp.read()
-        filename = quote(f'{project.name}_管考_{start_year}-{end_year}.xlsx')
+        #filename = quote(f'{project.name}_管考_{start_year}-{end_year}.xlsx')
+        filename = quote(f'{project.name}_管考_{year}.xlsx')
 
         #return StreamingHttpResponse(
         #    stream,
@@ -1401,20 +1408,66 @@ def project_oversight(request, pk):
         if (pk in list(public_ids)) or is_authorized:
             project = Project.objects.get(pk=pk)
 
-            if proj_stats := project.get_or_count_stats():
+            mn = DeploymentJournal.objects.filter(project_id=project.id).aggregate(Max('working_end'), Min('working_start'))
+
+            # if proj_stats := project.get_or_count_stats():
+            if year:
+                year_int = int(year)
+                deps = project.get_deployment_list(as_object=True)
+                data = project.count_deployment_journal([year_int])
+                #for sa in data[year]:
+                #    for d in sa['items']:
+                        # print (sa['name'], d['id'], d['name'])
+                #        dep_obj = Deployment.objects.get(pk=d['id'])
+                #        d['gaps'] = dep_obj.find_deployment_journal_gaps(year_int)
                 return render(request, 'project/project_oversight.html', {
                     'project': project,
                     'gap_caused_choices': DeploymentJournal.GAP_CHOICES,
                     'month_label_list': [f'{x} 月'for x in range(1, 13)],
-                    'result': proj_stats['years'][year] if year else [],
-                    'year_list': [ y for y in proj_stats['years']]
+                    'result': data[year] if year else [],
+                    'year_list': list(range(mn['working_start__min'].year, mn['working_end__max'].year+1))
                 })
             else:
                 return render(request, 'project/project_oversight.html', {
                     'project': project,
+                    'year_list': list(range(mn['working_start__min'].year, mn['working_end__max'].year+1))
                 })
         else:
-            return ''
+            return HttpResponse('no auth')
+
+@csrf_exempt
+def api_create_or_list_deployment_journals(request):
+    if request.method == 'POST':
+        ret = {
+            'message': ''
+        }
+        data = json.loads(request.body)
+        # print(data)
+        if deployment := Deployment.objects.get(pk=data['deploymentId']):
+            gap_caused = ''
+            if text := data.get('text'):
+                gap_caused = text
+            elif choice := data.get('choice'):
+                gap_caused = choice
+
+            dj= DeploymentJournal(
+                project_id=deployment.project_id,
+                deployment_id=deployment.id,
+                studyarea_id=deployment.study_area_id,
+                working_start=make_aware(datetime.datetime.fromtimestamp(int(data['range'][0]))),
+                working_end=make_aware(datetime.datetime.fromtimestamp(int(data['range'][1]))),
+                gap_caused=gap_caused,
+                is_effective=False,
+                is_gap=True)
+            dj.save()
+        ret = {
+            'message': f'created {dj.id}'
+        }
+        return JsonResponse(ret)
+
+    if request.method == 'GET':
+        return HtmlResponse('list deployment journals')
+
 
 @csrf_exempt
 def api_update_deployment_journals(request, pk):
@@ -1441,14 +1494,14 @@ def api_update_deployment_journals(request, pk):
                 dj.last_updated = datetime.datetime.now()
                 dj.save()
                 ret['message'] = 'updated'
-                try:
-                    stats = dj.project.get_or_count_stats()
-                    gap = stats['years'][str(data['year'])][int(data['saIndex'])]['items'][int(data['dIndex'])]['gaps'][int(data['gapIndex'])]
-                    gap['caused'] = dj.gap_caused
-                    dj.project.write_stats(stats)
-                    ret['message'] = 'updated database, updated ucache'
-                except Exception as e:
-                    ret['message'] = 'updated database, update cache error: {}'.format(e)
+                # try:
+                #     stats = dj.project.get_or_count_stats()
+                #     gap = stats['years'][str(data['year'])][int(data['saIndex'])]['items'][int(data['dIndex'])]['gaps'][int(data['gapIndex'])]
+                #     gap['caused'] = dj.gap_caused
+                #     dj.project.write_stats(stats)
+                #     ret['message'] = 'updated database, updated ucache'
+                # except Exception as e:
+                #     ret['message'] = 'updated database, update cache error: {}'.format(e)
 
         return JsonResponse(ret)
 

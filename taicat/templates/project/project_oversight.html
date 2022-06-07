@@ -185,11 +185,11 @@
    $('.deployment-gap').click((e)=>{
      const name = e.target.dataset.name;
      const caused = e.target.dataset.caused;
+     $('#gap-modal-title').html(`相機位置: ${name}`);
+     $('#gap-modal-label').html(e.target.dataset.gaplabel);
+
      $('#form-gap-select').val('');
      $('#form-gap-text').val('');
-     $('#form-saindex').val('');
-     $('#form-dindex').val('');
-     $('#form-gapindex').val('');
 
      if (gapChoices.indexOf(caused) >=0 ) {
        $('#form-gap-select').val(caused);
@@ -197,29 +197,31 @@
        $('#form-gap-text').val(caused);
      }
 
-     $('#gap-modal-title').html(`相機位置: ${name}`);
      $('#form-gap-id').val(e.target.dataset.gapid);
-     $('#form-saindex').val(e.target.dataset.saindex);
-     $('#form-dindex').val(e.target.dataset.dindex);
-     $('#form-gapindex').val(e.target.dataset.gapindex);
-
+     $('#form-gap-start').val(e.target.dataset.gapstart);
+     $('#form-gap-end').val(e.target.dataset.gapend);
+     $('#form-gap-deployment-id').val(e.target.dataset.deploymentid);
    });
+
    $('#btn-gap-submit').click((e)=>{
      const payload = {
        text: $('#form-gap-text').val(),
        choice: $('#form-gap-select').val(),
-       saIndex: $('#form-saindex').val(),
-       dIndex: $('#form-dindex').val(),
-       gapIndex: $('#form-gapindex').val(),
+       gapId: $('#form-gap-id').val(),
+       range: [parseInt($('#form-gap-start').val(), 10), parseInt($('#form-gap-end').val(), 10)],
+       deploymentId: $('#form-gap-deployment-id').val(),
        year: {% if request.GET.year %}{{ request.GET.year }}{% endif %}
      };
-     //console.log(e.target.dataset.saindex, '--');
-     const gapID = parseInt($('#form-gap-id').val(), 10);
+
      const host = `${window.location.protocol}//${window.location.host}`;
-     const url = `${host}/api/deployment_journals/${gapID}/`;
-     //console.log(url);
+     let url = `${host}/api/deployment_journals/`;
+     if ($('#form-gap-id').val()) {
+       const gapId = parseInt($('#form-gap-id').val(), 10);
+       url = `${url}${gapId}/`;
+     }
+     console.log(url, (payload.gapId) ? 'PUT' : 'POST');
      fetch(url, {
-       method: 'PUT',
+       method: (payload.gapId) ? 'PUT' : 'POST',
        mode: 'cors',
        headers: {
          'content-type': 'application/json'
@@ -281,6 +283,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
+        <h6>範圍: <span id="gap-modal-label"></span></h6>
         <h6>缺失原因</h6>
         <select class="form-select" id="form-gap-select">
           <option value="">---</option>
@@ -290,10 +293,10 @@
         </select>
         自行填寫
         <input type="text" class="form-control" id="form-gap-text" value="" />
+        <input type="hidden" id="form-gap-deployment-id" value="" />
         <input type="hidden" id="form-gap-id" value="" />
-        <input type="hidden" id="form-saindex" value="" />
-        <input type="hidden" id="form-dindex" value="" />
-        <input type="hidden" id="form-gapindex" value="" />
+        <input type="hidden" id="form-gap-start" value="" />
+        <input type="hidden" id="form-gap-end" value="" />
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -368,13 +371,15 @@
                 {% endfor %}
                 <td>{{ deployment.ratio_year|floatformat:2  }}</td>
                 <td>{% for gap in deployment.gaps %}
-                  <div class="btn {%if gap.caused != '' %}btn-secondary{% else %}btn-danger{% endif %} deployment-gap btn-lg" data-name="{{ deployment.name }}" data-gapid="{{ gap.id }}" data-caused="{{ gap.caused }}" data-saindex="{{ studyarea.sa_idx }}" data-dindex="{{ deployment.d_idx }}" data-gapindex="{{ gap.idx }}" data-bs-toggle="modal" data-bs-target="#gap-modal" style="font-size:12px;margin:2px;">{{ gap.label }}</div>{% endfor %}</td>
+                  <div class="btn {%if gap.caused %}btn-secondary{% else %}btn-danger{% endif %} deployment-gap btn-lg" data-name="{{ deployment.name }}" data-deploymentid="{{ deployment.id}}" data-gapid="{{ gap.id }}" data-caused="{{ gap.caused }}" data-bs-toggle="modal" data-bs-target="#gap-modal" data-gaplabel="{{ gap.label }}" data-gapstart="{{ gap.range.0 }}" data-gapend="{{ gap.range.1 }}" style="font-size:12px;margin:2px;">{{ gap.label }}{% if gap.caused %}({{ gap.caused}}){% endif %}</div>{% endfor %}</td>
               </tr>
               {% endfor %}
           </tbody>
       </table>
       {% endfor %}
-      <a href="{% url 'download_project_oversight' pk=project.id %}" class="btn btn-success">管考表下載 (全部資料)</a>
+      {% if request.GET.year %}
+      <a href="{% url 'download_project_oversight' pk=project.id %}?year={{ request.GET.year }}" class="btn btn-success">管考表下載 ({{ request.GET.year }}) </a>
+      {% endif %}
     </div>
   </div>
 

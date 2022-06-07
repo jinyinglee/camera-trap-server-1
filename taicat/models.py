@@ -48,8 +48,8 @@ def find_the_gap(year, array):
 
     for x in gap_list:
         gap_list_date.append([
-            (datetime(year, 1, 1) + timedelta(days=x[0])).strftime('%Y-%m-%d'),
-            (datetime(year, 1, 1) + timedelta(days=x[1])).strftime('%Y-%m-%d'),
+            (datetime(year, 1, 1) + timedelta(days=x[0])).timestamp(),
+            (datetime(year, 1, 1) + timedelta(days=x[1])).timestamp(),
         ])
     return gap_list_date
 
@@ -260,7 +260,7 @@ class Project(models.Model):
                             working_end=gap_range[1],
                             is_effective=False,
                             is_gap=True)
-                        dj.save()
+                        #dj.save()
                         results.append(dj)
         return results
 
@@ -314,14 +314,16 @@ class Project(models.Model):
                         month_list.append([ratio, json.dumps(data),  [ratio_sp_img, num_images[0], num_images[1]]])
                     #gaps = find_the_gap(year, year_stats)
                     # move to find_and_create_deployment_journal_gap
-                    rows = d['object'].get_deployment_journal_gaps(year)
-                    gaps = [{
-                        'id': x.id,
-                        'idx': x_idx,
-                        'caused': x.gap_caused if x.gap_caused else '',
-                        'label': '{} - {}'.format(
-                            x.working_start.strftime('%m/%d'),
-                            x.working_end.strftime('%m/%d'))} for x_idx, x in enumerate(rows)]
+                    # move to find_deployment_journal_gaps, lively not cached, 220606
+                    #rows = d['object'].get_deployment_journal_gaps(year)
+                    # gaps = [{
+                    #     'id': x.id,
+                    #     'idx': x_idx,
+                    #     'caused': x.gap_caused if x.gap_caused else '',
+                    #     'label': '{} - {}'.format(
+                    #         x.working_start.strftime('%m/%d'),
+                    #         x.working_end.strftime('%m/%d'))} for x_idx, x in enumerate(rows)]
+                    gaps = d['object'].find_deployment_journal_gaps(year)
                     items_d.append({
                         'name': d['name'],
                         'id': dep_id,
@@ -476,8 +478,10 @@ class Deployment(models.Model):
             is_effective=True,
             deployment_id=self.id,
             working_start__lte=month_end,
-            working_end__gte=month_start).order_by('working_start')
-
+            working_end__gte=month_start).\
+            filter(Q(is_gap__isnull=True) | Q(is_gap=False)).\
+            order_by('working_start')
+        #print(self.name, year, month, query.all())
         ret = []
         for i in query.all():
             # updated
@@ -558,15 +562,53 @@ class Deployment(models.Model):
                 'species': by_year_month_sp
             }
 
-    def get_deployment_journal_gaps(self, year):
+    def find_deployment_journal_gaps(self, year):
+        '''
+        get gap in database and count by working_day
+
+        returns: {
+                   id: deployment_journal.id,
+                   label: [start, end]
+                 }
+        '''
+        year = int(year)
+        gaps = []
         query = DeploymentJournal.objects.filter(
             is_gap=True,
             deployment_id=self.id,
             working_start__year__gte=year,
             working_end__year__lte=year)
         rows = query.all()
-        #print (self.name, year, rows)
-        return rows
+
+        for r in rows:
+            gaps.append({
+                'id': r.id,
+                'caused': r.gap_caused,
+                'range': [r.working_start.timestamp(), r.working_end.timestamp()],
+                'label': '{} - {}'.format(
+                    r.working_start.strftime('%m/%d'),
+                    r.working_end.strftime('%m/%d'))
+            })
+
+        year_stats = []
+        for m in range(1, 13):
+            ret = self.count_working_day(year, m)
+            year_stats += ret[0]
+
+        year_gap = find_the_gap(year, year_stats)
+        for i in year_gap:
+            found = list(filter(lambda x: x['range'][0] == i[0] and x['range'][1] == i[1], gaps))
+            if not found:
+                gaps.append({
+                    'range': i,
+                    'label': '{}/{} - {}/{}'.format(
+                        datetime.fromtimestamp(i[0]).month,
+                        datetime.fromtimestamp(i[0]).day,
+                        datetime.fromtimestamp(i[1]).month,
+                        datetime.fromtimestamp(i[1]).day
+                    )
+                })
+        return gaps
 
     def calculate(self, year, month, species, image_interval, event_interval):
         '''default
@@ -592,49 +634,81 @@ class Deployment(models.Model):
 
         # by_species = query_ym.values('species').annotate(count=Count('species'))
         last_datetime = None
-        image_count = 0
+        image_count = 0 # OI3
         event_count = 0
         image_count_oi2 = 0
         image_count_oi1 = 0
         delta_count = 0
         delta_count_oi1 = 0
         exist_animals = []
-        for image in query_ym_sp.all():
+        rows = list(query_ym_sp.values('id', 'datetime', 'animal_id').all())
+        # OI1, OI3, event count
+        for image in rows:
             if last_datetime:
-                delta = image.datetime - last_datetime
+                delta = image['datetime'] - last_datetime
                 delta_seconds = (delta.days * 86400) + delta.seconds
-                delta_count += delta_seconds
-                delta_count_oi1 += delta_seconds
+                delta_count += delta_seconds # 累加
+                delta_count_oi1 += delta_seconds # 累加
                 # print (image.id, image.datetime, delta_seconds, delta_count)
-                # TODO: OI2 考慮 個體數, 有個體數 iamge_count 加 個體數
-                '''
-                if image.animal_id:
+
+                if image['animal_id']:
+                    # OI1
                     # 考慮 animal_id, animal_id 跟上一個不同, image_count 加 1
-                    if len(exist_animals) > 0 and image.animal_id != exist_animals[-1]:
+                    if len(exist_animals) > 0:
+                        if image['animal_id'] != exist_animals[-1]:
+                            image_count_oi1 += 1
+                        elif delta_count >= image_interval_seconds:
+                            image_count_oi1 += 1
+                            delta_count_oi1 = 0
+                    else:
+                        exist_animals.append(image['animal_id'])
                         image_count_oi1 += 1
+                else:
+                    # OI3
+                    if delta_count >= image_interval_seconds:
+                        image_count += 1
                         delta_count = 0
-                '''
-                if delta_count >= image_interval_seconds:
-                    image_count += 1
-                    image_count_oi1 += 1
-                    delta_count = 0
 
                 if delta_seconds >= event_interval_seconds:  # 相鄰照片
                     event_count += 1
+
             else:
                 # 第一次事件, 直接加 1
                 event_count = 1
                 # 第一張照片, 直接加 1
                 image_count = 1
-                image_count_oi1 = 1
+
+                if image['animal_id']:
+                    image_count_oi1 += 1
+
+            last_datetime = image['datetime']
+
+        # OI2
+        last_datetime = None
+        delta_count = 0
+        for image in query_ym_sp.values('deployment', 'datetime', 'species').order_by().annotate(Count('id')):
+            #print (year, month, rows)
+            if last_datetime:
+                delta = image['datetime'] - last_datetime
+                delta_seconds = (delta.days * 86400) + delta.seconds
+                delta_count += delta_seconds # 累加
+                # print (image.id, image.datetime, delta_seconds, delta_count)
+
+                if delta_count >= image_interval_seconds:
+                    image_count_oi2 += 1
+                    delta_count = 0
+
+            else:
+                # 第一張照片, 直接加 1
                 image_count_oi2 = 1
 
-            last_datetime = image.datetime
+            last_datetime = image['datetime']
 
         by_day = query_ym_sp.values('datetime__day').annotate(count=Count('datetime__day')).order_by('datetime__day')
         by_hour = query_ym_sp.values('datetime__day', 'datetime__hour').annotate(count=Count('*')).order_by('datetime__day', 'datetime__hour')
         oi3 = (image_count * 1.0 / sum_working_hours) * 1000 if sum_working_hours > 0 else 'N/A'
         oi1 = (image_count_oi1 * 1.0 / sum_working_hours) * 1000 if sum_working_hours > 0 else 'N/A'
+        oi2 = (image_count_oi2 * 1.0 / sum_working_hours) * 1000 if sum_working_hours > 0 else 'N/A'
         pod = by_day.count() * 1.0 / sum(working_days) if sum(working_days) > 0 else 'N/A'
         # month, day, hour
         # note: [[0, [0]*24]] * days_in_month => call by reference error (一個改全部變)
@@ -646,7 +720,7 @@ class Deployment(models.Model):
 
         #print (i['species'], image_count, event_count, oi3, pod, by_day.count(), mdh)
         # print(year, month, species, working_days)
-        return [working_days, image_count, event_count, oi1, None, oi3, pod, mdh]
+        return [working_days, image_count, event_count, oi1, oi2, oi3, pod, mdh]
 
     def get_calc_cache(self):
         if rows := caches['file'].get(f'calc-dep-{self.id}'):
