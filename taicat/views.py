@@ -1151,12 +1151,17 @@ def data(request):
 
         for i in df.index:
             file_url = df.file_url[i]
-            if df.memo[i] == '2022-pt-data':
-                file_url = f"{df.image_id[i]}-m.jpg"
-            elif not file_url and not df.from_mongo[i]:
-                file_url = f"{df.image_uuid[i]}-m.jpg"
-            extension = file_url.split('.')[-1].lower()
-            file_url = file_url[:-len(extension)]+extension
+            filename = df.filename[i]
+            if filename.split('.')[-1].lower() in ['mp4','avi','mov','wmv'] and not df.from_mongo[i]:
+                extension = filename.split('.')[-1].lower()
+                file_url = df.image_uuid[i] + '.' + extension
+            else:
+                if df.memo[i] == '2022-pt-data':
+                    file_url = f"{df.image_id[i]}-m.jpg"
+                elif not file_url and not df.from_mongo[i]:
+                    file_url = f"{df.image_uuid[i]}-m.jpg"
+                extension = file_url.split('.')[-1].lower()
+                file_url = file_url[:-len(extension)]+extension
             # print(file_url)
             if df.specific_bucket[i]:
                 s3_bucket = df.specific_bucket[i]
