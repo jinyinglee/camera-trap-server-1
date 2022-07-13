@@ -4,6 +4,9 @@
     <title>{% block title %}自動相機監測影像及資料管理系統{% endblock title %}</title>
     {% load static %}
     {% load tag_library %}
+    <meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' name='viewport'/>
+    <meta name="viewport" content="width=device-width"/>
+
     <link rel="icon" style="background-size: cover" href="{% static 'icon/logo@leaf.png' %}" />
     <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
     <link rel="stylesheet" href="{% static 'jquery-ui-1.12.1/jquery-ui.css' %}" />
@@ -142,9 +145,15 @@
 
       .content {
         margin: 40px auto;
-        min-height: -o-calc(100vh - 400px); /* opera */
-        min-height: -webkit-calc(100vh - 400px); /* google, safari */
-        min-height: -moz-calc(100vh - 400px); /* firefox */
+        min-height: -o-calc(100vh - 460px); /* opera */
+        min-height: -webkit-calc(100vh - 460px); /* google, safari */
+        min-height: -moz-calc(100vh - 460px); /* firefox */
+      }
+
+      @media only screen and (max-width: 600px) {
+        .content {
+          min-height: none !important;
+          }
       }
 
       .image {
