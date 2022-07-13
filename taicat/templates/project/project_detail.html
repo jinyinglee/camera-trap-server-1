@@ -159,7 +159,7 @@
 </style>
 {% endblock head %} {% block body %}
 <div class="container box">
-  {% if project_name > 35 %}
+  {% if project_name_len > 35 %}
   <div class="row pb-2 pt-4 header overflow-auto" style="height: 120px">
     {% else %}
     <div class="row pb-2 pt-4 header overflow-auto">
@@ -310,6 +310,20 @@
           </div>
           <form novalidate action="{% url 'edit_image' pk %}" method="post" autocomplete="off" id="editForm">
             {% csrf_token %}
+            <div class="row my-3">
+              <div class="col-1"></div>
+              <div class="col-3 my-auto">計畫</div>
+              <div class="col-7">
+                <div class="autocomplete">
+                  <input id="edit-project_id" type="hidden" name="project_id" />
+                  <input class="form-control" id="edit-project" type="text" />
+                </div>
+                <div class="notice d-none">
+                  必填欄位
+                </div>
+              </div>
+              <div class="col-1"></div>
+            </div>
             <div class="row my-3">
               <div class="col-1"></div>
               <div class="col-3 my-auto">樣區</div>
@@ -543,22 +557,56 @@
     }
 
     // autocomplete
-    var species = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠', '無法辨識', '空拍', '工作照', '測試', '台灣山鷓鴣', '台灣竹雞', '黑長尾雉', '藍腹鷴', '黑冠麻鷺', '環頸雉', '山鷸', '灰林鴿', '金背鳩', '珠頸斑鳩', '翠翼鳩', '黃痣藪眉', '台灣噪眉', '台灣紫嘯鶇', '虎鶇', '白眉鶇', '白腹鶇', '赤腹鶇', '白頭鶇'].sort()
-    var antler = ['初茸','茸角一尖','茸角一岔二尖','茸角二岔三尖','茸角三岔四尖','硬角一尖','硬角一岔二尖','硬角二岔三尖','硬角三岔四尖','解角']
-    var sex = ['雄性','雌性','無法判定']
-    var lifestage = ['成體','亞成體','幼體','無法判定']
+    $( "#edit-project" ).autocomplete({
+      minLength: 0,
+      source: {{ projects | safe }},
+      change: function(event,ui){
+        $( "#edit-project" ).val((ui.item ? ui.item.label : ""));
+        $( "#edit-project_id" ).val((ui.item ? ui.item.value : ""));
 
-    $('#edit-species').autocomplete({
-        minLength: 0,
-        source: function(request, response) {
-            var data = $.grep(species, function(value) {
-                return value.substring(0, request.term.length).toLowerCase() == request.term.toLowerCase();
-            });
-            response(data);
-        }
-        }).focus(function () {
-            $(this).autocomplete("search", "");
-    });
+        // only allow studyarea in the list
+        /*
+        $( "#edit-studyarea" ).val((ui.item ? ui.item.label : ""));
+        $( "#edit-studyarea_id" ).val((ui.item ? ui.item.value : ""));
+        if ($( "#edit-studyarea" ).val()==''){
+          $('#edit-deployment, #edit-deployment_id').val('')
+          $dep.autocomplete('option', 'source', '');
+        } */
+
+        if ($( "#edit-project" ).val()==''){
+          $('#edit-deployment, #edit-deployment_id, #edit-studyarea, #edit-studyarea_id').val('')
+          $sa.autocomplete('option', 'source', '');
+          $dep.autocomplete('option', 'source', '');
+        } 
+      },      
+      select: function( event, ui ) {
+        $( "#edit-project_id" ).val( ui.item.value );
+        $( "#edit-project" ).val( ui.item.label )
+
+
+          $.ajax({
+            data: {'pk': $( "#edit-project_id" ).val()},
+            type: "POST",
+            url: "{% url 'update_edit_autocomplete' %}",
+            headers:{'X-CSRFToken':'{{ csrf_token }}'},
+            success: function(data) {
+              // 修改studyarea & deployment
+              $sa.autocomplete('option', 'source', data.sa_list);
+              $dep.autocomplete('option', 'source', '');
+              window.sa_d_list = data.sa_d_list;
+              $('#edit-deployment, #edit-deployment_id, #edit-studyarea, #edit-studyarea_id').val('')
+            },
+            error:function(){
+              alert('未知錯誤，請聯繫管理員');
+            }
+          })
+        
+        return false;
+      }
+    }).focus(function () {
+      $(this).autocomplete("search", "");
+    }).val('{{ project_info.0 }}')
+
 
 
     // dependent dropdown menu
@@ -579,8 +627,7 @@
       $(this).autocomplete("search", "");
     });
 
-
-    $( "#edit-studyarea" ).autocomplete({
+    $sa = $( "#edit-studyarea" ).autocomplete({
       minLength: 0,
       source: {{ sa_list | safe }},
       open: function( event, ui ) {
@@ -602,13 +649,35 @@
             $('#edit-deployment, #edit-deployment_id').val('')
           }
           var src = ui.item.label;
-          $dep.autocomplete('option', 'source', {{ sa_d_list | safe }}[src]);
+          // 這邊會跟著改
+          $dep.autocomplete('option', 'source', window.sa_d_list[src]);
           return false;
       }
     }).focus(function () {
       $(this).autocomplete("search", "");
     })
 
+
+
+
+
+
+    var species = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠', '無法辨識', '空拍', '工作照', '測試', '台灣山鷓鴣', '台灣竹雞', '黑長尾雉', '藍腹鷴', '黑冠麻鷺', '環頸雉', '山鷸', '灰林鴿', '金背鳩', '珠頸斑鳩', '翠翼鳩', '黃痣藪眉', '台灣噪眉', '台灣紫嘯鶇', '虎鶇', '白眉鶇', '白腹鶇', '赤腹鶇', '白頭鶇'].sort()
+    var antler = ['初茸','茸角一尖','茸角一岔二尖','茸角二岔三尖','茸角三岔四尖','硬角一尖','硬角一岔二尖','硬角二岔三尖','硬角三岔四尖','解角']
+    var sex = ['雄性','雌性','無法判定']
+    var lifestage = ['成體','亞成體','幼體','無法判定']
+
+    $('#edit-species').autocomplete({
+        minLength: 0,
+        source: function(request, response) {
+            var data = $.grep(species, function(value) {
+                return value.substring(0, request.term.length).toLowerCase() == request.term.toLowerCase();
+            });
+            response(data);
+        }
+        }).focus(function () {
+            $(this).autocomplete("search", "");
+    });
 
     $('#edit-antler').autocomplete({
         minLength: 0,
@@ -647,7 +716,7 @@
     });
 
     function submitSelect(){
-        window.conditions = {
+      window.conditions = {
         times : $("input[name=times]").val(),
         pk : "{{ pk }}",
         species : $('input[name="species-filter"]:checked').map(function(){return $(this).val();}).get(),
@@ -665,6 +734,8 @@
     const allEqual = arr => arr.every( v => v === arr[0] )
 
     $(document).ready(function() {
+
+      window.sa_d_list = {{ sa_d_list|safe }};
 
       var $selectf = $("#select-folder").selectize({
         valueField: "folder_name",
@@ -804,14 +875,17 @@
                       }
                     });  
 
-
                       $('#edit-image_id').val(img_array)                  
                       // remove notice info
-                      $('#edit-studyarea, #edit-deployment').removeClass('notice-border')
+                      $('#edit-studyarea, #edit-deployment, #edit-project').removeClass('notice-border')
                       $('.notice').addClass('d-none');
                       // clean studyarea & deployment id
                       $('#edit-studyarea_id').val('')
                       $('#edit-deployment_id').val('')
+
+                      $('#edit-project').val('{{ project_info.0 }}');
+                      $('#edit-project_id').val({{ pk }});
+                      $sa.autocomplete('option', 'source', {{ sa_list | safe }});
 
                      if (allEqual(sa_array)){
                         $('#edit-studyarea').val(sa_array[0])
@@ -1039,7 +1113,7 @@
 
         function changeEditContent(current_row, idx){          
             // remove notice info
-            $('#edit-studyarea, #edit-deployment').removeClass('notice-border')
+            $('#edit-studyarea, #edit-deployment, #edit-project').removeClass('notice-border')
             $('.notice').addClass('d-none');
             // clean studyarea & deployment id
             $('#edit-studyarea_id').val('')
@@ -1109,8 +1183,9 @@
                   break;
               }
             });
-            
-
+                $('#edit-project').val('{{ project_info.0 }}')
+                $('#edit-project_id').val({{ pk }})
+                $sa.autocomplete('option', 'source', {{ sa_list | safe }});
                 $dep.autocomplete('option', 'source', {{ sa_d_list | safe }}[row['saname']]);
                 $('#edit-studyarea').val(row['saname'])
                 $('#edit-deployment').val(row['dname'])
@@ -1175,7 +1250,17 @@
         // ---------------------------------- //
 
           $('.edit-submit').on('click', function() {
+              // 紀錄原本在什麼folder
+              let selected_folder = $('#select-folder option:selected').val();
+
               let checked = true
+              // project
+              if (!$('#edit-project').val()){
+                checked = false
+                $('#edit-project').parent().next('.notice').removeClass('d-none')
+                $('#edit-project').addClass('notice-border')
+              }
+              
               // studyarea
               if (!$('#edit-studyarea').val()){
                 checked = false
@@ -1202,6 +1287,17 @@
                     url: "{% url 'edit_image' pk %}",
                     success: function(data) {
                         $('#editModal').modal('hide');
+                        // 修改folder
+                        $selectf[0].selectize.clear();
+                        $selectf[0].selectize.clearOptions();
+                        $selectf[0].selectize.addOption(data.folder_list);
+                        // 要重新選擇 如果原本的folder還在就選，不在就清空
+                        for (let i = 0; i < data.folder_list.length; i++) {
+                          if (data.folder_list[i]['folder_name'] == selected_folder) {
+                            $selectf[0].selectize.setValue(selected_folder);
+                          }
+                         }
+
                         table.draw(false); // stay in same page
                         // update filter //
                         let current_species = $("input[name=species-filter]:checked")
@@ -1227,29 +1323,31 @@
                             $(`input[name=species-filter][value="${this.value}"]`).prop("checked",true);
                           })
                         }
-                  // bind click function
-                  // species: if other checkbox checked, uncheck 'all'
-                  $("input[name='species-filter'].filter:not(.all)").click (function(){
-                    $("#species-list-all label i").remove()
-                    // 先移除自己本身的再判斷
-                    $(this).prev('i').remove()
-                    if( $(this).is(':checked') ) {
-                        $('<i class="fas fa-check title-dark"></i>').insertBefore($(this));
-                    } 
-                    $("input[name='species-filter'].all").prop('checked', false)
-                })
-  
-                  // species: if 'all' checked, check all checkbox
-                  $("input[name='species-filter'].all").click (function(){
-                      // 先移除掉全部的再一次加上去
-                      $("#species-list li label i").remove()
+                    // bind click function
+                    // species: if other checkbox checked, uncheck 'all'
+                    $("input[name='species-filter'].filter:not(.all)").click (function(){
+                      $("#species-list-all label i").remove()
+                      // 先移除自己本身的再判斷
+                      $(this).prev('i').remove()
                       if( $(this).is(':checked') ) {
-                          $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
-                          $("input[name='species-filter']").prop('checked', true)
-                      } else {
-                          $("input[name='species-filter']").prop('checked', false)
-                      }
-                  })
+                          $('<i class="fas fa-check title-dark"></i>').insertBefore($(this));
+                      } 
+                      $("input[name='species-filter'].all").prop('checked', false)
+                    })
+    
+                    // species: if 'all' checked, check all checkbox
+                    $("input[name='species-filter'].all").click (function(){
+                        // 先移除掉全部的再一次加上去
+                        $("#species-list li label i").remove()
+                        if( $(this).is(':checked') ) {
+                            $("#species-list li label").prepend('<i class="fas fa-check title-dark"></i>')
+                            $("input[name='species-filter']").prop('checked', true)
+                        } else {
+                            $("input[name='species-filter']").prop('checked', false)
+                        }
+                    })
+
+
                 },
                 error:function(){
                   alert('未知錯誤，請聯繫管理員');

@@ -158,10 +158,9 @@ def delete_dep_sa(request):
             if Image.objects.filter(studyarea_id=id).exists():
                 response = {'status': 'exists'}
             # StudyArea.objects.filter(id=id).delete()
-            # 修改樣區數量
             else:
                 StudyArea.objects.filter(id=id).delete()
-                # 修改相機位置數量 
+                # 修改樣區數量
                 if ProjectStat.objects.filter(project_id=project_id).exists():
                     ProjectStat.objects.filter(project_id=project_id).update(num_sa = StudyArea.objects.filter(project_id=project_id).count())
                 response = {'status': 'done'}
@@ -428,6 +427,9 @@ def edit_image(request, pk):
         for k in keys:
             updated_dict.update({k: requests.get(k)})
 
+        project_id = requests.get('project_id')
+        if project_id:
+            updated_dict.update({'project_id': project_id})
         if requests.get('studyarea_id'):
             updated_dict.update({'studyarea_id': requests.get('studyarea_id')})
         if requests.get('deployment_id'):
@@ -436,6 +438,12 @@ def edit_image(request, pk):
         obj = Image.objects.filter(id__in=image_id)
         c = obj.count()  # 更新的照片數量
 
+
+        if updated_dict:
+            updated_dict.update({'last_updated': now})
+            obj.update(**updated_dict)
+
+        # taicat_geostat -> 忽略
         # 抓原本的回來減掉
         species = requests.get('species')
         query = obj.values('species').annotate(total=Count('species')).order_by('-total')
@@ -443,7 +451,7 @@ def edit_image(request, pk):
             # taicat_species
             if mode == 'official':
                 if sp := Species.objects.filter(name=q['species']).first():
-                    if sp.count == q['total']:
+                    if sp.count == q['total']: # 該物種全部都先被減掉
                         sp.delete()
                     else:
                         sp.count -= q['total']
@@ -457,6 +465,7 @@ def edit_image(request, pk):
                     p_sp.count -= q['total']
                     p_sp.last_updated = now
                     p_sp.save()
+
         # 新的加上去
         if mode == 'official':
             if sp := Species.objects.filter(name=species).first():
@@ -470,24 +479,96 @@ def edit_image(request, pk):
                 sp.save()
 
         # taicat_projectspecies
-        if p_sp := ProjectSpecies.objects.filter(name=species, project_id=pk).first():
-            p_sp.count += c
-            p_sp.last_updated = now
-            p_sp.save()
-        else:
-            p_sp = ProjectSpecies(
-                name=species,
-                last_updated=now,
-                count=c,
-                project_id=pk)
-            p_sp.save()
+        if project_id == pk:
+            if p_sp := ProjectSpecies.objects.filter(name=species, project_id=pk).first():
+                p_sp.count += c
+                p_sp.last_updated = now
+                p_sp.save()
+            else:
+                p_sp = ProjectSpecies(
+                    name=species,
+                    last_updated=now,
+                    count=c,
+                    project_id=pk)
+                p_sp.save()
+        elif project_id and project_id != pk:
+            if p_sp := ProjectSpecies.objects.filter(name=species, project_id=project_id).first():
+                p_sp.count += c
+                p_sp.last_updated = now
+                p_sp.save()
+            else:
+                p_sp = ProjectSpecies(
+                    name=species,
+                    last_updated=now,
+                    count=c,
+                    project_id=project_id)
+                p_sp.save()
 
-        if updated_dict:
-            updated_dict.update({'last_updated': now})
-            obj.update(**updated_dict)
+        if project_id and project_id != pk:
+            # project_stat
+            latest_date = obj.latest('datetime').datetime
+            earliest_date = obj.earliest('datetime').datetime
+            # 舊的減掉, 時間也要改
+            if p_stat := ProjectStat.objects.filter(project_id=pk).first():
+                p_stat.num_data -= c
+                p_stat.last_updated = now
+                if latest_date == p_stat.latest_date or earliest_date == p_stat.earliest_date: # 重新計算
+                    query = f"select min(datetime), max(datetime) from taicat_image where project_id={pk};"
+                    with connection.cursor() as cursor:
+                        cursor.execute(query)
+                        dates = cursor.fetchall()
+                    p_latest_date = dates[0][1]
+                    p_earliest_date = dates[0][0]
+                    p_stat.latest_date = p_latest_date
+                    p_stat.earliest_date = p_earliest_date
+                p_stat.save()
+            # 新的加上去
+            if new_p_stat := ProjectStat.objects.filter(project_id=project_id).first():
+                new_p_stat.num_data += c
+                new_p_stat.last_updated = now
+                if not new_p_stat.latest_date:
+                    new_p_stat.latest_date = latest_date
+                elif latest_date > new_p_stat.latest_date:
+                    new_p_stat.latest_date = latest_date
+                if not new_p_stat.earliest_date:
+                    new_p_stat.earliest_date = earliest_date
+                elif earliest_date < new_p_stat.earliest_date:
+                    new_p_stat.earliest_date = earliest_date
+                new_p_stat.save()
+            # taicat_imagefolder
+            folder_list = list(obj.order_by('folder_name').values_list('folder_name', flat=True).distinct())
+            folder_list = [f for f in folder_list if f != '']
+            for f in folder_list:
+                # 新的加上去
+                if not ImageFolder.objects.filter(project_id=project_id, folder_name=f).exists():
+                    if ori_f := ImageFolder.objects.filter(project_id=pk, folder_name=f).first():
+                        new_f = ImageFolder(
+                            folder_name = f,
+                            last_updated = now,
+                            project_id = project_id,
+                            folder_last_updated = ori_f.folder_last_updated
+                        )
+                        new_f.save()
+                # 舊的如果都不存在的話拿掉
+                if not Image.objects.filter(project_id=pk, folder_name=f).exists():
+                    ImageFolder.objects.filter(project_id=pk, folder_name=f).delete()
 
     species = ProjectSpecies.objects.filter(project_id=pk).order_by('count').values('count', 'name')
-    response = {'species': list(species)}
+    with connection.cursor() as cursor:
+        query = f"""SELECT folder_name,
+                    to_char(folder_last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS folder_last_updated
+                    FROM taicat_imagefolder WHERE project_id = {pk}"""
+        cursor.execute(query)
+        folder_list = cursor.fetchall()
+        columns = list(cursor.description)
+        results = []
+        for row in folder_list:
+            row_dict = {}
+            for i, col in enumerate(columns):
+                row_dict[col.name] = row[i]
+            results.append(row_dict)
+
+    response = {'species': list(species), 'folder_list': results}
     return JsonResponse(response, safe=False)  # or JsonResponse({'data': data})
 
 
@@ -742,6 +823,12 @@ def add_studyarea(request):
         s = StudyArea.objects.create(name=name, project_id=project_id, parent_id=parent_id)
         data = {'study_area_id': s.id}
 
+        # projectstat
+        if ps := ProjectStat.objects.filter(project_id=project_id).first():
+            ps.num_sa = StudyArea.objects.filter(project_id=project_id).count()
+            ps.last_updated = timezone.now()
+            ps.save()
+
         return HttpResponse(json.dumps(data), content_type='application/json')
 
 
@@ -761,6 +848,8 @@ def get_project_info(project_list):
     # update if new images
     now = timezone.now()
     update = False
+    p_stat_list = ProjectStat.objects.all().values_list('project_id', flat=True)
+    
     if last_updated := ProjectStat.objects.filter(project_id__in=list(project_info.id)).aggregate(Min('last_updated'))['last_updated__min']:
         if Image.objects.filter(created__gte=last_updated, project_id__in=list(project_info.id)).exists():
             update = True
@@ -779,8 +868,11 @@ def get_project_info(project_list):
                 image_objects = Image.objects.filter(project_id=i, created__gte=last_updated)
             else:
                 image_objects = Image.objects.filter(project_id=i)
-            latest_date = image_objects.latest('datetime').datetime
-            earliest_date = image_objects.earliest('datetime').datetime
+            if image_objects.exists():
+                latest_date = image_objects.latest('datetime').datetime
+                earliest_date = image_objects.earliest('datetime').datetime
+            else:
+                latest_date, earliest_date = None, None 
             if ProjectStat.objects.filter(project_id=i).exists():
                 p = ProjectStat.objects.get(project_id=i)
                 p.num_sa = StudyArea.objects.filter(project_id=i).count()
@@ -802,6 +894,18 @@ def get_project_info(project_list):
                     latest_date=latest_date,
                     earliest_date=earliest_date)
                 p.save()
+    # 如果有完全不在project stat裡,且也沒有資料的
+    p_no_stat = [ p for p in list(project_info.id) if p not in p_stat_list ]
+    for pn in p_no_stat:
+        p = ProjectStat(
+                project_id=pn,
+                num_sa=StudyArea.objects.filter(project_id=pn).count(),
+                num_deployment=Deployment.objects.filter(project_id=pn).count(),
+                num_data=0,
+                last_updated=now,
+                latest_date=None,
+                earliest_date=None)
+        p.save()
     # update project species
     update = False
     last_updated = ProjectSpecies.objects.filter(project_id__in=list(project_info.id)).aggregate(Min('last_updated'))['last_updated__min']
@@ -838,13 +942,14 @@ def get_project_info(project_list):
     project_info['num_studyarea'] = 0
     project_info['num_deployment'] = 0
     for i in project_info.id:
-        obj = ProjectStat.objects.get(project_id=i)
-        sa_c = obj.num_sa
-        dep_c = obj.num_deployment
-        img_c = obj.num_data
-        project_info.loc[project_info['id'] == i, 'num_data'] = img_c
-        project_info.loc[project_info['id'] == i, 'num_studyarea'] = sa_c
-        project_info.loc[project_info['id'] == i, 'num_deployment'] = dep_c
+        if ProjectStat.objects.filter(project_id=i).exists():
+            obj = ProjectStat.objects.get(project_id=i)
+            sa_c = obj.num_sa
+            dep_c = obj.num_deployment
+            img_c = obj.num_data
+            project_info.loc[project_info['id'] == i, 'num_data'] = img_c
+            project_info.loc[project_info['id'] == i, 'num_studyarea'] = sa_c
+            project_info.loc[project_info['id'] == i, 'num_deployment'] = dep_c
     projects = project_info[['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_data']]
     projects = list(projects.itertuples(index=False, name=None))
     return projects, species_data
@@ -1047,12 +1152,30 @@ def project_detail(request, pk):
     study_area = StudyArea.objects.filter(project_id=pk).order_by('name')
     sa_list = Project.objects.get(pk=pk).get_sa_list()
     sa_d_list = Project.objects.get(pk=pk).get_sa_d_list()
+    if editable:
+        pid_list = get_my_project_list(user_id)
+        projects = Project.objects.filter(pk__in=pid_list)
+        project_list = []
+        for p in projects:
+            project_list += [{'label': p.name, 'value': p.id}]
+    else:
+        project_list = []
+
     return render(request, 'project/project_detail.html',
-                  {'project_name': len(project_info[0]), 'project_info': project_info, 'species': species, 'pk': pk,
+                  {'project_name_len': len(project_info[0]), 'project_info': project_info, 'species': species, 'pk': pk,
                    'study_area': study_area, 'deployment': deployment, 'folder': folder,
                    'earliest_date': earliest_date, 'latest_date': latest_date,
                    'editable': editable, 'is_authorized': is_authorized,
-                   'folder_list': results, 'sa_list': list(sa_list), 'sa_d_list': sa_d_list})
+                   'folder_list': results, 'sa_list': list(sa_list), 'sa_d_list': sa_d_list, 
+                   'projects': project_list})
+
+
+def update_edit_autocomplete(request):
+    if request.method == 'POST':
+        if pk := request.POST.get('pk'):
+            sa_d_list = Project.objects.get(pk=pk).get_sa_d_list()
+            sa_list = Project.objects.get(pk=pk).get_sa_list()
+            return JsonResponse({"sa_d_list": sa_d_list, "sa_list": sa_list}, safe=False)
 
 
 def data(request):
@@ -1151,17 +1274,16 @@ def data(request):
 
         for i in df.index:
             file_url = df.file_url[i]
-            filename = df.filename[i]
-            if filename.split('.')[-1].lower() in ['mp4','avi','mov','wmv'] and not df.from_mongo[i]:
-                extension = filename.split('.')[-1].lower()
-                file_url = df.image_uuid[i] + '.' + extension
-            else:
-                if df.memo[i] == '2022-pt-data':
-                    file_url = f"{df.image_id[i]}-m.jpg"
-                elif not file_url and not df.from_mongo[i]:
-                    file_url = f"{df.image_uuid[i]}-m.jpg"
-                extension = file_url.split('.')[-1].lower()
-                file_url = file_url[:-len(extension)]+extension
+            # if filename.split('.')[-1].lower() in ['mp4','avi','mov','wmv'] and not df.from_mongo[i]:
+            #     extension = filename.split('.')[-1].lower()
+            #     file_url = df.image_uuid[i] + '.' + extension
+            # else:
+            if df.memo[i] == '2022-pt-data':
+                file_url = f"{df.image_id[i]}-m.jpg"
+            elif not file_url and not df.from_mongo[i]:
+                file_url = f"{df.image_uuid[i]}-m.jpg"
+            extension = file_url.split('.')[-1].lower()
+            file_url = file_url[:-len(extension)]+extension
             # print(file_url)
             if df.specific_bucket[i]:
                 s3_bucket = df.specific_bucket[i]
