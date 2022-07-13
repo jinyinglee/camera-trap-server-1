@@ -38,4 +38,5 @@ urlpatterns = [
     path('delete_dep_sa', views.delete_dep_sa, name='delete_dep_sa'),
     path('edit_sa', views.edit_sa, name='edit_sa'),
     path('update_species_map', views.update_species_map, name='update_species_map'),
+    path('update_edit_autocomplete', views.update_edit_autocomplete, name='update_edit_autocomplete'),
 ]
