@@ -55,6 +55,7 @@ from base.utils import DecimalEncoder
 from taicat.utils import half_year_ago, get_project_member, delete_image_by_ids
 
 from openpyxl import Workbook
+from bson.objectid import ObjectId
 
 
 def update_species_map(request):
@@ -1363,91 +1364,124 @@ def generate_download_excel(request, pk):
     if ((start_date and start_date != ProjectStat.objects.filter(project_id=pk).first().earliest_date.strftime("%Y-%m-%d")) or (end_date and end_date != ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d"))):
         start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
         end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
-        date_filter = "AND datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
+        date_filter = "AND i.datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
 
     conditions = ''
     deployment = requests.getlist('d-filter')
     sa = requests.get('sa-filter')
     if sa:
-        conditions += f' AND studyarea_id = {sa}'
+        conditions += f' AND i.studyarea_id = {sa}'
         if deployment:
             if 'all' not in deployment:
                 x = [int(i) for i in deployment]
                 x = str(x).replace('[', '(').replace(']', ')')
-                conditions += f' AND deployment_id IN {x}'
+                conditions += f' AND i.deployment_id IN {x}'
         else:
-            conditions = ' AND deployment_id IS NULL'
+            conditions = ' AND i.deployment_id IS NULL'
     spe_conditions = ''
     species = requests.getlist('species-filter')
     if species:
         if 'all' not in species:
             x = [i for i in species]
             x = str(x).replace('[', '(').replace(']', ')')
-            spe_conditions = f" AND species IN {x}"
+            spe_conditions = f" AND i.species IN {x}"
 
     time_filter = ''  # 要先減掉8的時差
     if times := requests.get('times'):
         result = datetime.datetime.strptime(f"1990-01-01 {times}", "%Y-%m-%d %H:%M:%S") + datetime.timedelta(hours=-8)
-        time_filter = f" AND datetime::time AT TIME ZONE 'UTC' = time '{result.strftime('%H:%M:%S')}'"
+        time_filter = f" AND i.datetime::time AT TIME ZONE 'UTC' = time '{result.strftime('%H:%M:%S')}'"
 
     folder_filter = ''
     if folder_name := requests.get('folder_name'):
-        folder_filter = f"AND folder_name = '{folder_name}'"
+        folder_filter = f"AND i.folder_name = '{folder_name}'"
 
-    with connection.cursor() as cursor:
-        query = f"""SELECT studyarea_id, deployment_id, filename, species,
-                        life_stage, sex, antler, animal_id, remarks, file_url, image_uuid, from_mongo, 
-                        to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime
-                        FROM taicat_image 
-                        WHERE project_id = {pk} {date_filter} {conditions} {spe_conditions} {time_filter} {folder_filter}
-                        ORDER BY created DESC, project_id ASC"""
-        cursor.execute(query)
-        image_info = cursor.fetchall()
+    # with connection.cursor() as cursor:
+    #     query = f"""SELECT i.project_id AS "計畫ID", p.name AS "計畫名稱", i.image_uuid AS "影像ID", 
+    #                         concat_ws('/', ssa.name, sa.name) AS "樣區/子樣區", 
+    #                         d.name AS "相機位置", i.filename AS "檔名", to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS "拍攝時間",
+    #                         i.species AS "物種", i.life_stage AS "年齡", i.sex AS "性別", i.antler AS "角況", i.animal_id AS "個體ID", i.remarks AS "備註" 
+    #                     FROM taicat_image i
+    #                     JOIN taicat_studyarea sa ON i.studyarea_id = sa.id
+    #                     LEFT JOIN taicat_studyarea ssa ON sa.parent_id = ssa.id
+    #                     JOIN taicat_deployment d ON i.deployment_id = d.id
+    #                     JOIN taicat_project p ON i.project_id = p.id
+    #                     WHERE i.project_id = {pk} {date_filter} {conditions} {spe_conditions} {time_filter} {folder_filter}
+    #                     ORDER BY i.created DESC, i.project_id ASC"""
+    #     cursor.execute(query)
+    #     image_info = cursor.fetchall()
+        
+    #     # cols = ['計畫ID', '計畫名稱', '影像ID', '樣區', '子樣區', '相機位置',
+    #     #         '檔名', '拍攝時間', '物種', '年齡', '性別', '角況', '個體ID', '備註']
 
-    if image_info:
-        df = pd.DataFrame(image_info, columns=['studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
-                                               'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime'])
-        sa_names = pd.DataFrame(StudyArea.objects.filter(id__in=df.studyarea_id.unique()).values('id', 'name', 'parent_id')
-                                ).rename(columns={'id': 'studyarea_id', 'name': 'saname', 'parent_id': 'saparent'})
-        d_names = pd.DataFrame(Deployment.objects.filter(id__in=df.deployment_id.unique()).values('id', 'name')).rename(columns={'id': 'deployment_id', 'name': 'dname'})
-        df = df.merge(d_names).merge(sa_names)
-        df = df.reset_index()
 
-        # add sub studyarea if exists
-        df['subsaname'] = ''
-        ssa_exist = StudyArea.objects.filter(project_id=pk, parent__isnull=False)
-        if ssa_exist.count() > 0:
-            ssa_list = list(ssa_exist.values_list('name', flat=True))
-            for i in df[df.saname.isin(ssa_list)].index:
-                try:
-                    parent_saname = StudyArea.objects.get(id=df.saparent[i]).name
-                    current_name = df.saname[i]
-                    df.loc[i, 'saname'] = f"{parent_saname}"
-                    df.loc[i, 'subsaname'] = f"{current_name}"
-                except:
-                    pass
+    # if image_info:
+    #     df = pd.DataFrame(image_info, columns=['studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
+    #                                            'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime'])
+    #     sa_names = pd.DataFrame(StudyArea.objects.filter(id__in=df.studyarea_id.unique()).values('id', 'name', 'parent_id')
+    #                             ).rename(columns={'id': 'studyarea_id', 'name': 'saname', 'parent_id': 'saparent'})
+    #     d_names = pd.DataFrame(Deployment.objects.filter(id__in=df.deployment_id.unique()).values('id', 'name')).rename(columns={'id': 'deployment_id', 'name': 'dname'})
+    #     df = df.merge(d_names).merge(sa_names)
+    #     df = df.reset_index()
 
-        df['計畫名稱'] = Project.objects.get(id=pk).name
-        df['計畫ID'] = pk
-        # rename
-        df = df.rename(columns={'saname': '樣區', 'dname': '相機位置', 'filename': '檔名', 'datetime': '拍攝時間', 'species': '物種',
-                                'lifestage': '年齡', 'sex': '性別', 'antler': '角況', 'remarks': '備註', 'animal_id': '個體ID', 'image_uuid': '影像ID',
-                                'subsaname': '子樣區'})
-        # subset and change column order
-        cols = ['計畫ID', '計畫名稱', '影像ID', '樣區', '子樣區', '相機位置',
-                '檔名', '拍攝時間', '物種', '年齡', '性別', '角況', '個體ID', '備註']
-        for i in cols:
-            if i not in df:
-                df[i] = ''
-        df = df[cols]
+    #     # add sub studyarea if exists
+    #     df['subsaname'] = ''
+    #     ssa_exist = StudyArea.objects.filter(project_id=pk, parent__isnull=False)
+    #     if ssa_exist.count() > 0:
+    #         ssa_list = list(ssa_exist.values_list('name', flat=True))
+    #         for i in df[df.saname.isin(ssa_list)].index:
+    #             try:
+    #                 parent_saname = StudyArea.objects.get(id=df.saparent[i]).name
+    #                 current_name = df.saname[i]
+    #                 df.loc[i, 'saname'] = f"{parent_saname}"
+    #                 df.loc[i, 'subsaname'] = f"{current_name}"
+    #             except:
+    #                 pass
 
-    else:
-        df = pd.DataFrame()  # no data
+    #     df['計畫名稱'] = Project.objects.get(id=pk).name
+    #     df['計畫ID'] = pk
+    #     # rename
+    #     df = df.rename(columns={'saname': '樣區', 'dname': '相機位置', 'filename': '檔名', 'datetime': '拍攝時間', 'species': '物種',
+    #                             'lifestage': '年齡', 'sex': '性別', 'antler': '角況', 'remarks': '備註', 'animal_id': '個體ID', 'image_uuid': '影像ID',
+    #                             'subsaname': '子樣區'})
+    #     # subset and change column order
+    #     cols = ['計畫ID', '計畫名稱', '影像ID', '樣區', '子樣區', '相機位置',
+    #             '檔名', '拍攝時間', '物種', '年齡', '性別', '角況', '個體ID', '備註']
+    #     for i in cols:
+    #         if i not in df:
+    #             df[i] = ''
+    #     df = df[cols]
 
-    n = f'download_{randomword(8)}_{datetime.datetime.now().strftime("%Y-%m-%d")}.xlsx'
+    # else:
+    #     df = pd.DataFrame()  # no data
 
+
+    n = f'download_{str(ObjectId())}_{datetime.datetime.now().strftime("%Y-%m-%d")}.csv'
     download_dir = os.path.join(settings.MEDIA_ROOT, 'download')
-    df.to_excel(os.path.join(download_dir, n), index=False)
+
+    # sql = """
+    #     copy (
+    #         select * 
+    #         from data_event
+    #     ) to stdout with delimiter ',' csv header;
+    #     """
+
+    sql = f"""copy ( SELECT i.project_id AS "計畫ID", p.name AS "計畫名稱", i.image_uuid AS "影像ID", 
+                                concat_ws('/', ssa.name, sa.name) AS "樣區/子樣區", 
+                                d.name AS "相機位置", i.filename AS "檔名", to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS "拍攝時間",
+                                i.species AS "物種", i.life_stage AS "年齡", i.sex AS "性別", i.antler AS "角況", i.animal_id AS "個體ID", i.remarks AS "備註" 
+                            FROM taicat_image i
+                            JOIN taicat_studyarea sa ON i.studyarea_id = sa.id
+                            LEFT JOIN taicat_studyarea ssa ON sa.parent_id = ssa.id
+                            JOIN taicat_deployment d ON i.deployment_id = d.id
+                            JOIN taicat_project p ON i.project_id = p.id
+                            WHERE i.project_id = {pk} {date_filter} {conditions} {spe_conditions} {time_filter} {folder_filter}
+                            ORDER BY i.created DESC, i.project_id ASC ) to stdout with delimiter ',' csv header;"""
+    with connection.cursor() as cursor:
+        with open(os.path.join(download_dir, n), 'w+') as fp:
+            cursor.copy_expert(sql, fp)
+
+
+    # df.to_excel(os.path.join(download_dir, n), index=False)
     download_url = request.scheme+"://" + \
         request.META['HTTP_HOST']+settings.MEDIA_URL + \
         os.path.join('download', n)
