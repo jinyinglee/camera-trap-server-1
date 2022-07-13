@@ -1536,6 +1536,9 @@ def project_oversight(request, pk):
             project = Project.objects.get(pk=pk)
 
             mn = DeploymentJournal.objects.filter(project_id=project.id).aggregate(Max('working_end'), Min('working_start'))
+            year_list = []
+            if mn['working_end__max'] and mn['working_start__min']:
+                year_list = list(range(mn['working_start__min'].year, mn['working_end__max'].year+1))
 
             # if proj_stats := project.get_or_count_stats():
             if year:
@@ -1552,12 +1555,12 @@ def project_oversight(request, pk):
                     'gap_caused_choices': DeploymentJournal.GAP_CHOICES,
                     'month_label_list': [f'{x} 月'for x in range(1, 13)],
                     'result': data[year] if year else [],
-                    'year_list': list(range(mn['working_start__min'].year, mn['working_end__max'].year+1))
+                    'year_list': year_list,
                 })
             else:
                 return render(request, 'project/project_oversight.html', {
                     'project': project,
-                    'year_list': list(range(mn['working_start__min'].year, mn['working_end__max'].year+1))
+                    'year_list': year_list
                 })
         else:
             return HttpResponse('no auth')
