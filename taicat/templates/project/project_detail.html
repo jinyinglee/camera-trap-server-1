@@ -1106,6 +1106,11 @@
             $("#date-content").html((new Date($("#date-slider").slider("values",0)*1000).toISOString().substring(0, 10)) + "至" +
             (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
             {% endif %}
+
+            // folder
+            $selectf[0].selectize.setValue('');
+            // 拍攝時間
+            $("input[name=times]").val('')
         });
 
 
