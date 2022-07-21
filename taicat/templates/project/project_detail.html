@@ -386,7 +386,7 @@
               <div class="col-3 my-auto">年齡</div>
               <div class="col-7">
                 <div class="autocomplete">
-                  <input class="form-control" id="edit-lifestage" type="text" name="life_stage" />
+                  <input class="form-control" id="edit-life_stage" type="text" name="life_stage" />
                 </div>
               </div>
               <div class="col-1"></div>
@@ -665,7 +665,7 @@
     var species = ['水鹿','山羌','獼猴','山羊','野豬','鼬獾','白鼻心','食蟹獴','松鼠','飛鼠','黃喉貂','黃鼠狼','小黃鼠狼','麝香貓','黑熊','石虎','穿山甲','梅花鹿','野兔','蝙蝠', '無法辨識', '空拍', '工作照', '測試', '台灣山鷓鴣', '台灣竹雞', '黑長尾雉', '藍腹鷴', '黑冠麻鷺', '環頸雉', '山鷸', '灰林鴿', '金背鳩', '珠頸斑鳩', '翠翼鳩', '黃痣藪眉', '台灣噪眉', '台灣紫嘯鶇', '虎鶇', '白眉鶇', '白腹鶇', '赤腹鶇', '白頭鶇'].sort()
     var antler = ['初茸','茸角一尖','茸角一岔二尖','茸角二岔三尖','茸角三岔四尖','硬角一尖','硬角一岔二尖','硬角二岔三尖','硬角三岔四尖','解角']
     var sex = ['雄性','雌性','無法判定']
-    var lifestage = ['成體','亞成體','幼體','無法判定']
+    var life_stage = ['成體','亞成體','幼體','無法判定']
 
     $('#edit-species').autocomplete({
         minLength: 0,
@@ -703,10 +703,10 @@
             $(this).autocomplete("search", "");
     });
 
-    $('#edit-lifestage').autocomplete({
+    $('#edit-life_stage').autocomplete({
         minLength: 0,
         source: function(request, response) {
-            var data = $.grep(lifestage, function(value) {
+            var data = $.grep(life_stage, function(value) {
                 return value.substring(0, request.term.length).toLowerCase() == request.term.toLowerCase();
             });
             response(data);
@@ -845,7 +845,7 @@
                     let dep_array = []
                     let species_array = []
                     let sex_array = []
-                    let lifestage_array = []
+                    let life_stage_array = []
                     let antler_array = []
                     let animal_id_array = []
                     let remarks_array = []
@@ -858,7 +858,7 @@
                       dep_array.push(current_row['dname'])
                       species_array.push(current_row['species'])
                       sex_array.push(current_row['sex'])
-                      lifestage_array.push(current_row['lifestage'])
+                      life_stage_array.push(current_row['life_stage'])
                       antler_array.push(current_row['antler'])
                       animal_id_array.push(current_row['animal_id'])
                       remarks_array.push(current_row['remarks'])
@@ -896,7 +896,7 @@
                       }                      
                       allEqual(dep_array) ? $('#edit-deployment').val(dep_array[0]) : $('#edit-deployment').val('');
                       allEqual(species_array) ? $('#edit-species').val(species_array[0]) : $('#edit-species').val('');
-                      allEqual(lifestage_array) ? $('#edit-lifestage').val(lifestage_array[0]) : $('#edit-lifestage').val('');
+                      allEqual(life_stage_array) ? $('#edit-life_stage').val(life_stage_array[0]) : $('#edit-life_stage').val('');
                       allEqual(sex_array) ? $('#edit-sex').val(sex_array[0]) : $('#edit-sex').val('');
                       allEqual(antler_array) ? $('#edit-antler').val(antler_array[0]) : $('#edit-antler').val('');
                       allEqual(animal_id_array) ? $('#edit-animal_id').val(animal_id_array[0]) : $('#edit-animal_id').val('');
@@ -1036,7 +1036,7 @@
                         {data: "filename" },
                         {data: "datetime"},
                         {data: "species"},
-                        {data: "lifestage"},
+                        {data: "life_stage"},
                         {data: "sex"},
                         {data: "antler"},
                         {data: "animal_id"},
@@ -1198,7 +1198,7 @@
                 $('#edit-datetime').html(row['datetime'])
                 //$('#edit-datetime').val(row['datetime'].replace(' ','T'))
                 $('#edit-species').val(row['species'])
-                $('#edit-lifestage').val(row['lifestage'])
+                $('#edit-life_stage').val(row['life_stage'])
                 $('#edit-sex').val(row['sex'])
                 $('#edit-antler').val(row['antler'])
                 $('#edit-animal_id').val(row['animal_id'])
