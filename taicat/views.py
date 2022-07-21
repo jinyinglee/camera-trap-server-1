@@ -1315,7 +1315,7 @@ def data(request):
 
         df['edit'] = df.image_id.apply(lambda x: f"<input type='checkbox' class='edit-checkbox' name='edit' value='{x}'>")
 
-        cols = ['edit', 'saname', 'dname', 'filename', 'datetime', 'species', 'lifestage',
+        cols = ['edit', 'saname', 'dname', 'filename', 'datetime', 'species', 'life_stage',
                 'sex', 'antler', 'animal_id', 'remarks', 'file_url', 'image_uuid', 'image_id']
         data = df.reindex(df.columns.union(cols, sort=False), axis=1, fill_value=None)
         data = data[cols]
