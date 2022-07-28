@@ -92,8 +92,9 @@ def update_upload_history(request):
     # uploading, finished
     response = {}
     if request.method == 'POST':
-        client_status = request.POST.get('status')
-        deployment_journal_id = request.POST.get('deployment_journal_id')
+        data = json.loads(request.body)
+        client_status = data.get('status', '') #request.POST.get('status')
+        deployment_journal_id = data.get('deployment_journal_id') #request.POST.get('deployment_journal_id')
         if client_status == 'uploading' and deployment_journal_id:
             # 把網頁狀態更新成上傳中
             # 若沒有，新增一個uh
