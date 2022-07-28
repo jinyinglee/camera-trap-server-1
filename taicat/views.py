@@ -1502,7 +1502,7 @@ def project_oversight(request, pk):
             # if proj_stats := project.get_or_count_stats():
             if year:
                 year_int = int(year)
-                deps = project.get_deployment_list(as_object=True)
+                # deps = project.get_deployment_list(as_object=True)
                 data = project.count_deployment_journal([year_int])
                 #for sa in data[year]:
                 #    for d in sa['items']:
@@ -1601,17 +1601,37 @@ def api_check_data_gap(request):
     # range_list = half_year_ago(2017, 6)
 
     range_list = half_year_ago(now.year, now.month)
+
+    # +BEGIN_220728
+    # 重新判斷未填原因的空缺列表
+    #rows = DeploymentJournal.objects.filter(
+    #    is_gap=True,
+    #    working_end__gt=range_list[0],
+    #    working_start__lt=range_list[1]
+    #).filter(Q(gap_caused__exact='') | Q(gap_caused__isnull=True)).all()
     rows = DeploymentJournal.objects.filter(
-        is_gap=True,
         working_end__gt=range_list[0],
         working_start__lt=range_list[1]
-    ).filter(Q(gap_caused__exact='') | Q(gap_caused__isnull=True)).all()
+    ).all()
+
+    todo = []
+    for dj in rows:
+        tmp = dj.project.count_deployment_journal([dj.working_start.year])
+        info = tmp[str(dj.working_start.year)]
+        has_empty_gap_caused = False
+        for sa in info:
+            for d in sa['items']:
+                for gap in d['gaps']:
+                    if text := gap.get('caused', ''):
+                        has_empty_gap_caused = True
+                        todo.append(dj)
+    # +END_220728
 
     # send notification to each project members
     # TODO: email project membor 權限?
     notify_roles = ['project_admin', 'organization_admin']
     projects = {}
-    for dj in rows:
+    for dj in todo:
         pid = dj.project_id
         if pid not in projects:
             project_members = get_project_member(pid)
@@ -1626,7 +1646,6 @@ def api_check_data_gap(request):
     for project_id, data in projects.items():
         email_subject = '[臺灣自動相機資訊系統] | {} | 資料缺失: 尚未填寫列表'.format(data['name'])
         email_body = '相機位置 缺失區間\n==========================\n' + '\n'.join(data['gaps'])
-        #print(email_subject, data['emails'])
 
         # create notification
         for m in data['members']:
@@ -1638,5 +1657,6 @@ def api_check_data_gap(request):
             )
             un.save()
         send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, data['emails'])
+
 
     return HttpResponse('ok')
