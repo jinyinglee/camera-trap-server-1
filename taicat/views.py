@@ -1610,6 +1610,7 @@ def api_check_data_gap(request):
     #    working_start__lt=range_list[1]
     #).filter(Q(gap_caused__exact='') | Q(gap_caused__isnull=True)).all()
     rows = DeploymentJournal.objects.filter(
+        is_gap=False,
         working_end__gt=range_list[0],
         working_start__lt=range_list[1]
     ).all()
@@ -1618,13 +1619,13 @@ def api_check_data_gap(request):
     for dj in rows:
         tmp = dj.project.count_deployment_journal([dj.working_start.year])
         info = tmp[str(dj.working_start.year)]
-        has_empty_gap_caused = False
         for sa in info:
             for d in sa['items']:
                 for gap in d['gaps']:
-                    if text := gap.get('caused', ''):
-                        has_empty_gap_caused = True
-                        todo.append(dj)
+                    text = gap.get('caused', '')
+                    if text == '':
+                        if dj not in todo:
+                            todo.append(dj)
     # +END_220728
 
     # send notification to each project members
