@@ -19,6 +19,7 @@ import datetime
 from tempfile import NamedTemporaryFile
 from urllib.parse import quote
 # from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from django.db.models import Count, Window, F, Sum, Min, Q, Max, Func, Value, CharField, DateTimeField, ExpressionWrapper
 from django.db.models.functions import Trunc, ExtractYear
 from django.contrib import messages
@@ -1276,7 +1277,11 @@ def data(request):
             if df.memo[i] == '2022-pt-data':
                 file_url = f"{df.image_id[i]}-m.jpg"
             elif not file_url and not df.from_mongo[i]:
-                file_url = f"{df.image_uuid[i]}-m.jpg"
+                suffix = Path(df.filename[i]).suffix
+                if suffix.upper() not in ['.JPG', '.PNG']:
+                    file_url = f"{df.image_uuid[i]}{suffix}"
+                else:
+                    file_url = f"{df.image_uuid[i]}-m.jpg"
             extension = file_url.split('.')[-1].lower()
             file_url = file_url[:-len(extension)]+extension
             # print(file_url)
@@ -1289,10 +1294,16 @@ def data(request):
                     df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://{}.s3.ap-northeast-1.amazonaws.com/{}" />""".format(s3_bucket, file_url)
                 # new data - video
                 else:
+                    # df.loc[i, 'file_url'] = """
+                    # <video class="img lazy mx-auto d-block" controls height="100" preload="none">
+                    #     <source src="https://{}.s3.ap-northeast-1.amazonaws.com/{}" type="video/webm">
+                    #     <source src="https://{}.s3.ap-northeast-1.amazonaws.com/{}" type="video/mp4">
+                    #     抱歉，您的瀏覽器不支援內嵌影片。
+                    # </video>
+                    # """.format(s3_bucket, file_url, s3_bucket, file_url)
                     df.loc[i, 'file_url'] = """
                     <video class="img lazy mx-auto d-block" controls height="100" preload="none">
-                        <source src="https://{}.s3.ap-northeast-1.amazonaws.com/{}" type="video/webm">
-                        <source src="https://{}.s3.ap-northeast-1.amazonaws.com/{}" type="video/mp4">
+                        <source src="https://{}.s3.ap-northeast-1.amazonaws.com/video/{}" type="video/mp4">
                         抱歉，您的瀏覽器不支援內嵌影片。
                     </video>
                     """.format(s3_bucket, file_url, s3_bucket, file_url)
