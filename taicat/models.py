@@ -168,7 +168,7 @@ class Project(models.Model):
             children = []
             for j in StudyArea.objects.filter(parent_id=i.id).all():
                 sa_deployments = []
-                for x in j.deployment_set.all():
+                for x in j.deployment_set.exclude(deprecated=True).all():
                     item = {
                         'name': x.name,
                         'deployment_id': x.id
@@ -184,7 +184,7 @@ class Project(models.Model):
                 })
 
             deployments = []
-            for x in i.deployment_set.all():
+            for x in i.deployment_set.exclude(deprecated=True).all():
                 item = {
                     'name': x.name,
                     'deployment_id': x.id
