@@ -1279,7 +1279,7 @@ def data(request):
             elif not file_url and not df.from_mongo[i]:
                 suffix = Path(df.filename[i]).suffix
                 if suffix.upper() not in ['.JPG', '.PNG']:
-                    file_url = f"{df.image_uuid[i]}{suffix}"
+                    file_url = f"video/{df.image_uuid[i]}{suffix}"
                 else:
                     file_url = f"{df.image_uuid[i]}-m.jpg"
             extension = file_url.split('.')[-1].lower()
@@ -1303,7 +1303,7 @@ def data(request):
                     # """.format(s3_bucket, file_url, s3_bucket, file_url)
                     df.loc[i, 'file_url'] = """
                     <video class="img lazy mx-auto d-block" controls height="100" preload="none">
-                        <source src="https://{}.s3.ap-northeast-1.amazonaws.com/video/{}" type="video/mp4">
+                        <source src="https://{}.s3.ap-northeast-1.amazonaws.com/{}" type="video/mp4">
                         抱歉，您的瀏覽器不支援內嵌影片。
                     </video>
                     """.format(s3_bucket, file_url, s3_bucket, file_url)
