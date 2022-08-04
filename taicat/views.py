@@ -1605,6 +1605,7 @@ def api_update_deployment_journals(request, pk):
 
         return JsonResponse(ret)
 
+'''moved to cron_script
 def api_check_data_gap(request):
     now = datetime.datetime.now()
 
@@ -1672,3 +1673,4 @@ def api_check_data_gap(request):
 
 
     return HttpResponse('ok')
+'''
