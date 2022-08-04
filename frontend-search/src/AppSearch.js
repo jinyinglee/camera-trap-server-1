@@ -8,11 +8,11 @@ import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
-import DatePicker from '@mui/lab/DatePicker';
-import DateAdapter from '@mui/lab/AdapterDateFns';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import Backdrop from '@mui/material/Backdrop';
 import CircularProgress from '@mui/material/CircularProgress';
-import LocalizationProvider from '@mui/lab/LocalizationProvider';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import Alert from '@mui/material/Alert';
@@ -35,7 +35,7 @@ const initialState = {
     keyword: '',
   },
   pagination: {
-    page: 0,
+    pageIndex: 0,
     perPage: DEFAULT_PER_PAGE,
   },
   options: {
@@ -53,7 +53,7 @@ const initialState = {
     imageInterval: '60',
     eventInterval: '60',
     fileFormat: 'excel',
-    calcType: 'basic',
+    calcType: 'basic-oi',
   }
 };
 
@@ -104,7 +104,7 @@ function reducer(state, action) {
         [action.name]: action.value
       },
       pagination: {
-        page: 0,
+        pageIndex: 0,
         perPage: state.pagination.perPage,
       }
     }
@@ -119,7 +119,7 @@ function reducer(state, action) {
     return {
       ...state,
       pagination: {
-        page: action.page,
+        pageIndex: action.pageIndex,
         perPage: action.perPage,
       }
     }
@@ -165,16 +165,22 @@ const AppSearch = () => {
   //useEffect(() => {
   //}, []);
 
-  const fetchData = () => {
+  const fetchData = (props) => {
     const formDataCleaned = cleanFormData(state.filter, state.options.deploymentDict);
     console.log('cleaned', formDataCleaned);
     //const csrftoken = getCookie('csrftoken');
     const d = JSON.stringify(formDataCleaned);
     let searchApiUrl = `${apiPrefix}search?filter=${d}`;
 
-    const p1 = (state.pagination.perPage === 10) ? {page: 0, perPage: DEFAULT_PER_PAGE} : state.pagination;
-    const p2 = JSON.stringify(p1);
-    searchApiUrl = `${searchApiUrl}&pagination=${p2}`;
+    let pagination = {};
+    if (props && props.hasOwnProperty('perPage') && props.hasOwnProperty('pageIndex')) {
+      pagination = {...props};
+    } else if (state.pagination.perPage === 10) {
+      pagination = { pageIndex: 0, perPage: DEFAULT_PER_PAGE };
+    } else {
+      pagination = state.pagination;
+    }
+    searchApiUrl = `${searchApiUrl}&pagination=${JSON.stringify(pagination)}`;
 
     dispatch({type: 'startLoading'});
     console.log('fetch:', searchApiUrl);
@@ -229,15 +235,16 @@ const AppSearch = () => {
     fetchData();
   }
 
-  const handleChangePage = (e, page) => {
+  const handleChangePage = (e, pageIndex) => {
     const pp = (state.pagination.perPage === 10) ? 20 : state.pagination.perPage;
-    dispatch({type:'setPagination', page: page, perPage: pp});
+    dispatch({type:'setPagination', pageIndex: pageIndex, perPage: pp});
     fetchData();
   }
 
   const handleChangeRowsPerPage = (e) => {
-    dispatch({type:'setPagination', page: 0, perPage: parseInt(e.target.value, 10)});
-    fetchData();
+    const perPage = parseInt(e.target.value, 10);
+    dispatch({type:'setPagination', pageIndex: 0, perPage: perPage});
+    fetchData({pageIndex:0, perPage: perPage});
   }
 
   const handleCalc = () => {
@@ -403,16 +410,24 @@ const AppSearch = () => {
         <CircularProgress color="inherit" />
       </Backdrop>
       <h3>篩選條件</h3>
-      <LocalizationProvider dateAdapter={DateAdapter} locale={zhTW}>
+      <LocalizationProvider dateAdapter={AdapterDateFns} locale={zhTW}>
       <Grid container spacing={2}>
         <Grid item xs={3}>
           <Autocomplete
             multiple
+            freeSolo
             filterSelectedOptions
             options={state.options.species}
             getOptionLabel={(option) => option.name}
             value={state.filter.species}
+            inputValue={state.filter.speciesText || ''}
             onChange={(e, value) => dispatch({type: 'setFilter', name: 'species', value: value})}
+            onInputChange={(e, value, reason) => {
+              console.log('inputch', value, reason);
+              if (reason === 'input') {
+                dispatch({type: 'setFilter', name: 'speciesText', value: value});
+              }
+            }}
             renderInput={(params) => (
               <TextField
                 {...params}
