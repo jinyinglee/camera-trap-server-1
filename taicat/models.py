@@ -807,7 +807,7 @@ class Image(models.Model):
         }
 
     class Meta:
-        ordering = ['created']
+        ordering = ['-created']
         indexes = [GinIndex(fields=['annotation'])]
 
 

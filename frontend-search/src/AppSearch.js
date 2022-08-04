@@ -147,7 +147,7 @@ const AppSearch = () => {
   const today = new Date();
   const todayYMD = `${today.getFullYear()}-${today.getMonth().toString().padStart(2, '0')}-${today.getDay().toString().padStart(2, '0')}`;
   //console.log(todayYMD);
-  const apiPrefix = process.env.API_PREFIX;
+  const apiPrefix = process.env.API_URL;
   const [state, dispatch] = React.useReducer(reducer, initialState);
 
   useEffect(() => {
@@ -237,8 +237,9 @@ const AppSearch = () => {
 
   const handleChangePage = (e, pageIndex) => {
     const pp = (state.pagination.perPage === 10) ? 20 : state.pagination.perPage;
+    console.log(pageIndex, pp, '---');
     dispatch({type:'setPagination', pageIndex: pageIndex, perPage: pp});
-    fetchData();
+    fetchData({pageIndex: pageIndex, perPage: pp});
   }
 
   const handleChangeRowsPerPage = (e) => {

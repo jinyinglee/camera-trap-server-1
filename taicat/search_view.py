@@ -171,8 +171,8 @@ def api_search(request):
 
         else:
             total = query.values('id').order_by('id').count()
-
             rows = query.all()[start:end]
+            # print(query.query, start, end)
             end_time = time.time() - start_time
             return JsonResponse({
                 'data': [x.to_dict() for x in rows],
