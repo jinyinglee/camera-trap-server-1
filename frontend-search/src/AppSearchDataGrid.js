@@ -11,6 +11,7 @@ import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 
 const columns = [
+  { id: 'index', label: '#', minWidth: 10 },
   { id: 'id', label: 'ID', minWidth: 60 },
   { id: 'filename', label: '檔案名稱', minWidth: 100 },
   { id: 'species', label: '物種', minWidth: 70 },
@@ -47,7 +48,7 @@ const CellContent = (value) => {
 }
 
 const AppSearchDataGrid = ({result, pagination, handleChangePage, handleChangeRowsPerPage}) => {
-  //console.log('result', result);
+  // console.log('result', result);
   return (
     <TableContainer component={Paper}>
       <Table stickyHeader aria-label="sticky table" size="small">
@@ -65,14 +66,21 @@ const AppSearchDataGrid = ({result, pagination, handleChangePage, handleChangeRo
           </TableRow>
         </TableHead>
         <TableBody>
-          {result.data.map((row)=> {
+          {result.data.map((row, index)=> {
             return (
               <TableRow key={row.id}>
-                {columns.map((column) => {
-                  const value = row[column.id];
+              {columns.map((column) => {
+                  let value = '';
+                  if (column.id === 'media') {
+                    value = <img src={value} width="50"/>;
+                  } else if (column.id === 'index') {
+                    value = (pagination.pageIndex * pagination.perPage) + index+1;
+                  } else {
+                    value = row[column.id];
+                  }
                   return (
                     <TableCell key={column.id} align={column.align}>
-                      {column.id === 'media' ? <img src={value} width="50"/> : value }
+                      {value}
                     </TableCell>
                   );
                 })}
@@ -86,7 +94,7 @@ const AppSearchDataGrid = ({result, pagination, handleChangePage, handleChangeRo
               rowsPerPageOptions={[20, 50, 100]}
               count={result.total}
               rowsPerPage={pagination.perPage}
-              page={pagination.page}
+              page={pagination.pageIndex}
               SelectProps={{
                 inputProps: {
                   'aria-label': 'rows per page',

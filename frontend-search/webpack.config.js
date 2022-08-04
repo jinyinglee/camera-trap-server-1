@@ -23,7 +23,7 @@ module.exports = (env) => {
     },
     devtool: 'source-map',
     plugins: [
-      new Dotenv()
+      new Dotenv(),
     ]
   }
 };

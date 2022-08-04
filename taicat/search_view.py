@@ -116,8 +116,12 @@ def api_search(request):
             #if values := filter_dict.get('projects'):
             #        project_ids = values
 
+            sp_values = []
             if values := filter_dict.get('species'):
-                query = query.filter(species__in=values)
+                sp_values += values
+            if value := filter_dict.get('speciesText'):
+                sp_values += [value]
+
             if value := filter_dict.get('startDate'):
                 dt = make_aware(datetime.strptime(value, '%Y-%m-%d'))
                 query_start = dt
@@ -134,10 +138,12 @@ def api_search(request):
                 #    query = query.filter(deployment_id__in=values)
             elif values := filter_dict.get('studyareas'):
                 query = query.filter(studyarea_id__in=values)
+            if len(sp_values) > 0:
+                query = query.filter(species__in=sp_values)
 
         if request.GET.get('pagination'):
             pagination = json.loads(request.GET['pagination'])
-            start = pagination['page'] * pagination['perPage']
+            start = pagination['pageIndex'] * pagination['perPage']
             end = start + pagination['perPage']
 
         download = request.GET.get('download', '')
