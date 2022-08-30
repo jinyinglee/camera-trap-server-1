@@ -36,9 +36,13 @@ from .utils import (
     calc_output,
     calc_output2,
     calc_from_cache,
+    get_my_project_list,
 )
 
-from .views import check_if_authorized
+from .views import (
+    check_if_authorized,
+    check_if_authorized_create,
+)
 
 
 def index(request):
@@ -57,21 +61,37 @@ def api_get_species(request):
     })
 
 def api_get_projects(request):
-    public_project_list = Project.published_objects.all()
-    public_project_ids = [x.id for x in public_project_list]
-    private_project_list = Project.objects.exclude(id__in=public_project_ids).all()
-
     public_projects = []
     my_projects = []
-    for p in public_project_list:
-        x = p.to_dict()
-        x['group_by'] = '公開計畫'
-        public_projects.append(x)
-    for p in private_project_list:
-        if check_if_authorized(request, p.id):
+
+    # code from views.project_overview
+    is_authorized_create = check_if_authorized_create(request)
+    public_species_data = []
+    # 公開計畫 depend on publish_date date
+    with connection.cursor() as cursor:
+        q = "SELECT taicat_project.id FROM taicat_project \
+            WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
+        cursor.execute(q)
+        public_project_list = [l[0] for l in cursor.fetchall()]
+
+    if public_project_list:
+        #public_project, public_species_data = get_project_info(str(public_project_list).replace('[', '(').replace(']', ')'))
+        for p in Project.objects.filter(id__in=public_project_list).all():
             x = p.to_dict()
-            x['group_by'] = '我的計畫'
-            my_projects.append(x)
+            x['group_by'] = '公開計畫'
+            public_projects.append(x)
+
+    # ---------------我的計畫
+    # my project
+    # my_project = []
+    # my_species_data = []
+    if member_id := request.session.get('id', None):
+        if my_project_list := get_my_project_list(member_id):
+            # my_project, my_species_data = get_project_info(str(my_project_list).replace('[', '(').replace(']', ')'))
+            for p in Project.objects.filter(id__in=my_project_list).all():
+                x = p.to_dict()
+                x['group_by'] = '我的計畫'
+                my_projects.append(x)
 
     projects = public_projects + my_projects
     return JsonResponse({
@@ -157,6 +177,7 @@ def api_search(request):
             calc_type = calc_dict['calcType']
 
             results = calc(query, calc_data, query_start, query_end)
+            # print(results, out_format, calc_type)
             #results = calc_from_cache(filter_dict, calc_dict)
             #content = calc_output2(results, out_format, request.GET.get('filter'), request.GET.get('calc'))
             content = calc_output(results, out_format, request.GET.get('filter'), request.GET.get('calc'))

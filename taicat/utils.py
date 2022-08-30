@@ -288,7 +288,7 @@ def calc_output(results, file_format, filter_str, calc_str):
             for sp in results:
                 row_index = 1
                 sheets.append(wb.create_sheet(title=sp))
-                if calcData.get('calcType') == 'basic':
+                if calcData.get('calcType') == 'basic-oi':
                     header_str = '計劃,樣區,相機位置,年,月,物種,相機工作時數,有效照片數,目擊事件數,OI1,OI2,OI3,'+','.join(f'相機工作天{day}' for day in range(1, 32))  # ,捕獲回合比例,存缺,'+','.join(f'活動機率day{day}' for day in range(1, 32))
                     header_list = header_str.split(',')
                     for h, v in enumerate(header_list):
