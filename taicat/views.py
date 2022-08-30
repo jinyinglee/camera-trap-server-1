@@ -1278,7 +1278,7 @@ def data(request):
                 file_url = f"{df.image_id[i]}-m.jpg"
             elif not file_url and not df.from_mongo[i]:
                 suffix = Path(df.filename[i]).suffix
-                if suffix.upper() not in ['.JPG', '.PNG']:
+                if suffix.upper() not in ['.JPG', '.PNG', '.JPEG']:
                     file_url = f"video/{df.image_uuid[i]}{suffix}"
                 else:
                     file_url = f"{df.image_uuid[i]}-m.jpg"
