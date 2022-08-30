@@ -177,6 +177,7 @@ def api_search(request):
             calc_type = calc_dict['calcType']
 
             results = calc(query, calc_data, query_start, query_end)
+            # print(results, out_format, calc_type)
             #results = calc_from_cache(filter_dict, calc_dict)
             #content = calc_output2(results, out_format, request.GET.get('filter'), request.GET.get('calc'))
             content = calc_output(results, out_format, request.GET.get('filter'), request.GET.get('calc'))
