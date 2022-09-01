@@ -781,6 +781,8 @@ def add_deployment(request):
         vegetations = res.getlist('vegetations[]')
         did = res.getlist('did[]')
         deprecated = res.getlist('deprecated[]')
+        data = []
+        ids = []
 
         for i in range(len(names)):
             if str(i) in deprecated:
@@ -801,13 +803,24 @@ def add_deployment(request):
                         vegetation=vegetations[i],
                         deprecated=dep)
             else:
-                Deployment.objects.create(project_id=project_id, study_area_id=study_area_id, geodetic_datum=geodetic_datum,
+                new_did = Deployment.objects.create(project_id=project_id, study_area_id=study_area_id, geodetic_datum=geodetic_datum,
                             name=names[i], longitude=longitudes[i], latitude=latitudes[i], altitude=altitudes[i],
                             landcover=landcovers[i], vegetation=vegetations[i], deprecated=dep)
+                ids.append(new_did.id)
+
                 if ProjectStat.objects.filter(project_id=project_id).exists():
                     ProjectStat.objects.filter(project_id=project_id).update(num_deployment=Deployment.objects.filter(project_id=project_id).count())
+        
+        if ids:
+            with connection.cursor() as cursor:
+                query = f"""SELECT id, name, longitude, latitude, altitude, landcover, vegetation, verbatim_locality, 
+                            geodetic_datum, deprecated FROM taicat_deployment 
+                            WHERE id in ({str(ids).replace('[','').replace(']','')}) ORDER BY id ASC;"""
+                cursor.execute(query.format(study_area_id))
+                data = cursor.fetchall()
 
-        return HttpResponse(json.dumps({'d': 'done'}), content_type='application/json')
+
+        return HttpResponse(json.dumps(data, cls=DecimalEncoder), content_type='application/json')
 
 
 def add_studyarea(request):
