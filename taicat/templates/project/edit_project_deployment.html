@@ -412,6 +412,37 @@ function addDepolymentSubmit(){
                'deprecated': deprecated},
         headers:{"X-CSRFToken": $crf_token},
         success: function (response) {
+            // 如果有新增的話，要把新增的deployment_id寫回去
+            // 改成remove沒有did的 然後新增回去
+            $('.new-row').remove();
+            let i;
+            for (i = 0; i < response.length; i++) {
+                // 如果是null顯示空值
+                for (j = 0; j < 7; j++ ){
+                    if ((response[i][j] == null)|(response[i][j] == 'null')){
+                        response[i][j] = ""}
+                }
+                let d_checked
+                if (response[i][9]==true){
+                    d_checked='checked';
+                }
+                $('#deployment').append(`
+                <tr>
+                    <td>
+                        <input type="hidden" name="id" value="${response[i][0]}">
+                        <input type="text" name="name" class="form-control text-truncate" value="${response[i][1]}">
+                    </td>
+                    <td><input type="text" name="longitude" class="form-control" value="${response[i][2]}"></td>
+                    <td><input type="text" name="latitude" class="form-control" value="${response[i][3]}"></td>
+                    <td><input type="text" name="altitude" class="form-control" value="${response[i][4]}"></td>
+                    <td><input type="text" name="vegetation" class="form-control" value="${response[i][5]}"></td>
+                    <td><input type="text" name="landcover" class="form-control" value="${response[i][6]}"></td>
+                    <td><input type="checkbox" name="deprecated" value="${i}" ${d_checked}></td>
+                    <td><a class="removeButton btn bg-white text-gray" data-did="${response[i][0]}">x</a></td>
+                </tr>`)
+            }
+
+         
             alert('設定已儲存');
         },
         error: function (response) {
@@ -420,7 +451,7 @@ function addDepolymentSubmit(){
     })
     
     } else {
-        alert('請檢查輸入欄位是否正確');
+        alert('請檢查輸入欄位是否正確，且相機位置名稱不得重複');
     }
 }
 
@@ -482,7 +513,7 @@ function selectStudyArea(id, sa_name){
 function addDeployment(){
     //目前的id到哪
     let new_id = parseInt($('input[name=deprecated]').last().val()) + 1;
-    $('#deployment').append(`<tr>
+    $('#deployment').append(`<tr class="new-row">
                                 <td>
                                     <input type="hidden" name="id">
                                     <input type="text" name="name" class="form-control"></td>
