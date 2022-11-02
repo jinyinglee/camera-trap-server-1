@@ -7,6 +7,7 @@ import re
 from django import template
 from base.models import UploadNotification
 from django.utils.safestring import mark_safe
+from taicat.models import Organization, ProjectMember
 
 register = template.Library()
 
@@ -128,3 +129,13 @@ def get_notif(contact_id):
     return mark_safe(results)
 
 
+
+
+# 確認是否有權限取得單機版檔案
+@register.filter()
+def if_desktop(user_id):
+    projects = Organization.objects.get(name='林務局').projects.all()
+    if ProjectMember.objects.filter(project__in=projects,member_id=user_id).exists():
+        return True
+    else:
+        return False

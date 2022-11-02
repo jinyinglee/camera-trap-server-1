@@ -516,6 +516,9 @@
                   {% if request.session.name == '系統管理員' %}
                   <li><a class="dropdown-item" href="{% url 'set_permission' %}">權限管理</a></li>
                   {% endif %}
+                  {% if request.session.id|if_desktop %}
+                  <li><a class="dropdown-item" href="{% url 'desktop'  %}">單機版下載</a></li>
+                  {% endif %}
                   <li><a class="dropdown-item" href="{% url 'logout' %}">登出</a></li>
                 </ul>
               </li>

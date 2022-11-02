@@ -29,6 +29,11 @@ from django.views.decorators.csrf import csrf_exempt
 # from django.core import serializers
 
 
+def desktop(request):
+    file = ''
+    return render(request, 'base/desktop_download.html', {'file': file})
+
+
 def update_is_read(request):
     if request.method == 'GET':
         if contact_id := request.session['id'] :

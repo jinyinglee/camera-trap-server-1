@@ -970,8 +970,10 @@ def project_overview(request):
     public_species_data = []
     # 公開計畫 depend on publish_date date
     with connection.cursor() as cursor:
+        # q = "SELECT taicat_project.id FROM taicat_project \
+        #     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
         q = "SELECT taicat_project.id FROM taicat_project \
-            WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
+            WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't';"
         cursor.execute(q)
         public_project_list = [l[0] for l in cursor.fetchall()]
     if public_project_list:
@@ -995,8 +997,10 @@ def update_datatable(request):
         # print(species)
         if table_id == 'publicproject':
             with connection.cursor() as cursor:
+                # q = "SELECT taicat_project.id FROM taicat_project \
+                #     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
                 q = "SELECT taicat_project.id FROM taicat_project \
-                    WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
+                    WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't';"
                 cursor.execute(q)
                 public_project_list = [l[0] for l in cursor.fetchall()]
             project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=public_project_list).order_by('project_id').distinct('project_id')
@@ -1415,7 +1419,6 @@ def generate_download_excel(request, pk):
 
     n = f'download_{str(ObjectId())}_{datetime.datetime.now().strftime("%Y-%m-%d")}.csv'
     download_dir = os.path.join(settings.MEDIA_ROOT, 'download')
-
     sql = f"""copy ( SELECT i.project_id AS "計畫ID", p.name AS "計畫名稱", i.image_uuid AS "影像ID", 
                                 concat_ws('/', ssa.name, sa.name) AS "樣區/子樣區", 
                                 d.name AS "相機位置", i.filename AS "檔名", to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS "拍攝時間",
