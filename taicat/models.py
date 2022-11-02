@@ -143,6 +143,7 @@ class Project(models.Model):
     #members = models.ManyToManyField('Contact', )
 
     # License
+    is_public = models.BooleanField(default=False, blank=True)
     publish_date = models.DateField('公開日期', null=True, blank=True)
     interpretive_data_license = models.CharField('詮釋資料', max_length=10, blank=True, null=True)
     identification_information_license = models.CharField('鑑定資訊', max_length=10, blank=True, null=True)
