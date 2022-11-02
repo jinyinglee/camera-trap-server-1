@@ -1419,7 +1419,6 @@ def generate_download_excel(request, pk):
 
     n = f'download_{str(ObjectId())}_{datetime.datetime.now().strftime("%Y-%m-%d")}.csv'
     download_dir = os.path.join(settings.MEDIA_ROOT, 'download')
-
     sql = f"""copy ( SELECT i.project_id AS "計畫ID", p.name AS "計畫名稱", i.image_uuid AS "影像ID", 
                                 concat_ws('/', ssa.name, sa.name) AS "樣區/子樣區", 
                                 d.name AS "相機位置", i.filename AS "檔名", to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS "拍攝時間",

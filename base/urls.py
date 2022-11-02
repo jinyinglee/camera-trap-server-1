@@ -25,4 +25,5 @@ urlpatterns = [
     path('send_upload_notification', views.send_upload_notification, name='send_upload_notification'),
     path('update_upload_history/', views.update_upload_history, name='update_upload_history'),
     path('update_is_read', views.update_is_read, name='update_is_read'),
+    path('desktop', views.desktop, name='desktop'),
 ]
