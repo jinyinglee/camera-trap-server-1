@@ -354,6 +354,7 @@ def update_species_pie(request):
 def project_info(request, pk):
     project = Project.objects.get(id=pk)
     is_authorized = check_if_authorized(request, pk)
+    is_project_authorized = check_if_authorized_project(request, pk)
     sa = StudyArea.objects.filter(project_id=pk, parent_id__isnull=True)
     sa_list = [str(s.id) for s in sa]
     sa_center = [23.5, 121.2]
@@ -402,7 +403,7 @@ def project_info(request, pk):
     return render(request, 'project/project_info.html', {'pk': pk, 'project': project, 'is_authorized': is_authorized,
                                                         'sa_point': sa_center, 'species_count': species_count, 'sa': sa,
                                                         'species_last_updated': species_last_updated, 'pie_data': pie_data,
-                                                        'other_data': other_data, 'sa_list': sa_list, 'zoom':zoom})
+                                                        'other_data': other_data, 'sa_list': sa_list, 'zoom':zoom, 'is_project_authorized': is_project_authorized})
 
 
 def delete_data(request, pk):
@@ -604,6 +605,29 @@ def check_if_authorized(request, pk):
                 organization_id = if_organization_admin.values('organization').first()['organization']
                 if Organization.objects.filter(id=organization_id, projects=pk):
                     is_authorized = True
+    return is_authorized
+
+
+# 是否可以看到計畫資訊/詳細內容
+def check_if_authorized_project(request, pk):
+    is_authorized = False
+    member_id = request.session.get('id', None)
+    if member_id:
+        # check system_admin
+        if Contact.objects.filter(id=member_id, is_system_admin=True):
+            is_authorized = True
+        # check project_member 
+        elif ProjectMember.objects.filter(member_id=member_id, project_id=pk):
+            is_authorized = True
+        else:
+            # check organization_admin
+            if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
+            if if_organization_admin:
+                organization_id = if_organization_admin.values('organization').first()['organization']
+                if Organization.objects.filter(id=organization_id, projects=pk):
+                    is_authorized = True
+    elif Project.objects.filter(id=pk, is_public=True).exists():
+        is_authorized = True
     return is_authorized
 
 
@@ -1022,6 +1046,7 @@ def update_datatable(request):
 def project_detail(request, pk):
     folder = request.GET.get('folder')
     is_authorized = check_if_authorized(request, pk)
+    is_project_authorized = check_if_authorized_project(request, pk)
     with connection.cursor() as cursor:
         query = "SELECT name, funding_agency, code, " \
                 "principal_investigator, " \
@@ -1180,7 +1205,7 @@ def project_detail(request, pk):
                    'earliest_date': earliest_date, 'latest_date': latest_date,
                    'editable': editable, 'is_authorized': is_authorized,
                    'folder_list': results, 'sa_list': list(sa_list), 'sa_d_list': sa_d_list, 
-                   'projects': project_list})
+                   'projects': project_list, 'is_project_authorized': is_project_authorized})
 
 
 def update_edit_autocomplete(request):

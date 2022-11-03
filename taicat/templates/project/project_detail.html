@@ -159,10 +159,11 @@
 </style>
 {% endblock head %} {% block body %}
 <div class="container box">
-  {% if project_name_len > 35 %}
-  <div class="row pb-2 pt-4 header overflow-auto" style="height: 120px">
-    {% else %}
-    <div class="row pb-2 pt-4 header overflow-auto">
+  {% if is_project_authorized %}
+      {% if project_name_len > 35 %}
+      <div class="row pb-2 pt-4 header overflow-auto" style="height: 120px">
+      {% else %}
+      <div class="row pb-2 pt-4 header overflow-auto">
       {% endif %}
       <div class="col-2">
         <a class="text-gray back text-decoration-none align-middle" href="{% url 'project_info' pk %}"><i class="fa fa-chevron-left"></i> 返回計畫資訊</a>
@@ -296,6 +297,13 @@
         </table>
       </div>
     </div>
+    {% else %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="margin-top: 50px">
+        您的權限不足
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <a class="btn btn-outline-success" href="{% url 'project_overview' %}">回上一頁</a>
+    {% endif %}
   </div>
 
   <!-- Edit Modal -->
