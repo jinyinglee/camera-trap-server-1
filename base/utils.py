@@ -62,4 +62,6 @@ def update_studyareastat(sa_list):
                 latitude = lat,
             )
 
-
+def get_request_site_url(request):
+    url = f"{request.scheme}://{request.META['HTTP_HOST']}"
+    return url
