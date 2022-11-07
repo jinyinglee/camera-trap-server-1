@@ -425,7 +425,7 @@ def calc_output2(results, file_format, filter_str, calc_str):
             return tmp.read()
 
 def get_my_project_list(member_id, project_list=[]):
-    if Contact.objects.filter(id=member_id, is_system_admin=True):
+    if Contact.objects.filter(id=member_id, is_system_admin=True).exists():
         project_list += list(Project.objects.all().values_list('id', flat=True))
     else:
         # 1. select from project_member table
