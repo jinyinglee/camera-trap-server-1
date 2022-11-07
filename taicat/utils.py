@@ -425,21 +425,24 @@ def calc_output2(results, file_format, filter_str, calc_str):
             return tmp.read()
 
 def get_my_project_list(member_id, project_list=[]):
-    # 1. select from project_member table
-    with connection.cursor() as cursor:
-        query = "SELECT project_id FROM taicat_projectmember where member_id ={}"
-        cursor.execute(query.format(member_id))
-        temp = cursor.fetchall()
-        for i in temp:
-            if i[0]:
-                project_list += [i[0]]
-    # 2. check if the user is organization admin
-    if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
-    if if_organization_admin:
-        organization_id = if_organization_admin.values('organization').first()['organization']
-        temp = Organization.objects.filter(id=organization_id).values('projects')
-        for i in temp:
-            project_list += [i['projects']]
+    if Contact.objects.filter(id=member_id, is_system_admin=True):
+        project_list += list(Project.objects.all().values_list('id', flat=True))
+    else:
+        # 1. select from project_member table
+        with connection.cursor() as cursor:
+            query = "SELECT project_id FROM taicat_projectmember where member_id ={}"
+            cursor.execute(query.format(member_id))
+            temp = cursor.fetchall()
+            for i in temp:
+                if i[0]:
+                    project_list += [i[0]]
+        # 2. check if the user is organization admin
+        if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
+        if if_organization_admin:
+            organization_id = if_organization_admin.values('organization').first()['organization']
+            temp = Organization.objects.filter(id=organization_id).values('projects')
+            for i in temp:
+                project_list += [i['projects']]
     return project_list
 
 
