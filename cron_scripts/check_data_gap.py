@@ -29,28 +29,51 @@ for i in rows:
     proj = Project.objects.get(pk=project_id)
     data = proj.count_deployment_journal([year])
 
-    body = '資料缺失: 尚未填寫列表\n----------------------'
+
+    output = {'count': 0, 'studyareas': {}}
     for sa in data[str(year)]:
-        #body += '\n\n================\n{}\n================\n'.format(sa['name'])
-        body += '\n\n# 樣區名稱: {}\n'.format(sa['name'])
+        # body += '\n\n# 樣區名稱: {}\n'.format(sa['name'])
+        #sa_title = '\n\n# 樣區名稱: {}\n'.format(sa['name'])
+        sa_output = {'count': 0, 'deployments': {}}
         for dep in sa['items']:
-            dep_title = '\n## 相機位置: {}\n'.format(dep['name'])
-            has_gaps = False
+            #dep_title = '\n## 相機位置: {}\n'.format(dep['name'])
             for gap in dep['gaps']:
                 gap_start = datetime.datetime.fromtimestamp(gap['range'][0])
                 gap_end = datetime.datetime.fromtimestamp(gap['range'][1])
                 #print(range_list, gap_start, gap_end)
-                if gap_end >= range_list[0] and gap_end <= range_list[1]:
-                    if has_gaps is False:
-                        body += dep_title
-                    has_gap = True
-                    body += '* {}/{}\n'.format(gap_start.strftime('%Y-%m-%d'), gap_end.strftime('%Y-%m-%d'))
+                if 1: #gap_end >= range_list[0] and gap_end <= range_list[1]:
+                    if dep['id'] not in sa_output['deployments']:
+                        sa_output['deployments'][dep['id']] = {
+                            'count': 0,
+                            'items': [],
+                            'name': dep['name']
+                        }
+
+                    gap_title = '* {}/{}\n'.format(gap_start.strftime('%Y-%m-%d'), gap_end.strftime('%Y-%m-%d'))
+                    sa_output['deployments'][dep['id']]['items'].append(gap_title)
+                    sa_output['deployments'][dep['id']]['count'] += 1
+                    sa_output['count'] += 1
+
+            output['count'] += sa_output['count']
+            output['studyareas'][sa['name']] = sa_output['deployments']
+
+    # print(output)
 
     email_subject = '[臺灣自動相機資訊系統] | {} | 資料缺失: 尚未填寫列表'.format(proj.name)
-    email_body= body
+    email_body = '資料缺失: 尚未填寫列表\n----------------------'
+    if output['count'] > 0 :
+        for sa_name in output['studyareas']:
+            email_body += '\n\n# 樣區名稱: {}\n'.format(sa_name)
+            for _, d in output['studyareas'][sa_name].items():
+                email_body += '\n## 相機位置: {}\n'.format(d['name'])
+                for x in d['items']:
+                    email_body += x
+    else:
+        email_body += '\n目前無資料缺失。'
 
     project_members = get_project_member(project_id)
     email_list = [x.email for x in Contact.objects.filter(id__in=project_members)]
+
     # create notification
     for m in project_members:
         # print (m.id, m.name)
@@ -61,7 +84,6 @@ for i in rows:
         )
         un.save()
 
-    #send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, email_list)
-
-    print(email_subject)
-    print(email_body)
+    send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, email_list)
+    #print(email_subject)
+    #print(email_body)
