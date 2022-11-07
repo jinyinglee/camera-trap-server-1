@@ -203,7 +203,7 @@ def get_error_file_list(request, deployment_journal_id):
 def upload_history(request):
     rows = []
     if member_id := request.session.get('id', None):
-        my_project_list = get_my_project_list(member_id)
+        my_project_list = get_my_project_list(member_id,[])
         query = """SELECT to_char(up.created AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS'),
                     to_char(up.last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS'),
                     dj.folder_name, p.name, s.name, d.name, up.status, dj.project_id, up.deployment_journal_id,

@@ -617,7 +617,7 @@ def check_if_authorized_project(request, pk):
         if Contact.objects.filter(id=member_id, is_system_admin=True):
             is_authorized = True
         # check project_member 
-        elif ProjectMember.objects.filter(member_id=member_id, project_id=pk):
+        elif ProjectMember.objects.filter(member_id=member_id, project_id=pk).exists():
             is_authorized = True
         else:
             # check organization_admin
@@ -1007,7 +1007,7 @@ def project_overview(request):
     my_project = []
     my_species_data = []
     if member_id := request.session.get('id', None):
-        if my_project_list := get_my_project_list(member_id):
+        if my_project_list := get_my_project_list(member_id,[]):
             my_project, my_species_data = get_project_info(str(my_project_list).replace('[', '(').replace(']', ')'))
     return render(request, 'project/project_overview.html', {'public_project': public_project, 'my_project': my_project, 'is_authorized_create': is_authorized_create,
                                                              'public_species_data': public_species_data, 'my_species_data': my_species_data})
@@ -1032,7 +1032,7 @@ def update_datatable(request):
         else:
             member_id = request.session.get('id', None)
             if member_id := request.session.get('id', None):
-                if my_project_list := get_my_project_list(member_id): 
+                if my_project_list := get_my_project_list(member_id,[]): 
                     with connection.cursor() as cursor:
                         project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=my_project_list).order_by('project_id').distinct('project_id')
                         project_list = list(project_list.values_list('project_id', flat=True))
@@ -1191,7 +1191,7 @@ def project_detail(request, pk):
     sa_list = Project.objects.get(pk=pk).get_sa_list()
     sa_d_list = Project.objects.get(pk=pk).get_sa_d_list()
     if editable:
-        pid_list = get_my_project_list(user_id)
+        pid_list = get_my_project_list(user_id,[])
         projects = Project.objects.filter(pk__in=pid_list)
         project_list = []
         for p in projects:

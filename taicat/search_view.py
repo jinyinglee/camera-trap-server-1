@@ -89,7 +89,7 @@ def api_get_projects(request):
     # my_project = []
     # my_species_data = []
     if member_id := request.session.get('id', None):
-        if my_project_list := get_my_project_list(member_id):
+        if my_project_list := get_my_project_list(member_id,[]):
             # my_project, my_species_data = get_project_info(str(my_project_list).replace('[', '(').replace(']', ')'))
             for p in Project.objects.filter(id__in=my_project_list).all():
                 x = p.to_dict()
