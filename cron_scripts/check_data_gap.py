@@ -34,9 +34,17 @@ for i in rows:
         #body += '\n\n================\n{}\n================\n'.format(sa['name'])
         body += '\n\n# 樣區名稱: {}\n'.format(sa['name'])
         for dep in sa['items']:
-            body += '\n## 相機位置: {}\n'.format(dep['name'])
+            dep_title = '\n## 相機位置: {}\n'.format(dep['name'])
+            has_gaps = False
             for gap in dep['gaps']:
-                body += '* {}/{}\n'.format(datetime.datetime.fromtimestamp(gap['range'][0]).strftime('%Y-%m-%d'), datetime.datetime.fromtimestamp(gap['range'][1]).strftime('%Y-%m-%d'))
+                gap_start = datetime.datetime.fromtimestamp(gap['range'][0])
+                gap_end = datetime.datetime.fromtimestamp(gap['range'][1])
+                #print(range_list, gap_start, gap_end)
+                if gap_end >= range_list[0] and gap_end <= range_list[1]:
+                    if has_gaps is False:
+                        body += dep_title
+                    has_gap = True
+                    body += '* {}/{}\n'.format(gap_start.strftime('%Y-%m-%d'), gap_end.strftime('%Y-%m-%d'))
 
     email_subject = '[臺灣自動相機資訊系統] | {} | 資料缺失: 尚未填寫列表'.format(proj.name)
     email_body= body
@@ -53,7 +61,7 @@ for i in rows:
         )
         un.save()
 
-    send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, email_list)
+    #send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, email_list)
 
-    #print(email_subject)
-    #print(email_body)
+    print(email_subject)
+    print(email_body)
