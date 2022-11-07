@@ -80,3 +80,9 @@ source: `taicat/views.py` *api_check_data_gap*
 
 `scripts/count-project-stats.py` 產生計畫的管考需要的資料 (stats)
 
+## Working Flow
+
+### 上傳照片:
+傳完後 rest API 呼叫**base.update_upload_history**:
+
+- 執行 `base.send_upload_history`
