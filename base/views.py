@@ -61,7 +61,7 @@ def send_upload_notification(upload_history_id, member_list, request):
             status = '上傳中'
 
         project_url = '{}/project/info/{}/'.format(site_url, uh[0].deployment_journal.project_id)
-        folder_view_url = '{}/project/deails/{}/?folder={}'.format(site_url, uh[0].deployment_journal.project_id, uh[0].deployment_journal.folder_name)
+        folder_view_url = '{}/project/details/{}/?folder={}'.format(site_url, uh[0].deployment_journal.project_id, uh[0].deployment_journal.folder_name)
         # send email
         html_content = f"""
         您好：
