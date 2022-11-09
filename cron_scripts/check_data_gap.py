@@ -41,7 +41,7 @@ for i in rows:
                 gap_start = datetime.datetime.fromtimestamp(gap['range'][0])
                 gap_end = datetime.datetime.fromtimestamp(gap['range'][1])
                 #print(range_list, gap_start, gap_end)
-                if gap_end >= range_list[0] and gap_end <= range_list[1]:
+                if gap_end >= range_list[0] or gap_start <= range_list[1]:
                     if dep['id'] not in sa_output['deployments']:
                         sa_output['deployments'][dep['id']] = {
                             'count': 0,

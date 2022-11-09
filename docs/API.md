@@ -92,6 +92,6 @@ source: `taicat/views.py` *api_check_data_gap*
 
 `cron_scripts/check_data_gap.py`
 
-搜尋上個月的前半年(`range_list`)，有涵蓋到的 gap\_start, gap\_end, 如果沒有 填寫缺失內容就列出 (`gap_end >= range_list[0] and gap_end <= range_list[1]`)
+搜尋上個月的前半年(`range_list`)，有涵蓋到的 gap\_start, gap\_end (聯集), 如果沒有 填寫缺失內容就列出 (`gap_end >= range_list[0] or gap_start <= range_list[1]`)
 
 
