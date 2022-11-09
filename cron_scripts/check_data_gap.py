@@ -41,7 +41,7 @@ for i in rows:
                 gap_start = datetime.datetime.fromtimestamp(gap['range'][0])
                 gap_end = datetime.datetime.fromtimestamp(gap['range'][1])
                 #print(range_list, gap_start, gap_end)
-                if 1: #gap_end >= range_list[0] and gap_end <= range_list[1]:
+                if gap_end >= range_list[0] and gap_end <= range_list[1]:
                     if dep['id'] not in sa_output['deployments']:
                         sa_output['deployments'][dep['id']] = {
                             'count': 0,
@@ -59,7 +59,7 @@ for i in rows:
 
     # print(output)
 
-    email_subject = '[臺灣自動相機資訊系統] | {} | 資料缺失: 尚未填寫列表'.format(proj.name)
+    email_subject = '[臺灣自動相機資訊系統] | {} | 資料缺失: 尚未填寫列表 | 篩選範圍：{}/{}'.format(proj.name, range_list[0].strftime('%Y-%m-%d'), range_list[1].strftime('%Y-%m-%d'))
     email_body = '資料缺失: 尚未填寫列表\n----------------------'
     if output['count'] > 0 :
         for sa_name in output['studyareas']:
