@@ -18,8 +18,9 @@ from base.models import (
 now = datetime.datetime.now()
 
 # test
-#range_list = half_year_ago(2021, 4)
+#range_list = half_year_ago(2022, 8)
 range_list = half_year_ago(now.year, now.month)
+
 rows = DeploymentJournal.objects.values_list('project_id').annotate(total=Count('id')).filter(working_end__gt=range_list[0]).all()
 
 # rows = [[141]]
@@ -35,8 +36,12 @@ for i in rows:
                 for gap in dep['gaps']:
                     gap_start = datetime.datetime.fromtimestamp(gap['range'][0])
                     gap_end = datetime.datetime.fromtimestamp(gap['range'][1])
+                    gap_end_condition = gap_end
+                    # 一年的最後一天，拉成明年第一天，把前年 gap_end 是 12/31 有空缺的也拉出來
+                    if gap_end.month == 12 and gap_end.day == 31:
+                        gap_end_condition = datetime.datetime.strptime('{}-01-01'.format(gap_end.year+1), '%Y-%m-%d')
                     #print(range_list, gap_start, gap_end)
-                    if gap_end >= range_list[0] and gap_start <= range_list[1]:
+                    if gap_end_condition >= range_list[0] and gap_start <= range_list[1]:
                         if sa['name'] not in output['studyareas']:
                             output['studyareas'][sa['name']] = {}
 
