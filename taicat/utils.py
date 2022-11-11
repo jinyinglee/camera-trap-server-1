@@ -667,14 +667,14 @@ def half_year_ago(year, month):
     if month < 2:
         end_year = year - 1
 
-    if month - 8 > 0:
+    if month - 8 >= 0:
         begin_month = month - 7
     else:
         begin_month = month_list[month-8]
         begin_year = year-1
 
     return [
-        datetime.strptime(f'{begin_year}-{begin_month}-01 01:01:01', "%Y-%m-%d %H:%M:%S"),
-        datetime.strptime(f'{end_year}-{end_month}-01 01:01:01', "%Y-%m-%d %H:%M:%S")
+        datetime.strptime(f'{begin_year}-{begin_month}-01 00:00:00', "%Y-%m-%d %H:%M:%S"),
+        datetime.strptime(f'{end_year}-{end_month}-01 00:00:00', "%Y-%m-%d %H:%M:%S")
     ]
 
