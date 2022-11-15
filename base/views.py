@@ -24,9 +24,17 @@ from django.http import response, JsonResponse
 from .models import *
 from taicat.utils import get_my_project_list, get_project_member
 from django.db.models.functions import Trunc, TruncDate
-from .utils import DecimalEncoder, update_studyareastat
+from .utils import (
+    DecimalEncoder,
+    update_studyareastat,
+    get_request_site_url)
 from django.views.decorators.csrf import csrf_exempt
 # from django.core import serializers
+
+
+def desktop(request):
+    file = ''
+    return render(request, 'base/desktop_download.html', {'file': file})
 
 
 def update_is_read(request):
@@ -36,8 +44,9 @@ def update_is_read(request):
     return JsonResponse({'data': 'success'}, safe=False) 
 
 
-@csrf_exempt
-def send_upload_notification(upload_history_id, member_list):
+def send_upload_notification(upload_history_id, member_list, request):
+    site_url = get_request_site_url(request)
+
     try:
         email_list = []
         email = Contact.objects.filter(id__in=member_list).values('email')
@@ -49,7 +58,10 @@ def send_upload_notification(upload_history_id, member_list):
         elif uh[0].status ==  'unfinished':
             status = '未完成' 
         elif uh[0].status ==  'uploading':
-            status = '上傳中' 
+            status = '上傳中'
+
+        project_url = '{}/project/info/{}/'.format(site_url, uh[0].deployment_journal.project_id)
+        folder_view_url = '{}/project/details/{}/?folder={}'.format(site_url, uh[0].deployment_journal.project_id, uh[0].deployment_journal.folder_name)
         # send email
         html_content = f"""
         您好：
@@ -60,6 +72,8 @@ def send_upload_notification(upload_history_id, member_list):
         <br>
         <b>計畫：</b>{uh[0].deployment_journal.project.name}
         <br>
+        (<a href="{project_url}" target="_blank">{project_url}</a>)
+        <br>
         <br>
         <b>樣區：</b>{uh[0].deployment_journal.studyarea.name}
         <br>
@@ -69,23 +83,23 @@ def send_upload_notification(upload_history_id, member_list):
         <br>
         <b>資料夾名稱：</b>{uh[0].deployment_journal.folder_name}
         <br>
+        (<a href="{folder_view_url}" target="_blank">{folder_view_url}</a>)
+        <br>
         <br>
         <b>上傳狀態：</b>{status}
-        <br>
+        <br>"""
 
-        """
         subject = '[臺灣自動相機資訊系統] 上傳通知'
-
         msg = EmailMessage(subject, html_content, 'Camera Trap <no-reply@camera-trap.tw>', [], email_list)
         msg.content_subtype = "html"  # Main content is now text/html
         # 改成背景執行
         task = threading.Thread(target=send_msg, args=(msg,))
         # task.daemon = True
         task.start()
-        return {"status": 'success'}
-    except:
-        return {"status": 'fail'}
 
+        return {"status": 'success'}
+    except Exception as err_msg:
+        return {"status": 'fail', "error_message": err_msg}
 
 @csrf_exempt
 def update_upload_history(request):
@@ -149,7 +163,7 @@ def update_upload_history(request):
                 except:
                     pass # contact已經不在則移除
             # 每次都寄信
-            res = send_upload_notification(upload_history_id, final_members)
+            res = send_upload_notification(upload_history_id, final_members, request)
             if res.get('status') == 'fail':
                 response = {'messages': 'failed during sending email'}
                 return JsonResponse(response)
@@ -189,7 +203,7 @@ def get_error_file_list(request, deployment_journal_id):
 def upload_history(request):
     rows = []
     if member_id := request.session.get('id', None):
-        my_project_list = get_my_project_list(member_id)
+        my_project_list = get_my_project_list(member_id,[])
         query = """SELECT to_char(up.created AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS'),
                     to_char(up.last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS'),
                     dj.folder_name, p.name, s.name, d.name, up.status, dj.project_id, up.deployment_journal_id,

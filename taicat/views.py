@@ -354,6 +354,7 @@ def update_species_pie(request):
 def project_info(request, pk):
     project = Project.objects.get(id=pk)
     is_authorized = check_if_authorized(request, pk)
+    is_project_authorized = check_if_authorized_project(request, pk)
     sa = StudyArea.objects.filter(project_id=pk, parent_id__isnull=True)
     sa_list = [str(s.id) for s in sa]
     sa_center = [23.5, 121.2]
@@ -402,7 +403,7 @@ def project_info(request, pk):
     return render(request, 'project/project_info.html', {'pk': pk, 'project': project, 'is_authorized': is_authorized,
                                                         'sa_point': sa_center, 'species_count': species_count, 'sa': sa,
                                                         'species_last_updated': species_last_updated, 'pie_data': pie_data,
-                                                        'other_data': other_data, 'sa_list': sa_list, 'zoom':zoom})
+                                                        'other_data': other_data, 'sa_list': sa_list, 'zoom':zoom, 'is_project_authorized': is_project_authorized})
 
 
 def delete_data(request, pk):
@@ -604,6 +605,29 @@ def check_if_authorized(request, pk):
                 organization_id = if_organization_admin.values('organization').first()['organization']
                 if Organization.objects.filter(id=organization_id, projects=pk):
                     is_authorized = True
+    return is_authorized
+
+
+# 是否可以看到計畫資訊/詳細內容
+def check_if_authorized_project(request, pk):
+    is_authorized = False
+    member_id = request.session.get('id', None)
+    if member_id:
+        # check system_admin
+        if Contact.objects.filter(id=member_id, is_system_admin=True):
+            is_authorized = True
+        # check project_member 
+        elif ProjectMember.objects.filter(member_id=member_id, project_id=pk).exists():
+            is_authorized = True
+        else:
+            # check organization_admin
+            if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
+            if if_organization_admin:
+                organization_id = if_organization_admin.values('organization').first()['organization']
+                if Organization.objects.filter(id=organization_id, projects=pk):
+                    is_authorized = True
+    elif Project.objects.filter(id=pk, is_public=True).exists():
+        is_authorized = True
     return is_authorized
 
 
@@ -970,8 +994,10 @@ def project_overview(request):
     public_species_data = []
     # 公開計畫 depend on publish_date date
     with connection.cursor() as cursor:
+        # q = "SELECT taicat_project.id FROM taicat_project \
+        #     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
         q = "SELECT taicat_project.id FROM taicat_project \
-            WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
+            WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't';"
         cursor.execute(q)
         public_project_list = [l[0] for l in cursor.fetchall()]
     if public_project_list:
@@ -981,7 +1007,7 @@ def project_overview(request):
     my_project = []
     my_species_data = []
     if member_id := request.session.get('id', None):
-        if my_project_list := get_my_project_list(member_id):
+        if my_project_list := get_my_project_list(member_id,[]):
             my_project, my_species_data = get_project_info(str(my_project_list).replace('[', '(').replace(']', ')'))
     return render(request, 'project/project_overview.html', {'public_project': public_project, 'my_project': my_project, 'is_authorized_create': is_authorized_create,
                                                              'public_species_data': public_species_data, 'my_species_data': my_species_data})
@@ -995,8 +1021,10 @@ def update_datatable(request):
         # print(species)
         if table_id == 'publicproject':
             with connection.cursor() as cursor:
+                # q = "SELECT taicat_project.id FROM taicat_project \
+                #     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
                 q = "SELECT taicat_project.id FROM taicat_project \
-                    WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
+                    WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't';"
                 cursor.execute(q)
                 public_project_list = [l[0] for l in cursor.fetchall()]
             project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=public_project_list).order_by('project_id').distinct('project_id')
@@ -1004,7 +1032,7 @@ def update_datatable(request):
         else:
             member_id = request.session.get('id', None)
             if member_id := request.session.get('id', None):
-                if my_project_list := get_my_project_list(member_id): 
+                if my_project_list := get_my_project_list(member_id,[]): 
                     with connection.cursor() as cursor:
                         project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=my_project_list).order_by('project_id').distinct('project_id')
                         project_list = list(project_list.values_list('project_id', flat=True))
@@ -1018,6 +1046,7 @@ def update_datatable(request):
 def project_detail(request, pk):
     folder = request.GET.get('folder')
     is_authorized = check_if_authorized(request, pk)
+    is_project_authorized = check_if_authorized_project(request, pk)
     with connection.cursor() as cursor:
         query = "SELECT name, funding_agency, code, " \
                 "principal_investigator, " \
@@ -1162,7 +1191,7 @@ def project_detail(request, pk):
     sa_list = Project.objects.get(pk=pk).get_sa_list()
     sa_d_list = Project.objects.get(pk=pk).get_sa_d_list()
     if editable:
-        pid_list = get_my_project_list(user_id)
+        pid_list = get_my_project_list(user_id,[])
         projects = Project.objects.filter(pk__in=pid_list)
         project_list = []
         for p in projects:
@@ -1176,7 +1205,7 @@ def project_detail(request, pk):
                    'earliest_date': earliest_date, 'latest_date': latest_date,
                    'editable': editable, 'is_authorized': is_authorized,
                    'folder_list': results, 'sa_list': list(sa_list), 'sa_d_list': sa_d_list, 
-                   'projects': project_list})
+                   'projects': project_list, 'is_project_authorized': is_project_authorized})
 
 
 def update_edit_autocomplete(request):
@@ -1415,7 +1444,6 @@ def generate_download_excel(request, pk):
 
     n = f'download_{str(ObjectId())}_{datetime.datetime.now().strftime("%Y-%m-%d")}.csv'
     download_dir = os.path.join(settings.MEDIA_ROOT, 'download')
-
     sql = f"""copy ( SELECT i.project_id AS "計畫ID", p.name AS "計畫名稱", i.image_uuid AS "影像ID", 
                                 concat_ws('/', ssa.name, sa.name) AS "樣區/子樣區", 
                                 d.name AS "相機位置", i.filename AS "檔名", to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS "拍攝時間",
@@ -1617,73 +1645,3 @@ def api_update_deployment_journals(request, pk):
                 #     ret['message'] = 'updated database, update cache error: {}'.format(e)
 
         return JsonResponse(ret)
-
-'''moved to cron_script
-def api_check_data_gap(request):
-    now = datetime.datetime.now()
-
-    # test
-    # range_list = half_year_ago(2017, 6)
-
-    range_list = half_year_ago(now.year, now.month)
-
-    # +BEGIN_220728
-    # 重新判斷未填原因的空缺列表
-    #rows = DeploymentJournal.objects.filter(
-    #    is_gap=True,
-    #    working_end__gt=range_list[0],
-    #    working_start__lt=range_list[1]
-    #).filter(Q(gap_caused__exact='') | Q(gap_caused__isnull=True)).all()
-    rows = DeploymentJournal.objects.filter(
-        is_gap=False,
-        working_end__gt=range_list[0],
-        working_start__lt=range_list[1]
-    ).all()
-
-    todo = []
-    for dj in rows:
-        tmp = dj.project.count_deployment_journal([dj.working_start.year])
-        info = tmp[str(dj.working_start.year)]
-        for sa in info:
-            for d in sa['items']:
-                for gap in d['gaps']:
-                    text = gap.get('caused', '')
-                    if text == '':
-                        if dj not in todo:
-                            todo.append(dj)
-    # +END_220728
-
-    # send notification to each project members
-    # TODO: email project membor 權限?
-    notify_roles = ['project_admin', 'organization_admin']
-    projects = {}
-    for dj in todo:
-        pid = dj.project_id
-        if pid not in projects:
-            project_members = get_project_member(pid)
-            projects[pid] = {
-                'name': dj.project.name,
-                'gaps': [],
-                'emails': [x.email for x in Contact.objects.filter(id__in=project_members)],
-                'members': project_members
-            }
-        projects[pid]['gaps'].append(f'{dj.deployment.name}: {dj.display_range}')
-
-    for project_id, data in projects.items():
-        email_subject = '[臺灣自動相機資訊系統] | {} | 資料缺失: 尚未填寫列表'.format(data['name'])
-        email_body = '相機位置 缺失區間\n==========================\n' + '\n'.join(data['gaps'])
-
-        # create notification
-        for m in data['members']:
-            # print (m.id, m.name)
-            un = UploadNotification(
-                contact_id = m,
-                category='gap',
-                project_id = project_id
-            )
-            un.save()
-        send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, data['emails'])
-
-
-    return HttpResponse('ok')
-'''

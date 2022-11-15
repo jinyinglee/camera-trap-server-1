@@ -69,10 +69,13 @@ def api_get_projects(request):
     public_species_data = []
     # 公開計畫 depend on publish_date date
     with connection.cursor() as cursor:
+        # q = "SELECT taicat_project.id FROM taicat_project \
+        #     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
         q = "SELECT taicat_project.id FROM taicat_project \
-            WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
+            WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't';"
         cursor.execute(q)
         public_project_list = [l[0] for l in cursor.fetchall()]
+
 
     if public_project_list:
         #public_project, public_species_data = get_project_info(str(public_project_list).replace('[', '(').replace(']', ')'))
@@ -86,7 +89,7 @@ def api_get_projects(request):
     # my_project = []
     # my_species_data = []
     if member_id := request.session.get('id', None):
-        if my_project_list := get_my_project_list(member_id):
+        if my_project_list := get_my_project_list(member_id,[]):
             # my_project, my_species_data = get_project_info(str(my_project_list).replace('[', '(').replace(']', ')'))
             for p in Project.objects.filter(id__in=my_project_list).all():
                 x = p.to_dict()

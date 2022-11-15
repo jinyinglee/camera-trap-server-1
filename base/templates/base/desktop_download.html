@@ -1,0 +1,39 @@
+{% extends 'base/base.html' %}
+{% load static %}
+{% block style %}
+<style>
+    input {
+            border: 1px solid #cccccc 
+        }
+</style>
+{% endblock %}
+{% block body %}
+<div class="container content">
+
+{% if request.session.is_login == True %}
+    <!--<div class="row" style="margin-bottom: 10px">
+        <h4 class="title-dark">單機版下載</h4>     
+    </div>-->
+        <div class="row">
+            <div class="bg-white shadow px-0 pb-5 mx-2">
+                <p class="backgroud-dark text-white fw-bold px-3 py-2">單機版下載</p>
+                <div class="row py-3">
+                    <div class="col-2 my-auto text-end">版本號：</div>
+                    <div class="col-4">
+                        v0.2.4b1
+                    </div>
+                </div>
+                <div class="row py-3">
+                    <div class="col-2 my-auto text-end">下載連結：</div>
+                    <div class="col-4">
+                        <a target="_blank" href="/media/desktop/desktop.zip">點此下載</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+{% block script %}
+{% endblock script %}
+{% endblock body %}

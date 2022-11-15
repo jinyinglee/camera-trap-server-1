@@ -425,21 +425,24 @@ def calc_output2(results, file_format, filter_str, calc_str):
             return tmp.read()
 
 def get_my_project_list(member_id, project_list=[]):
-    # 1. select from project_member table
-    with connection.cursor() as cursor:
-        query = "SELECT project_id FROM taicat_projectmember where member_id ={}"
-        cursor.execute(query.format(member_id))
-        temp = cursor.fetchall()
-        for i in temp:
-            if i[0]:
-                project_list += [i[0]]
-    # 2. check if the user is organization admin
-    if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
-    if if_organization_admin:
-        organization_id = if_organization_admin.values('organization').first()['organization']
-        temp = Organization.objects.filter(id=organization_id).values('projects')
-        for i in temp:
-            project_list += [i['projects']]
+    if Contact.objects.filter(id=member_id, is_system_admin=True).exists():
+        project_list += list(Project.objects.all().values_list('id', flat=True))
+    else:
+        # 1. select from project_member table
+        with connection.cursor() as cursor:
+            query = "SELECT project_id FROM taicat_projectmember where member_id ={}"
+            cursor.execute(query.format(member_id))
+            temp = cursor.fetchall()
+            for i in temp:
+                if i[0]:
+                    project_list += [i[0]]
+        # 2. check if the user is organization admin
+        if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
+        if if_organization_admin:
+            organization_id = if_organization_admin.values('organization').first()['organization']
+            temp = Organization.objects.filter(id=organization_id).values('projects')
+            for i in temp:
+                project_list += [i['projects']]
     return project_list
 
 
@@ -664,14 +667,14 @@ def half_year_ago(year, month):
     if month < 2:
         end_year = year - 1
 
-    if month - 8 > 0:
+    if month - 8 >= 0:
         begin_month = month - 7
     else:
         begin_month = month_list[month-8]
         begin_year = year-1
 
     return [
-        datetime.strptime(f'{begin_year}-{begin_month}-01 01:01:01', "%Y-%m-%d %H:%M:%S"),
-        datetime.strptime(f'{end_year}-{end_month}-01 01:01:01', "%Y-%m-%d %H:%M:%S")
+        datetime.strptime(f'{begin_year}-{begin_month}-01 00:00:00', "%Y-%m-%d %H:%M:%S"),
+        datetime.strptime(f'{end_year}-{end_month}-01 00:00:00', "%Y-%m-%d %H:%M:%S")
     ]
 

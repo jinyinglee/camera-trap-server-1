@@ -80,3 +80,18 @@ source: `taicat/views.py` *api_check_data_gap*
 
 `scripts/count-project-stats.py` 產生計畫的管考需要的資料 (stats)
 
+## Working Flow
+
+### 上傳照片:
+
+傳完後 rest API 呼叫**base.update_upload_history**:
+
+- 執行 `base.send_upload_history` -> 寄通知信 `send_upload_notification`
+
+### 管考通知信
+
+`cron_scripts/check_data_gap.py`
+
+搜尋上個月的前半年(`range_list`)，有涵蓋到的 gap\_start, gap\_end (聯集), 如果沒有 填寫缺失內容就列出 (`gap_end >= range_list[0] or gap_start <= range_list[1]`)
+
+
