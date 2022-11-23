@@ -1,0 +1,461 @@
+
+
+footer {
+    background: #2e432b;
+}
+
+.footer-icon {
+    width: 70%;
+}
+
+.icon {
+    background-size: cover;
+}
+
+
+.mt-30 {
+    margin-top: 30px;
+}
+
+.navbar-gradient {
+
+    background: linear-gradient(to right, #006a58, #9ccc65)
+
+}
+      .dropdown-item:active {
+        background-color: lightgrey;
+      }
+
+      .link:link {
+        color: gray;
+        cursor: pointer;
+      }
+
+      .link {
+        color: gray;
+        cursor: pointer;
+      }
+
+      .link:visited {
+        color: gray;
+        background-color: transparent;
+        text-decoration: none;
+      }
+
+      .link:hover {
+        color: lightgrey;
+        background-color: transparent;
+        text-decoration: underline;
+      }
+
+      .link:active {
+        color: gray;
+        background-color: transparent;
+        text-decoration: underline;
+      }
+
+      .notice {
+        color: #c65454;
+      }
+      .notice-border {
+        border-color: #c65454;
+      }
+      
+      input[type="checkbox"]:checked {
+        /*accent-color: #7c9c2d;*/
+        filter: hue-rotate(215deg);
+      }
+      input[type="radio"]:checked {
+        /*accent-color: #7c9c2d;*/
+        filter: hue-rotate(215deg);
+      }
+      /* loader */
+
+      .loader {
+        content: "";
+        position: fixed;
+        z-index: 1000;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+        background: url("/static/icon/Leaves-1.8s-200px.gif") no-repeat center;
+      }
+
+      .loader:after {
+        content: "處理中";
+        position: absolute;
+        top: 200px;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        color: rgb(37, 116, 85);
+        width: 100px;
+        height: 20px;
+        margin: auto;
+        z-index: 1199;
+        text-align: center;
+      }
+
+      .loading {
+        min-height: 400px;
+      }
+
+      .loading:before {
+        content: "";
+        position: absolute;
+        top: -110px;
+        bottom: 0;
+        width: 100%;
+        height: 400px;
+        left: 0;
+        right: 0;
+        margin: auto;
+        background: url("/static/icon/Leaves-1.8s-200px.gif") no-repeat center;
+        background-size: 150px;
+        z-index: 1099;
+      }
+
+      .loading:after {
+        content: "資料讀取中";
+        position: absolute;
+        top: 70px;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        color: gray;
+        width: 100px;
+        height: 20px;
+        margin: auto;
+        z-index: 1199;
+        text-align: center;
+      }
+
+      html,
+      body {
+        height: 100%;
+        background: #f7f7f7;
+      }
+
+      .nav-link:focus {
+        outline: 0;
+      }
+
+      .bg-gray {
+        background: #f7f7f7;
+      }
+
+      .content {
+        margin: 40px auto;
+        min-height: -o-calc(100vh - 460px); /* opera */
+        min-height: -webkit-calc(100vh - 460px); /* google, safari */
+        min-height: -moz-calc(100vh - 460px); /* firefox */
+      }
+
+      @media only screen and (max-width: 600px) {
+        .content {
+          min-height: none !important;
+          }
+      }
+
+      .image {
+        text-align: center;
+      }
+
+      img.image {
+        width: 222px;
+        margin: 0 auto;
+      }
+
+      .text-green {
+        color: rgb(37, 116, 85);
+      }
+
+      .btn-orange {
+        background-color: darkorange;
+        color: white;
+      }
+
+      .btn-orange:hover {
+        background-color: rgb(255, 111, 0);
+        color: white;
+      }
+
+      .title-dark {
+        /*color: #198754;*/
+        color: rgb(37, 116, 85);
+      }
+
+      .title-light {
+        color: #7c9c2d;
+      }
+
+      .backgroud-dark {
+        background-color: rgb(37, 116, 85);
+      }
+
+      .description {
+        font-size: 24px;
+        margin: 0;
+        color: gray;
+        font-weight: 400;
+      }
+
+      hr.home-hr {
+        border: 0;
+        border-top: 3px solid green;
+        width: 170px;
+        margin: 5px auto;
+      }
+
+      .required {
+        display: inline-block;
+        margin-right: 5px;
+        color: #dc3545;
+      }
+
+      /* tooltip */
+      .tooltip {
+        font-size: 16px;
+        width: 400px;
+      }
+
+      .tooltip-inner {
+        max-width: 100% !important;
+        text-align: left;
+        text-align: start;
+      }
+
+      /* footer */
+      footer .container {
+        padding: 40px 0;
+      }
+
+      .gov-item img {
+        height: 27px;
+        width: auto;
+        margin-right: 5px;
+      }
+
+      .text-gray {
+        color: gray;
+      }
+
+      span.gov-item {
+        margin-left: 15px;
+        display: inline-block;
+        vertical-align: middle;
+        margin-bottom: 15px;
+        color: #fff;
+      }
+
+      img.gov-logo {
+        vertical-align: middle;
+      }
+
+      span.text {
+        vertical-align: middle;
+        text-align: left;
+        display: inline-block;
+        font-size: 14px;
+        font-weight: 300;
+      }
+
+      small {
+        display: block;
+        font-size: 11px;
+      }
+
+      .sitemap {
+        display: flex;
+        flex-direction: row;
+      }
+
+      .item {
+        flex: 1;
+        font-size: 14px;
+      }
+
+      .item label {
+        height: 40px;
+        line-height: 40px;
+      }
+
+      .item ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .item li a {
+        color: #fff;
+        font-weight: 300;
+        line-height: 30px;
+        height: 30px;
+        text-decoration: none;
+      }
+
+      .icon {
+        display: inline-block;
+        vertical-align: middle;
+      }
+
+      .icon-phone-gray {
+        background-image: url("/static/icon/icons-sa4ae1ae68a.png");
+        background-position: 0 -878px;
+        background-repeat: no-repeat;
+        overflow: hidden;
+        display: inline-block;
+        height: 18px;
+        width: 18px;
+      }
+      @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 2dppx) {
+        .icon-phone-gray {
+          background-repeat: no-repeat;
+          background-image: url("/static/icon/icons-2x-sb27373e813.png");
+          background-size: 53px 1401px;
+          background-position: 0 -823px;
+          height: 19px;
+          width: 19px;
+        }
+      }
+
+      .icon-mail-gray {
+        background-image: url("/static/icon/icons-sa4ae1ae68a.png");
+        background-position: 0 -774px;
+        background-repeat: no-repeat;
+        overflow: hidden;
+        display: inline-block;
+        height: 18px;
+        width: 18px;
+      }
+      @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 2dppx) {
+        .icon-mail-gray {
+          background-repeat: no-repeat;
+          background-image: url("/static/icon/icons-2x-sb27373e813.png");
+          background-size: 53px 1401px;
+          background-position: 0 -725px;
+          height: 19px;
+          width: 19px;
+        }
+      }
+      
+
+    .show> #notification-container{
+      display: block;
+    }
+
+    #notification-container{
+    width: 380px;
+    max-height: 80vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    cursor: default;
+    }
+
+    .notification-head {
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 15px;
+      color: #8b8b8b;
+   }
+    .notification-head > button {
+      border: 0px;
+      background-color: transparent;
+      font-size: 14px;
+      padding: 0;
+      color: #8b8b8b;
+   }
+    .notification-head > button:hover {
+      color: darkgrey;
+      cursor: pointer;
+   }
+    .notification-item {
+      padding: 15px !important;
+      font-size: 14px;
+
+   }
+    .notification-item a {
+      color: #2a7f60 !important;
+      text-decoration: none;
+      cursor: pointer;
+   }
+    .notification-item {
+      box-shadow: 0px -1px 0 0 #e1e3e5;
+   }
+    .notification-item > div {
+      display: flex;
+      min-width: 100%;
+      max-width: 100%;
+   }
+    .notification-item-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+   }
+    .notification-item-link {
+      min-width: 120px;
+      max-width: 120px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-end;
+   }
+    .notification-item-date {
+      color: #8b8b8b;
+      margin-bottom: 5px;
+   }
+    .notification-item-message {
+      white-space: normal;
+   }
+    .notification-item-message span {
+      padding-right: 5px;
+   }
+
+
+   .fa-xs {
+    width: 15px;
+}
+
+  .has-unread {
+    content: "";
+    width: 8px;
+    height: 8px;
+    background: #DC143C;
+    border-radius: 50%;
+    position: absolute;
+    right: 24px;
+    top: 10px;
+  }
+
+
+  @media (max-width: 992px) { 
+
+    .has-unread {
+      content: "";
+      width: 8px;
+      height: 8px;
+      background: #DC143C;
+      border-radius: 50%;
+      position: absolute;
+      left: 7px;
+      top: 10px;
+      margin: 0
+    }
+  
+  
+   }
+
+
+   .mb-10 {
+    margin-bottom: 10px
+  }
+
+
+  .pointer {
+    cursor: pointer
+  }

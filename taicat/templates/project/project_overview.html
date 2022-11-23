@@ -1,45 +1,12 @@
-{% extends 'base/base.html' %} {% block style %}
-<style>
-  .clickable-row {
-    cursor: pointer;
-  }
+{% extends 'base/base.html' %} 
+{% load static %}
+{% block style %}
+<link rel="stylesheet" href="{% static 'css/project_overview.css' %}">
+{% endblock style %} 
 
-  .table {
-    padding: 1% 0;
-  }
-
-  .nav-link {
-    color: gray;
-  }
-
-  .nav-link:hover {
-    color: lightgrey;
-  }
-
-  .page-item.active .page-link {
-    background-color: rgb(228, 224, 224) !important;
-    border: 1px solid rgb(228, 224, 224);
-  }
-  .page-link {
-    color: black !important;
-  }
-
-  /* radio style */
-  input[type="radio"] {
-    display: none;
-  }
-
-  label {
-    cursor: pointer;
-  }
-
-  input[name="species-filter"] {
-    display: none;
-  }
-</style>
-{% endblock style %} {% block body %} {% csrf_token %}
+{% block body %} {% csrf_token %}
 <div class="container content">
-  <div class="row" style="margin-bottom: 10px">
+  <div class="row mb-10">
     <h4 class="title-dark p-0">計畫總覽</h4>
   </div>
   <div class="row">
@@ -48,26 +15,26 @@
         <div class="mt-3 d-flex justify-content-between">
           <p>篩選條件</p>
           <div>
-            <button type="button" style="font-size: 14px" class="btn btn-orange py-0 px-1 select">篩選</button>
-            <button type="button" style="font-size: 14px" class="btn btn-light border-secondary py-0 px-1 clear" onclick="resetTable()">清除</button>
+            <button type="button" class="fs-14 btn btn-orange py-0 px-1 select">篩選</button>
+            <button type="button" class="fs-14 btn btn-light border-secondary py-0 px-1 clear"  id="resetTable">清除</button>
           </div>
         </div>
 
-        <hr style="margin: auto; width: 90%" />
+        <hr class="hr-style"  />
         <p class="mt-3 mb-1">
           <strong>物種</strong>
         </p>
-        <ul id="species-list" style="list-style: none">
+        <ul id="species-list" class="ls-none">
           <li class="public-species" id="species-list-all-publicproject">
             <label class="form-check-label">
-              <i class="fas fa-check title-dark"></i>
+              <i class="fas fa-check title-dark w-12"></i>
               <input class="filter all publicproject" type="checkbox" name="species-filter" value="" checked />
               全部
             </label>
           </li>
           <li class="my-species d-none" id="species-list-all-myproject">
             <label class="form-check-label">
-              <i class="fas fa-check title-dark"></i>
+              <i class="fas fa-check title-dark w-12"></i>
               <input class="filter all myproject" type="checkbox" name="species-filter" value="" checked />
               全部
             </label>
@@ -75,7 +42,7 @@
           {% for i in public_species_data %}
           <li class="public-species">
             <label class="form-check-label">
-              <i class="fas fa-check title-dark"></i>
+              <i class="fas fa-check title-dark w-12"></i>
               <input class="filter publicproject" type="checkbox" group="species" name="species-filter" value="{{ i.1 }}" checked />
               {{ i.1 }} ({{i.0}})
             </label>
@@ -83,7 +50,7 @@
           {% endfor %} {% for i in my_species_data %}
           <li class="my-species d-none">
             <label class="form-check-label">
-              <i class="fas fa-check title-dark"></i>
+              <i class="fas fa-check title-dark w-12"></i>
               <input class="filter myproject" type="checkbox" group="species" name="species-filter" value="{{ i.1 }}" checked />
               {{ i.1 }} ({{i.0}})
             </label>
@@ -106,10 +73,10 @@
         </li>
         {% endif %}
       </ul>
-      <div class="tab-content" id="myTabContent" style="background-color: white; padding: 2%">
+      <div class="tab-content" id="myTabContent">
         <div class="tab-pane fade" id="myproject" role="tabpanel" aria-labelledby="myproject-tab">
           {% if request.session.is_login == True %}
-          <table class="table table-hover bg-white" id="myproject-table" style="width: 100%">
+          <table class="table table-hover bg-white w-100" id="myproject-table">
             <thead>
               <tr>
                 <td>ID</td>
@@ -137,7 +104,7 @@
           {% else %} 請先登入後查看您的計畫 {% endif %}
         </div>
         <div class="tab-pane fade show active" id="publicproject" role="tabpanel" aria-labelledby="publicproject-tab">
-          <table class="table table-hover bg-white" id="publicproject-table" style="width: 100%">
+          <table class="table table-hover bg-white w-100" id="publicproject-table">
             <thead>
               <tr>
                 <td>ID</td>
@@ -168,238 +135,5 @@
   </div>
 </div>
 {% endblock body %} {% block script %}
-<script>
-  var $crf_token = $('[name="csrfmiddlewaretoken"]').attr("value");
-
-  $(function () {
-    // species: if other checkbox checked, uncheck 'all'
-    $("input[name='species-filter'].filter:not(.all)").click(function () {
-      let table_id = $(".col-10 .active").attr("aria-controls");
-      console.log(table_id);
-      if ($(this).is(":checked")) {
-        $('<i class="fas fa-check title-dark"></i>').insertBefore($(this));
-      } else {
-        $(this).parent("label").children("i").remove();
-      }
-      $(`input[name='species-filter'].all.${table_id}`).prop("checked", false);
-      $(`#species-list-all-${table_id} label i`).remove();
-    });
-
-    // species: if 'all' checked, check all checkbox
-    $("input[name='species-filter'].all").click(function () {
-      let table_id = $(".col-10 .active").attr("aria-controls");
-      let list_name;
-      if (table_id == "publicproject") {
-        list_name = "public-species";
-      } else {
-        list_name = "my-species";
-      }
-      if ($(this).is(":checked")) {
-        // 先移除掉全部的再一次加上去
-        $(`#species-list li.${list_name} label i`).remove();
-        $(`#species-list li.${list_name} label`).prepend('<i class="fas fa-check title-dark"></i>');
-        $(`input[name='species-filter'].${table_id}`).prop("checked", true);
-      } else {
-        $(`#species-list li.${list_name} label i`).remove();
-        $(`input[name='species-filter'].${table_id}`).prop("checked", false);
-      }
-    });
-
-    // speices filter list
-    $("#publicproject-tab").on("click", function () {
-      $(".public-species").removeClass("d-none");
-      $(".my-species").addClass("d-none");
-    });
-
-    $("#myproject-tab").on("click", function () {
-      $(".my-species").removeClass("d-none");
-      $(".public-species").addClass("d-none");
-    });
-
-    // clickable datatable
-    $("#myproject-table").on("click", ".clickable-row", function () {
-      window.location = $(this).data("href");
-    });
-
-    $("#publicproject-table").on("click", ".clickable-row", function () {
-      window.location = $(this).data("href");
-    });
-
-    // filter data by species
-    $(".select").on("click", function () {
-      let table_id = $(".col-10 .active").attr("aria-controls");
-      let s = $(`[name=species-filter].${table_id}:checked`).val();
-      if (s != undefined && s != "") {
-        // show loading
-        $(".tab-area").addClass("loading");
-        // current table
-        let check_list = $(`[name=species-filter].${table_id}:checked`);
-        let speciesArray = [];
-        check_list.each(function () {
-          speciesArray.push($(this).val());
-        });
-        if (speciesArray.length) {
-          $.ajax({
-            type: "POST",
-            url: "{% url 'update_datatable' %}",
-            data: { table_id: table_id, species: speciesArray },
-            headers: { "X-CSRFToken": $crf_token },
-            success: function (response) {
-              $(".tab-area").removeClass("loading");
-              // reset table
-              $("#" + table_id + "-table")
-                .DataTable()
-                .destroy();
-              $("#" + table_id + "-tbody").html("");
-              let i;
-              for (i = 0; i < response.length; i++) {
-                // keyword & funding agency
-                if ((response[i][2] == "None") | (response[i][2] == null)) {
-                  response[i][2] = "";
-                }
-
-                if ((response[i][4] == "None") | (response[i][2] == null)) {
-                  response[i][4] = "";
-                }
-
-                $("#" + table_id + "-tbody").append(`
-                                <tr class='clickable-row' data-href="info/${response[i][0]}/">
-                                    <td>${response[i][0]}</td>
-                                    <td>${response[i][1]}</td>
-                                    <td>${response[i][2]}</td>
-                                    <td>${response[i][3]}</td>
-                                    <td>${response[i][4]}</td>
-                                    <td>${response[i][5]}</td>
-                                    <td>${response[i][6]}</td>
-                                    <td>${response[i][7]}</td>
-                                </tr>`);
-              }
-              $("#" + table_id + "-table").DataTable({ language: language_settings, columnDefs: column_defs, order: [[3, "desc"]] });
-            },
-          });
-        }
-      } else {
-        resetTable();
-      }
-    });
-  });
-
-  // datatable
-  let language_settings = {
-    decimal: "",
-    emptyTable: "查無資料",
-    info: "共 _TOTAL_ 筆",
-    infoEmpty: "共 0 筆",
-    infoFiltered: "",
-    infoPostFix: "",
-    thousands: ",",
-    lengthMenu: "每頁顯示 _MENU_ 筆",
-    loadingRecords: "載入中...",
-    processing: "處理中...",
-    search: "查詢🔍",
-    zeroRecords: "查無符合資料",
-    paginate: {
-      next: "下一頁",
-      previous: "上一頁",
-    },
-  };
-
-  let column_defs = [
-    { visible: false, targets: 0 },
-    { width: "33%", targets: 1 },
-    { width: "12%", targets: 2 },
-    { width: "10%", targets: 3 },
-    { width: "15%", targets: 4 },
-    { width: "10%", targets: 5 },
-    { width: "10%", targets: 6 },
-    { width: "10%", targets: 7 },
-  ];
-
-  let myproject_table = $("#myproject-table").DataTable({
-    language: language_settings,
-    columnDefs: column_defs,
-    fixedColumns: true,
-    order: [[1, "asc"]],
-  });
-
-  let publicproject_table = $("#publicproject-table").DataTable({
-    language: language_settings,
-    columnDefs: column_defs,
-    fixedColumns: true,
-    order: [[1, "asc"]],
-  });
-
-  // radio style
-  $("input[type=radio]").click(function () {
-    let group = $(this).attr("name");
-    let table_id = $(".col-10 .active").attr("aria-controls");
-    $(`input[name=${group}].${table_id}`).parent("label").children("i").remove();
-    $('<i class="fas fa-check title-dark"></i>').insertBefore(this);
-  });
-
-  // reset table
-  function resetTable() {
-    $("#myproject-table").DataTable().destroy();
-    $("#publicproject-table").DataTable().destroy();
-
-    $("#myproject-tbody").html(
-      `{% for tuples in my_project %}
-                    <tr class='clickable-row' data-href="{% url 'project_info' tuples.0 %}">
-                        {% for t in tuples %}
-                            {% if t == None or t == 'None' %}
-                                <td></td>
-                            {% else %}
-                                <td>{{ t }}</td>
-                            {% endif %}
-                        {% endfor %}
-                    </tr>
-                {% endfor %}`
-    );
-
-    $("#publicproject-tbody").html(
-      `{% for tuples in public_project %}
-                    <tr class='clickable-row' data-href="{% url 'project_info' tuples.0 %}">
-                        {% for t in tuples %}
-                            {% if t == None or t == 'None' %}
-                                <td></td>
-                            {% else %}
-                                <td>{{ t }}</td>
-                            {% endif %}
-                        {% endfor %}
-                    </tr>
-                {% endfor %}`
-    );
-
-    $("#myproject-table").DataTable({
-      language: language_settings,
-      columnDefs: column_defs,
-      fixedColumns: true,
-      order: [[1, "asc"]],
-    });
-    $("#publicproject-table").DataTable({
-      language: language_settings,
-      columnDefs: column_defs,
-      fixedColumns: true,
-      order: [[1, "asc"]],
-    });
-
-    // filter
-    let table_id = $(".col-10 .active").attr("aria-controls");
-    if (table_id == "myproject") {
-      $(".my-species").removeClass("d-none");
-      $(".public-species").addClass("d-none");
-    } else {
-      $(".my-species").addClass("d-none");
-      $(".public-species").removeClass("d-none");
-    }
-
-    // reset checkbox
-    //$("input[name=species-filter][type=checkbox]").prop("checked", false);
-    //$("input[type=checkbox].all").prop("checked", true);
-
-    // radio
-    //$(".fa-check").remove();
-    //$('<i class="fas fa-check title-dark"></i>').insertBefore($("input[type=radio].all"));
-  }
-</script>
+<script src="{% static 'js/project_overview.js' %}"></script>
 {% endblock script %}

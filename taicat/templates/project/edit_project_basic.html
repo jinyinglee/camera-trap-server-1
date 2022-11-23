@@ -1,68 +1,32 @@
 {% extends 'base/base.html' %} {% block head %} {% load static %}
 <link rel="stylesheet" href="{% static 'css/bootstrap-select.min.css' %}" />
+<link rel="stylesheet" href="{% static 'css/edit_project_basic.css' %}" />
 
-{% endblock head %} {% block style %}
-<style>
-  textarea,
-  input {
-    border: 1px solid #cccccc;
-  }
-
-  /* color for select */
-  .check-mark {
-    color: rgb(37, 116, 85);
-  }
-
-  .form-control {
-    border-color: #cccccc;
-  }
-
-  .btn-new {
-    background-color: white;
-    border: 1px solid #cccccc;
-  }
-
-  .btn-new[title="請選擇計畫地區"] {
-    color: #6c757d !important;
-  }
-
-  /* sidebar */
-  .nav-link {
-    color: gray;
-  }
-
-  .nav-link:hover {
-    color: lightgrey;
-  }
-
-  .back:hover {
-    color: lightgrey;
-  }
-</style>
-{% endblock style %} {% block body %} {% if is_authorized %}
+{% endblock head %}  {% block body %} {% if is_authorized %}
+<input type="hidden" name="pk" value="{{ pk }}"></input>
 <form id="editProjectBasic" novalidate action="{% url 'edit_project_basic' pk %}" method="post">
   {% csrf_token %}
   <div class="container content">
-    <div class="row" style="margin-bottom: 10px">
+    <div class="row mb-10">
       <!-- sidebar -->
       <div class="col-2">
         <div class="row mb-3">
-          <a class="text-gray back text-decoration-none" href="{% url 'project_info' pk %}"><i class="fa fa-chevron-left"></i> 返回計畫資訊</a>
+          <a class="text-gray back text-decoration-none" href="{% url 'project_info' pk %}"><i class="fa fa-chevron-left w-12"></i> 返回計畫資訊</a>
         </div>
         <h4 class="title-dark">計畫管理</h4>
         <nav class="py-2 mb-3">
           <ul class="nav flex-column">
             <li class="nav-item">
-              <a class="nav-link active" style="color: rgb(37, 116, 85)" href="{% url 'edit_project_basic' pk %}"> <i class="fa fa-xs fa-pencil px-2 py-auto"></i> 基本資訊 </a>
+              <a class="nav-link active check-mark" href="{% url 'edit_project_basic' pk %}"> <i class="fa-solid fa-pencil w-12"></i> 基本資訊 </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'edit_project_deployment' pk %}"> <i class="fa fa-xs fa-circle px-2 py-auto"></i> 相機位置管理 </a>
+              <a class="nav-link" href="{% url 'edit_project_deployment' pk %}"> <i class="fa-solid fa-circle w-12"></i> 相機位置管理 </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'edit_project_members' pk %}"> <i class="fa fa-xs fa-circle px-2 py-auto"></i> 計畫成員 </a>
+              <a class="nav-link" href="{% url 'edit_project_members' pk %}"> <i class="fa-solid fa-circle w-12"></i> 計畫成員 </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'edit_project_license' pk %}"> <i class="fa fa-xs fa-circle px-2 py-auto"></i> 創用CC授權 </a>
+              <a class="nav-link" href="{% url 'edit_project_license' pk %}"> <i class="fa-solid fa-circle w-12"></i> 創用CC授權 </a>
             </li>
           </ul>
         </nav>
@@ -74,45 +38,49 @@
           <div class="row py-3">
             <div class="my-auto col-2 text-end"><span class="required">*</span>計畫名稱：</div>
             <div class="col-sm-8 col-lg-4">
-              <input class="form-control" type="text" style="width: 100%" placeholder="請輸入計畫名稱" name="name" required value="{{ project.name }}" />
+              <input class="form-control w-100" type="text" placeholder="請輸入計畫名稱" name="name" required value="{{ project.name }}" />
             </div>
           </div>
           <div class="row py-3">
             <div class="my-auto col-2 text-end">計畫簡稱：</div>
-            <div class="col-sm-8 col-lg-4"><input class="form-control" type="text" style="width: 100%" placeholder="請輸入計畫簡稱" name="short_title" value="{{ project.short_title }}" /></div>
-            <div class="col-1 my-auto">
-              <i class="fa fa-info-circle text-green" style="font-size: 1.4em" data-bs-toggle="tooltip" data-bs-placement="right" title="計畫簡稱為做日後系統顯示之用，您可以輸入任何有助您辨別計畫的文字"></i>
+            <div class="col-sm-8 col-lg-4"><input class="form-control w-100" type="text" placeholder="請輸入計畫簡稱" name="short_title" value="{{ project.short_title }}" /></div>
+            <div class="col-1 my-auto">            
+              <span data-bs-toggle="tooltip" data-bs-placement="right" title="計畫簡稱為做日後系統顯示之用，您可以輸入任何有助您辨別計畫的文字">
+                <i class="fa fa-info-circle text-green f-14"></i>
+              </span>
             </div>
           </div>
           <div class="row py-3">
             <div class="my-auto col-2 text-end">計畫關鍵字：</div>
-            <div class="col-sm-8 col-lg-4"><input class="form-control" type="text" style="width: 100%" placeholder="請輸入計畫關鍵字" name="keyword" value="{{ project.keyword }}" /></div>
+            <div class="col-sm-8 col-lg-4"><input class="form-control w-100" type="text" placeholder="請輸入計畫關鍵字" name="keyword" value="{{ project.keyword }}" /></div>
             <div class="col-1 my-auto">
-              <i class="fa fa-info-circle text-green" style="font-size: 1.4em" data-bs-toggle="tooltip" data-bs-placement="right" title="關鍵字請輸入與其他同類型計畫共有之文字，以利於同類型計畫搜尋篩選用，例如調查方式相同的多年期計畫因時空關係有不同計畫名稱時，即建議使用相同關鍵字"></i>
+              <span data-bs-toggle="tooltip" data-bs-placement="right" title="請輸入與其他同類型計畫共有之文字，以利於同類型計畫搜尋篩選用，例如調查方式相同的多年期計畫因時空關係有不同計畫名稱時，即建議使用相同關鍵字">
+                <i class="fa fa-info-circle text-green f-14"></i>
+              </span>
             </div>
           </div>
           <div class="row py-3">
             <div class="my-auto col-2 text-end">委辦單位：</div>
-            <div class="col-sm-8 col-lg-4"><input class="form-control" type="text" style="width: 100%" placeholder="請輸入委辦單位" name="funding_agency" value="{{ project.funding_agency }}" /></div>
+            <div class="col-sm-8 col-lg-4"><input class="form-control w-100" type="text" placeholder="請輸入委辦單位" name="funding_agency" value="{{ project.funding_agency }}" /></div>
           </div>
           <div class="row py-3">
             <div class="my-auto col-2 text-end">執行單位：</div>
-            <div class="col-sm-8 col-lg-4"><input class="form-control" type="text" style="width: 100%" placeholder="請輸入執行單位" name="executive_unit" value="{{ project.executive_unit }}" /></div>
+            <div class="col-sm-8 col-lg-4"><input class="form-control w-100" type="text" placeholder="請輸入執行單位" name="executive_unit" value="{{ project.executive_unit }}" /></div>
           </div>
           <div class="row py-3">
             <div class="my-auto col-2 text-end">計畫編號：</div>
-            <div class="col-sm-8 col-lg-4"><input class="form-control" type="text" style="width: 100%" placeholder="請輸入計畫編號" name="code" value="{{ project.code }}" /></div>
+            <div class="col-sm-8 col-lg-4"><input class="form-control w-100" type="text" placeholder="請輸入計畫編號" name="code" value="{{ project.code }}" /></div>
           </div>
           <div class="row py-3">
             <div class="my-auto col-2 text-end"><span class="required">*</span>計畫主持人：</div>
-            <div class="col-sm-8 col-lg-4"><input class="form-control" type="text" style="width: 100%" placeholder="請輸入計畫主持人" name="principal_investigator" value="{{ project.principal_investigator }}" /></div>
+            <div class="col-sm-8 col-lg-4"><input class="form-control w-100" type="text" placeholder="請輸入計畫主持人" name="principal_investigator" value="{{ project.principal_investigator }}" /></div>
           </div>
           <div class="row py-3">
             <div class="my-auto col-2 text-end"><span class="required">*</span>計畫時間：</div>
             <div class="col-sm-8 col-lg-4 d-flex justify-content-between">
-              <input type="text" class="datepicker form-control" style="width: 45%" value="{{ project.start_date|date:'o-m-d' }}" name="start_date" required />
+              <input type="text" class="datepicker form-control w-45" value="{{ project.start_date|date:'o-m-d' }}" name="start_date" required />
               <span class="my-auto">至</span>
-              <input class="datepicker form-control" type="text" style="width: 45%" value="{{ project.end_date|date:'o-m-d' }}" name="end_date" required />
+              <input class="datepicker form-control w-45" type="text" value="{{ project.end_date|date:'o-m-d' }}" name="end_date" required />
             </div>
           </div>
           <div class="row py-3">
@@ -137,7 +105,7 @@
         <div class="row mt-3 px-3">
           <div class="text-end px-0">
             <a class="btn btn-outline-success" href="{% url 'project_detail' pk %}">取消</a>
-            <a class="btn btn-orange" onClick="submitForm()">儲存設定</a>
+            <a class="btn btn-orange" id="submitForm">儲存設定</a>
           </div>
         </div>
       </div>
@@ -146,83 +114,9 @@
 </form>
 {% else %}
 <div class="container content">
-  <a class="btn btn-outline-success" onClick="goBack()">回上一頁</a>
+  <a class="btn btn-outline-success" id="goBack">回上一頁</a>
 </div>
 {% endif %} {% endblock body %} {% block script %}
 <script src="{% static 'js/bootstrap-select.min.js' %}"></script>
-<script>
-    $( function() {
-      $( ".datepicker" ).datepicker({
-          dateFormat: "yy-mm-dd",
-          });
-      $( ".datepicker_publish" ).datepicker({
-          dateFormat: "yy-mm-dd",
-          defaultDate: "+5y",
-          });
-
-      // preselect region
-      $('.selectpicker').selectpicker('val', {{ project.region|safe }});
-
-    });
-
-    function goBack() {
-    window.history.back();
-  }
-
-
-    // validation
-      function submitForm(){
-
-        // name
-        let name = $('[name="name"]')
-        if (name.val()==''){
-         name.addClass("is-invalid").addClass("was-validated");
-        } else {
-          name.removeClass("is-invalid").removeClass("was-validated").removeAttr("id", "invalid");
-        }
-
-        // principal_investigator
-        let pi = $('[name="principal_investigator"]')
-          if (pi.val()==''){
-              pi.addClass("is-invalid").addClass("was-validated");
-          } else {
-              pi.removeClass("is-invalid").removeClass("was-validated").removeAttr("id", "invalid");
-          }
-
-        // start_date
-        let start_date = $('[name="start_date"]');
-          if (start_date.val()==''){
-              start_date.addClass("is-invalid").addClass("was-validated");
-          } else {
-              try {
-                  date = $.datepicker.parseDate('yy-mm-dd', start_date.val());
-                  start_date.removeClass("is-invalid").removeClass("was-validated").removeAttr("id", "invalid");
-              } catch (error) {
-                  start_date.addClass("is-invalid").addClass("was-validated");
-          }
-          }
-
-        // end_date
-        let end_date = $('[name="end_date"]');
-
-          if (end_date.val()==''){
-              end_date.addClass("is-invalid").addClass("was-validated");
-          } else {
-              try {
-                  date = $.datepicker.parseDate('yy-mm-dd', end_date.val());
-                  end_date.removeClass("is-invalid").removeClass("was-validated").removeAttr("id", "invalid");
-              } catch (error) {
-                  end_date.addClass("is-invalid").addClass("was-validated");
-              }
-          }
-
-      if(!$('.is-invalid').length){
-          $('#editProjectBasic').submit()
-      } else {
-          $('.is-invalid').first().attr('id', 'invalid');
-          window.location.href = "#invalid"
-          window.location.hash = "#invalid"
-      }
-    }
-</script>
+<script src="{% static 'js/edit_project_basic.js' %}"></script>
 {% endblock script %}

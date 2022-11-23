@@ -1,0 +1,48 @@
+.nav-link {
+    color: gray;
+}
+
+.nav-link:hover {
+    color: lightgrey;
+} 
+
+.btn-new {
+    background-color: white;
+    border: 1px solid #cccccc;
+}
+
+.btn-new[title='請設置權限']{
+    color: #6c757d !important;  
+}
+
+/* color for select */
+.check-mark{
+    color: rgb(37, 116, 85) !important;
+}
+
+.back:hover {
+    color: lightgrey;
+  }
+
+  .w-12 {
+    width: 12px;
+    margin-right: 5px;
+    margin-left: 5px;
+  }
+
+
+  .w-90 {
+    width: 90%
+  }
+
+  .w-20 {
+    width: 20%
+  }
+
+  .w-35 {
+    width: 35%
+  }
+
+  .w-10 {
+    width: 10%
+  }
