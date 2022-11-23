@@ -19,6 +19,7 @@ django-redis = "^5.0.0"
 django-ses = "^2.3.0"
 geopandas = "^0.10.2"
 pygeos = "^0.12.0"
+django-csp = "^3.7"
 
 [tool.poetry.dev-dependencies]
 
