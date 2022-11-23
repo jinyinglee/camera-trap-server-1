@@ -9,239 +9,14 @@
 
 {% block head %}
 <!-- link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta2/dist/css/bootstrap-select.min.css"-->
-<style>
-    /* datatable loader */
-    .dataTables_wrapper .dataTables_processing {
-        content: '';
-        position: absolute;
-        width: 100%;
-        min-height: 150px;
-        height: 150px;
-        left: 0;
-        right: 0;
-        margin: auto;
-        background: url("{% static  'icon/Leaves-1.8s-200px.gif' %}") no-repeat center;
-        background-size: 150px;
-        z-index: 1099;
-        border: 0
-    }
+<link rel="stylesheet" href="{% static 'css/project_oversight.css' %}">
+<script src="{% static 'js/project_oversight.js' %}"></script>
 
-    .dataTables_wrapper .dataTables_processing:after {
-        content:'處理中';
-        position: absolute;
-        top: 160px;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        color: rgb(37, 116, 85);
-        width: 100px;
-        height: 20px;
-        margin: auto;
-        z-index: 1199;
-        text-align: center;
-    }
-
-    /* datatable page button */
-    .page-item.active .page-link {
-        background-color: rgb(228, 224, 224) !important;
-        border: 1px solid rgb(228, 224, 224) ;
-    }
-    .page-link {
-        color: black !important;
-    }
-
-    .dataTables_wrapper {
-        background-color: white
-    }
-
-    #img-table {
-        margin: 0 auto
-    }
-
-    #img-table_wrapper {
-        box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
-    }
-
-    .oversight:hover {
-        color: lightgrey;
-    }
-
-    .back:hover {
-        color: lightgrey;
-    }
-
-    .btn-new {
-        background-color: white;
-        border: 1px solid #cccccc;
-        color: black !important;
-    }
-
-    .ui-autocomplete { 
-        z-index:2147483647; 
-        max-height: 200px;
-        overflow-y: auto;
-        /* prevent horizontal scrollbar */
-        overflow-x: hidden;
-        /* add padding to account for vertical scrollbar */
-        padding-right: 20px;
-    }
-
-    /* radio style */
-    input[type="radio"] {
-        display: none
-    }
-
-    label {
-        cursor: pointer
-    }
-
-    /* window size */
-
-    .header {
-        height: 70px
-    }
-
-    .remain.col-2{
-        overflow-y: scroll;
-        height:calc(100vh - 126px);
-        background-color: yellow;
-        }
-
-
-    .remain.col-10{
-        position: relative;
-        height:calc(100vh - 126px);
-    }
-
-    footer {
-        display: none
-    }
-    
-    /* studyarea */
-    .studyarea-list-area ul {
-        padding: 0;
-        list-style: none;
-    }
-
-   .studyarea-list-area li {
-        padding: 15px 0 ;
-        cursor: pointer
-    }
-
-    /* sub studyarea */
-    .collapse > li {
-        margin-left: 10%
-    }
-
-    .collapse-s > li {
-        margin-left: 20%
-    }
-
-    /* font small */
-    .font-sm {
-        font-size: 15px
-    }
-
-</style>
 {% endblock head %}
 
-{% block script %}
-<script>
- $(function () {
-   const gapChoices = [{% for i in gap_caused_choices %}'{{ i }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
-   $('[data-toggle="tooltip"]').tooltip()
-   $('.month-detail').click((e)=>{
-     const data = JSON.parse(e.target.dataset.detail);
-     //console.log(data);
-     $('#detail-modal-title').html(`${data[0]}年${data[1]}月 | 相機位置: ${data[2]}`);
-     $('#detail-modal-tbody').empty();
-     $('#detail-modal-list').empty();
-     $('#detail-modal-count').html(data[3]);
-     $('#detail-modal-days').html(data[4]);
-     $('#detail-modal-ratio').html((data[3] * 100.0 / data[4]).toFixed(2));
-
-     for (let i=0; i<data[5].length; i++) {
-       let cols = '';
-       for (let j=0; j<data[5][i].length; j++) {
-         let day = '';
-         let cls = 'table-light';
-         if (data[5][i][j] > 0) {
-           day = data[5][i][j];
-           cls = (data[6][day-1] > 0) ? 'table-success' : 'table-danger';
-         } else {
-           day = '';
-         }
-         cols += `<td class="${cls} ct-calendar-day" data-day="${day}" data-month="${data[1]}">${day}</div></td>`;
-       }
-       $('#detail-modal-tbody').append(`<tr>${cols}</tr>`);
-     }
-     for (let i=0; i<data[7].length; i++) {
-       $('#detail-modal-list').append(`<li class="list-group-item">${data[7][i][0]} ~ ${data[7][i][1]}</li>`);
-     }
-     //$('.ct-calendar-day').on('click', function(e){
-     //console.log(e.target.dataset['day'], e.target.dataset['month']);
-     //})
-   });
-   $('.deployment-gap').click((e)=>{
-     const name = e.target.dataset.name;
-     const caused = e.target.dataset.caused;
-     $('#gap-modal-title').html(`相機位置: ${name}`);
-     $('#gap-modal-label').html(e.target.dataset.gaplabel);
-
-     $('#form-gap-select').val('');
-     $('#form-gap-text').val('');
-
-     if (gapChoices.indexOf(caused) >=0 ) {
-       $('#form-gap-select').val(caused);
-     } else {
-       $('#form-gap-text').val(caused);
-     }
-
-     $('#form-gap-id').val(e.target.dataset.gapid);
-     $('#form-gap-start').val(e.target.dataset.gapstart);
-     $('#form-gap-end').val(e.target.dataset.gapend);
-     $('#form-gap-deployment-id').val(e.target.dataset.deploymentid);
-   });
-
-   $('#btn-gap-submit').click((e)=>{
-     const payload = {
-       text: $('#form-gap-text').val(),
-       choice: $('#form-gap-select').val(),
-       gapId: $('#form-gap-id').val(),
-       range: [parseInt($('#form-gap-start').val(), 10), parseInt($('#form-gap-end').val(), 10)],
-       deploymentId: $('#form-gap-deployment-id').val(),
-       year: {% if request.GET.year %}{{ request.GET.year }}{% endif %}
-     };
-
-     const host = `${window.location.protocol}//${window.location.host}`;
-     let url = `${host}/api/deployment_journals/`;
-     if ($('#form-gap-id').val()) {
-       const gapId = parseInt($('#form-gap-id').val(), 10);
-       url = `${url}${gapId}/`;
-     }
-     console.log(url, (payload.gapId) ? 'PUT' : 'POST');
-     fetch(url, {
-       method: (payload.gapId) ? 'PUT' : 'POST',
-       mode: 'cors',
-       headers: {
-         'content-type': 'application/json'
-       },
-       body: JSON.stringify(payload),
-     }).then((resp) => {
-       if (!resp.ok) {
-         console.error(resp.status);
-       }
-       return resp.json()
-     }).then((data) => {
-       //console.log(data);
-       location.reload();
-     });
-   });
- })
-</script>
-{% endblock %}
 {% block body %}
-
+<input type="hidden" name="get-year" value="{{ request.GET.year }}"></input>
+<input type="hidden" name="pk" value="{{ project.pk }}"></input>
 <!-- Modal -->
 <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
   <div class="modal-dialog">
@@ -309,7 +84,7 @@
 <div class="container box">
   <div class="row pb-2 pt-4 header overflow-auto">
         <div class="col-12">
-            <a class="text-gray back text-decoration-none align-middle" href="/project/info/{{ project.id }}/"><i class="fa fa-chevron-left" aria-hidden="true"></i> 返回計畫資訊</a>
+            <a class="text-gray back text-decoration-none align-middle" href="/project/info/{{ project.id }}/"><i class="fa fa-chevron-left w-12" aria-hidden="true"></i> 返回計畫資訊</a>
         </div>
     </div>
   <div class="row">
@@ -371,7 +146,7 @@
                 {% endfor %}
                 <td>{{ deployment.ratio_year|floatformat:2  }}</td>
                 <td>{% for gap in deployment.gaps %}
-                  <div class="btn {%if gap.caused %}btn-secondary{% else %}btn-danger{% endif %} deployment-gap btn-lg" data-name="{{ deployment.name }}" data-deploymentid="{{ deployment.id}}" data-gapid="{{ gap.id }}" data-caused="{{ gap.caused }}" data-bs-toggle="modal" data-bs-target="#gap-modal" data-gaplabel="{{ gap.label }}" data-gapstart="{{ gap.range.0 }}" data-gapend="{{ gap.range.1 }}" style="font-size:12px;margin:2px;">{{ gap.label }}{% if gap.caused %}({{ gap.caused}}){% endif %}</div>{% endfor %}</td>
+                  <div class="btn {%if gap.caused %}btn-secondary{% else %}btn-danger{% endif %} deployment-gap btn-lg" data-name="{{ deployment.name }}" data-deploymentid="{{ deployment.id}}" data-gapid="{{ gap.id }}" data-caused="{{ gap.caused }}" data-bs-toggle="modal" data-bs-target="#gap-modal" data-gaplabel="{{ gap.label }}" data-gapstart="{{ gap.range.0 }}" data-gapend="{{ gap.range.1 }}">{{ gap.label }}{% if gap.caused %}({{ gap.caused}}){% endif %}</div>{% endfor %}</td>
               </tr>
               {% endfor %}
           </tbody>

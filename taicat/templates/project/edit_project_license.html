@@ -1,44 +1,30 @@
 {% extends 'base/base.html' %} {% block head %} {% load static %} {% endblock head %} {% block style %}
-<style>
-  .nav-link {
-    color: gray;
-  }
+<link rel="stylesheet" href="{% static 'css/edit_project_license.css' %}" />
 
-  .nav-link:hover {
-    color: lightgrey;
-  }
-
-  .list-unstyled img {
-    padding: 0 10px;
-  }
-  .back:hover {
-    color: lightgrey;
-  }
-</style>
 {% endblock style %} {% block body %} {% if is_authorized %}
+<input type="hidden" name="pk" value="{{ pk }}"></input>
 <form id="editProjectLicense" novalidate action="{% url 'edit_project_license' pk %}" method="post">
   {% csrf_token %}
-
   <div class="container content">
-    <div class="row" style="margin-bottom: 10px">
+    <div class="row mb-10">
       <div class="col-2">
         <div class="row mb-3">
-          <a class="text-gray back text-decoration-none" href="{% url 'project_info' pk %}"><i class="fa fa-chevron-left"></i> 返回計畫資訊</a>
+          <a class="text-gray back text-decoration-none" href="{% url 'project_info' pk %}"><i class="fa fa-chevron-left w-12"></i> 返回計畫資訊</a>
         </div>
         <h4 class="title-dark">計畫管理</h4>
         <nav class="py-2 mb-3">
           <ul class="nav flex-column">
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'edit_project_basic' pk %}"> <i class="fa fa-xs fa-circle px-2 py-auto"></i> 基本資訊 </a>
+              <a class="nav-link" href="{% url 'edit_project_basic' pk %}"> <i class="fa-solid fa-circle w-12"></i> 基本資訊 </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'edit_project_deployment' pk %}"> <i class="fa fa-xs fa-circle px-2 py-auto"></i> 相機位置管理 </a>
+              <a class="nav-link" href="{% url 'edit_project_deployment' pk %}"> <i class="fa-solid fa-circle w-12"></i> 相機位置管理 </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'edit_project_members' pk %}"> <i class="fa fa-xs fa-circle px-2 py-auto"></i> 計畫成員 </a>
+              <a class="nav-link" href="{% url 'edit_project_members' pk %}"> <i class="fa-solid fa-circle w-12"></i> 計畫成員 </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link active" style="color: rgb(37, 116, 85)" href="{% url 'edit_project_license' pk %}"> <i class="fa fa-xs fa-pencil px-2 py-auto"></i> 創用CC授權 </a>
+              <a class="nav-link active check-mark" href="{% url 'edit_project_license' pk %}"> <i class="fa-solid fa-pencil w-12"></i> 創用CC授權 </a>
             </li>
           </ul>
         </nav>
@@ -109,9 +95,9 @@
                 </li>
               </ul>
               <div class="row py-3">
-                <div class="align-items-center d-flex flex-row col-sm-8 col-lg-6" style="display: inline">
+                <div class="align-items-center d-flex flex-row col-sm-8 col-lg-6 d-inline">
                   <div><span class="required">*</span><b>公開日期：</b></div>
-                  <input type="text" class="datepicker_publish form-control" name="publish_date" style="width: 50%" value="{{ project.publish_date|date:'o-m-d' }}" />
+                  <input type="text" class="datepicker_publish form-control w-50" name="publish_date" value="{{ project.publish_date|date:'o-m-d' }}" />
                 </div>
                 <p class="text-gray fs-6 pt-1">計畫內的詮釋資料將會直接公開，鑑定資訊、影像資料的公開日期之上限為計畫結束時間的5年內。</p>
               </div>
@@ -121,7 +107,7 @@
         <div class="row mt-3 px-2">
           <div class="text-end px-0">
             <a class="btn btn-outline-success" href="{% url 'project_detail' pk %}">取消</a>
-            <a class="btn btn-orange" onClick="submitForm()">儲存設定</a>
+            <a class="btn btn-orange" id="submitForm">儲存設定</a>
           </div>
         </div>
       </div>
@@ -129,46 +115,10 @@
   </div>
   {% else %}
   <div class="container content">
-    <a class="btn btn-outline-success" onClick="goBack()">回上一頁</a>
+    <a class="btn btn-outline-success" id="goBack">回上一頁</a>
   </div>
   {% endif %} {% endblock body %} {% block script %}
-  <script>
-    $(document).ready(function () {
-      $(".datepicker_publish").datepicker({
-        dateFormat: "yy-mm-dd",
-        defaultDate: "+5y",
-      });
+  <script src="{% static 'js/edit_project_license.js' %}"></script>
 
-      // precheck license
-      $('[name="interpretive_data_license"][value="{{ project.interpretive_data_license }}"]').attr("checked", "checked");
-      $('[name="identification_information_license"][value="{{ project.identification_information_license }}"]').attr("checked", "checked");
-      $('[name="video_material_license"][value="{{ project.video_material_license }}"]').attr("checked", "checked");
-    });
-
-    // validation
-    function submitForm() {
-      // publish_date
-      let publish_date = $('[name="publish_date"]');
-
-      if (publish_date.val() == "") {
-        publish_date.addClass("is-invalid").addClass("was-validated");
-      } else {
-        try {
-          date = $.datepicker.parseDate("yy-mm-dd", publish_date.val());
-          publish_date.removeClass("is-invalid").removeClass("was-validated").removeAttr("id", "invalid");
-        } catch (error) {
-          publish_date.addClass("is-invalid").addClass("was-validated");
-        }
-      }
-
-      if (!$(".is-invalid").length) {
-        $("#editProjectLicense").submit();
-      } else {
-        $(".is-invalid").first().attr("id", "invalid");
-        window.location.href = "#invalid";
-        window.location.hash = "#invalid";
-      }
-    }
-  </script>
   {% endblock script %}
 </form>

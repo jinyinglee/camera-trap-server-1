@@ -1,19 +1,12 @@
 {% extends 'base/base.html' %}
 {% load static %}
 {% block style %}
-<style>
-    input {
-            border: 1px solid #cccccc 
-        }
-</style>
+<link href="{% static 'css/desktop_download.css' %}" rel="stylesheet">
 {% endblock %}
 {% block body %}
 <div class="container content">
 
 {% if request.session.is_login == True %}
-    <!--<div class="row" style="margin-bottom: 10px">
-        <h4 class="title-dark">單機版下載</h4>     
-    </div>-->
         <div class="row">
             <div class="bg-white shadow px-0 pb-5 mx-2">
                 <p class="backgroud-dark text-white fw-bold px-3 py-2">單機版下載</p>

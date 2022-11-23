@@ -1,44 +1,9 @@
 {% extends 'base/base.html' %} {% block head %} {% load static %} {% endblock head %} {% block style %}
-<style>
-  .nav-link {
-    color: gray;
-    cursor: pointer;
-  }
+<link href="{% static 'css/faq.css' %}" rel="stylesheet">
 
-  .nav-link:hover {
-    color: lightgrey;
-  }
-
-  .active {
-    color: rgb(37, 116, 85);
-  }
-
-  .accordion-body {
-    background-color: #f1efef;
-  }
-
-  .accordion-button {
-    background-color: white !important;
-    color: black !important;
-  }
-
-  .accordion-body {
-    font-size: 14px !important;
-    padding-left: 30px;
-  }
-
-  .accordion-button.collapsed::after {
-    background-image: url("{% static 'icon/chevron-down.png' %}");
-  }
-
-  .accordion-button:not(.collapsed)::after {
-    background-image: url("{% static 'icon/chevron-up.png' %}");
-    transform: rotate(0deg);
-  }
-</style>
 {% endblock %} {% block body %}
 <div class="container content">
-  <div class="row" style="margin-bottom: 10px">
+  <div class="row mb-10">
     <div class="col-2">
       <h4 class="title-dark">常見問題</h4>
       <nav class="py-2 mb-3">
@@ -57,7 +22,7 @@
             <a class="nav-link nl" data-type="standalone"> <i class="fa fa-xs fa-circle px-2 py-auto"></i> 單機版軟體操作 </a>
           </li>
           {% endcomment %}
-          <li class="mt-2 text-gray" style="font-size: 14px">仍需要協助嗎？ <a class="btn btn-sm btn-outline-success" href="{% url 'contact-us' %}">聯絡我們</a></li>
+          <li class="mt-2 text-gray fs-14">仍需要協助嗎？ <a class="btn btn-sm btn-outline-success" href="{% url 'contact-us' %}">聯絡我們</a></li>
         </ul>
       </nav>
     </div>
@@ -70,17 +35,5 @@
   </div>
 </div>
 
-{% endblock body %} {% block script %}
-<script src="{% static 'js/faq-content.js' %}"></script>
-<script>
-  $(document).ready($(".faq-content").html(content_dict["web"]["content"]));
-
-  $(".nl").on("click", function () {
-    $(".nl").removeClass("active");
-    $(this).addClass("active");
-    let type = $(this).data("type");
-    $(".faq-title").html(content_dict[type]["title"]);
-    $(".faq-content").html(content_dict[type]["content"]);
-  });
-</script>
+{% endblock body %} {% block script %}<script src="{% static 'js/faq.js' %}"></script>
 {% endblock script %}

@@ -1,48 +1,13 @@
 {% extends 'base/base.html' %} {% block head %} {% load static %}
 <link rel="stylesheet" href="{% static 'css/bootstrap-select.min.css' %}" />
+<link rel="stylesheet" href="{% static 'css/create_project.css' %}" />
 
 {% endblock head %} {% block style %}
-<style>
-  textarea,
-  input {
-    border: 1px solid #cccccc;
-  }
-
-  .form-control {
-    border-color: #cccccc;
-  }
-
-  .btn-new {
-    background-color: white;
-    border: 1px solid #cccccc;
-  }
-
-  .btn-new[title="請選擇計畫地區"] {
-    color: #6c757d !important;
-  }
-
-  /* color for select */
-  .check-mark {
-    color: rgb(37, 116, 85);
-  }
-
-  .text-end {
-    margin: auto 0;
-  }
-
-  .list-unstyled img {
-    padding: 0 10px;
-  }
-
-  #second-page {
-    display: none;
-  }
-</style>
 {% endblock %} {% block body %} {% if is_authorized_create %}
 <div class="container content">
   <form id="createProjectForm" novalidate action="{% url 'create_project' %}" method="post">
     {% csrf_token %}
-    <div class="row" style="margin-bottom: 10px">
+    <div class="row mb-10">
       <h4 class="title-dark">新增計畫</h4>
     </div>
     <div id="first-page">
@@ -52,45 +17,49 @@
           <div class="row p-3">
             <div class="col-2 text-end"><span class="required">*</span>計畫名稱：</div>
             <div class="col-sm-8 col-lg-4">
-              <input type="text" style="width: 100%" class="form-control" name="name" placeholder="請輸入計畫名稱" required />
+              <input type="text" class="form-control w-100" name="name" placeholder="請輸入計畫名稱" required />
             </div>
           </div>
           <div class="row p-3">
             <div class="col-2 text-end">計畫簡稱：</div>
-            <div class="col-sm-8 col-lg-4"><input type="text" class="form-control" style="width: 100%" placeholder="請輸入計畫簡稱" name="short_title" /></div>
+            <div class="col-sm-8 col-lg-4"><input type="text" class="form-control w-100" placeholder="請輸入計畫簡稱" name="short_title" /></div>
             <div class="col-1 my-auto">
-              <i class="fa fa-info-circle text-green" style="font-size: 1.4em" data-bs-toggle="tooltip" data-bs-placement="right" title="計畫簡稱為做日後系統顯示之用，您可以輸入任何有助您辨別計畫的文字"></i>
+              <span data-bs-toggle="tooltip" data-bs-placement="right" title="計畫簡稱為做日後系統顯示之用，您可以輸入任何有助您辨別計畫的文字">
+                <i class="fa fa-info-circle text-green f-14"></i>
+              </span>
             </div>
           </div>
           <div class="row p-3">
             <div class="col-2 text-end">計畫關鍵字：</div>
-            <div class="col-sm-8 col-lg-4"><input type="text" class="form-control" style="width: 100%" placeholder="請輸入計畫關鍵字" name="keyword" /></div>
+            <div class="col-sm-8 col-lg-4"><input type="text" class="form-control w-100" placeholder="請輸入計畫關鍵字" name="keyword" /></div>
             <div class="col-1 my-auto">
-              <i class="fa fa-info-circle text-green" style="font-size: 1.4em" data-bs-toggle="tooltip" data-bs-placement="right" title="請輸入與其他同類型計畫共有之文字，以利於同類型計畫搜尋篩選用，例如調查方式相同的多年期計畫因時空關係有不同計畫名稱時，即建議使用相同關鍵字"></i>
+              <span data-bs-toggle="tooltip" data-bs-placement="right" title="請輸入與其他同類型計畫共有之文字，以利於同類型計畫搜尋篩選用，例如調查方式相同的多年期計畫因時空關係有不同計畫名稱時，即建議使用相同關鍵字">
+                <i class="fa fa-info-circle text-green f-14"></i>
+              </span>
             </div>
           </div>
           <div class="row p-3">
             <div class="col-2 text-end">委辦單位：</div>
-            <div class="col-sm-8 col-lg-4"><input type="text" class="form-control" style="width: 100%" placeholder="請輸入委辦單位" name="funding_agency" /></div>
+            <div class="col-sm-8 col-lg-4"><input type="text" class="form-control w-100" placeholder="請輸入委辦單位" name="funding_agency" /></div>
           </div>
           <div class="row p-3">
             <div class="col-2 text-end">執行單位：</div>
-            <div class="col-sm-8 col-lg-4"><input type="text" class="form-control" style="width: 100%" placeholder="請輸入執行單位" name="executive_unit" /></div>
+            <div class="col-sm-8 col-lg-4"><input type="text" class="form-control w-100" placeholder="請輸入執行單位" name="executive_unit" /></div>
           </div>
           <div class="row p-3">
             <div class="col-2 text-end">計畫編號：</div>
-            <div class="col-sm-8 col-lg-4"><input type="text" class="form-control" style="width: 100%" placeholder="請輸入計畫編號" name="code" /></div>
+            <div class="col-sm-8 col-lg-4"><input type="text" class="form-control w-100" placeholder="請輸入計畫編號" name="code" /></div>
           </div>
           <div class="row p-3">
             <div class="col-2 text-end"><span class="required">*</span>計畫主持人：</div>
-            <div class="col-sm-8 col-lg-4"><input type="text" class="form-control" style="width: 100%" placeholder="請輸入計畫主持人" name="principal_investigator" required /></div>
+            <div class="col-sm-8 col-lg-4"><input type="text" class="form-control w-100" placeholder="請輸入計畫主持人" name="principal_investigator" required /></div>
           </div>
           <div class="row p-3">
             <div class="col-2 text-end"><span class="required">*</span>計畫時間：</div>
             <div class="col-sm-8 col-lg-4 d-flex justify-content-between">
-              <input type="text" class="datepicker form-control" style="width: 45%" value='{% now "o-m-d" %}' name="start_date" required />
+              <input type="text" class="datepicker form-control w-45" value='{% now "o-m-d" %}' name="start_date" required />
               <span class="my-auto">至</span>
-              <input class="datepicker form-control" type="text" style="width: 45%" value='{% now "o-m-d" %}' name="end_date" required />
+              <input class="datepicker form-control w-45" type="text" value='{% now "o-m-d" %}' name="end_date" required />
             </div>
           </div>
           <div class="row p-3">
@@ -105,18 +74,18 @@
           </div>
           <div class="row p-3">
             <div class="col-2 text-end">計畫摘要：</div>
-            <div class="col-sm-8 col-lg-4"><textarea style="width: 100%" class="form-control" placeholder="請簡單描述計畫目的" name="description"></textarea></div>
+            <div class="col-sm-8 col-lg-4"><textarea class="form-control w-100" placeholder="請簡單描述計畫目的" name="description"></textarea></div>
           </div>
           <div class="row p-3">
             <div class="col-2 text-end">備註：</div>
-            <div class="col-sm-8 col-lg-4"><textarea style="width: 100%" class="form-control" placeholder="您可以輸入任何補註資料" name="note"></textarea></div>
+            <div class="col-sm-8 col-lg-4"><textarea class="form-control w-100" placeholder="您可以輸入任何補註資料" name="note"></textarea></div>
           </div>
         </div>
       </div>
       <div class="row mt-3 px-0">
         <div class="text-end px-0 mx-0">
           <a class="btn btn-outline-success" href="{% url 'project_overview' %}">取消</a>
-          <a class="btn btn-orange" onClick="validateForm()">下一步</a>
+          <a class="btn btn-orange" id="validateForm">下一步</a>
           {% comment %} <a onClick="test()">test</a> {% endcomment %}
         </div>
       </div>
@@ -189,9 +158,9 @@
                 </li>
               </ul>
               <div class="row py-3">
-                <div class="align-items-center d-flex flex-row col-sm-8 col-lg-6" style="display: inline">
+                <div class="align-items-center d-flex flex-row col-sm-8 col-lg-6 d-inline">
                   <div><span class="required">*</span><b>公開日期：</b></div>
-                  <input type="text" class="datepicker_publish form-control" name="publish_date" style="width: 50%" value='{% now "o-m-d" %}' />
+                  <input type="text" class="datepicker_publish form-control w-50" name="publish_date" value='{% now "o-m-d" %}' />
                 </div>
                 <p class="text-gray fs-6 pt-1">計畫內的詮釋資料將會直接公開，鑑定資訊、影像資料的公開日期之上限為計畫結束時間的5年內。</p>
               </div>
@@ -201,7 +170,7 @@
       </div>
       <div class="row mt-3 px-0">
         <div class="text-end px-0">
-          <a class="btn btn-orange" onClick="submitForm()">送出</a>
+          <a class="btn btn-orange" id="submitForm">送出</a>
         </div>
       </div>
     </div>
@@ -218,97 +187,6 @@
   </div>
   {% endblock body %} {% block script %}
   <script src="{% static 'js/bootstrap-select.min.js' %}"></script>
-  <script>
-    $(document).ready(function () {
-      $(".datepicker").datepicker({
-        dateFormat: "yy-mm-dd",
-      });
-
-      $(".datepicker_publish").datepicker({
-        dateFormat: "yy-mm-dd",
-        defaultDate: "+5y",
-      });
-    });
-
-    function validateForm() {
-      // name
-      let name = $('[name="name"]');
-      if (name.val() == "") {
-        name.addClass("is-invalid").addClass("was-validated");
-      } else {
-        name.removeClass("is-invalid").removeClass("was-validated").removeAttr("id", "invalid");
-      }
-
-      // principal_investigator
-      let pi = $('[name="principal_investigator"]');
-      if (pi.val() == "") {
-        pi.addClass("is-invalid").addClass("was-validated");
-      } else {
-        pi.removeClass("is-invalid").removeClass("was-validated").removeAttr("id", "invalid");
-      }
-
-      // start_date
-      let start_date = $('[name="start_date"]');
-      if (start_date.val() == "") {
-        start_date.addClass("is-invalid").addClass("was-validated");
-      } else {
-        try {
-          date = $.datepicker.parseDate("yy-mm-dd", start_date.val());
-          start_date.removeClass("is-invalid").removeClass("was-validated").removeAttr("id", "invalid");
-        } catch (error) {
-          start_date.addClass("is-invalid").addClass("was-validated");
-        }
-      }
-
-      // end_date
-      let end_date = $('[name="end_date"]');
-
-      if (end_date.val() == "") {
-        end_date.addClass("is-invalid").addClass("was-validated");
-      } else {
-        try {
-          date = $.datepicker.parseDate("yy-mm-dd", end_date.val());
-          end_date.removeClass("is-invalid").removeClass("was-validated").removeAttr("id", "invalid");
-        } catch (error) {
-          end_date.addClass("is-invalid").addClass("was-validated");
-        }
-      }
-
-      if (!$(".is-invalid").length) {
-        $("#first-page").hide();
-        $("#second-page").show();
-        window.location.hash = "#second-page";
-        window.location.href = "#second-page";
-      } else {
-        $(".is-invalid").first().attr("id", "invalid");
-        window.location.href = "#invalid";
-        window.location.hash = "#invalid";
-      }
-    }
-
-    function submitForm() {
-      // publish_date
-
-      let check = [];
-      let publish_date = $('[name="publish_date"]');
-
-      if (publish_date.val() == "") {
-        publish_date.addClass("is-invalid").addClass("was-validated");
-        check.push(false);
-      } else {
-        try {
-          date = $.datepicker.parseDate("yy-mm-dd", publish_date.val());
-          publish_date.removeClass("is-invalid").removeClass("was-validated");
-        } catch (error) {
-          publish_date.addClass("is-invalid").addClass("was-validated");
-          check.push(false);
-        }
-      }
-
-      if (!$(".is-invalid").length) {
-        $("#createProjectForm").submit();
-      }
-    }
-  </script>
+  <script src="{% static 'js/create_project.js' %}"></script>
   {% endblock script %}
 </div>

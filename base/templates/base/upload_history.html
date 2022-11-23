@@ -1,58 +1,10 @@
 {% extends 'base/base.html' %}
 {% block head %}
 {% load static %} {% endblock head %} {% block style %}
-<style>
-
-  .flex-center{
-    display: flex;
-    align-items: center;
-  }
-
-  .up-icon {
-    width: 18px;
-    height: 18px
-  }
-
-  .link {
-    color: gray;
-    cursor: pointer;
-  }
-
-  .link:hover {
-    color: lightgrey;
-  }
-
-  table.t{
-  width: 100%;
-  border-collapse: collapse;
-  border: 0
-}
-
-  thead{
-    background: #E1E3E5;
-  }
-
-  thead tr th{
-    padding: 8px 20px;
-    font-size: 14px;
-  }
-
-  tr>td,
-  tr>th {
-    font-size: 14px;
-    padding: 10px 20px;
-    vertical-align: middle;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-  }
-</style>
+<link href="{% static 'css/upload_history.css' %}" rel="stylesheet">
 {% endblock %} {% block body %}
 <div class="container content">
-  <div class="row" style="margin-bottom: 10px">
+  <div class="row mb-10">
     <h4 class="title-dark">上傳紀錄</h4>
   </div>
   <div class="row">
@@ -66,7 +18,7 @@
             <th>所屬計畫</th>
             <th>樣區</th>
             <th>相機位置</th>
-            <th style="padding-right: 10px">上傳結果</th>
+            <th class="pr-10">上傳結果</th>
             <th></th>
           </tr>
         </thead>
@@ -80,7 +32,7 @@
               <td>{{ i.3 }}</td>
               <td>{{ i.4 }}</td>
               <td>{{ i.5 }}</td>
-              <td style="padding-right: 0px">
+              <td class="pr-0">
                 {% if i.6 == 'finished' %}
                 <div class="flex-center">
                   已完成 <img class="up-icon ms-1" src="{% static 'icon/upload-success.png' %}" />
@@ -89,14 +41,15 @@
                 <div class="flex-center">
                   未完成 <img class="up-icon ms-1" src="{% static 'icon/upload-fail.png' %}" />
                 </div>
-                <a class="link error" data-bs-toggle="modal" data-bs-target="#errorModal" onClick="setModal('{{ i.8 }}','{{ i.9 }}','{{ i.10 }}')">檢視錯誤</a>
+                <a class="setModal link error" data-deployment_journal_id="{{ i.8 }}" data-species_error="{{ i.9 }}" data-upload_error="{{ i.10 }}"
+                >檢視錯誤</a>
                 {% elif i.6 == 'uploading' %}
                 <div class="flex-center">
                   上傳中 <img class="up-icon ms-1" src="{% static 'icon/upload-gray.png' %}" />
                 </div>
                 {% endif %}
               </td>
-              <td style="padding-left: 10px">
+              <td class="pl-10">
                 {% if i.2 != '' %}
                   <a class="link" href="{% url 'project_detail' pk=i.7 %}?folder={{ i.2 }}" target="_blank">查看</a>
                 {% else %}
@@ -117,7 +70,7 @@
 </div>
 
 <!-- Modal -->
-<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+<div class="modal fade" id="errorModal">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -141,13 +94,6 @@
 
 
 {% endblock body %} {% block script %}
-<script>
+<script src="{% static 'js/upload_history.js' %}"></script>
 
-function setModal(deployment_journal_id, species_error, upload_error){
-  $('.error-link').attr("href", "{% url 'get_error_file_list' 1234 %}".replace(/1234/, deployment_journal_id ));
-  species_error=='True' ? $('.species-error').show() : $('.species-error').hide()
-  upload_error=='True' ? $('.upload-error').show() : $('.upload-error').hide()
-} 
-
-</script>
 {% endblock script %}
