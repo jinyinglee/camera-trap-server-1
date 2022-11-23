@@ -26,6 +26,6 @@ var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
 
 
 $('#getAuth').on('click',function(){
-    let url = "https://orcid.org/oauth/authorize?client_id=APP-F6POVPAP5L1JOUN1&response_type=code&scope=/authenticate&redirect_uri=" + location.protocol + "//" + location.host + "/callback/orcid/auth?next={{ request.path }}";
+    let url = "https://orcid.org/oauth/authorize?client_id=APP-F6POVPAP5L1JOUN1&response_type=code&scope=/authenticate&redirect_uri=" + location.protocol + "//" + location.host + "/callback/orcid/auth?next=" + window.location.pathname ;
     window.location.href = url;
 })
