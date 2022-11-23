@@ -3,48 +3,7 @@
 {% else %}
 <script src="/asset/js/search.min.js"></script>
 {% endif %} {% endblock %} {% block style %}
-<style>
-  .panel {
-    position: relative;
-    display: block;
-    border: 1px solid #e9e9e9;
-    background: #fff;
-    -webkit-box-shadow: 0 2px 4px 0 rgb(170 191 181 / 30%);
-    box-shadow: 0 2px 4px 0 rgb(170 191 181 / 30%);
-    border-radius: 4px;
-  }
-  .panel .panel-body {
-    padding: 20px 40px;
-  }
-  h3 {
-    margin: 0 0 20px;
-    font-size: 24px;
-  }
-
-  /*---*/
-  /* The Modal (background) */
-  .my-modal {
-    display: none; /* Hidden by default */
-    position: fixed; /* Stay in place */
-    z-index: 1; /* Sit on top */
-    left: 0;
-    top: 0;
-    width: 100%; /* Full width */
-    height: 100%; /* Full height */
-    overflow: auto; /* Enable scroll if needed */
-    background-color: rgb(0, 0, 0); /* Fallback color */
-    background-color: rgba(0, 0, 0, 0.4); /* Black w/ opacity */
-  }
-
-  /* Modal Content/Box */
-  .my-modal-content {
-    background-color: #fefefe;
-    margin: 15% auto; /* 15% from the top and centered */
-    padding: 20px;
-    border: 1px solid #888;
-    width: 200px; /* Could be more or less, depending on screen size */
-  }
-</style>
+<link href="{% static 'css/search_index.css' %}" rel="stylesheet">
 {% endblock %} {% block body %}
 <div class="container content">
   <!-- The Modal -->
@@ -53,14 +12,14 @@
       <div class="spinner-border" role="status">
         <span class="sr-only"></span>
       </div>
-      <span id="my-modal-text" style="margin-left: 6px">Loading...</span>
+      <span id="my-modal-text ml-6">Loading...</span>
     </div>
   </div>
   <!-- end The Modal -->
 
   {% include "./inc_calculate_description.html" %}
 
-  <div class="row" style="margin-bottom: 10px">
+  <div class="row mb-10">
     <h4 class="title-dark px-3 py-0">資料篩選與計算</h4>
   </div>
   <div class="panel">

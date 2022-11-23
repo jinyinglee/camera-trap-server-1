@@ -59,6 +59,150 @@ from openpyxl import Workbook
 from bson.objectid import ObjectId
 
 
+def get_project_info_web(request):
+    pk = request.GET.get('pk')
+    response = {}
+    project = Project.objects.get(id=pk)
+    sa = StudyArea.objects.filter(project_id=pk, parent_id__isnull=True)
+    sa_list = [str(s.id) for s in sa]
+    response['sa_list'] = sa_list
+    sa_center = [23.5, 121.2]
+    zoom = 6
+    if sa:
+        sa_point = Deployment.objects.filter(study_area_id__in=sa_list, latitude__isnull = False, longitude__isnull = False).order_by('-latitude').values('latitude', 'longitude').first()
+        if sa_point:
+            sa_center = [float(sa_point['latitude']),float(sa_point['longitude'])]
+            zoom = 8
+
+    species_count = 0
+    species_last_updated = None
+
+    query = f"select sum(count) from taicat_projectspecies where project_id={pk};"
+    with connection.cursor() as cursor:
+        cursor.execute(query)
+        species_total_count = cursor.fetchall()
+        species_total_count = species_total_count[0][0]
+
+    pie_data = []
+    others = {'name': '其他物種', 'count': 0, 'y': 0}
+    other_data = []
+    # 取前8名，剩下的統一成其他
+    if species_total_count:
+        if ProjectSpecies.objects.filter(project_id=pk).exists():
+            species_count = ProjectSpecies.objects.filter(project_id=pk).exclude(name='').values('name').distinct().count()
+            species_last_updated = ProjectSpecies.objects.filter(project_id=pk).annotate(
+                last_updated_8=ExpressionWrapper(
+                    F('last_updated') + timedelta(hours=8),
+                    output_field=DateTimeField()
+                )).latest('last_updated_8').last_updated_8
+            c = 0
+            for i in ProjectSpecies.objects.filter(project_id=pk).order_by('-count'):
+                s_name = '未填寫' if i.name == '' else i.name
+                c += 1
+                if c < 9:
+                    pie_data += [{'name': s_name, 'y': round(i.count/species_total_count*100, 2), 'count': i.count}]
+                else:
+                    other_data += [{'name': s_name, 'y': round(i.count/species_total_count*100, 2), 'count': i.count}]
+                    others.update({'count': others['count']+i.count})
+            if others['count'] > 0:
+                others.update({'y': round(others['count']/species_total_count*100, 2)})
+                pie_data += [others]
+    response['pie_data'] = pie_data
+    response['other_data'] = other_data
+    response['zoom'] = zoom
+    response['sa_point'] = sa_center
+    response['species_count'] = species_count
+    response['species_last_updated'] = species_last_updated.strftime("%Y-%m-%d") if species_last_updated else species_last_updated
+
+    return HttpResponse(json.dumps(response), content_type='application/json')
+
+
+def get_edit_info(request):
+
+    type = request.GET.get('type')
+    pk = request.GET.get('pk')
+    response = {}
+    if type == 'license':
+        response = Project.objects.filter(id=pk).values("interpretive_data_license", "identification_information_license", "video_material_license").first()
+    elif type == 'basic':
+        project = Project.objects.filter(id=pk).values('region').first()
+        if project['region'] not in ['', None, []]:
+            response = {'region': project['region'].split(',')}
+    elif type == 'deployment':
+        response['study_area'] = list(StudyArea.objects.filter(project_id=pk).values("id","parent_id","name"))
+    elif type == 'members':
+        response['members'] = list( ProjectMember.objects.filter(project_id=pk).values("member_id","role"))
+
+
+    return HttpResponse(json.dumps(response), content_type='application/json')
+
+
+def get_project_detail(request):
+    pk = request.GET.get('pk')
+    response = {}
+    if ProjectStat.objects.filter(project_id=pk).first().latest_date and ProjectStat.objects.filter(project_id=pk).first().earliest_date:
+        latest_date = ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d")
+        earliest_date = ProjectStat.objects.filter(project_id=pk).first().earliest_date.strftime("%Y-%m-%d")
+    else:
+        latest_date, earliest_date = None, None
+
+    results = []
+    with connection.cursor() as cursor:
+        query = f"""SELECT folder_name,
+                        to_char(folder_last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS folder_last_updated
+                        FROM taicat_imagefolder
+                        WHERE project_id = {pk}"""
+        cursor.execute(query)
+        folder_list = cursor.fetchall()
+        columns = list(cursor.description)
+        for row in folder_list:
+            row_dict = {}
+            for i, col in enumerate(columns):
+                row_dict[col.name] = row[i]
+            results.append(row_dict)
+    response['folder_list'] = results
+
+    response['latest_date'] = latest_date
+    response['earliest_date'] = earliest_date
+    response['sa_d_list'] = Project.objects.get(pk=pk).get_sa_d_list()
+    response['sa_list'] = Project.objects.get(pk=pk).get_sa_list()
+
+    study_area = []
+    for sa in StudyArea.objects.filter(project_id=pk).order_by('name'):
+        d_list = []
+        for d in sa.deployment_set.all():
+            d_list.append({'id': d.id, 'name': d.name})
+        study_area.append({'id': sa.id, 'parent_id': sa.parent_id, 'name': sa.name, 'deployment_set': d_list})
+    response['study_area'] = study_area
+    
+    # edit permission
+    user_id = request.session.get('id', None)
+    editable = False
+    if user_id:
+        # 系統管理員 / 個別計畫承辦人
+        if Contact.objects.filter(id=user_id, is_system_admin=True).first() or ProjectMember.objects.filter(member_id=user_id, role="project_admin", project_id=pk):
+            editable = True
+        # 計畫總管理人
+        elif Contact.objects.filter(id=user_id, is_organization_admin=True):
+            organization_id = Contact.objects.filter(id=user_id, is_organization_admin=True).values('organization').first()['organization']
+            if Organization.objects.filter(id=organization_id, projects=pk):
+                editable = True
+    if editable:
+        pid_list = get_my_project_list(user_id,[])
+        projects = Project.objects.filter(pk__in=pid_list)
+        project_list = []
+        for p in projects:
+            project_list += [{'label': p.name, 'value': p.id}]
+    else:
+        project_list = []
+    response['projects'] = project_list
+
+    
+    response['editable'] = editable
+    
+    return HttpResponse(json.dumps(response), content_type='application/json')
+
+
 def update_species_map(request):
 
     # 根據filter (樣區,子樣區, 行程) 更新物種地圖
@@ -1333,7 +1477,7 @@ def data(request):
             if not df.from_mongo[i]:
                 # new data - image
                 if extension in ['jpg', '']:
-                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://{}.s3.ap-northeast-1.amazonaws.com/{}" />""".format(s3_bucket, file_url)
+                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block h-100p" data-src="https://{}.s3.ap-northeast-1.amazonaws.com/{}" />""".format(s3_bucket, file_url)
                 # new data - video
                 else:
                     # df.loc[i, 'file_url'] = """
@@ -1352,7 +1496,7 @@ def data(request):
             else:
                 # old data - image
                 if extension in ['jpg', '']:
-                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block" style="height: 100px" data-src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-images/{}" />""".format(
+                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block h-100p" data-src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-images/{}" />""".format(
                         file_url)
                 # old data - video
                 else:
@@ -1645,3 +1789,8 @@ def api_update_deployment_journals(request, pk):
                 #     ret['message'] = 'updated database, update cache error: {}'.format(e)
 
         return JsonResponse(ret)
+
+
+def get_gap_choice(request):
+    gc = DeploymentJournal.GAP_CHOICES
+    return HttpResponse(json.dumps(gc), content_type='application/json')

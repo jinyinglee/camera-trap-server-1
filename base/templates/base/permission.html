@@ -2,18 +2,14 @@
 {% block head %}
 {% load static %}
 <link rel="stylesheet" href="{% static 'css/bootstrap-select.min.css' %}">
+<link rel="stylesheet" href="{% static 'css/permission.css' %}">
 {% endblock head %}
 {% block style %}
-<style>
-    input {
-            border: 1px solid #cccccc 
-        }
-</style>
 {% endblock %}
 {% block body %}
 {% if is_authorized %}
 <div class="container content">
-    <div class="row" style="margin-bottom: 10px">
+    <div class="row mb-10">
         <h4 class="title-dark">權限管理</h4>     
     </div>
         <div class="row">
@@ -47,20 +43,20 @@
                             </select>
                         </div>
                         <div class="col-2 my-auto">
-                            <a class="btn btn-orange" onClick="submitAddForm()">加入</a>
+                            <a class="btn btn-orange" id="submitAddForm">加入</a>
                         </div>
                     </div>
                     <input type="hidden" name="type" id="type" value="add_admin">
                 </form>
                 <form id="editProjectMember" novalidate action="" method="post">
                     <div class="row my-2 mt-4">
-                        <table class="table table-striped mx-auto" style="width: 90%;">
+                        <table class="table table-striped mx-auto w-90">
                             <thead>
                                 <tr>
-                                    <td style="width: 20%">計畫成員</td>
-                                    <td style="width: 35%">電子郵件</td>
-                                    <td style="width: 35%">單位</td>
-                                    <td style="width: 10%"></td>
+                                    <td class="w-20">計畫成員</td>
+                                    <td class="w-35">電子郵件</td>
+                                    <td class="w-35">單位</td>
+                                    <td class="w-10"></td>
                                 </tr>
                             </thead>
                             <tbody>
@@ -108,25 +104,25 @@
                             </select>
                         </div>
                         <div class="col-2 my-auto">
-                            <a class="btn btn-orange" onClick="$('#addOrgProject').submit();">加入</a>
+                            <a class="btn btn-orange" id="addOrgProjectClick">加入</a>
                         </div>
                     </div>
                 </form>
                 <form id="editProjectMember" novalidate action="" method="post">
                     <div class="row my-2 mt-4">
-                        <table class="table table-striped mx-auto" style="width: 90%;">
+                        <table class="table table-striped mx-auto w-90">
                             <thead>
                                 <tr>
-                                    <td style="width: 30%">單位</td>
-                                    <td style="width: 50%">計畫名稱</td>
+                                    <td class="w-30">單位</td>
+                                    <td class="w-50">計畫名稱</td>
                                     <td></td>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for i in org_project_list %}
                                     <tr class="align-middle">
-                                        <td style="width: 30%">{{ i.organization_name }}</td>
-                                        <td style="width: 50%">{{ i.project_name }}</td>
+                                        <td class="w-30">{{ i.organization_name }}</td>
+                                        <td class="w-50">{{ i.project_name }}</td>
                                         <td class="text-end">
                                             <a class="btn btn-outline-secondary remove" data-id="{{ i.relation_id }}" data-type="remove_project" data-bs-toggle="modal" data-bs-target="#removeModal">移除</a>
                                         </td>
@@ -154,7 +150,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
-                <a class="btn btn-danger" onClick="$('#removeBtn').submit()">移除</a>
+                <a class="btn btn-danger" id="removeBtnClick">移除</a>
             </div>
         </div>
     </div>
@@ -163,30 +159,11 @@
 
 {% else %}
 <div class="container">
-<a class="btn btn-outline-success" onClick="goBack()">回上一頁</a></div>
+<a class="btn btn-outline-success" id="goBack" >回上一頁</a></div>
 {% endif %}
 {% endblock body %}
 
 {% block script %}
 <script src="{% static 'js/bootstrap-select.min.js' %}"></script>
-<script>
-function goBack() {
-  window.history.back();
-}
-
-// pass variable to modal
-$(document).on("click", ".remove", function () {
-    var id = $(this).data('id');
-    var type = $(this).data('type');
-    $(".modal-body #id").val( id );
-    $(".modal-body #type").val( type );
-});
-
-function submitAddForm(){
-    console.log('hi');
-    $('#addOrgAdmin').submit();
-}
-
-
-</script>
+<script src="{% static 'js/permission.js' %}"></script>
 {% endblock script %}

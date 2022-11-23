@@ -64,6 +64,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'csp.middleware.CSPMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -199,3 +200,20 @@ MEDIA_ROOT = env('MEDIA_ROOT')
 
 ORCID_CLIENT_ID = env('ORCID_CLIENT_ID')
 ORCID_CLIENT_SECRET = env('ORCID_CLIENT_SECRET')
+
+# Content Security Policy 
+CSP_DEFAULT_SRC = ("'self'", "https://www.google.com/recpatcha/", "https://www.google.com/") 
+CSP_STYLE_SRC = ["'self'","https://cdn.datatables.net","https://*.fontawesome.com","https://*.highcharts.com","https://unpkg.com/","http://www.w3.org","https://cdnjs.cloudflare.com"]
+CSP_IMG_SRC = ("'self'","https://*.highcharts.com", "https://*.fontawesome.com", "data: http://www.w3.org", 'https://*.tile.osm.org/',"https://*.s3.ap-northeast-1.amazonaws.com/","https://d3gg2vsgjlos1e.cloudfront.net/annotation-images/") 
+CSP_MEDIA_SRC = ("'self'","https://*.s3.ap-northeast-1.amazonaws.com/","https://d3gg2vsgjlos1e.cloudfront.net/") 
+CSP_FONT_SRC = ("'self'", "https://*.fontawesome.com" ) 
+
+CSP_SCRIPT_SRC = ["'self'", "https://cdnjs.cloudflare.com",
+    "https://code.jquery.com",
+    "https://cdn.datatables.net",
+    "https://*.highcharts.com",
+    "https://*.fontawesome.com",
+    "https://unpkg.com/", "data: http://www.w3.org", "https://www.google.com", "https://www.gstatic.com"
+]
+
+CSP_CONNECT_SRC = ("'self'","https://*.fontawesome.com",)
