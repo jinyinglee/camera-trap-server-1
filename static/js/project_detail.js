@@ -139,6 +139,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                       let animal_id_array = []
                       let remarks_array = []
                       $( "input.edit-checkbox:checked").not('#edit-all').each(function(  ) {
+                        if(!$(this).parent().hasClass("dataTables_sizing")){
                         current_row = table.row($(this).parent()).data();
                         img_array.push(current_row['image_id'])
                         imguuid_array.push(current_row['image_uuid'])
@@ -161,6 +162,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                           let idx = table.column(c_row).index();              
                           changeEditContent(c_row.parent(), idx);
                         }
+                      }
                       });  
   
                         $('#edit-image_id').val(img_array)                  
