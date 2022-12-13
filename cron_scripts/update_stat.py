@@ -192,9 +192,22 @@ with connection.cursor() as cursor:
     d_df = pd.DataFrame(d_df, columns=['longitude', 'latitude', 'did', 'geodetic_datum'])
 
 
+# TODO 這邊會分成TWD97 & WGS84
+d_df_wgs84 = d_df[d_df.geodetic_datum=='WGS84'].reset_index()
+d_df_twd97 = d_df[d_df.geodetic_datum=='TWD97'].reset_index()
+
+
 # d_df = pd.DataFrame(Deployment.objects.all().values('longitude','latitude','id', 'geodetic_datum'))
 
-d_gdf = gpd.GeoDataFrame(d_df,geometry=gpd.points_from_xy(d_df.longitude,d_df.latitude))
+d_df_wgs84 = gpd.GeoDataFrame(d_df_wgs84,geometry=gpd.points_from_xy(d_df_wgs84.longitude,d_df_wgs84.latitude))
+d_df_twd97 = gpd.GeoDataFrame(d_df_twd97,geometry=gpd.points_from_xy(d_df_twd97.longitude,d_df_twd97.latitude))
+
+d_df_twd97 = d_df_twd97.set_crs(epsg=3826, inplace=True)
+d_df_twd97 = d_df_twd97.to_crs(epsg=4326)
+
+
+d_gdf = d_df_twd97.append(d_df_wgs84)
+
 join = gpd.sjoin(geo_df, d_gdf)
 
 # TWD97經緯度=WGS84 ?
@@ -250,7 +263,10 @@ for c in county:
         num_deployment = len(d_list)
         num_image = num_image[0][0]
         num_working_hour = stat[0][1] if stat[0][1] else 0
-        identified = round((identified[0][0] / num_image) * 100, 2)
+        if num_image == 0:
+            identified = 0
+        else:
+            identified = round((identified[0][0] / num_image) * 100, 2)
     # else:
     #     # 沒有該縣市的資料，填0
     #     num_project = 0
@@ -287,32 +303,32 @@ for c in county:
 
 # center of studyarea
 # 
-query = """
-        SELECT d.longitude, d.latitude, d.id, d.study_area_id FROM taicat_deployment d
-        JOIN taicat_project p ON d.project_id = p.id
-        WHERE p.mode = 'official';
-        """
-
+query = f"""
+    SELECT d.longitude, d.latitude, d.id, d.study_area_id, d.geodetic_datum FROM taicat_deployment d;"""
 with connection.cursor() as cursor:
     cursor.execute(query)
     sa_df = cursor.fetchall()
-    sa_df = pd.DataFrame(sa_df, columns=['longitude', 'latitude', 'did', 'said'])
-
+    sa_df = pd.DataFrame(sa_df, columns=['longitude', 'latitude', 'did', 'said','geodetic_datum'])
 # d_df = pd.DataFrame(Deployment.objects.all().values('longitude','latitude','id', 'geodetic_datum'))
-
 sa_gdf = gpd.GeoDataFrame(sa_df,geometry=gpd.points_from_xy(sa_df.longitude,sa_df.latitude))
+# for i in sa_gdf.index():
+#     s = sa_gdf.iloc[i]
+#     if s.geodetic_datum == 'TWD97':
 sa_list = sa_df.said.unique()
-
 for i in sa_list:
     # print(i)
     # print(i, sa_gdf[sa_gdf['said']==i].dissolve().centroid)
-    long = sa_gdf[sa_gdf['said']==i].dissolve().centroid.x[0]
-    lat = sa_gdf[sa_gdf['said']==i].dissolve().centroid.y[0]
+    tmp = sa_gdf[sa_gdf['said']==i]
+    if tmp.geodetic_datum.values[0] == 'TWD97':
+        tmp = tmp.set_crs(epsg=3826, inplace=True)
+        tmp = tmp.to_crs(epsg=4326)
+    long = tmp[tmp['said']==i].dissolve().centroid.x[0]
+    lat = tmp[tmp['said']==i].dissolve().centroid.y[0]
     if StudyAreaStat.objects.filter(studyarea_id=i).exists():
         StudyAreaStat.objects.filter(studyarea_id=i).update(
             longitude = long,
             latitude = lat,
-            last_updated = now
+            last_updated = timezone.now()
         )
     else:
         StudyAreaStat.objects.create(
@@ -320,5 +336,4 @@ for i in sa_list:
             longitude = long,
             latitude = lat,
         )
-
 
