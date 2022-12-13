@@ -30,7 +30,8 @@ from .utils import (
     get_request_site_url)
 from django.views.decorators.csrf import csrf_exempt
 # from django.core import serializers
-
+import geopandas as gpd
+from shapely.geometry import Point
 
 def desktop(request):
     file = ''
@@ -476,7 +477,7 @@ def get_species_data(request):
     response = {'species_data': species_data}
     return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
 
-
+# deprecated
 def get_geo_data(request):
     with connection.cursor() as cursor:
         query = """SELECT d.longitude, d.latitude, p.name, p.mode FROM taicat_deployment d 
@@ -569,7 +570,7 @@ def stat_county(request):
         if len(response):
             response = response[0]
             response.update({'species':response.get('species').replace(',','、')})
-
+            print(response)
             sa_points = []
             if response['studyarea']:
                 # print(response['studyarea'])
@@ -595,14 +596,28 @@ def stat_county(request):
 
 def stat_studyarea(request):
     if request.method == 'GET':
+        sa = []
         said = request.GET.get('said')
-        query = f"""SELECT id, longitude, latitude, name FROM taicat_deployment WHERE study_area_id = {said}"""
+        query = f"""SELECT id, longitude, latitude, name, geodetic_datum FROM taicat_deployment WHERE study_area_id = {said}"""
         with connection.cursor() as cursor:
             cursor.execute(query)
             sa = cursor.fetchall()
         name = []
         count = []
+        new_sa = []
         for s in sa:
+            if s[4] == 'TWD97':
+                df = pd.DataFrame({
+                            'Lat':[int(s[2])],
+                            'Lon':[int(s[1])]})
+                geometry = [Point(xy) for xy in zip(df.Lon, df.Lat)]
+                gdf = gpd.GeoDataFrame(df, geometry=geometry)
+                gdf = gdf.set_crs(epsg=3826, inplace=True)
+                gdf = gdf.to_crs(epsg=4326)
+                new_sa.append((s[0], gdf.geometry.x[0], gdf.geometry.y[0], s[3]))
+            else:
+                new_sa.append(s)
+
             query = f"""
                     SELECT d.name, COUNT(DISTINCT(i.image_uuid))
                     FROM taicat_image i
@@ -628,6 +643,6 @@ def stat_studyarea(request):
                         WHERE sas.studyarea_id = ({said});"""
             cursor.execute(query)
             sa_center = cursor.fetchall()        
-        response = {'name': name, 'count': count, 'deployment_points': sa, 'center': sa_center[0]}
+        response = {'name': name, 'count': count, 'deployment_points': new_sa, 'center': sa_center[0]}
         
         return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
