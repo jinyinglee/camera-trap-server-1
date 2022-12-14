@@ -203,9 +203,9 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                           $('#edit-image').html('')
                         }
   
-                        $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
-                        $('#edit-image video').attr('width', '100%');
-                        $('#edit-image video').attr('height', '');
+                        $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').addClass('h-auto');
+                        $('#edit-image video').addClass('w-100');
+                        $('#edit-image video').addClass('h-auto');
                         $('#edit-image video source').on('error',function(event) {
                         $(this).parent().parent().html('<p align="center" class="cannot-load">無法載入</p>')
                         })
@@ -496,9 +496,9 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                   $('#edit-image_uuid').val(row['image_uuid'])
                   $('#edit-image_id').val(row['image_id'])
                   $('#edit-image').html(row['file_url'])
-                  $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
-                  $('#edit-image video').attr('width', '100%');
-                  $('#edit-image video').attr('height', '');
+                  $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').addClass('h-auto');
+                  $('#edit-image video').addClass('w-100');
+                  $('#edit-image video').addClass('h-auto');
                   $('#edit-image video source').on('error',function(event) {
                     $(this).parent().parent().html('<p class="cannot-load" align="center">無法載入</p>')
                   })
@@ -725,7 +725,9 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
             checkedvalue = [];
             $("input[name=edit]").not('#edit-all').each(function () {
                 if ($(this).is(":checked")) {
+                    if (!isNaN($(this).val())){
                     checkedvalue.push($(this).val());
+                    }
                 }
             });
             $('#deleteModal').modal('hide')
@@ -734,7 +736,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
               data: {'image_id': checkedvalue},
               headers:{'X-CSRFToken': $csrf_token},
               type: "POST",
-              url: "/delete/" + pk,
+              url: "/delete/" + pk + '/',
               success: function(data){
                 
                 table.draw(false); // stay in same page
