@@ -459,3 +459,7 @@ footer {
   .pointer {
     cursor: pointer
   }
+
+  .ml-10 {
+    margin-left: 10px;
+  }
