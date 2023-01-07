@@ -1418,11 +1418,13 @@ def update_edit_autocomplete(request):
 
 
 def data(request):
-    t = time.time()
+    # t = time.time()
     requests = request.POST
     pk = requests.get('pk')
     _start = requests.get('start')
     _length = requests.get('length')
+    orderby = requests.get('orderby', 'datetime')
+    sort = requests.get('sort', 'asc')
 
     start_date = requests.get('start_date')
     end_date = requests.get('end_date')
@@ -1461,21 +1463,23 @@ def data(request):
         folder_filter = f"AND folder_name = '{folder_name}'"
 
     with connection.cursor() as cursor:
-        query = """SELECT id, studyarea_id, deployment_id, filename, species,
-                        life_stage, sex, antler, animal_id, remarks, file_url, image_uuid, from_mongo,
-                        to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, memo, specific_bucket
-                        FROM taicat_image
-                        WHERE project_id = {} {} {} {} {} {}
-                        ORDER BY datetime ASC, project_id ASC
+        query = """SELECT i.id, i.studyarea_id, i.deployment_id, i.filename, i.species,
+                        i.life_stage, i.sex, i.antler, i.animal_id, i.remarks, i.file_url, i.image_uuid, i.from_mongo,
+                        to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, i.memo, i.specific_bucket
+                        FROM taicat_image i
+                        JOIN taicat_deployment d ON d.id = i.deployment_id
+                        WHERE i.project_id = {} {} {} {} {} {}
+                        ORDER BY {} {}, i.id ASC
                         LIMIT {} OFFSET {}"""
         # set limit = 1000 to avoid bad psql query plan
-        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, 1000, _start))
+        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, orderby, sort, 1000, _start))
         image_info = cursor.fetchall()
         # print(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, 1000, _start))
     if image_info:
 
         df = pd.DataFrame(image_info, columns=['image_id', 'studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
                                                'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime', 'memo', 'specific_bucket'])[:int(_length)]
+        # print(df)
         # print('b', time.time()-t)
         sa_names = pd.DataFrame(StudyArea.objects.filter(id__in=df.studyarea_id.unique()).values('id', 'name', 'parent_id')
                                 ).rename(columns={'id': 'studyarea_id', 'name': 'saname', 'parent_id': 'saparent'})

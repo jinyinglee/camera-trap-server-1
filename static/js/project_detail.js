@@ -2,6 +2,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
 
       $(document).ready(function() {
 
+
         let pk = $('input[name=pk]').val();
 
       $.ajax({
@@ -249,6 +250,8 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                     d.end_date = window.conditions.end_date;
                     d.deployment = window.conditions.deployment;
                     d.folder_name = window.conditions.folder_name;
+                    d.orderby = $('.orderby svg.sort-icon-active').data('orderby');
+                    d.sort = $('.orderby svg.sort-icon-active').data('sort');
                 },
               },
               order: [[0, "asc"]],
@@ -343,6 +346,26 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                   }
               ],
           });
+
+
+        $('.orderby').on('click',function(){
+          if ($(this).children('svg').hasClass('fa-sort')){
+              $('.orderby:not(this)').children('svg').removeClass('fa-sort-down fa-sort-up sort-icon-active sort-icon').addClass('fa-sort sort-icon');
+              $(this).children('svg').removeClass('fa-sort sort-icon-active sort-icon').addClass('fa-sort-down sort-icon-active');
+              $(this).children('svg').data('sort','asc');
+          } else if ($(this).children('svg').hasClass('fa-sort-down')) {
+              $('.orderby:not(this)').children('svg').removeClass('fa-sort-down fa-sort-up sort-icon-active sort-icon').addClass('fa-sort sort-icon');
+              $(this).children('svg').removeClass('fa-sort sort-icon-active sort-icon').addClass('fa-sort-up sort-icon-active')
+              $(this).children('svg').data('sort','desc');
+          } else {
+              $('.orderby:not(this)').children('svg').removeClass('fa-sort-down fa-sort-up sort-icon-active sort-icon').addClass('fa-sort sort-icon');
+              $(this).children('svg').removeClass('fa-sort sort-icon-active sort-icon').addClass('fa-sort-down sort-icon-active')
+              $(this).children('svg').data('sort','asc');
+          }
+
+          table.draw();
+          //getRecordByURL(queryString,null,response.limit,$(this).data('orderby'),$(this).data('sort'))
+        })
   
           // edit
           $('#edit_button').on('click', function(){
