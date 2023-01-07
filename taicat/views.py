@@ -465,14 +465,15 @@ def update_species_pie(request):
         # deployments
         if sa_list:
             # 抓子樣區 & 該樣區底下的相機位置
-            query = f"""SELECT sas.longitude, sas.latitude, sa.name, TRUE as sub, sa.id, NULL FROM taicat_studyareastat sas
+            # SAS裡面已經都是WGS84
+            query = f"""SELECT sas.longitude, sas.latitude, sa.name, TRUE as sub, sa.id, 'WGS84' FROM taicat_studyareastat sas
                         JOIN taicat_studyarea sa ON sas.studyarea_id = sa.id
                         WHERE sas.studyarea_id IN ({','.join(sa_list)}) 
                         UNION 
-                        SELECT longitude, latitude, name, FALSE as sub, NULL FROM taicat_deployment WHERE study_area_id = {sa} 
+                        SELECT longitude, latitude, name, FALSE as sub, study_area_id, geodetic_datum FROM taicat_deployment WHERE study_area_id = {sa} 
                         ORDER BY longitude DESC;"""
         else:
-            query = f"""SELECT longitude, latitude, name, FALSE as sub, NULL, geodetic_datum FROM taicat_deployment WHERE study_area_id = {sa} ORDER BY longitude DESC;"""
+            query = f"""SELECT longitude, latitude, name, FALSE as sub, study_area_id, geodetic_datum FROM taicat_deployment WHERE study_area_id = {sa} ORDER BY longitude DESC;"""
 
         with connection.cursor() as cursor:
             cursor.execute(query)
@@ -1255,7 +1256,7 @@ def project_detail(request, pk):
         cursor.execute(query.format(pk))
         project_info = cursor.fetchone()
     project_info = list(project_info)
-    deployment = Deployment.objects.filter(project_id=pk)
+    deployment = Deployment.objects.filter(project_id=pk).order_by('name')
     # folder name takes long time
     # folder_list = Image.objects.filter(project_id=pk).order_by('folder_name').distinct('folder_name')
     now = timezone.now()
@@ -1465,7 +1466,7 @@ def data(request):
                         to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, memo, specific_bucket
                         FROM taicat_image
                         WHERE project_id = {} {} {} {} {} {}
-                        ORDER BY created DESC, project_id ASC
+                        ORDER BY datetime ASC, project_id ASC
                         LIMIT {} OFFSET {}"""
         # set limit = 1000 to avoid bad psql query plan
         cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, 1000, _start))

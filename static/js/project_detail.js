@@ -2,7 +2,6 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
 
       $(document).ready(function() {
 
-
         let pk = $('input[name=pk]').val();
 
       $.ajax({
@@ -28,6 +27,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
           
           // select folder from url
           $selectf[0].selectize.setValue($('input[name=get-folder]'));
+
   
           /* sub studyarea */
           /// TODO 這邊要補齊
@@ -212,8 +212,9 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                         $('#edit-image video source, #edit-image img').on('error',function(event) {
                         $(this).parent().html('<p align="center" class="cannot-load">無法載入</p>')
                         })  
+
                         
-                        $('#editModal').modal('show');
+                          $('#editModal').modal('show');
   
                         // disable edit
                         let editable = response.editable;
@@ -269,7 +270,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                     }
                   })
                   // remove last page button
-                  $("a[data-dt-idx=7]").remove()
+                  //$("a[data-dt-idx=7]").remove()
   
                   // lazy loading for images
                   var watcher = new IntersectionObserver(onEnterView);
@@ -314,10 +315,10 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                   })
   
                   // adjust columns after 1000 ms
+
                   setTimeout(function(){
                       $.fn.dataTable.tables( { visible: false, api: true } ).columns.adjust();
                   }, 1000);
-  
               },
               columns: [
                           {data: "edit"},
@@ -406,7 +407,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
   
   
   
-          function changeEditContent(current_row, idx){          
+          function changeEditContent(current_row, idx){         
               // remove notice info
               $('#edit-studyarea, #edit-deployment, #edit-project').removeClass('notice-border')
               $('.notice').addClass('d-none');
@@ -429,7 +430,6 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                     });
                 }
               })
-  
   
               $('.edit-prev').unbind('click');
               $('.edit-prev').on('click', function(){
@@ -454,6 +454,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                   if (current_row.prev().length!=0){
                     changeEditContent(current_row.prev(), idx);
                   } else {
+                    
                     $('#img-table_previous').trigger('click');
                     var table = $('#img-table').DataTable();
                       // 等到table畫好再換, 預設最後一個
@@ -506,10 +507,10 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                     $(this).parent().html('<p class="cannot-load" align="center">無法載入</p>')
                   })
   
-                if (idx != 0){
-                  $('#editModal').modal('show');
+                /*if (idx != 0){
+                    $('#editModal').modal('show');
                   // disable edit
-                } 
+                } */
   
                   let editable = response.editable;
                   if ((editable!=true)||($('#edit_button').data('edit')=='off')){
@@ -519,7 +520,12 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                     $('.edit-content input').prop("disabled", false)
                     $('.edit-footer').removeClass('d-none')
                   }
-            
+
+
+                  $('.edit-xx').on('click', function(){
+                    $('#editModal').modal('hide')
+                  })
+
           }
   
   
@@ -532,6 +538,10 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
   
             changeEditContent(current_row.parent(), idx);
             $('.edit-prev, .edit-next').removeClass('d-none');
+
+            if (idx!=0){
+              $('#editModal').modal('show')
+            }
   
           });
   
