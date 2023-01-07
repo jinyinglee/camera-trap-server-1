@@ -34,6 +34,7 @@
     background-color: rgb(228, 224, 224) !important;
     border: 1px solid rgb(228, 224, 224);
   }
+
   .page-link {
     color: black !important;
   }
@@ -84,7 +85,7 @@
     display: none;
   }
 
-  
+
   input[name="species-filter"] {
     display: none;
   }
@@ -109,6 +110,7 @@
     overflow-y: scroll;
     height: calc(100vh - 180px);
   }
+
   .remain.col-10 {
     position: relative;
     height: calc(100vh - 126px);
@@ -130,11 +132,11 @@
   }
 
   /* sub studyarea */
-  .collapse > li {
+  .collapse>li {
     margin-left: 10%;
   }
 
-  .collapse-s > li {
+  .collapse-s>li {
     margin-left: 20%;
   }
 
@@ -143,50 +145,57 @@
     font-size: 15px;
   }
 
-.edit-next:hover, .edit-prev:hover{
-  color: lightgrey;
-}
+  .edit-next:hover, .edit-prev:hover, .edit-xx:hover {
+    color: lightgrey;
+  }
 
-.cannot-load {
-    color: darkgrey; 
+
+  .cannot-load {
+    color: darkgrey;
     margin: auto
-}
+  }
 
-.fs-14 {
+  .fs-14 {
     font-size: 14px;
-}
+  }
 
-.fs-20 {
+  .fs-20 {
     font-size: 20px;
-}
+  }
 
-.last_updated {
-    color: grey; 
-    font-size:12px
-}
+  .last_updated {
+    color: grey;
+    font-size: 12px
+  }
 
 
-.h-120 {
+  .h-120 {
     height: 120px
-}
+  }
 
-.hr-style {
-    margin: auto; 
+  .hr-style {
+    margin: auto;
     width: 90%
-}
+  }
 
-.ls-none {
+  .ls-none {
     list-style: none
-}
+  }
 
-.mt-50p {
+  .mt-50p {
     margin-top: 50px
-}
+  }
 
-.w-12 {
+  .w-12 {
     width: 12px;
     margin-right: 5px;
     margin-left: 5px;
+  }
+
+  .w-30 {
+    width: 30px;
+    margin-right: 10px;
+    color: rgb(37, 116, 85)
   }
 
 
@@ -194,6 +203,10 @@
     height: 100px;
   }
 
-  .check-mark{
+  .check-mark {
     color: rgb(37, 116, 85) !important;
-}
+  }
+
+  #editModal .modal-dialog {
+    max-width: 80% !important;
+  }
