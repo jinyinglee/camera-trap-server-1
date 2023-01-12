@@ -99,7 +99,7 @@
                       全部
                     </label>
                   </li>
-                  {% for j in i.deployment_set.all %}
+                  {% for j in i.deployment_set.all|dictsort:"name" %}
                   <li>
                     <label class="form-check-label w-auto">
                       <input class="filter" type="checkbox" name="d-filter" value="{{ j.id }}" data-parent-radio="{{ i.id }}" />
@@ -134,9 +134,9 @@
             <tr>
               <td><input type="checkbox" id="edit-all" class="edit-checkbox" name="edit" /></td>
               <td>樣區</td>
-              <td>相機位置</td>
+              <td class="orderby pointer">相機位置<i data-orderby="d.name" class="fa-solid fa-sort sort-icon"></i></td>
               <td>檔名</td>
-              <td>日期時間</td>
+              <td class="orderby pointer">日期時間<i data-orderby="i.datetime" class="fa-solid fa-sort-down sort-icon-active"></i></td>
               <td>物種</td>
               <td>年齡</td>
               <td>性別</td>
@@ -165,10 +165,18 @@
     <div class="modal-dialog">
       <div class="modal-content edit-content">
         <div class="modal-body" id="modal-text">
+          <div class="d-flex justify-content-end">
+            <i class="fa-solid fa-circle-xmark pointer w-30 text-grey edit-xx"></i>            
+          </div>
           <div class="row my-3 align-items-center">
-            <div class="col-1"><span class="edit-prev text-grey pointer"><</span></div>
+            <div class="col-1 d-flex justify-content-end">
+              <!--<span class="edit-prev text-grey pointer"><</span>-->
+              <i class="edit-prev text-grey pointer w-12 fa-solid fa-angle-left"></i>
+            </div>
             <div class="col-10" id="edit-image"></div>
-            <div class="col-1"><span class="edit-next text-grey pointer">></span></div>
+            <div class="col-1 d-flex justify-content-start">
+              <i class="edit-next text-grey pointer w-12 fa-solid fa-angle-right"></i>
+            </div>
           </div>
           <form novalidate action="{% url 'edit_image' pk %}" method="post" autocomplete="off" id="editForm">
             {% csrf_token %}
@@ -386,7 +394,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
-          <a class="btn btn-danger" id="deleteData"">刪除</a>
+          <a class="btn btn-danger" id="deleteData">刪除</a>
         </div>
       </div>
     </div>

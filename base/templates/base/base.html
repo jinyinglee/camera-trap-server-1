@@ -91,7 +91,7 @@
                 <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
                   <li><a class="dropdown-item" href="{% url 'personal_info' %}">帳號設定</a></li>
                   {% comment %} {% if request.session.name in '系統管理員,計畫總管理人' %} {% endcomment %} 
-                  {% if request.session.name == '系統管理員' %}
+                  {% if request.session.id|if_permission %}
                   <li><a class="dropdown-item" href="{% url 'set_permission' %}">權限管理</a></li>
                   {% endif %}
                   {% if request.session.id|if_desktop %}
@@ -128,11 +128,6 @@
             <p>請使用您的 ORCID 帳號登入：</p>
             <div class="my-3">
               <a class="btn btn-light w-100" id="getAuth"> 使用 ORCID 帳號登入 </a>
-              ＊測試用登入＊<br />
-              <a class="btn btn-light" href="{% url 'login_for_test' %}?role=計畫總管理人&next={{ request.path }}"> 計畫總管理人 </a>
-              <a class="btn btn-light" href="{% url 'login_for_test' %}?role=個別計畫承辦人&next={{ request.path }}"> 計畫承辦人 </a>
-              <a class="btn btn-light" href="{% url 'login_for_test' %}?role=資料上傳者&next={{ request.path }}"> 資料上傳者 </a>
-              <a class="btn btn-light" href="{% url 'login_for_test' %}?role=系統管理員&next={{ request.path }}"> 系統管理員 </a>
             </div>
             <div class="text-gray">
               還沒有帳號？
@@ -201,13 +196,11 @@
                   <li>
                     <a href="mailto:cameratrap.taibif@gmail.com" target="_blank">
                       <i class="icon icon-mail-gray"></i>
-                      <span class="text">cameratrap.taibif@gmail.com</span>
+                      <!--<span class="text">cameratrap.taibif@gmail.com</span>-->
                     </a>
-                  </li>
-                  <li>
-                    <a href="tel:+886227899621" target="_blank">
+                    <a class="ml-10" href="https://www.biodiv.tw/zh_topic-Systematics_and_Biodiversity_Informatics_Center" target="_blank">
                       <i class="icon icon-phone-gray"></i>
-                      <span class="text">02-27899621</span>
+                      <!--<span class="text"></span>-->
                     </a>
                   </li>
                 </ul>

@@ -57,6 +57,8 @@ from taicat.utils import half_year_ago, get_project_member, delete_image_by_ids
 
 from openpyxl import Workbook
 from bson.objectid import ObjectId
+import geopandas as gpd
+from shapely.geometry import Point
 
 
 def get_project_info_web(request):
@@ -69,9 +71,21 @@ def get_project_info_web(request):
     sa_center = [23.5, 121.2]
     zoom = 6
     if sa:
-        sa_point = Deployment.objects.filter(study_area_id__in=sa_list, latitude__isnull = False, longitude__isnull = False).order_by('-latitude').values('latitude', 'longitude').first()
+        sa_point = Deployment.objects.filter(study_area_id__in=sa_list, latitude__isnull = False, longitude__isnull = False).order_by('-latitude').values('latitude','longitude','geodetic_datum').first()
         if sa_point:
-            sa_center = [float(sa_point['latitude']),float(sa_point['longitude'])]
+            if sa_point['geodetic_datum'] == 'WGS84':
+                sa_center = [float(sa_point['latitude']),float(sa_point['longitude'])]
+            else:
+                df = pd.DataFrame({
+                            'Lat':[int(sa_point['latitude'])],
+                            'Lon':[int(sa_point['longitude'])]})
+
+                geometry = [Point(xy) for xy in zip(df.Lon, df.Lat)]
+                gdf = gpd.GeoDataFrame(df, geometry=geometry)
+
+                gdf = gdf.set_crs(epsg=3826, inplace=True)
+                gdf = gdf.to_crs(epsg=4326)
+                sa_center = [gdf.geometry.y[0],gdf.geometry.x[0]]
             zoom = 8
 
     species_count = 0
@@ -226,6 +240,8 @@ def update_species_map(request):
     # print(date_filter)
 
     data = []
+    new_data = []
+
     if sa := request.GET.get('said'):
         type = '相機位置'
         # 確定有沒有子樣區
@@ -233,12 +249,12 @@ def update_species_map(request):
         sa_list = [str(s.id) for s in subsa]
         if sa_list:
             query = f"""
-                    SELECT COUNT(*), d.longitude, d.latitude, d.name FROM taicat_image i 
+                    SELECT COUNT(*), d.longitude, d.latitude, d.name, d.geodetic_datum FROM taicat_image i 
                     JOIN taicat_deployment d ON i.deployment_id = d.id
                     WHERE i.species='{species}' AND i.studyarea_id IN ({','.join(sa_list)})"""
         else:
             query = f"""
-                    SELECT COUNT(*), d.longitude, d.latitude, d.name FROM taicat_image i 
+                    SELECT COUNT(*), d.longitude, d.latitude, d.name, d.geodetic_datum FROM taicat_image i 
                     JOIN taicat_deployment d ON i.deployment_id = d.id
                     WHERE i.species='{species}' AND i.studyarea_id={sa}"""
     elif pk := request.GET.get('said[project]'):
@@ -255,31 +271,43 @@ def update_species_map(request):
             else:
                 update_studyareastat(','.join(sa_list))
             query = f"""
-                    SELECT COUNT(*), sas.longitude, sas.latitude, sa.name FROM taicat_image i 
+                    SELECT COUNT(*), sas.longitude, sas.latitude, sa.name, '' FROM taicat_image i 
                     JOIN taicat_studyareastat sas ON i.studyarea_id = sas.studyarea_id
                     JOIN taicat_studyarea sa ON i.studyarea_id = sa.id
                     WHERE i.species='{species}' AND i.studyarea_id IN ({','.join(sa_list)})"""
-
     if query:
         if date_filter:
             query += date_filter
 
         with connection.cursor() as cursor:
             if sa:
-                query += ' group by i.deployment_id, d.longitude, d.latitude, d.name'
+                query += ' group by i.deployment_id, d.longitude, d.latitude, d.name, d.geodetic_datum'
             elif pk:
                 query += ' group by i.studyarea_id, sas.longitude, sas.latitude, sa.name'
             cursor.execute(query)
             data = cursor.fetchall()
+            for d in data:
+                if d[4] == 'TWD97':
+                    df = pd.DataFrame({
+                                'Lat':[int(d[2])],
+                                'Lon':[int(d[1])]})
+                    geometry = [Point(xy) for xy in zip(df.Lon, df.Lat)]
+                    gdf = gpd.GeoDataFrame(df, geometry=geometry)
+                    gdf = gdf.set_crs(epsg=3826, inplace=True)
+                    gdf = gdf.to_crs(epsg=4326)
+                    new_data.append((d[0], gdf.geometry.x[0], gdf.geometry.y[0], d[3]))
+                    # sa_center = [gdf.geometry.y[0],gdf.geometry.x[0]]
+                else:
+                    new_data.append((d[0], d[1], d[2], d[3]))
 
     last_updated = timezone.now() + timedelta(hours=8)
     last_updated = datetime.datetime.strftime(last_updated,'%Y-%m-%d') 
 
     total_count = 0
-    for d in data:
+    for d in new_data:
         total_count += d[0]
 
-    response = {'data': data, 'last_updated': last_updated, 'total_count': total_count, 'type': type}
+    response = {'data': new_data, 'last_updated': last_updated, 'total_count': total_count, 'type': type}
 
     return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
     
@@ -384,6 +412,7 @@ def update_species_pie(request):
     pie_data = []
     other_data = []
     deployment_points = []
+    new_deployment_points = []
     if sa := request.GET.get('said'):
         # 確定有沒有子樣區
         subsa = StudyArea.objects.filter(parent_id=sa)
@@ -436,18 +465,32 @@ def update_species_pie(request):
         # deployments
         if sa_list:
             # 抓子樣區 & 該樣區底下的相機位置
-            query = f"""SELECT sas.longitude, sas.latitude, sa.name, TRUE as sub, sa.id FROM taicat_studyareastat sas
+            # SAS裡面已經都是WGS84
+            query = f"""SELECT sas.longitude, sas.latitude, sa.name, TRUE as sub, sa.id, 'WGS84' FROM taicat_studyareastat sas
                         JOIN taicat_studyarea sa ON sas.studyarea_id = sa.id
                         WHERE sas.studyarea_id IN ({','.join(sa_list)}) 
                         UNION 
-                        SELECT longitude, latitude, name, FALSE as sub, NULL FROM taicat_deployment WHERE study_area_id = {sa} 
+                        SELECT longitude, latitude, name, FALSE as sub, study_area_id, geodetic_datum FROM taicat_deployment WHERE study_area_id = {sa} 
                         ORDER BY longitude DESC;"""
         else:
-            query = f"""SELECT longitude, latitude, name, FALSE as sub FROM taicat_deployment WHERE study_area_id = {sa} ORDER BY longitude DESC;"""
+            query = f"""SELECT longitude, latitude, name, FALSE as sub, study_area_id, geodetic_datum FROM taicat_deployment WHERE study_area_id = {sa} ORDER BY longitude DESC;"""
 
         with connection.cursor() as cursor:
             cursor.execute(query)
             deployment_points = cursor.fetchall()
+            
+            for d in deployment_points:
+                if d[5] == 'TWD97':
+                    df = pd.DataFrame({
+                                'Lat':[int(d[1])],
+                                'Lon':[int(d[0])]})
+                    geometry = [Point(xy) for xy in zip(df.Lon, df.Lat)]
+                    gdf = gpd.GeoDataFrame(df, geometry=geometry)
+                    gdf = gdf.set_crs(epsg=3826, inplace=True)
+                    gdf = gdf.to_crs(epsg=4326)
+                    new_deployment_points.append((gdf.geometry.x[0], gdf.geometry.y[0], d[2], d[3], d[4], d[5]))
+                else:
+                    new_deployment_points.append(d)
             
     elif pk := request.GET.get('said[project]'):
         deployment_points = []
@@ -490,9 +533,10 @@ def update_species_pie(request):
 
 
     response = {'pie_data': pie_data, 'other_data': other_data, 'species_count': species_count, 
-                'species_last_updated': species_last_updated, 'deployment_points': deployment_points}
+                'species_last_updated': species_last_updated, 'deployment_points': new_deployment_points}
 
     return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')
+
 
 
 def project_info(request, pk):
@@ -504,9 +548,22 @@ def project_info(request, pk):
     sa_center = [23.5, 121.2]
     zoom = 6
     if sa:
-        sa_point = Deployment.objects.filter(study_area_id__in=sa_list, latitude__isnull = False, longitude__isnull = False).order_by('-latitude').values('latitude', 'longitude').first()
+        sa_point = Deployment.objects.filter(study_area_id__in=sa_list, latitude__isnull = False, longitude__isnull = False).order_by('-latitude').values('latitude', 'longitude','geodetic_datum').first()
         if sa_point:
-            sa_center = [float(sa_point['latitude']),float(sa_point['longitude'])]
+            if sa_point['geodetic_datum'] == 'WGS84':
+                sa_center = [float(sa_point['latitude']),float(sa_point['longitude'])]
+            else:
+                df = pd.DataFrame({
+                            'Lat':[int(sa_point['latitude'])],
+                            'Lon':[int(sa_point['longitude'])]})
+
+                geometry = [Point(xy) for xy in zip(df.Lon, df.Lat)]
+                gdf = gpd.GeoDataFrame(df, geometry=geometry)
+
+                gdf = gdf.set_crs(epsg=3826, inplace=True)
+                gdf = gdf.to_crs(epsg=4326)
+                sa_center = [gdf.geometry.y[0],gdf.geometry.x[0]]
+
             zoom = 8
 
     species_count = 0
@@ -1199,7 +1256,7 @@ def project_detail(request, pk):
         cursor.execute(query.format(pk))
         project_info = cursor.fetchone()
     project_info = list(project_info)
-    deployment = Deployment.objects.filter(project_id=pk)
+    deployment = Deployment.objects.filter(project_id=pk).order_by('name')
     # folder name takes long time
     # folder_list = Image.objects.filter(project_id=pk).order_by('folder_name').distinct('folder_name')
     now = timezone.now()
@@ -1361,11 +1418,13 @@ def update_edit_autocomplete(request):
 
 
 def data(request):
-    t = time.time()
+    # t = time.time()
     requests = request.POST
     pk = requests.get('pk')
     _start = requests.get('start')
     _length = requests.get('length')
+    orderby = requests.get('orderby', 'datetime')
+    sort = requests.get('sort', 'asc')
 
     start_date = requests.get('start_date')
     end_date = requests.get('end_date')
@@ -1404,21 +1463,23 @@ def data(request):
         folder_filter = f"AND folder_name = '{folder_name}'"
 
     with connection.cursor() as cursor:
-        query = """SELECT id, studyarea_id, deployment_id, filename, species,
-                        life_stage, sex, antler, animal_id, remarks, file_url, image_uuid, from_mongo,
-                        to_char(datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, memo, specific_bucket
-                        FROM taicat_image
-                        WHERE project_id = {} {} {} {} {} {}
-                        ORDER BY created DESC, project_id ASC
+        query = """SELECT i.id, i.studyarea_id, i.deployment_id, i.filename, i.species,
+                        i.life_stage, i.sex, i.antler, i.animal_id, i.remarks, i.file_url, i.image_uuid, i.from_mongo,
+                        to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, i.memo, i.specific_bucket
+                        FROM taicat_image i
+                        JOIN taicat_deployment d ON d.id = i.deployment_id
+                        WHERE i.project_id = {} {} {} {} {} {}
+                        ORDER BY {} {}, i.id ASC
                         LIMIT {} OFFSET {}"""
         # set limit = 1000 to avoid bad psql query plan
-        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, 1000, _start))
+        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, orderby, sort, 1000, _start))
         image_info = cursor.fetchall()
         # print(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, 1000, _start))
     if image_info:
 
         df = pd.DataFrame(image_info, columns=['image_id', 'studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
                                                'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime', 'memo', 'specific_bucket'])[:int(_length)]
+        # print(df)
         # print('b', time.time()-t)
         sa_names = pd.DataFrame(StudyArea.objects.filter(id__in=df.studyarea_id.unique()).values('id', 'name', 'parent_id')
                                 ).rename(columns={'id': 'studyarea_id', 'name': 'saname', 'parent_id': 'saparent'})

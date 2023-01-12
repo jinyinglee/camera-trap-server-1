@@ -28,6 +28,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
           
           // select folder from url
           $selectf[0].selectize.setValue($('input[name=get-folder]'));
+
   
           /* sub studyarea */
           /// TODO 這邊要補齊
@@ -139,6 +140,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                       let animal_id_array = []
                       let remarks_array = []
                       $( "input.edit-checkbox:checked").not('#edit-all').each(function(  ) {
+                        if(!$(this).parent().hasClass("dataTables_sizing")){
                         current_row = table.row($(this).parent()).data();
                         img_array.push(current_row['image_id'])
                         imguuid_array.push(current_row['image_uuid'])
@@ -161,6 +163,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                           let idx = table.column(c_row).index();              
                           changeEditContent(c_row.parent(), idx);
                         }
+                      }
                       });  
   
                         $('#edit-image_id').val(img_array)                  
@@ -201,17 +204,18 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                           $('#edit-image').html('')
                         }
   
-                        $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
-                        $('#edit-image video').attr('width', '100%');
-                        $('#edit-image video').attr('height', '');
+                        $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').addClass('h-auto');
+                        $('#edit-image video').addClass('w-100');
+                        $('#edit-image video').addClass('h-auto');
                         $('#edit-image video source').on('error',function(event) {
                         $(this).parent().parent().html('<p align="center" class="cannot-load">無法載入</p>')
                         })
                         $('#edit-image video source, #edit-image img').on('error',function(event) {
                         $(this).parent().html('<p align="center" class="cannot-load">無法載入</p>')
                         })  
+
                         
-                        $('#editModal').modal('show');
+                          $('#editModal').modal('show');
   
                         // disable edit
                         let editable = response.editable;
@@ -246,6 +250,8 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                     d.end_date = window.conditions.end_date;
                     d.deployment = window.conditions.deployment;
                     d.folder_name = window.conditions.folder_name;
+                    d.orderby = $('.orderby svg.sort-icon-active').data('orderby');
+                    d.sort = $('.orderby svg.sort-icon-active').data('sort');
                 },
               },
               order: [[0, "asc"]],
@@ -267,7 +273,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                     }
                   })
                   // remove last page button
-                  $("a[data-dt-idx=7]").remove()
+                  //$("a[data-dt-idx=7]").remove()
   
                   // lazy loading for images
                   var watcher = new IntersectionObserver(onEnterView);
@@ -312,10 +318,10 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                   })
   
                   // adjust columns after 1000 ms
+
                   setTimeout(function(){
                       $.fn.dataTable.tables( { visible: false, api: true } ).columns.adjust();
                   }, 1000);
-  
               },
               columns: [
                           {data: "edit"},
@@ -340,6 +346,26 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                   }
               ],
           });
+
+
+        $('.orderby').on('click',function(){
+          if ($(this).children('svg').hasClass('fa-sort')){
+              $('.orderby:not(this)').children('svg').removeClass('fa-sort-down fa-sort-up sort-icon-active sort-icon').addClass('fa-sort sort-icon');
+              $(this).children('svg').removeClass('fa-sort sort-icon-active sort-icon').addClass('fa-sort-down sort-icon-active');
+              $(this).children('svg').data('sort','asc');
+          } else if ($(this).children('svg').hasClass('fa-sort-down')) {
+              $('.orderby:not(this)').children('svg').removeClass('fa-sort-down fa-sort-up sort-icon-active sort-icon').addClass('fa-sort sort-icon');
+              $(this).children('svg').removeClass('fa-sort sort-icon-active sort-icon').addClass('fa-sort-up sort-icon-active')
+              $(this).children('svg').data('sort','desc');
+          } else {
+              $('.orderby:not(this)').children('svg').removeClass('fa-sort-down fa-sort-up sort-icon-active sort-icon').addClass('fa-sort sort-icon');
+              $(this).children('svg').removeClass('fa-sort sort-icon-active sort-icon').addClass('fa-sort-down sort-icon-active')
+              $(this).children('svg').data('sort','asc');
+          }
+
+          table.draw();
+          //getRecordByURL(queryString,null,response.limit,$(this).data('orderby'),$(this).data('sort'))
+        })
   
           // edit
           $('#edit_button').on('click', function(){
@@ -404,7 +430,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
   
   
   
-          function changeEditContent(current_row, idx){          
+          function changeEditContent(current_row, idx){         
               // remove notice info
               $('#edit-studyarea, #edit-deployment, #edit-project').removeClass('notice-border')
               $('.notice').addClass('d-none');
@@ -427,7 +453,6 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                     });
                 }
               })
-  
   
               $('.edit-prev').unbind('click');
               $('.edit-prev').on('click', function(){
@@ -452,6 +477,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                   if (current_row.prev().length!=0){
                     changeEditContent(current_row.prev(), idx);
                   } else {
+                    
                     $('#img-table_previous').trigger('click');
                     var table = $('#img-table').DataTable();
                       // 等到table畫好再換, 預設最後一個
@@ -494,9 +520,9 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                   $('#edit-image_uuid').val(row['image_uuid'])
                   $('#edit-image_id').val(row['image_id'])
                   $('#edit-image').html(row['file_url'])
-                  $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').css("height", "");
-                  $('#edit-image video').attr('width', '100%');
-                  $('#edit-image video').attr('height', '');
+                  $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').addClass('h-auto');
+                  $('#edit-image video').addClass('w-100');
+                  $('#edit-image video').addClass('h-auto');
                   $('#edit-image video source').on('error',function(event) {
                     $(this).parent().parent().html('<p class="cannot-load" align="center">無法載入</p>')
                   })
@@ -504,10 +530,10 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                     $(this).parent().html('<p class="cannot-load" align="center">無法載入</p>')
                   })
   
-                if (idx != 0){
-                  $('#editModal').modal('show');
+                /*if (idx != 0){
+                    $('#editModal').modal('show');
                   // disable edit
-                } 
+                } */
   
                   let editable = response.editable;
                   if ((editable!=true)||($('#edit_button').data('edit')=='off')){
@@ -517,7 +543,12 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                     $('.edit-content input').prop("disabled", false)
                     $('.edit-footer').removeClass('d-none')
                   }
-            
+
+
+                  $('.edit-xx').on('click', function(){
+                    $('#editModal').modal('hide')
+                  })
+
           }
   
   
@@ -530,6 +561,10 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
   
             changeEditContent(current_row.parent(), idx);
             $('.edit-prev, .edit-next').removeClass('d-none');
+
+            if (idx!=0){
+              $('#editModal').modal('show')
+            }
   
           });
   
@@ -723,7 +758,9 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
             checkedvalue = [];
             $("input[name=edit]").not('#edit-all').each(function () {
                 if ($(this).is(":checked")) {
+                    if (!isNaN($(this).val())){
                     checkedvalue.push($(this).val());
+                    }
                 }
             });
             $('#deleteModal').modal('hide')
@@ -732,7 +769,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
               data: {'image_id': checkedvalue},
               headers:{'X-CSRFToken': $csrf_token},
               type: "POST",
-              url: "/delete/" + pk,
+              url: "/delete/" + pk + '/',
               success: function(data){
                 
                 table.draw(false); // stay in same page
