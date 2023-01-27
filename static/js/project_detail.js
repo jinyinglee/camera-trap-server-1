@@ -141,29 +141,29 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                       let remarks_array = []
                       $( "input.edit-checkbox:checked").not('#edit-all').each(function(  ) {
                         if(!$(this).parent().hasClass("dataTables_sizing")){
-                        current_row = table.row($(this).parent()).data();
-                        img_array.push(current_row['image_id'])
-                        imguuid_array.push(current_row['image_uuid'])
-                        sa_array.push(current_row['saname'])
-                        dep_array.push(current_row['dname'])
-                        species_array.push(current_row['species'])
-                        sex_array.push(current_row['sex'])
-                        life_stage_array.push(current_row['life_stage'])
-                        antler_array.push(current_row['antler'])
-                        animal_id_array.push(current_row['animal_id'])
-                        remarks_array.push(current_row['remarks'])
-                        
-                        if (img_array.length > 1 ) { // TODO 或是直接按row
-                          $('.edit-prev, .edit-next').addClass('d-none');
-                          $('#editModal').off('keydown');  
-                        } else {
-                          $('.edit-prev, .edit-next').removeClass('d-none');
-                          // 切換上下張的功能
-                          let c_row = $(this).parent()
-                          let idx = table.column(c_row).index();              
-                          changeEditContent(c_row.parent(), idx);
+                          current_row = table.row($(this).parent()).data();
+                          img_array.push(current_row['image_id'])
+                          imguuid_array.push(current_row['image_uuid'])
+                          sa_array.push(current_row['saname'])
+                          dep_array.push(current_row['dname'])
+                          species_array.push(current_row['species'])
+                          sex_array.push(current_row['sex'])
+                          life_stage_array.push(current_row['life_stage'])
+                          antler_array.push(current_row['antler'])
+                          animal_id_array.push(current_row['animal_id'])
+                          remarks_array.push(current_row['remarks'])
+                          
+                          if (img_array.length > 1 ) { // TODO 或是直接按row
+                            $('.edit-prev, .edit-next').addClass('d-none');
+                            $('#editModal').off('keydown');  
+                          } else {
+                            $('.edit-prev, .edit-next').removeClass('d-none');
+                            // 切換上下張的功能
+                            let c_row = $(this).parent()
+                            let idx = table.column(c_row).index();              
+                            changeEditContent(c_row.parent(), idx);
+                          }
                         }
-                      }
                       });  
   
                         $('#edit-image_id').val(img_array)                  
@@ -208,14 +208,13 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                         $('#edit-image video').addClass('w-100');
                         $('#edit-image video').addClass('h-auto');
                         $('#edit-image video source').on('error',function(event) {
-                        $(this).parent().parent().html('<p align="center" class="cannot-load">無法載入</p>')
+                          $(this).parent().parent().html('<p align="center" class="cannot-load">無法載入</p>')
                         })
                         $('#edit-image video source, #edit-image img').on('error',function(event) {
-                        $(this).parent().html('<p align="center" class="cannot-load">無法載入</p>')
+                          $(this).parent().html('<p align="center" class="cannot-load">無法載入</p>')
                         })  
-
                         
-                          $('#editModal').modal('show');
+                        $('#editModal').modal('show');
   
                         // disable edit
                         let editable = response.editable;
@@ -252,10 +251,15 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                     d.folder_name = window.conditions.folder_name;
                     d.orderby = $('.orderby svg.sort-icon-active').data('orderby');
                     d.sort = $('.orderby svg.sort-icon-active').data('sort');
-                },
+                  },
+                  error: function(){
+                    $('.dataTables_processing').hide()
+                    alert('未知錯誤，請聯繫管理員');
+                  }
               },
               order: [[0, "asc"]],
-              drawCallback:function(){
+              drawCallback: function(){
+                  $('.dataTables_processing').hide()
                   // button style
                   var btns = $('.dt-button');
                   btns.removeClass('dt-button');
@@ -653,6 +657,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                           }
                       // bind click function
                       // species: if other checkbox checked, uncheck 'all'
+                      $("input[name='species-filter'].filter:not(.all)").unbind('click');
                       $("input[name='species-filter'].filter:not(.all)").click (function(){
                         $("#species-list-all label").children('svg').remove()
                         // 先移除自己本身的再判斷
@@ -664,6 +669,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                       })
       
                       // species: if 'all' checked, check all checkbox
+                      $("input[name='species-filter'].all").unbind('click');
                       $("input[name='species-filter'].all").click (function(){
                           // 先移除掉全部的再一次加上去
                           $("#species-list li label").children('svg').remove()

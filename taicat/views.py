@@ -640,18 +640,15 @@ def edit_image(request, pk):
             updated_dict.update({'deployment_id': requests.get('deployment_id')})
 
         obj = Image.objects.filter(id__in=image_id)
+        # obj_ori = obj
         c = obj.count()  # 更新的照片數量
-
-
-        if updated_dict:
-            updated_dict.update({'last_updated': now})
-            obj.update(**updated_dict)
 
         # taicat_geostat -> 忽略
         # 抓原本的回來減掉
         species = requests.get('species')
         query = obj.values('species').annotate(total=Count('species')).order_by('-total')
         for q in query:
+            # print(q)
             # taicat_species
             if mode == 'official':
                 if sp := Species.objects.filter(name=q['species']).first():
@@ -757,23 +754,27 @@ def edit_image(request, pk):
                 if not Image.objects.filter(project_id=pk, folder_name=f).exists():
                     ImageFolder.objects.filter(project_id=pk, folder_name=f).delete()
 
-    species = ProjectSpecies.objects.filter(project_id=pk).order_by('count').values('count', 'name')
-    with connection.cursor() as cursor:
-        query = f"""SELECT folder_name,
-                    to_char(folder_last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS folder_last_updated
-                    FROM taicat_imagefolder WHERE project_id = {pk}"""
-        cursor.execute(query)
-        folder_list = cursor.fetchall()
-        columns = list(cursor.description)
-        results = []
-        for row in folder_list:
-            row_dict = {}
-            for i, col in enumerate(columns):
-                row_dict[col.name] = row[i]
-            results.append(row_dict)
+        if updated_dict:
+            updated_dict.update({'last_updated': now})
+            obj.update(**updated_dict)
 
-    response = {'species': list(species), 'folder_list': results}
-    return JsonResponse(response, safe=False)  # or JsonResponse({'data': data})
+        species = ProjectSpecies.objects.filter(project_id=pk).order_by('count').values('count', 'name')
+        with connection.cursor() as cursor:
+            query = f"""SELECT folder_name,
+                        to_char(folder_last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS folder_last_updated
+                        FROM taicat_imagefolder WHERE project_id = {pk}"""
+            cursor.execute(query)
+            folder_list = cursor.fetchall()
+            columns = list(cursor.description)
+            results = []
+            for row in folder_list:
+                row_dict = {}
+                for i, col in enumerate(columns):
+                    row_dict[col.name] = row[i]
+                results.append(row_dict)
+
+        response = {'species': list(species), 'folder_list': results}
+        return JsonResponse(response, safe=False)  # or JsonResponse({'data': data})
 
 
 city_list = ['基隆市', '嘉義市', '台北市', '嘉義縣', '新北市', '台南市',
