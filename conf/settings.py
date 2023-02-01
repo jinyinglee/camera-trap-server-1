@@ -217,3 +217,68 @@ CSP_SCRIPT_SRC = ["'self'", "https://cdnjs.cloudflare.com",
 ]
 
 CSP_CONNECT_SRC = ("'self'","https://*.fontawesome.com",)
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20000000
+
+
+# via: https://docs.djangoproject.com/en/4.1/topics/logging/
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        #'special': {
+        #    '()': 'project.logging.SpecialFilter',
+        #    'foo': 'bar',
+        #},
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'filters': ['require_debug_true'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple'
+        },
+        'mail_admins': {
+            'level': 'ERROR',
+            'class': 'django.utils.log.AdminEmailHandler',
+            'filters': ['require_debug_true']
+        },
+        'file': {
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': '/var/log/ct-web/ct-web.log',
+            'when': 'W3',
+            'backupCount': 7,
+            'formatter': 'verbose'
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'propagate': True,
+            'level': 'DEBUG',
+        },
+        'django.request': {
+            'handlers': ['mail_admins'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        #'myproject.custom': {
+        #    'handlers': ['console', 'mail_admins'],
+        #    'level': 'INFO',
+        #    'filters': ['special']
+        #}
+    }
+}
