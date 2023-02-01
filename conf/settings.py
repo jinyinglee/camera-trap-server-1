@@ -217,3 +217,5 @@ CSP_SCRIPT_SRC = ["'self'", "https://cdnjs.cloudflare.com",
 ]
 
 CSP_CONNECT_SRC = ("'self'","https://*.fontawesome.com",)
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20000000
