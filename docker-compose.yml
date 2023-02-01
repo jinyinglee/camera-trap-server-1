@@ -14,6 +14,7 @@ services:
       - ../ct22-volumes/static:/ct22-volumes/static
       - ../ct22-volumes/media:/ct22-volumes/media
       - ../ct22-volumes/bucket:/bucket
+      - ../ct22-volumes/logs/ct-web:/var/log/ct-web
     command: /srv/start
     restart: always
     #env_file:
@@ -25,6 +26,11 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=example
       - POSTGRES_DB=cameratrap
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "3"
   postgres:
     image: postgres:13-alpine
     shm_size: '1g'
@@ -44,6 +50,11 @@ services:
       - PGDATA=/var/lib/postgresql/data/pgdata
     #env_file:
     #  - .env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "3"
   redis:
     image: redis:6-alpine
     restart: always
