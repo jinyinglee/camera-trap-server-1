@@ -170,11 +170,20 @@ def update_image(request):
         data = json.loads(request.body)
         if pk := data['pk']:
             image = Image.objects.get(pk=pk)
+
             if image:
                 # limited update field
                 if has_storage := data.get('has_storage', ''):
                     image.has_storage = has_storage
-                image.save()
+                    image.save()
+
+                # "複製一列" 的資料也要處理
+                related_annotation_images = Image.objects.filter(filename=image.filename, deployment_journal_id=image.deployment_journal_id, annotation_seq__gt=0).all()
+                for i in related_annotation_images:
+                    if has_storage := data.get('has_storage', ''):
+                        i.has_storage = has_storage
+                        i.save()
+
         res = {
             'text': 'update-image'
         }
