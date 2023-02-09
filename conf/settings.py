@@ -287,6 +287,9 @@ LOGGING = {
             'propagate': True,
             'level': 'DEBUG',
         },
+        'django.utils.autoreload': {
+            'level': 'INFO',
+        },
         # 'django.server': {
         #     'handlers': ['django.server'],
         #     'propagate': False,
