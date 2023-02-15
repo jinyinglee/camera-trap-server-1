@@ -24,3 +24,9 @@ class UploadNotification(models.Model):
     contact = models.ForeignKey(Contact, on_delete=models.SET_NULL, null=True, blank=True)
     category = models.CharField(max_length=100, null=True, blank=True,  default='upload') # upload | gap
 
+
+class Announcement(models.Model):
+    created = models.DateTimeField(auto_now_add=True, null=True, db_index=True)
+    title = models.CharField(max_length=100,null=True)
+    version = models.CharField('版本號',max_length=100,null=True, blank=True)
+    description = models.CharField(max_length=1024, null=True, blank=True) 
