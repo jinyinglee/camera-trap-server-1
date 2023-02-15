@@ -3,7 +3,7 @@ from django.http import response
 from django.shortcuts import render, HttpResponse, redirect
 import json
 from django.db import connection
-from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Organization, Project, Species, StudyAreaStat
+from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Organization, Project, Species, StudyAreaStat, ProjectMember
 from django.db.models import Count, Window, F, Sum, Min, Q, Max
 from django.db.models.functions import ExtractYear
 from django.template import loader
@@ -284,6 +284,82 @@ def feedback_request(request):
 
 def send_msg(msg):
     msg.send()
+
+def announcement(request):
+    email_list = []
+
+    # 所有人 
+    all_ppl = []
+    for x in Contact.objects.exclude(email__isnull=True).values('name','email'):
+        all_ppl.append(x['email'])
+        
+    # 計畫總管理人 select * from taicat_contact where  is_organization_admin = true;
+    organization_admin = []
+    for x in Contact.objects.exclude(email__isnull=True).filter(is_organization_admin=True).values('name','email'):
+        organization_admin.append(x['email'])
+        
+    # 計畫承辦人 select * from taicat_projectmember where role = 'project_admin';
+    project_admin = []
+    for x in Contact.objects.exclude(email__isnull=True).exclude(email__exact='').filter(id__in=ProjectMember.objects.filter(role='project_admin').values('member_id')).values('name','email'):
+        project_admin.append(x['email'])
+        
+    # 資料上傳者 select * from taicat_projectmember where role = 'uploader';
+    uploader = []
+    
+    for x in Contact.objects.exclude(email__isnull=True).filter(id__in=ProjectMember.objects.filter(role='uploader').values('member_id')).values('name','email'):
+        uploader.append(x['email'])
+    
+    # other = []
+    # for x in Contact.objects.filter(id=).values('name','email'):
+    #     other.append(x['email'])
+    
+    email_list = {
+        "all_ppl": ','.join(all_ppl), 
+        "organization_admin": ','.join(organization_admin), 
+        "project_admin": ','.join(project_admin), 
+        "uploader": ','.join(uploader), 
+        # "other" :','.join(other),
+    }
+    
+    context = {
+        'email' : email_list,
+    }
+    return render(request, 'base/announcement.html',context)
+
+
+def announcement_request(request):
+    # https://stackoverflow.com/questions/38345977/filefield-force-using-temporaryuploadedfile
+    try:
+        announcement_title = request.POST.get('announcement-title')
+        description = request.POST.get('description')
+        email_to = request.POST.get('email').split(',')
+        
+        # send email
+        html_content = f"""
+        您好：
+        <br>
+        <br>
+        <b>{announcement_title}</b>
+        <br>
+        <br>
+        <b>說明：</b>{description}
+        <br>
+        <br>
+        """
+
+        subject = f'[臺灣自動相機資訊系統]公告 {announcement_title}'
+        # ('Subject here','Here is the message.','from@example.com',['to@example.com'],fail_silently=False,)
+        msg = EmailMessage(subject, html_content, settings.CT_SERVICE_EMAIL, email_to)
+        msg.content_subtype = "html"  # Main content is now text/html
+
+        # 改成背景執行
+        task = threading.Thread(target=send_msg, args=(msg,))
+        # task.daemon = True
+        task.start()
+
+        return JsonResponse({"status": 'success'}, safe=False)
+    except Exception as e:
+        return JsonResponse({"status": 'fail'}, safe=False)
 
 def policy(request):
     return render(request, 'base/policy.html')

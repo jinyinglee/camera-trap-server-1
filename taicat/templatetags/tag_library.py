@@ -5,7 +5,7 @@ from datetime import timedelta
 import re
 
 from django import template
-from base.models import UploadNotification
+from base.models import UploadNotification,Announcement
 from django.utils.safestring import mark_safe
 from taicat.models import Organization, ProjectMember, Contact
 from django.db.models import Q
@@ -153,3 +153,9 @@ def if_permission(user_id):
         return True
     else:
         return False
+
+@register.filter
+def announcement_content (contact_id):
+    notifications = Announcement.objects.latest('created').title
+        
+    return notifications
