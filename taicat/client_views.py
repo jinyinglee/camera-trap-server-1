@@ -1,6 +1,8 @@
 import json
 from datetime import datetime
 import pytz
+import zipfile
+import io
 
 from django.shortcuts import render
 from django.http import (
@@ -78,10 +80,18 @@ def get_project(request, project_id):
 def post_image_annotation(request):
     ret = {}
     if request.method == 'POST':
-        data = json.loads(request.body)
+        data = {}
+
+        # upload zipped file instead of json body
+        memory_file = io.BytesIO(request.FILES['file'].read())
+        with zipfile.ZipFile(memory_file, 'r') as zip_ref:
+            txt = zip_ref.namelist()[0]
+            with zip_ref.open(txt) as json_file:
+                data = json.loads(json_file.read())
+        #data = json.loads(request.body)
 
         deployment = Deployment.objects.get(pk=data['deployment_id'])
-        if deployment:
+        if data and deployment:
             res = {}
             # aware datetime object
             utc_tz = pytz.timezone(settings.TIME_ZONE)
@@ -92,14 +102,10 @@ def post_image_annotation(request):
             if bucket_name != settings.AWS_S3_BUCKET:
                 specific_bucket = bucket_name
 
-            folder_name = ''
-
-
-            folder_name = data['folder_name']
+            folder_name = data.get('folder_name', '')
 
             # create or update DeploymentJournal
             deployment_journal_id = set_deployment_journal(data, deployment)
-
 
             for i in data['image_list']:
                 img_info_payload = None
