@@ -26,4 +26,6 @@ urlpatterns = [
     path('update_upload_history/', views.update_upload_history, name='update_upload_history'),
     path('update_is_read', views.update_is_read, name='update_is_read'),
     path('desktop', views.desktop, name='desktop'),
+    path('announcement', views.announcement, name='announcement'),
+    path('announcement_request', views.announcement_request, name='announcement_request'),
 ]
