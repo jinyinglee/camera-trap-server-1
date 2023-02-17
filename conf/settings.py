@@ -218,7 +218,7 @@ CSP_SCRIPT_SRC = ["'self'", "https://cdnjs.cloudflare.com",
 
 CSP_CONNECT_SRC = ("'self'","https://*.fontawesome.com",)
 
-DATA_UPLOAD_MAX_MEMORY_SIZE = 20000000
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5000000 #20000000 change to 5MB (9999 image post need almost 1MB)
 
 # via: https://docs.djangoproject.com/en/4.1/topics/logging/
 LOGGING = {
