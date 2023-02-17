@@ -35,7 +35,16 @@ from shapely.geometry import Point
 
 def desktop(request):
     file = ''
-    return render(request, 'base/desktop_download.html', {'file': file})
+    annoucement = Announcement.objects.latest('created')
+    title = annoucement.title
+    version = annoucement.version
+    description = annoucement.description
+    context = {
+        'title':title,
+        'version':version,
+        'description':description,
+    }
+    return render(request, 'base/desktop_download.html',context)
 
 
 def update_is_read(request):

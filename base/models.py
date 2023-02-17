@@ -26,7 +26,7 @@ class UploadNotification(models.Model):
 
 
 class Announcement(models.Model):
-    created = models.DateTimeField(auto_now_add=True, null=True, db_index=True)
-    title = models.CharField(max_length=100,null=True)
+    created = models.DateTimeField('建立日期',auto_now_add=True, null=True, db_index=True)
+    title = models.CharField('公告內容',max_length=100,null=True)
     version = models.CharField('版本號',max_length=100,null=True, blank=True)
-    description = models.CharField(max_length=1024, null=True, blank=True) 
+    description = models.TextField('版本更新說明',null=True, blank=True) 
