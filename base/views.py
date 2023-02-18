@@ -35,7 +35,16 @@ from shapely.geometry import Point
 
 def desktop(request):
     file = ''
-    return render(request, 'base/desktop_download.html', {'file': file})
+    annoucement = Announcement.objects.latest('created')
+    title = annoucement.title
+    version = annoucement.version
+    description = annoucement.description
+    context = {
+        'title':title,
+        'version':version,
+        'description':description,
+    }
+    return render(request, 'base/desktop_download.html',context)
 
 
 def update_is_read(request):
@@ -331,7 +340,7 @@ def announcement_request(request):
     # https://stackoverflow.com/questions/38345977/filefield-force-using-temporaryuploadedfile
     try:
         announcement_title = request.POST.get('announcement-title')
-        description = request.POST.get('description')
+        description = request.POST.get('description').replace('\r\n','<br>')
         email_to = request.POST.get('email').split(',')
         
         # send email
@@ -339,17 +348,18 @@ def announcement_request(request):
         您好：
         <br>
         <br>
-        <b>{announcement_title}</b>
+        {description}
         <br>
         <br>
-        <b>說明：</b>{description}
         <br>
         <br>
+        <br>
+        臺灣自動相機資訊系統 團隊敬上
         """
 
         subject = f'[臺灣自動相機資訊系統]公告 {announcement_title}'
         # ('Subject here','Here is the message.','from@example.com',['to@example.com'],fail_silently=False,)
-        msg = EmailMessage(subject, html_content, settings.CT_SERVICE_EMAIL, email_to)
+        msg = EmailMessage(subject, html_content, settings.CT_SERVICE_EMAIL, bcc=email_to)
         msg.content_subtype = "html"  # Main content is now text/html
 
         # 改成背景執行
