@@ -47,7 +47,7 @@ WORKDIR /code
 # # Package
 COPY requirements requirements
 RUN pip install --upgrade pip
-RUN pip install --no-cache --user -r requirements/base.txt
+RUN pip install --no-cache --user -r requirements/prod.txt
 
 # Install Poetry
 #RUN curl -sSL https://install.python-poetry.org| POETRY_HOME=/opt/poetry python && \
