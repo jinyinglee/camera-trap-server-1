@@ -7,6 +7,7 @@ class UploadHistory(models.Model):
         ('uploading', '上傳中'),
         ('finished', '已完成'),
         ('unfinished', '未完成'),
+        ('image-text', '處理文字上傳'), # processing image annotation
     )
     created = models.DateTimeField(auto_now_add=True, null=True, db_index=True)
     last_updated = models.DateTimeField(null=True, db_index=True)
