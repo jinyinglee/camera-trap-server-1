@@ -113,27 +113,32 @@ def send_upload_notification(upload_history_id, member_list, request):
 
 @csrf_exempt
 def update_upload_history(request):
-    # uploading, finished
+    # client_status: uploading, finished, upload-start (for annotation processing)
     response = {}
     if request.method == 'POST':
         data = json.loads(request.body)
         client_status = data.get('status', '') #request.POST.get('status')
         deployment_journal_id = data.get('deployment_journal_id') #request.POST.get('deployment_journal_id')
-        if client_status == 'uploading' and deployment_journal_id:
+        if not deployment_journal_id:
+            # 回傳沒有結果
+            response = {'messages': 'failed due to wrong parameters'}
+            return JsonResponse(response)
+
+        if client_status in ['uploading', 'image-text']:
             # 把網頁狀態更新成上傳中
             # 若沒有，新增一個uh
             if uh := UploadHistory.objects.filter(deployment_journal_id=deployment_journal_id).first():
                 uh.last_updated = timezone.now()
-                uh.status = 'uploading'
+                uh.status = client_status #'uploading'
                 uh.save()
-            else: 
+            else:
                 uh = UploadHistory(
-                        deployment_journal_id=deployment_journal_id, 
-                        status='uploading', 
+                        deployment_journal_id=deployment_journal_id,
+                        status=client_status, #'uploading',
                         last_updated=timezone.now())
                 uh.save()
             response = {'messages': 'success'}
-        elif client_status == 'finished' and deployment_journal_id:
+        elif client_status == 'finished':
             # 判斷網頁狀態是未完成or已完成, species_error & upload_error
             upload_error = True if Image.objects.filter(deployment_journal_id=deployment_journal_id, has_storage='N').exists() else False
             species_error = True if Image.objects.filter(deployment_journal_id=deployment_journal_id, species__in=[None, '']).exists() else False
@@ -179,11 +184,27 @@ def update_upload_history(request):
                 return JsonResponse(response)
             response = {'messages': 'success'}
         else:
-            # 回傳沒有結果
-            response = {'messages': 'failed due to wrong parameters'}
+            response = {'messages': 'status not allowed'}
 
     return JsonResponse(response)
 
+@csrf_exempt
+def check_upload_history(request, deployment_journal_id):
+    response = {}
+    if uh := UploadHistory.objects.get(deployment_journal_id=deployment_journal_id):
+        response.update({
+            'deployment_journal_id': deployment_journal_id,
+            'status': uh.status,
+        })
+        img_ids = {}
+        if uh.status == 'uploading':
+            rows = Image.objects.values('id', 'source_data', 'image_uuid').filter(deployment_journal_id=deployment_journal_id).all()
+            for i in rows:
+                img_ids[i['source_data']['id']] = [i['id'], i['image_uuid']]
+            response.update({
+                'saved_image_ids': img_ids,
+            })
+    return JsonResponse(response)
 
 def get_error_file_list(request, deployment_journal_id):
     data = pd.DataFrame(columns=['所屬計畫', '樣區', '相機位置', '資料夾名稱', '檔名', '錯誤類型'])
