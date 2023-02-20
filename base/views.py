@@ -200,7 +200,9 @@ def check_upload_history(request, deployment_journal_id):
         if uh.status == 'uploading':
             rows = Image.objects.values('id', 'source_data', 'image_uuid').filter(deployment_journal_id=deployment_journal_id).all()
             for i in rows:
-                img_ids[i['source_data']['id']] = [i['id'], i['image_uuid']]
+                if id_ := i['source_data'].get('id', ''):
+                    # cloned image has no source_data
+                    img_ids[id_] = [i['id'], i['image_uuid']]
             response.update({
                 'saved_image_ids': img_ids,
             })
