@@ -317,6 +317,17 @@ def feedback_request(request):
 def send_msg(msg):
     msg.send()
 
+
+def announcement_is_read(request):
+    expired_time = 0
+    response = {}
+    if request.method == 'GET':
+        expired_time =  int(Announcement.objects.latest("created").mod_date.strftime('%s')) + 7776000
+        response = {'expired_time':expired_time}
+
+    return JsonResponse(response,  safe=False) 
+
+
 def announcement(request):
     email_list = []
 
