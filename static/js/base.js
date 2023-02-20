@@ -31,7 +31,12 @@ $('#getAuth').on('click',function(){
 })
 
 $('#alert-box').on('click',function(){
-    const output = document.getElementById('alert-content');
-    document.cookie = 'announcementread=True; max-age=7776000; path=/';
-    output.remove();
+        $.ajax({
+        url: "/announcement_is_read",
+        type: 'GET',
+        success: function(data){
+            $('.alert-content').hide();
+            document.cookie = 'announcementread='+data.expired_time+';max-age='+data.expired_time+'; path=/';
+        }
+        });
 })

@@ -1,7 +1,7 @@
 # templatetags/tag_library.py
 # https://stackoverflow.com/a/15820445/644070
 
-from datetime import timedelta
+from datetime import timedelta,datetime
 import re
 
 from django import template
@@ -156,6 +156,22 @@ def if_permission(user_id):
 
 @register.filter
 def announcement_content (contact_id):
-    notifications = Announcement.objects.latest('created').title
-        
-    return notifications
+    title = None
+    try:
+        title = Announcement.objects.latest('created').title
+        expire_time = int(notifications.mod_date.strftime('%s')) + 7776000
+    except:
+        pass
+    return title
+
+
+@register.filter
+def announcement_expire_time (contact_id):
+    expire_time = None
+    try:
+        notifications = Announcement.objects.latest('created')
+        expire_time = str(int(notifications.mod_date.strftime('%s')) + 7776000)
+    except:
+        pass
+
+    return expire_time
