@@ -94,9 +94,10 @@ services:
     restart: unless-stopped
     build:
       context: .
-    container_name: ct22-celery-dev-container
+      dockerfile: Dockerfile-prod
+    container_name: ct22-celery-prod-container
     image: ct22-django-prod-image
-    command: /root/.local/bin/celery -A conf worker -l info
+    command: celery -A conf worker -l info
     volumes:
       - .:/code
       - ../ct22-volumes/logs/ct-web:/var/log/ct-web
