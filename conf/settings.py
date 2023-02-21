@@ -255,7 +255,6 @@ LOGGING = {
     'handlers': {
         'console': {
             'level': 'DEBUG',
-            'filters': ['require_debug_true'],
             'class': 'logging.StreamHandler',
             'formatter': 'main'
         },
@@ -300,11 +299,11 @@ LOGGING = {
         #     'level': 'ERROR',
         #     'propagate': False,
         # },
-        # 'django.db.backends': {
-        #     'handlers': ['null'],  # Quiet by default!
-        #     'propagate': False,
-        #     'level': 'DEBUG',
-        # },
+        'django.db.backends': {
+            'handlers': ['null'],  # Quiet by default!
+            'propagate': False,
+            'level': 'DEBUG',
+        },
         #'myproject.custom': {
         #    'handlers': ['console', 'mail_admins'],
         #    'level': 'INFO',
@@ -312,3 +311,5 @@ LOGGING = {
         #}
     }
 }
+
+CSRF_TRUSTED_ORIGINS = ['https://dbtest.camera-trap.tw', ]
