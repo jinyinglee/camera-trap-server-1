@@ -312,3 +312,5 @@ LOGGING = {
         #}
     }
 }
+
+CSRF_TRUSTED_ORIGINS = ['https://dbtest.camera-trap.tw', ]
