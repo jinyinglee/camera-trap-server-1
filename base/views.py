@@ -191,7 +191,7 @@ def update_upload_history(request):
 @csrf_exempt
 def check_upload_history(request, deployment_journal_id):
     response = {}
-    if uh := UploadHistory.objects.get(deployment_journal_id=deployment_journal_id):
+    if uh := UploadHistory.objects.filter(deployment_journal_id=deployment_journal_id).first():
         response.update({
             'deployment_journal_id': deployment_journal_id,
             'status': uh.status,
