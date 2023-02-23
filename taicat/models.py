@@ -931,11 +931,17 @@ class DeploymentJournal(models.Model):
     local_source_id = models.CharField(max_length=1000, null=True, blank=True, default='') # client local database (sqlite)'s folder id, 用來檢查是否上傳過
     created = models.DateTimeField(auto_now_add=True, null=True)
     last_updated = models.DateTimeField(null=True, auto_now_add=True)
+    upload_status = models.CharField(max_length=100, null=True, blank=True)# start-annotation/start-media/finished
 
     @property
     def display_range(self):
         return '{}/{}'.format(self.working_start.strftime('%Y-%m-%d'), self.working_end.strftime('%Y-%m-%d'))
 
+# class ClientUploadLog(models.Model):
+#     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
+#     deployment = models.ForeignKey(Deployment, on_delete=models.SET_NULL, null=True)
+#     studyarea = models.ForeignKey(StudyArea, on_delete=models.SET_NULL, null=True)
+#     deployment_journal = models.ForeignKey('DeploymentJournal', on_delete=models.SET_NULL, null=True, blank=True) # 知道是那次上傳的
 
 class DeploymentStat(models.Model):
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)

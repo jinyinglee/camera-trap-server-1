@@ -100,7 +100,8 @@ def post_image_annotation(request):
             folder_name = data['folder_name']
 
             # create or update DeploymentJournal
-            deployment_journal_id = set_deployment_journal(data, deployment)
+            deployment_journal = set_deployment_journal(data, deployment)
+            deployment_journal_id = deployment_journal.id
 
 
             for i in data['image_list']:
@@ -166,6 +167,26 @@ def post_image_annotation(request):
     return JsonResponse(ret)
 
 @csrf_exempt
+def check_deployment_journal_upload_status(request, pk):
+    response = {}
+    if dj := DeploymentJournal.objects.get(pk=pk):
+        response.update({
+            'deployment_journal_id': dj.id,
+            'upload_status': dj.upload_status,
+        })
+        if dj.upload_status != 'start-image-annotation':
+            rows = Image.objects.values('id', 'source_data', 'image_uuid').filter(deployment_journal_id=dj.id).all()
+            img_ids = {}
+            for i in rows:
+                if id_ := i['source_data'].get('id', ''):
+                    # cloned image has no source_data
+                    img_ids[id_] = [i['id'], i['image_uuid']]
+            response.update({
+                'saved_image_ids': img_ids,
+            })
+    return JsonResponse(response)
+
+@csrf_exempt
 def post_image_annotation1_1(request):
     ret = {}
     if request.method == 'POST':
@@ -179,18 +200,20 @@ def post_image_annotation1_1(request):
                 data = json.loads(json_file.read())
         #data = json.loads(request.body)
 
-        deployment = Deployment.objects.get(pk=data['deployment_id'])
-        # create or update DeploymentJournal
-        deployment_journal_id = set_deployment_journal(data, deployment)
-        if deployment and data:
-            process_image_annotation_task.delay(deployment.id, data)
-            #res.get()
-            ret['deployment_journal_id'] = deployment_journal_id
+        if deployment := Deployment.objects.get(pk=data['deployment_id']):
+            # create or update DeploymentJournal
+            deployment_journal = set_deployment_journal(data, deployment)
+            if deployment_journal and data:
+                process_image_annotation_task.delay(deployment_journal.id, data)
+                #res.get()
+                ret['deployment_journal_id'] = deployment_journal.id
 
-            return JsonResponse(ret)
+                return JsonResponse(ret)
+
         else:
-            ret['error'] = 'ct-server: no deployment key'
-            return JsonResponse(ret)
+            ret['error'] = 'ct-server: arguments error (deployment_id)'
+
+        return JsonResponse(ret)
 
 @csrf_exempt
 def update_image(request):
