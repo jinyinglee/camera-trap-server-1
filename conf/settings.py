@@ -312,4 +312,4 @@ LOGGING = {
     }
 }
 
-CSRF_TRUSTED_ORIGINS = ['https://dbtest.camera-trap.tw', ]
+CSRF_TRUSTED_ORIGINS = ['https://dbtest.camera-trap.tw', 'https://camera-trap.tw']
