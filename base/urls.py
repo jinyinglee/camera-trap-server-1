@@ -24,6 +24,10 @@ urlpatterns = [
     path('feedback_request', views.feedback_request, name='feedback_request'),
     # path('send_upload_notification', views.send_upload_notification, name='send_upload_notification'), # wrapped by "upload_upload_history"
     path('update_upload_history/', views.update_upload_history, name='update_upload_history'),
+    #path('check_upload_history/<int:deployment_journal_id>/', views.check_upload_history, name='check_upload_history'),
     path('update_is_read', views.update_is_read, name='update_is_read'),
     path('desktop', views.desktop, name='desktop'),
+    path('announcement', views.announcement, name='announcement'),
+    path('announcement_request', views.announcement_request, name='announcement_request'),
+    path('announcement_is_read', views.announcement_is_read, name='announcement_is_read'),
 ]

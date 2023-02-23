@@ -18,6 +18,7 @@ services:
       - .:/code
       - ../ct22-volumes/static:/ct22-volumes/static
       - ../ct22-volumes/media:/ct22-volumes/media
+      - ../ct22-volumes/logs/ct-web:/var/log/ct-web
       - asset:/asset
       - ../ct22-volumes/bucket:/bucket
     command: /srv/start
@@ -31,6 +32,11 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=example
       - POSTGRES_DB=cameratrap
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "3"
   postgres:
     image: postgres:13-alpine
     container_name: ct22-postgres-container
@@ -43,6 +49,11 @@ services:
       - POSTGRES_PASSWORD=example
       - POSTGRES_DB=cameratrap
       - PGDATA=/var/lib/postgresql/data/pgdata
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "3"
   nginx:
     image: nginx:1.19.10-alpine
     restart: always
@@ -55,10 +66,16 @@ services:
       - ../ct22-volumes/certbot/conf:/etc/letsencrypt
       - ../ct22-volumes/certbot/www:/var/www/certbot
       #- ../basdb-volumes/media:/basdb-volumes/media
+      - ../ct22-volumes/logs/nginx:/var/log/nginx
       - asset:/asset
     command: '/bin/sh -c ''while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g "daemon off;"'''
     links:
       - django:django
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "3"
   certbot:
     image: certbot/certbot
     volumes:
@@ -68,3 +85,34 @@ services:
   redis:
     image: redis:6-alpine
     restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "3"
+  celery:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile-prod
+    container_name: ct22-celery-prod-container
+    image: ct22-django-prod-image
+    command: celery -A conf worker -l info
+    volumes:
+      - .:/code
+      - ../ct22-volumes/logs/ct-web:/var/log/ct-web
+    depends_on:
+      - redis
+      - django
+    environment:
+      - WEB_ENV=dev
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=example
+      - POSTGRES_DB=cameratrap
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "3"
