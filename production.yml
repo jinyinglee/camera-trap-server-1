@@ -90,3 +90,29 @@ services:
       options:
         max-size: "1m"
         max-file: "3"
+  celery:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile-prod
+    container_name: ct22-celery-prod-container
+    image: ct22-django-prod-image
+    command: celery -A conf worker -l info
+    volumes:
+      - .:/code
+      - ../ct22-volumes/logs/ct-web:/var/log/ct-web
+    depends_on:
+      - redis
+      - django
+    environment:
+      - WEB_ENV=dev
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=example
+      - POSTGRES_DB=cameratrap
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "3"

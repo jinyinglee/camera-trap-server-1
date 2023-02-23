@@ -1,6 +1,8 @@
 import json
 from datetime import datetime
 import pytz
+import zipfile
+import io
 
 from django.shortcuts import render
 from django.http import (
@@ -28,7 +30,7 @@ from .utils import (
     set_image_annotation,
     set_deployment_journal
 )
-
+from taicat.tasks import process_image_annotation_task
 
 def index(request):
     project_list = Project.objects.filter(mode='test').all()
@@ -98,7 +100,8 @@ def post_image_annotation(request):
             folder_name = data['folder_name']
 
             # create or update DeploymentJournal
-            deployment_journal_id = set_deployment_journal(data, deployment)
+            deployment_journal = set_deployment_journal(data, deployment)
+            deployment_journal_id = deployment_journal.id
 
 
             for i in data['image_list']:
@@ -164,17 +167,75 @@ def post_image_annotation(request):
     return JsonResponse(ret)
 
 @csrf_exempt
+def check_deployment_journal_upload_status(request, pk):
+    response = {}
+    if dj := DeploymentJournal.objects.get(pk=pk):
+        response.update({
+            'deployment_journal_id': dj.id,
+            'upload_status': dj.upload_status,
+        })
+        if dj.upload_status != 'start-image-annotation':
+            rows = Image.objects.values('id', 'source_data', 'image_uuid').filter(deployment_journal_id=dj.id).all()
+            img_ids = {}
+            for i in rows:
+                if id_ := i['source_data'].get('id', ''):
+                    # cloned image has no source_data
+                    img_ids[id_] = [i['id'], i['image_uuid']]
+            response.update({
+                'saved_image_ids': img_ids,
+            })
+    return JsonResponse(response)
+
+@csrf_exempt
+def post_image_annotation1_1(request):
+    ret = {}
+    if request.method == 'POST':
+        data = {}
+
+        # upload zipped file instead of json body
+        memory_file = io.BytesIO(request.FILES['file'].read())
+        with zipfile.ZipFile(memory_file, 'r') as zip_ref:
+            txt = zip_ref.namelist()[0]
+            with zip_ref.open(txt) as json_file:
+                data = json.loads(json_file.read())
+        #data = json.loads(request.body)
+
+        if deployment := Deployment.objects.get(pk=data['deployment_id']):
+            # create or update DeploymentJournal
+            deployment_journal = set_deployment_journal(data, deployment)
+            if deployment_journal and data:
+                process_image_annotation_task.delay(deployment_journal.id, data)
+                #res.get()
+                ret['deployment_journal_id'] = deployment_journal.id
+
+                return JsonResponse(ret)
+
+        else:
+            ret['error'] = 'ct-server: arguments error (deployment_id)'
+
+        return JsonResponse(ret)
+
+@csrf_exempt
 def update_image(request):
     res = {}
     if request.method == 'POST':
         data = json.loads(request.body)
         if pk := data['pk']:
             image = Image.objects.get(pk=pk)
+
             if image:
                 # limited update field
                 if has_storage := data.get('has_storage', ''):
                     image.has_storage = has_storage
-                image.save()
+                    image.save()
+
+                # "複製一列" 的資料也要處理
+                related_annotation_images = Image.objects.filter(filename=image.filename, deployment_journal_id=image.deployment_journal_id, annotation_seq__gt=0).all()
+                for i in related_annotation_images:
+                    if has_storage := data.get('has_storage', ''):
+                        i.has_storage = has_storage
+                        i.save()
+
         res = {
             'text': 'update-image'
         }

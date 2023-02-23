@@ -1,0 +1,70 @@
+{% extends 'base/base.html' %} {% block head %} {% load static %} {% endblock head %} {% block style %}
+<link href="{% static 'css/contact_us.css' %}" rel="stylesheet">
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+{% endblock %} {% block body %}
+<div class="container content">
+  <div class="loader d-none"></div>
+  <div class="row mb-10">
+    <h4 class="title-dark">公告</h4>
+  </div>
+  <div class="row">
+    <p>公告寄信</p>
+    <div class="bg-white shadow px-0 mx-2 q-detail">
+      <div class="m-4">
+    <form id="submitForm" name="submitForm" action="{% url 'announcement_request' %}" enctype="multipart/form-data" method="POST">
+    {% csrf_token %}
+        <div class="row py-3">
+          <div class="col-2 text-end"><span class="required">*</span>公告標題</div>
+          <div class="col-8">
+            <textarea class="form-control w-100" name="announcement-title"></textarea>
+            <div class="invalid-feedback">
+              必填欄位
+            </div>    
+          </div>
+        </div>
+        <div class="row py-3">
+          <div class="col-2 text-end" ><span class="required">*</span>收件人</div>
+          <div class="col-8">
+            <select id="email-option" name="email" class="form-control">
+              <option value={{email.all_ppl}} selected="selected" name="email">所有人</option>
+              <option value={{email.organization_admin}} selected="selected" name="email">計畫總管理人</option>
+              <option value={{email.project_admin}} selected="selected" name="email">計畫承辦人</option>
+              <option value={{email.uploader}} selected="selected" name="email">資料上傳者</option>
+              {% comment %} <option value={{email.other}} selected="selected" name="email">{{email.other}}</option> {% endcomment %}
+            </select>
+          </div>
+        </div>
+        <div class="row py-3">
+          <div class="col-2 text-end"><span class="required">*</span>公告內容</div>
+          <div class="col-8">
+            <textarea class="form-control w-100" name="description" placeholder="信件內容"></textarea>
+            <div class="invalid-feedback">
+              必填欄位
+            </div>    
+          </div>
+        </div>
+      </form>
+        </div>
+        <div class="row py-3">
+          <div class="col-2 text-end"></div>
+          <div class="col-8">
+            <div class="g-recaptcha" data-sitekey="6LflNsoeAAAAAPOjFMMa3ROkaJV6KsEcKGrlNWyj"></div>
+            <div class="invalid-feedback">
+              送出前請進行驗證
+            </div>    
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="px-0 mx-2 mt-3 text-end">
+        <a class="btn btn-orange submit">確認送出</a>
+    </div>
+
+    </div>
+  </div>
+
+  {% endblock body %} 
+  {% block script %}
+  <script src="{% static 'js/announcetment.js' %}"></script>
+  {% endblock script %}
+</div>

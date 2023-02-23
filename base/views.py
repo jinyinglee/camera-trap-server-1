@@ -3,7 +3,7 @@ from django.http import response
 from django.shortcuts import render, HttpResponse, redirect
 import json
 from django.db import connection
-from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Organization, Project, Species, StudyAreaStat
+from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Organization, Project, Species, StudyAreaStat, ProjectMember
 from django.db.models import Count, Window, F, Sum, Min, Q, Max
 from django.db.models.functions import ExtractYear
 from django.template import loader
@@ -35,7 +35,16 @@ from shapely.geometry import Point
 
 def desktop(request):
     file = ''
-    return render(request, 'base/desktop_download.html', {'file': file})
+    annoucement = Announcement.objects.latest('created')
+    title = annoucement.title
+    version = annoucement.version
+    description = annoucement.description
+    context = {
+        'title':title,
+        'version':version,
+        'description':description,
+    }
+    return render(request, 'base/desktop_download.html',context)
 
 
 def update_is_read(request):
@@ -104,27 +113,32 @@ def send_upload_notification(upload_history_id, member_list, request):
 
 @csrf_exempt
 def update_upload_history(request):
-    # uploading, finished
+    # client_status: uploading, finished, upload-start (for annotation processing)
     response = {}
     if request.method == 'POST':
         data = json.loads(request.body)
         client_status = data.get('status', '') #request.POST.get('status')
         deployment_journal_id = data.get('deployment_journal_id') #request.POST.get('deployment_journal_id')
-        if client_status == 'uploading' and deployment_journal_id:
+        if not deployment_journal_id:
+            # 回傳沒有結果
+            response = {'messages': 'failed due to wrong parameters'}
+            return JsonResponse(response)
+
+        if client_status in ['uploading', 'image-text']:
             # 把網頁狀態更新成上傳中
             # 若沒有，新增一個uh
             if uh := UploadHistory.objects.filter(deployment_journal_id=deployment_journal_id).first():
                 uh.last_updated = timezone.now()
-                uh.status = 'uploading'
+                uh.status = client_status #'uploading'
                 uh.save()
-            else: 
+            else:
                 uh = UploadHistory(
-                        deployment_journal_id=deployment_journal_id, 
-                        status='uploading', 
+                        deployment_journal_id=deployment_journal_id,
+                        status=client_status, #'uploading',
                         last_updated=timezone.now())
                 uh.save()
             response = {'messages': 'success'}
-        elif client_status == 'finished' and deployment_journal_id:
+        elif client_status == 'finished':
             # 判斷網頁狀態是未完成or已完成, species_error & upload_error
             upload_error = True if Image.objects.filter(deployment_journal_id=deployment_journal_id, has_storage='N').exists() else False
             species_error = True if Image.objects.filter(deployment_journal_id=deployment_journal_id, species__in=[None, '']).exists() else False
@@ -170,11 +184,29 @@ def update_upload_history(request):
                 return JsonResponse(response)
             response = {'messages': 'success'}
         else:
-            # 回傳沒有結果
-            response = {'messages': 'failed due to wrong parameters'}
+            response = {'messages': 'status not allowed'}
 
     return JsonResponse(response)
 
+# @csrf_exempt
+# def check_upload_history(request, deployment_journal_id):
+#     response = {}
+#     if uh := UploadHistory.objects.filter(deployment_journal_id=deployment_journal_id).first():
+#         response.update({
+#             'deployment_journal_id': deployment_journal_id,
+#             'status': uh.status,
+#         })
+#         img_ids = {}
+#         if uh.status == 'uploading':
+#             rows = Image.objects.values('id', 'source_data', 'image_uuid').filter(deployment_journal_id=deployment_journal_id).all()
+#             for i in rows:
+#                 if id_ := i['source_data'].get('id', ''):
+#                     # cloned image has no source_data
+#                     img_ids[id_] = [i['id'], i['image_uuid']]
+#             response.update({
+#                 'saved_image_ids': img_ids,
+#             })
+#     return JsonResponse(response)
 
 def get_error_file_list(request, deployment_journal_id):
     data = pd.DataFrame(columns=['所屬計畫', '樣區', '相機位置', '資料夾名稱', '檔名', '錯誤類型'])
@@ -284,6 +316,94 @@ def feedback_request(request):
 
 def send_msg(msg):
     msg.send()
+
+
+def announcement_is_read(request):
+    expired_time = 0
+    response = {}
+    if request.method == 'GET':
+        expired_time =  int(Announcement.objects.latest("created").mod_date.strftime('%s')) + 7776000
+        response = {'expired_time':expired_time}
+
+    return JsonResponse(response,  safe=False) 
+
+
+def announcement(request):
+    email_list = []
+
+    # 所有人 
+    all_ppl = []
+    for x in Contact.objects.exclude(email__isnull=True).values('name','email'):
+        all_ppl.append(x['email'])
+        
+    # 計畫總管理人 select * from taicat_contact where  is_organization_admin = true;
+    organization_admin = []
+    for x in Contact.objects.exclude(email__isnull=True).filter(is_organization_admin=True).values('name','email'):
+        organization_admin.append(x['email'])
+        
+    # 計畫承辦人 select * from taicat_projectmember where role = 'project_admin';
+    project_admin = []
+    for x in Contact.objects.exclude(email__isnull=True).exclude(email__exact='').filter(id__in=ProjectMember.objects.filter(role='project_admin').values('member_id')).values('name','email'):
+        project_admin.append(x['email'])
+        
+    # 資料上傳者 select * from taicat_projectmember where role = 'uploader';
+    uploader = []
+    
+    for x in Contact.objects.exclude(email__isnull=True).filter(id__in=ProjectMember.objects.filter(role='uploader').values('member_id')).values('name','email'):
+        uploader.append(x['email'])
+    
+    # other = []
+    # for x in Contact.objects.filter(id=).values('name','email'):
+    #     other.append(x['email'])
+    
+    email_list = {
+        "all_ppl": ','.join(all_ppl), 
+        "organization_admin": ','.join(organization_admin), 
+        "project_admin": ','.join(project_admin), 
+        "uploader": ','.join(uploader), 
+        # "other" :','.join(other),
+    }
+    
+    context = {
+        'email' : email_list,
+    }
+    return render(request, 'base/announcement.html',context)
+
+
+def announcement_request(request):
+    # https://stackoverflow.com/questions/38345977/filefield-force-using-temporaryuploadedfile
+    try:
+        announcement_title = request.POST.get('announcement-title')
+        description = request.POST.get('description').replace('\r\n','<br>')
+        email_to = request.POST.get('email').split(',')
+        
+        # send email
+        html_content = f"""
+        您好：
+        <br>
+        <br>
+        {description}
+        <br>
+        <br>
+        <br>
+        <br>
+        <br>
+        臺灣自動相機資訊系統 團隊敬上
+        """
+
+        subject = f'[臺灣自動相機資訊系統]公告 {announcement_title}'
+        # ('Subject here','Here is the message.','from@example.com',['to@example.com'],fail_silently=False,)
+        msg = EmailMessage(subject, html_content, settings.CT_SERVICE_EMAIL, bcc=email_to)
+        msg.content_subtype = "html"  # Main content is now text/html
+
+        # 改成背景執行
+        task = threading.Thread(target=send_msg, args=(msg,))
+        # task.daemon = True
+        task.start()
+
+        return JsonResponse({"status": 'success'}, safe=False)
+    except Exception as e:
+        return JsonResponse({"status": 'fail'}, safe=False)
 
 def policy(request):
     return render(request, 'base/policy.html')

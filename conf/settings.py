@@ -218,8 +218,7 @@ CSP_SCRIPT_SRC = ["'self'", "https://cdnjs.cloudflare.com",
 
 CSP_CONNECT_SRC = ("'self'","https://*.fontawesome.com",)
 
-DATA_UPLOAD_MAX_MEMORY_SIZE = 20000000
-
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5000000 #20000000 change to 5MB (9999 image post need almost 1MB)
 
 # via: https://docs.djangoproject.com/en/4.1/topics/logging/
 LOGGING = {
@@ -227,13 +226,19 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            #'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+            'format': '{levelname} {asctime} {module}.{funcName} #{lineno} {process} {thread} {message}',
+        },
+        'main': {
+            'format': '{levelname} {asctime} {module}.{funcName} #{lineno} {message}',
             'style': '{',
         },
-        'simple': {
-            'format': '{levelname} {message}',
+        'django.server': {
+            '()': 'django.utils.log.ServerFormatter',
+            'format': '[{server_time}] {message}',
             'style': '{',
-        },
+        }
     },
     'filters': {
         #'special': {
@@ -243,13 +248,15 @@ LOGGING = {
         'require_debug_true': {
             '()': 'django.utils.log.RequireDebugTrue',
         },
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
     },
     'handlers': {
         'console': {
-            'level': 'INFO',
-            'filters': ['require_debug_true'],
+            'level': 'DEBUG',
             'class': 'logging.StreamHandler',
-            'formatter': 'simple'
+            'formatter': 'main'
         },
         'mail_admins': {
             'level': 'ERROR',
@@ -261,7 +268,16 @@ LOGGING = {
             'filename': '/var/log/ct-web/ct-web.log',
             'when': 'W3',
             'backupCount': 7,
-            'formatter': 'verbose'
+            'formatter': 'main'
+        },
+        'django.server': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'django.server',
+        },
+        'null': {
+            'level': 'DEBUG',
+            'class': 'logging.NullHandler',
         },
     },
     'loggers': {
@@ -270,10 +286,23 @@ LOGGING = {
             'propagate': True,
             'level': 'DEBUG',
         },
-        'django.request': {
-            'handlers': ['mail_admins'],
-            'level': 'ERROR',
+        'django.utils.autoreload': {
+            'level': 'INFO',
+        },
+        # 'django.server': {
+        #     'handlers': ['django.server'],
+        #     'propagate': False,
+        #     'level': 'DEBUG',
+        # },
+        # 'django.request': {
+        #     'handlers': ['mail_admins'],
+        #     'level': 'ERROR',
+        #     'propagate': False,
+        # },
+        'django.db.backends': {
+            'handlers': ['null'],  # Quiet by default!
             'propagate': False,
+            'level': 'DEBUG',
         },
         #'myproject.custom': {
         #    'handlers': ['console', 'mail_admins'],
@@ -282,3 +311,5 @@ LOGGING = {
         #}
     }
 }
+
+CSRF_TRUSTED_ORIGINS = ['https://dbtest.camera-trap.tw', ]
