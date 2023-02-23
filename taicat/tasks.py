@@ -14,17 +14,17 @@ from taicat.models import (
     Image,
     Image_info,
     Deployment,
+    DeploymentJournal,
 )
 from base.models import UploadHistory
 from .utils import (
     set_image_annotation,
-    set_deployment_journal,
 )
 
 @shared_task
-def process_image_annotation_task(deployment_id, data):
-    deployment = Deployment.objects.get(pk=deployment_id)
-
+def process_image_annotation_task(deployment_journal_id, data):
+    deployment_journal = DeploymentJournal.objects.get(pk=deployment_journal_id)
+    deployment_journal.upload_status = 'start-annotation'
     # aware datetime object
     utc_tz = pytz.timezone(settings.TIME_ZONE)
 
@@ -36,8 +36,6 @@ def process_image_annotation_task(deployment_id, data):
 
     folder_name = data.get('folder_name', '')
 
-    # create or update DeploymentJournal
-    deployment_journal_id = set_deployment_journal(data, deployment)
     for i in data['image_list']:
         # logger.info(i)
         img_info_payload = None
@@ -54,7 +52,7 @@ def process_image_annotation_task(deployment_id, data):
         else:
             image_uuid = str(ObjectId())
             img = Image(
-                deployment_id=deployment.id,
+                deployment_id=deployment_journal.deployment_id,
                 source_data={'id': i[0]},
                 filename=i[2],
                 datetime=datetime.fromtimestamp(i[3], utc_tz),
@@ -64,10 +62,9 @@ def process_image_annotation_task(deployment_id, data):
                 image_uuid=image_uuid,
                 has_storage='N',
                 folder_name=folder_name,
+                deployment_journal_id=deployment_journal.id,
             )
 
-            if deployment_journal_id != '':
-                img.deployment_journal_id = deployment_journal_id
             if specific_bucket != '':
                 img.specific_bucket = specific_bucket
 
@@ -76,9 +73,9 @@ def process_image_annotation_task(deployment_id, data):
                 'exif': exif,
                 'image_uuid': image_uuid
             }
-            if pid := deployment.project_id:
+            if pid := deployment_journal.project_id:
                 img.project_id = pid
-            if said := deployment.study_area_id:
+            if said := deployment_journal.studyarea_id:
                 img.studyarea_id = said
 
             # seperate image_info
@@ -95,7 +92,7 @@ def process_image_annotation_task(deployment_id, data):
 
         set_image_annotation(img)
 
-    # finished
-    if uh := UploadHistory.objects.filter(deployment_journal_id=deployment_journal_id).first():
-        uh.status = 'uploading'
-        uh.save()
+
+    # done
+    deployment_journal.upload_status = 'start-media'
+    deployment_journal.save()

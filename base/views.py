@@ -188,25 +188,25 @@ def update_upload_history(request):
 
     return JsonResponse(response)
 
-@csrf_exempt
-def check_upload_history(request, deployment_journal_id):
-    response = {}
-    if uh := UploadHistory.objects.filter(deployment_journal_id=deployment_journal_id).first():
-        response.update({
-            'deployment_journal_id': deployment_journal_id,
-            'status': uh.status,
-        })
-        img_ids = {}
-        if uh.status == 'uploading':
-            rows = Image.objects.values('id', 'source_data', 'image_uuid').filter(deployment_journal_id=deployment_journal_id).all()
-            for i in rows:
-                if id_ := i['source_data'].get('id', ''):
-                    # cloned image has no source_data
-                    img_ids[id_] = [i['id'], i['image_uuid']]
-            response.update({
-                'saved_image_ids': img_ids,
-            })
-    return JsonResponse(response)
+# @csrf_exempt
+# def check_upload_history(request, deployment_journal_id):
+#     response = {}
+#     if uh := UploadHistory.objects.filter(deployment_journal_id=deployment_journal_id).first():
+#         response.update({
+#             'deployment_journal_id': deployment_journal_id,
+#             'status': uh.status,
+#         })
+#         img_ids = {}
+#         if uh.status == 'uploading':
+#             rows = Image.objects.values('id', 'source_data', 'image_uuid').filter(deployment_journal_id=deployment_journal_id).all()
+#             for i in rows:
+#                 if id_ := i['source_data'].get('id', ''):
+#                     # cloned image has no source_data
+#                     img_ids[id_] = [i['id'], i['image_uuid']]
+#             response.update({
+#                 'saved_image_ids': img_ids,
+#             })
+#     return JsonResponse(response)
 
 def get_error_file_list(request, deployment_journal_id):
     data = pd.DataFrame(columns=['所屬計畫', '樣區', '相機位置', '資料夾名稱', '檔名', '錯誤類型'])

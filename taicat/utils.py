@@ -527,7 +527,7 @@ def set_deployment_journal(data, deployment):
     #task = threading.Thread(target=obj.project.get_or_count_stats, args=(True,))
     #task.start()
 
-    return deployment_journal_id
+    return obj
 
 def clone_image(obj):
     new_img = Image(
