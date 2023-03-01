@@ -34,11 +34,16 @@ import geopandas as gpd
 from shapely.geometry import Point
 
 def desktop(request):
-    file = ''
-    annoucement = Announcement.objects.latest('created')
-    title = annoucement.title
-    version = annoucement.version
-    description = annoucement.description
+    title = ''
+    version = 'v1'
+    description = '無'
+    try:
+        annoucement = Announcement.objects.latest('created')
+        title = annoucement.title
+        version = annoucement.version
+        description = annoucement.description
+    except :
+        pass
     context = {
         'title':title,
         'version':version,
