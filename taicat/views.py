@@ -1527,7 +1527,9 @@ def data(request):
             elif not file_url and not df.from_mongo[i]:
                 suffix = Path(df.filename[i]).suffix
                 if suffix.upper() not in ['.JPG', '.PNG', '.JPEG']:
-                    file_url = f"video/{df.image_uuid[i]}{suffix}"
+                    # file_url = f"video/{df.image_uuid[i]}{suffix}"
+                    # video 轉檔後一定是 mp4
+                    file_url = f"video/{df.image_uuid[i]}.mp4"
                 else:
                     file_url = f"{df.image_uuid[i]}-m.jpg"
             extension = file_url.split('.')[-1].lower()
