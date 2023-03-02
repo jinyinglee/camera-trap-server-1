@@ -382,7 +382,8 @@ def announcement_request(request):
         description = request.POST.get('description').replace('\r\n','<br>')
         email_to = request.POST.get('email').split(',')
        
-        chunk_size = 45
+        chunk_size = 50
+        i = 0 
         while email_to:
             chunk, email_to = email_to[:chunk_size], email_to[chunk_size:]
             # print(chunk)
@@ -410,6 +411,8 @@ def announcement_request(request):
             task = threading.Thread(target=send_msg, args=(msg,))
             # task.daemon = True
             task.start()
+            i = i+1
+            print("email no. ",i , len(chunk))
 
         return JsonResponse({"status": 'success'}, safe=False)
     except Exception as e:
