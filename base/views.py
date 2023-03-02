@@ -338,12 +338,12 @@ def announcement(request):
 
     # 所有人 
     all_ppl = []
-    for x in Contact.objects.exclude(email__isnull=True).values('name','email'):
+    for x in Contact.objects.exclude(email__isnull=True).exclude(email__exact='').values('name','email'):
         all_ppl.append(x['email'])
         
     # 計畫總管理人 select * from taicat_contact where  is_organization_admin = true;
     organization_admin = []
-    for x in Contact.objects.exclude(email__isnull=True).filter(is_organization_admin=True).values('name','email'):
+    for x in Contact.objects.exclude(email__isnull=True).exclude(email__exact='').filter(is_organization_admin=True).values('name','email'):
         organization_admin.append(x['email'])
         
     # 計畫承辦人 select * from taicat_projectmember where role = 'project_admin';
@@ -354,7 +354,7 @@ def announcement(request):
     # 資料上傳者 select * from taicat_projectmember where role = 'uploader';
     uploader = []
     
-    for x in Contact.objects.exclude(email__isnull=True).filter(id__in=ProjectMember.objects.filter(role='uploader').values('member_id')).values('name','email'):
+    for x in Contact.objects.exclude(email__isnull=True).exclude(email__exact='').filter(id__in=ProjectMember.objects.filter(role='uploader').values('member_id')).values('name','email'):
         uploader.append(x['email'])
     
     # other = []
