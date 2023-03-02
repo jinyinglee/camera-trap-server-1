@@ -381,30 +381,35 @@ def announcement_request(request):
         announcement_title = request.POST.get('announcement-title')
         description = request.POST.get('description').replace('\r\n','<br>')
         email_to = request.POST.get('email').split(',')
-        
-        # send email
-        html_content = f"""
-        您好：
-        <br>
-        <br>
-        {description}
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        臺灣自動相機資訊系統 團隊敬上
-        """
+       
+        chunk_size = 45
+        while email_to:
+            chunk, email_to = email_to[:chunk_size], email_to[chunk_size:]
+            # print(chunk)
 
-        subject = f'[臺灣自動相機資訊系統]公告 {announcement_title}'
-        # ('Subject here','Here is the message.','from@example.com',['to@example.com'],fail_silently=False,)
-        msg = EmailMessage(subject, html_content, settings.CT_SERVICE_EMAIL, bcc=email_to)
-        msg.content_subtype = "html"  # Main content is now text/html
+            # send email
+            html_content = f"""
+            您好：
+            <br>
+            <br>
+            {description}
+            <br>
+            <br>
+            <br>
+            <br>
+            <br>
+            臺灣自動相機資訊系統 團隊敬上
+            """
 
-        # 改成背景執行
-        task = threading.Thread(target=send_msg, args=(msg,))
-        # task.daemon = True
-        task.start()
+            subject = f'[臺灣自動相機資訊系統]公告 {announcement_title}'
+            # ('Subject here','Here is the message.','from@example.com',['to@example.com'],fail_silently=False,)
+            msg = EmailMessage(subject, html_content, settings.CT_SERVICE_EMAIL, bcc=chunk)
+            msg.content_subtype = "html"  # Main content is now text/html
+
+            # 改成背景執行
+            task = threading.Thread(target=send_msg, args=(msg,))
+            # task.daemon = True
+            task.start()
 
         return JsonResponse({"status": 'success'}, safe=False)
     except Exception as e:
