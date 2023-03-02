@@ -319,6 +319,25 @@ footer {
           width: 19px;
         }
       }
+      .fa-phone {
+        background-position: 0 -878px;
+        background-repeat: no-repeat;
+        color:#ADB3AB;
+        overflow: hidden;
+        display: inline-block;
+        height: 18px;
+        width: 18px;
+      }
+      @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 2dppx) {
+        .fa-phone {
+          background-repeat: no-repeat;
+          color:#ADB3AB;
+          background-size: 53px 1401px;
+          background-position: 0 -823px;
+          height: 19px;
+          width: 19px;
+        }
+      }
 
       .icon-mail-gray {
         background-image: url("/static/icon/icons-sa4ae1ae68a.png");
@@ -340,7 +359,25 @@ footer {
         }
       }
       
-
+      .fa-envelope {
+        background-position: 0 -774px;
+        background-repeat: no-repeat;
+        color:#ADB3AB;
+        overflow: hidden;
+        display: inline-block;
+        height: 18px;
+        width: 18px;
+      }
+      @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 2dppx) {
+        .fa-envelope {
+          background-repeat: no-repeat;
+          color:#ADB3AB;
+          background-size: 53px 1401px;
+          background-position: 0 -725px;
+          height: 19px;
+          width: 19px;
+        }
+      }
     .show> #notification-container{
       display: block;
     }
