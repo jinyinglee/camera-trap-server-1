@@ -457,6 +457,17 @@ def get_project_member(project_id):
             member_list += [m]
     return member_list
 
+def get_studyarea_member(project_id,studyarea_id):
+    member_list = []
+    members = [m.member_id for m in ProjectMember.objects.filter(studyarea__id = studyarea_id)]
+    organization_id = Organization.objects.filter(projects=project_id).values('id')
+
+    for i in organization_id:
+        members += [c.id for c in Contact.objects.filter(organization=i['id'], is_organization_admin=True)]
+    for m in members: # 排除重複
+        if m not in member_list:
+            member_list += [m]
+    return member_list
 
 def sanitize_date(input):
     if len(input) != 8:

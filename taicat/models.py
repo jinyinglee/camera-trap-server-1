@@ -83,18 +83,6 @@ class Contact(models.Model):
         return '<Contact {}> {}'.format(self.id, self.name)
 
 
-class ProjectMember(models.Model):
-    ROLE_CHOICES = (
-        #('system_admin', '系統管理員'),
-        #('organization_admin', '計畫總管理人'),
-        ('project_admin', '個別計畫承辦人'),
-        ('uploader', '資料上傳者'),
-        #('general', '一般使用者'),
-    )
-    project = models.ForeignKey('Project', on_delete=models.SET_NULL, null=True, blank=True, related_name='members')
-    member = models.ForeignKey('Contact', on_delete=models.SET_NULL, null=True, blank=True)
-    role = models.CharField(max_length=1000, choices=ROLE_CHOICES, null=True, blank=True)
-
 
 class Organization(models.Model):
     name = models.CharField(max_length=1000)
@@ -989,3 +977,17 @@ class StudyAreaStat(models.Model):
 # 總相片數
 # 相機總工時
 # 出現物種
+
+
+class ProjectMember(models.Model):
+    ROLE_CHOICES = (
+        #('system_admin', '系統管理員'),
+        #('organization_admin', '計畫總管理人'),
+        ('project_admin', '個別計畫承辦人'),
+        ('uploader', '資料上傳者'),
+        #('general', '一般使用者'),
+    )
+    project = models.ForeignKey('Project', on_delete=models.SET_NULL, null=True, blank=True, related_name='members')
+    member = models.ForeignKey('Contact', on_delete=models.SET_NULL, null=True, blank=True)
+    role = models.CharField(max_length=1000, choices=ROLE_CHOICES, null=True, blank=True)
+    pmstudyarea =  models.ManyToManyField('StudyArea')

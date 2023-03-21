@@ -22,7 +22,7 @@ from django.core.mail import EmailMessage
 import threading
 from django.http import response, JsonResponse
 from .models import *
-from taicat.utils import get_my_project_list, get_project_member
+from taicat.utils import get_my_project_list, get_project_member, get_studyarea_member
 from django.db.models.functions import Trunc, TruncDate
 from .utils import (
     DecimalEncoder,
@@ -166,12 +166,14 @@ def update_upload_history(request):
                 upload_history_id = uh.id
             if DeploymentJournal.objects.filter(id=deployment_journal_id).exists():
                 project_id = DeploymentJournal.objects.filter(id=deployment_journal_id).values('project_id')[0]['project_id']
+                studyarea_id = DeploymentJournal.objects.filter(id=deployment_journal_id).values('studyarea')[0]['project_id']
             else:
                 response = {'messages': 'failed due to no associated record in DeploymentJournal table'}
                 return JsonResponse(response)
-            members = get_project_member(project_id) # 所有計劃下的成員
+            project_members = get_project_member(project_id) # 所有計劃下的成員
+            studyarea_members = get_studyarea_member(project_id,studyarea_id) # 樣區下所有成員
             final_members = []
-            for m in members:
+            for m in project_members:
                 # 每次都建立新的通知
                 try:
                     un = UploadNotification(
@@ -183,7 +185,7 @@ def update_upload_history(request):
                 except:
                     pass # contact已經不在則移除
             # 每次都寄信
-            res = send_upload_notification(upload_history_id, final_members, request)
+            res = send_upload_notification(upload_history_id, studyarea_members, request)
             if res.get('status') == 'fail':
                 response = {'messages': 'failed during sending email'}
                 return JsonResponse(response)
