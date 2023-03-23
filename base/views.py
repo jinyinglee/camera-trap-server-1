@@ -64,7 +64,7 @@ def send_upload_notification(upload_history_id, member_list, request):
 
     try:
         email_list = []
-        email = Contact.objects.filter(id__in=member_list).values('email')
+        email = Contact.objects.filter(id__in=member_list).values('email').exclude(email__isnull=True).exclude(email__exact='')
         for e in email:
             email_list += [e['email']]
         uh = UploadHistory.objects.filter(id=upload_history_id)
@@ -166,7 +166,7 @@ def update_upload_history(request):
                 upload_history_id = uh.id
             if DeploymentJournal.objects.filter(id=deployment_journal_id).exists():
                 project_id = DeploymentJournal.objects.filter(id=deployment_journal_id).values('project_id')[0]['project_id']
-                studyarea_id = DeploymentJournal.objects.filter(id=deployment_journal_id).values('studyarea')[0]['project_id']
+                studyarea_id = DeploymentJournal.objects.filter(id=deployment_journal_id).values('studyarea_id')[0]['studyarea_id']
             else:
                 response = {'messages': 'failed due to no associated record in DeploymentJournal table'}
                 return JsonResponse(response)

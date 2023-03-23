@@ -459,7 +459,7 @@ def get_project_member(project_id):
 
 def get_studyarea_member(project_id,studyarea_id):
     member_list = []
-    members = [m.member_id for m in ProjectMember.objects.filter(studyarea__id = studyarea_id)]
+    members = [m.member_id for m in StudyArea.objects.get(id=studyarea_id).projectmember_set.all()]
     organization_id = Organization.objects.filter(projects=project_id).values('id')
 
     for i in organization_id:
