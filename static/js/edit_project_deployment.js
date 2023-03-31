@@ -320,16 +320,16 @@ $( function() {
                 <tr>
                     <td>
                         <input type="hidden" name="id" value="${response[i][0]}">
-                        <input type="text" name="name" class="form-control text-truncate" value="${response[i][1]}">
+                        <input type="text" name="name" class="form-control" value="${response[i][1]}">
                     </td>
                     <td><input type="text" name="longitude" class="form-control" value="${response[i][2]}"></td>
                     <td><input type="text" name="latitude" class="form-control" value="${response[i][3]}"></td>
                     <td><input type="text" name="altitude" class="form-control" value="${response[i][4]}"></td>
-                    <td><select name="county" class="selectpicker form-control" 
+                    <td><select name="county" class="selectpicker form-control"
                     data-live-search-placeholder="搜索" data-live-search="true">${county_a}</select></td>
-                    <td><select name="protectedarea" class="selectpicker form-control" 
+                    <td><select name="protectedarea" class="selectpicker form-control"
                     data-live-search-placeholder="搜索" data-live-search="true">${protectedarea_a}</select></td>
-                    <td><select name="vegetation" class="selectpicker form-control" 
+                    <td><select name="vegetation" class="selectpicker form-control"
                     data-live-search-placeholder="搜索" data-live-search="true">${vegetation_a}</select></td>
                     <td><input type="text" name="landcover" class="form-control" value="${response[i][8]}"></td>
                     <td><input type="checkbox" name="deprecated" value="${i}" ${d_checked}></td>
@@ -435,7 +435,7 @@ function getDep(id,sa_name){
                     <tr>
                         <td>
                             <input type="hidden" name="id" value="${response[i][0]}">
-                            <input type="text" name="name" class="form-control text-truncate" value="${response[i][1]}">
+                            <input type="text" name="name" class="form-control" value="${response[i][1]}">
                         </td>
                         <td><input type="text" name="longitude" class="form-control" value="${response[i][2]}"></td>
                         <td><input type="text" name="latitude" class="form-control" value="${response[i][3]}"></td>

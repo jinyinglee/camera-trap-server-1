@@ -58,7 +58,7 @@
                 <div class="row py-3">
                     <div class="col-2 my-auto text-end">身份種類：</div>
                         <div class="col-4">
-                            <select class="selectpicker form-control" data-width="100%" data-style="btn-new">
+                            <select class="selectpicker form-control" data-width="100%" data-style="btn-new" name="identity">
                                 <option value=""></option>
                                 {% for i in identities %}
                                     <option value="{{ i.parametername }}">{{ i.name }}</option>
@@ -68,12 +68,12 @@
                     </div>
                 </div>
             </div>
-        </div>
         <div class="row mt-3 px-0">
             <div class="text-end px-0">
                 <input class="btn btn-success" type="submit" value="儲存">
             </div>
         </div>
+    </div>
     </form>
     {% endif %}
 
