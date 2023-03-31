@@ -8,6 +8,7 @@ from .models import (
     Contact,
     ProjectMember,
     Image,
+    ParameterCode,
 )
 
 @admin.register(ProjectMember)
@@ -47,3 +48,8 @@ class ImageAdmin(admin.ModelAdmin):
     list_filter = ('deployment', 'memo')
     list_display = ('filename', 'datetime', 'created', 'deployment', 'memo')
     search_fields = ('filename', )
+
+@admin.register(ParameterCode)
+class ParameterCodeAdmin(admin.ModelAdmin):
+    model = ParameterCode
+    list_display = ('name', 'type')
