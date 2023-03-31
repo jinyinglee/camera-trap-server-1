@@ -78,6 +78,7 @@ class Contact(models.Model):
     is_organization_admin = models.BooleanField('是否為計畫總管理人', default=False)
     # is_forestry_bureau = models.BooleanField('是否能進入林務局管考系統', default=False)
     is_system_admin = models.BooleanField('是否為系統管理員', default=False)
+    identity = models.CharField(max_length=1000, blank=True, null=True)
 
     def __str__(self):
         return '<Contact {}> {}'.format(self.id, self.name)
@@ -436,6 +437,8 @@ class Deployment(models.Model):
     source_data = models.JSONField(default=dict, blank=True)
 
     geodetic_datum = models.CharField(max_length=10, default='WGS84', choices=GEODETIC_DATUM_CHOICES)
+    county = models.CharField('縣市', max_length=1000, blank=True, null=True)
+    protectedarea = models.CharField('國家公園/保護留區', max_length=1000, blank=True, null=True)
     landcover = models.CharField('土地覆蓋類型', max_length=1000, blank=True, null=True)
     vegetation = models.CharField('植被類型', max_length=1000, blank=True, null=True)
     verbatim_locality = models.CharField(max_length=1000, blank=True, null=True)
@@ -991,3 +994,20 @@ class ProjectMember(models.Model):
     member = models.ForeignKey('Contact', on_delete=models.SET_NULL, null=True, blank=True)
     role = models.CharField(max_length=1000, choices=ROLE_CHOICES, null=True, blank=True)
     pmstudyarea =  models.ManyToManyField('StudyArea')
+    
+    
+
+class ParameterCode(models.Model):
+    TYPE_CHOICES = (
+        ('study_area', '樣區'),
+        ('county', '縣市'),
+        ('protectedarea', '保護留區'),
+        ('vegetation', '植被類型'),
+        ('identity', '使用者身份'),
+    )
+    name = models.CharField('參數中文名稱',max_length=1000 ,null=True, blank=True)
+    parametername = models.CharField('參數名稱',max_length=1000 ,null=True, blank=True)
+    type = models.CharField('參數範圍',max_length=1000 ,choices=TYPE_CHOICES, null=True, blank=True)
+    pmajor = models.CharField('上階層名稱',max_length=1000 ,null=True, blank=True)
+    description = models.CharField('參數描述',max_length=1000, null=True, blank=True)
+    created = models.DateTimeField(auto_now_add=True)

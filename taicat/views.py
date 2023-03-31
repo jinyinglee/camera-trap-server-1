@@ -5,6 +5,7 @@ from django.http import (
     JsonResponse,
     StreamingHttpResponse,
 )
+from django.core.serializers import serialize
 from django.shortcuts import redirect, render, HttpResponse
 from django.utils.timezone import make_aware
 from django.views.decorators.csrf import csrf_exempt
@@ -995,12 +996,11 @@ def get_deployment(request):
         id = request.POST.get('study_area_id')
 
         with connection.cursor() as cursor:
-            query = """SELECT id, name, longitude, latitude, altitude, landcover, vegetation, verbatim_locality, 
+            query = """SELECT id, name, longitude, latitude, altitude, county, protectedarea, vegetation,landcover, verbatim_locality, 
                         geodetic_datum, deprecated FROM taicat_deployment 
                         WHERE study_area_id = {} ORDER BY id ASC;"""
             cursor.execute(query.format(id))
             data = cursor.fetchall()
-
         return HttpResponse(json.dumps(data, cls=DecimalEncoder), content_type='application/json')
 
 
@@ -1017,6 +1017,8 @@ def add_deployment(request):
         latitudes = res.getlist('latitudes[]')
         altitudes = res.getlist('altitudes[]')
         landcovers = res.getlist('landcovers[]')
+        counties = res.getlist('counties[]')
+        protectedareas = res.getlist('protectedareas[]')
         vegetations = res.getlist('vegetations[]')
         did = res.getlist('did[]')
         deprecated = res.getlist('deprecated[]')
@@ -1038,12 +1040,15 @@ def add_deployment(request):
                         longitude=longitudes[i], 
                         latitude=latitudes[i], 
                         altitude=altitudes[i],
+                        county=counties[i], 
+                        protectedarea=protectedareas[i], 
                         landcover=landcovers[i], 
                         vegetation=vegetations[i],
                         deprecated=dep)
             else:
                 new_did = Deployment.objects.create(project_id=project_id, study_area_id=study_area_id, geodetic_datum=geodetic_datum,
                             name=names[i], longitude=longitudes[i], latitude=latitudes[i], altitude=altitudes[i],
+                            county=counties[i],protectedarea=protectedareas[i],
                             landcover=landcovers[i], vegetation=vegetations[i], deprecated=dep)
                 ids.append(new_did.id)
 
@@ -1052,7 +1057,7 @@ def add_deployment(request):
         
         if ids:
             with connection.cursor() as cursor:
-                query = f"""SELECT id, name, longitude, latitude, altitude, landcover, vegetation, verbatim_locality, 
+                query = f"""SELECT id, name, longitude, latitude, altitude, county, protectedarea, vegetation, landcover, verbatim_locality, 
                             geodetic_datum, deprecated FROM taicat_deployment 
                             WHERE id in ({str(ids).replace('[','').replace(']','')}) ORDER BY id ASC;"""
                 cursor.execute(query.format(study_area_id))
@@ -1871,3 +1876,21 @@ def api_update_deployment_journals(request, pk):
 def get_gap_choice(request):
     gc = DeploymentJournal.GAP_CHOICES
     return HttpResponse(json.dumps(gc), content_type='application/json')
+
+def get_parameter_name(request):
+    if request.method == "GET":
+        pn_type = request.GET.get('type')
+        if ParameterCode.objects.filter(type=pn_type).exists():
+            parameter_name =ParameterCode.objects.filter(type=pn_type).values("name","pmajor","type","parametername")
+        else:
+            parameter_name = ''
+            
+            
+        code = [{
+            'name':x['name'],
+            'pmajor': x['pmajor'],
+            'type':x['type'],
+            'parametername': x['parametername']
+        } for x in parameter_name]
+        
+    return JsonResponse(code, safe=False)

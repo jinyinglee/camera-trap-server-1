@@ -55,6 +55,18 @@
                     </div>
                     {% endif %}
                 </div>
+                <div class="row py-3">
+                    <div class="col-2 my-auto text-end">身份種類：</div>
+                        <div class="col-4">
+                            <select class="selectpicker form-control" data-width="100%" data-style="btn-new">
+                                <option value=""></option>
+                                {% for i in identities %}
+                                    <option value="{{ i.parametername }}">{{ i.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="row mt-3 px-0">

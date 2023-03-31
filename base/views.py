@@ -3,7 +3,7 @@ from django.http import response
 from django.shortcuts import render, HttpResponse, redirect
 import json
 from django.db import connection
-from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Organization, Project, Species, StudyAreaStat, ProjectMember
+from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Organization, Project, Species, StudyAreaStat, ProjectMember,ParameterCode
 from django.db.models import Count, Window, F, Sum, Min, Q, Max
 from django.db.models.functions import ExtractYear
 from django.template import loader
@@ -182,7 +182,7 @@ def update_upload_history(request):
                     )
                     un.save()
                     final_members += [m]
-                except:
+                except Exception as e:
                     pass # contact已經不在則移除
             # 每次都寄信
             res = send_upload_notification(upload_history_id, studyarea_members, request)
@@ -553,19 +553,20 @@ def personal_info(request):
     # login required
     is_login = request.session.get('is_login', False)
     first_login = request.session.get('first_login', False)
-
+    identities = ParameterCode.objects.filter(type='identity').values("name","pmajor","type","parametername")
     if request.method == 'POST':
         first_login = False
         orcid = request.session.get('orcid')
         name = request.POST.get('name')
         email = request.POST.get('email')
-        Contact.objects.filter(orcid=orcid).update(name=name, email=email)
+        identity = request.POST.get('identity')
+        Contact.objects.filter(orcid=orcid).update(name=name, email=email,identity=identity)
         request.session["name"] = name
 
     if is_login:
         info = Contact.objects.filter(
             orcid=request.session["orcid"]).values().first()
-        return render(request, 'base/personal_info.html', {'info': info, 'first_login': first_login})
+        return render(request, 'base/personal_info.html', {'info': info, 'first_login': first_login,'identities':identities})
     else:
         messages.error(request, '請先登入')
         return render(request, 'base/personal_info.html')
