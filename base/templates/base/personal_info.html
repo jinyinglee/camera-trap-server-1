@@ -61,7 +61,11 @@
                             <select class="selectpicker form-control" data-width="100%" data-style="btn-new" name="identity">
                                 <option value=""></option>
                                 {% for i in identities %}
-                                    <option value="{{ i.parametername }}">{{ i.name }}</option>
+                                    {% if info.identity == i.parametername  %}
+                                        <option value="{{ i.parametername }}" selected>{{ i.name }}</option>
+                                    {% else %}
+                                        <option value="{{ i.parametername }}">{{ i.name }}</option>
+                                    {% endif %}
                                 {% endfor %}
                             </select>
                         </div>
