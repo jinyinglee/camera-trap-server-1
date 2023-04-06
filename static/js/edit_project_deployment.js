@@ -93,11 +93,8 @@ $( function() {
     
 
     $('#addDeployment').on('click',async function(){
-        // vegetation = []
         var vegetation = await getVegetationItem().then(result => vegetation = result)
-        
         var protectedarea = await getProtectedareaItem().then(result => protectedarea = result)
-
         var county =await  getCountyItem().then(result => county = result)
         
         //目前的id到哪
@@ -109,24 +106,14 @@ $( function() {
                                     <td><input type="text" name="longitude" class="form-control"></td>
                                     <td><input type="text" name="latitude" class="form-control"></td>
                                     <td><input type="text" name="altitude" value="" class="form-control"></td>
-                                    <td><select name="county" class="selectpicker form-control" 
-                                    data-live-search-placeholder="搜索" data-live-search="true">
-                                    ${county}
-                                    </select></td>
-                                    <td><select name="protectedarea" class="selectpicker form-control" 
-                                    data-live-search-placeholder="搜索" data-live-search="true">
-                                    ${protectedarea}
-                                    </select></td>
-                                    <td><select name="vegetation" class="selectpicker form-control" 
-                                    data-live-search-placeholder="搜索" data-live-search="true">
-                                    ${vegetation}
-                                    </select></td>
-                                    
+                                    <td><select name="county" class="selectpicker form-control" data-live-search-placeholder="搜索" data-live-search="true">${county}</select></td>
+                                    <td><select name="protectedarea" class="selectpicker form-control" data-live-search-placeholder="搜索" data-live-search="true">${protectedarea}</select></td>
+                                    <td><select name="vegetation" class="selectpicker form-control" data-live-search-placeholder="搜索" data-live-search="true">${vegetation}</select></td>
                                     <td><input type="text" name="landcover" class="form-control"></td>
                                     <td><input type="checkbox" name="deprecated" value="${new_id}"></td>
                                     <td><a class="removeButton btn bg-white text-gray">x</a></td>
                                 </tr>`)
-            $('select').selectpicker();
+        $('select').selectpicker();
     })
     
 
@@ -223,7 +210,6 @@ $( function() {
         $('#deployment [name="county"]').each(function(){
             counties.push($(this).val());
         });
-        // county.each(func
         protectedareas = []
         $('#deployment [name="protectedarea"]').each(function(){
             protectedareas.push($(this).val());
@@ -254,7 +240,7 @@ $( function() {
         url: "/api/add_deployment",
         data: {'project_id': $('input[name=pk]').val(),
                'study_area_id': $('.current_sa').attr('id'),
-               'geodetic_datum': $('select').val(),
+               'geodetic_datum': $('#geodetic_datum').val(),
                'names': names,
                'longitudes': longitudes,
                'latitudes': latitudes,
@@ -450,6 +436,7 @@ function getDep(id,sa_name){
                     </tr>`)
                 }
                 $('select').selectpicker();
+                $('#geodetic_datum').selectpicker('val', response[0][10])
             },
             error: function (response) {
             }
