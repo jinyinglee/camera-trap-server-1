@@ -26,6 +26,9 @@ from taicat.models import (
     DeploymentJournal,
     Image_info,
 )
+from base.models import (
+    Announcement,
+)
 from .utils import (
     set_image_annotation,
     set_deployment_journal
@@ -241,3 +244,20 @@ def update_image(request):
         }
     return JsonResponse(res)
 
+
+@csrf_exempt
+def check_update(request, version=''):
+    res = {
+        'version': {
+            'latest': '',
+            'client': version,
+        },
+        'is_latest': False,
+    }
+
+    latest_version = Announcement.objects.order_by('-created').values_list('version', flat=True).first()
+    latest_version = latest_version.replace('v', '')
+    res['version']['latest'] = latest_version
+    if latest_version == version:
+        res['is_latest'] = True
+    return JsonResponse(res)
