@@ -261,3 +261,18 @@ def check_update(request, version=''):
     if latest_version == version:
         res['is_latest'] = True
     return JsonResponse(res)
+
+@csrf_exempt
+def check_folder(request, name=''):
+    res = {
+        'is_exist': False,
+    }
+    if dj := DeploymentJournal.objects.filter(folder_name=name).first():
+        res['is_exist'] = True
+        res['deployment_journal'] = {
+            'id': dj.id,
+            'folder_name': dj.folder_name,
+            'project_id': dj.project_id,
+            'deployment_id': dj.deployment_id,
+        }
+    return JsonResponse(res)
