@@ -25,6 +25,7 @@ from .utils import (
 def process_image_annotation_task(deployment_journal_id, data):
     deployment_journal = DeploymentJournal.objects.get(pk=deployment_journal_id)
     deployment_journal.upload_status = 'start-annotation'
+    next_status = 'start-media'
     # aware datetime object
     utc_tz = pytz.timezone(settings.TIME_ZONE)
 
@@ -37,18 +38,25 @@ def process_image_annotation_task(deployment_journal_id, data):
     folder_name = data.get('folder_name', '')
 
     for i in data['image_list']:
-        # logger.info(i)
         img_info_payload = None
         # prevent json load error
         exif_str = i[9].replace('\\u0000', '') if i[9] else '{}'
         exif = json.loads(exif_str)
         anno = json.loads(i[7]) if i[7] else '{}'
-        if i[11]:
-            img = Image.objects.get(pk=i[11])
+        if image_id := i[11]:
+            next_status = 'finished' # re-upload
+
+            try:
+                img = Image.objects.get(pk=image_id)
+            except Image.DoesNotExist:
+                print ('Does Not Exist!')
+                continue
+
             # only update annotation
             img.annotation = anno
             img.source_data.update({'id': i[0]})
             img.last_updated = datetime.now()
+
         else:
             image_uuid = str(ObjectId())
             img = Image(
@@ -94,5 +102,5 @@ def process_image_annotation_task(deployment_journal_id, data):
 
 
     # done
-    deployment_journal.upload_status = 'start-media'
+    deployment_journal.upload_status = next_status
     deployment_journal.save()
