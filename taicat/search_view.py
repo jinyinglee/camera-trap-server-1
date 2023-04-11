@@ -161,6 +161,30 @@ def api_search(request):
                 #    query = query.filter(deployment_id__in=values)
             elif values := filter_dict.get('studyareas'):
                 query = query.filter(studyarea_id__in=values)
+
+            if value := filter_dict.get('altitude'):
+                if op := filter_dict.get('altitudeOperator'):
+                    val_list = value.split('-')
+                    v1 = int(val_list[0])
+                    v2 = None
+                    if len(val_list) >= 2:
+                        v2 = int(val_list[1])
+                    if v1:
+                        if op == 'eq':
+                            query = query.filter(deployment__altitude=v1)
+                        elif op == 'gt':
+                            query = query.filter(deployment__altitude__gte=v1)
+                        elif op == 'lt':
+                            query = query.filter(deployment__altitude__lte=v1)
+                    if v2 and op == 'range':
+                        query = query.filter(deployment__altitude__gte=v1, deployment__altitude__lte=v2)
+
+            if value := filter_dict.get('county'):
+                query = query.filter(deployment__county__icontains=value)
+
+            if value := filter_dict.get('protectedarea'):
+                query = query.filter(deployment__protectedarea__icontains=value)
+
             if len(sp_values) > 0:
                 query = query.filter(species__in=sp_values)
 

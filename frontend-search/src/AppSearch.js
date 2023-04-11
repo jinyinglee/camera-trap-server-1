@@ -12,9 +12,14 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import Backdrop from '@mui/material/Backdrop';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
 import CircularProgress from '@mui/material/CircularProgress';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import InputLabel from '@mui/material/InputLabel';
+import FormControl from '@mui/material/FormControl';
+import InputAdornment from '@mui/material/InputAdornment';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 
@@ -398,7 +403,7 @@ const AppSearch = () => {
         </Paper>
       </Box>
     );
-  }
+  };
 
   console.log('state', state);
 
@@ -411,7 +416,7 @@ const AppSearch = () => {
         <CircularProgress color="inherit" />
       </Backdrop>
       <h3>篩選條件</h3>
-      <LocalizationProvider dateAdapter={AdapterDateFns} locale={zhTW}>
+      <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhTW}>
       <Grid container spacing={2}>
         <Grid item xs={3}>
           <Autocomplete
@@ -484,7 +489,54 @@ const AppSearch = () => {
             <ProjectFilterBox index={index}/>
           </Grid>
         )}
-
+        <Grid item xs={6}>
+          <Box>
+            <Grid container>
+              <Grid item xs={4}>
+                <FormControl variant="standard" sx={{ m: 1, minWidth: 120 }}>
+                  <InputLabel id="demo-simple-select-standard-label">比較</InputLabel>
+                  <Select
+                    labelId="demo-simple-select-standard-label"
+                    id="demo-simple-select-standard"
+                    value={state.filter.altitudeOperator || ''}
+                    onChange={(e) => dispatch({type: 'setFilter', name: 'altitudeOperator', value: e.target.value})}
+                    label="比較"
+                    variant="standard"
+                  >
+                    <MenuItem value="">-- 選擇 --</MenuItem>
+                    <MenuItem value="eq">{"="}</MenuItem>
+                    <MenuItem value="gt">{">="}</MenuItem>
+                    <MenuItem value="lt">{"<="}</MenuItem>
+                    <MenuItem value="range">{"範圍"}</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={4}>
+                <FormControl variant="standard" sx={{ m: 1}}>
+                  <TextField variant="standard" label="海拔" value={state.filter.altitude || ''} onChange={(e) => dispatch({type: 'setFilter', name: 'altitude', value: e.target.value})}InputProps={{
+                    endAdornment: <InputAdornment position="end">m</InputAdornment>,
+                  }} helperText='範圍的話用"-"，標示，例如: 600-1200' />
+                </FormControl>
+              </Grid>
+            </Grid>
+          </Box>
+        </Grid>
+        <Grid item xs={3}>
+          <TextField
+            label="縣市"
+            variant="standard"
+            value={state.filter.county}
+            onChange={(e)=> dispatch({type: 'setFilter', name: 'county', value: e.target.value})}
+          />
+        </Grid>
+        <Grid item xs={3}>
+          <TextField
+            label="保護留區"
+            variant="standard"
+            value={state.filter.protectedarea}
+            onChange={(e)=> dispatch({type: 'setFilter', name: 'protectedarea', value: e.target.value})}
+          />
+        </Grid>
         <Grid item xs={3}>
           <Button variant="contained" onClick={handleSubmit}>搜尋</Button>
         </Grid>
