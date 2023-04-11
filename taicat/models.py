@@ -426,7 +426,7 @@ class Deployment(models.Model):
     # cameraDeploymentEndDateTime
     longitude = models.DecimalField(decimal_places=8, max_digits=20, null=True, blank=True)
     latitude = models.DecimalField(decimal_places=8, max_digits=20, null=True, blank=True)
-    altitude = models.SmallIntegerField(null=True, blank=True)
+    altitude = models.SmallIntegerField(null=True, blank=True, db_index=True)
     # deploymentLocationID
     name = models.CharField(max_length=1000)
     # cameraStatus
@@ -437,8 +437,8 @@ class Deployment(models.Model):
     source_data = models.JSONField(default=dict, blank=True)
 
     geodetic_datum = models.CharField(max_length=10, default='WGS84', choices=GEODETIC_DATUM_CHOICES)
-    county = models.CharField('縣市', max_length=1000, blank=True, null=True)
-    protectedarea = models.CharField('國家公園/保護留區', max_length=1000, blank=True, null=True)
+    county = models.CharField('縣市', max_length=1000, blank=True, null=True, db_index=True)
+    protectedarea = models.CharField('國家公園/保護留區', max_length=1000, blank=True, null=True, db_index=True)
     landcover = models.CharField('土地覆蓋類型', max_length=1000, blank=True, null=True)
     vegetation = models.CharField('植被類型', max_length=1000, blank=True, null=True)
     verbatim_locality = models.CharField(max_length=1000, blank=True, null=True)
@@ -795,6 +795,9 @@ class Image(models.Model):
             'project__name': self.project.name if self.project else None,
             'studyarea__name': self.studyarea.name if self.studyarea_id else None,
             'deployment__name': self.deployment.name if self.deployment_id else None,
+            'deployment__altitude': self.deployment.altitude or '',
+            'deployment__county': self.deployment.county or '',
+            'deployment__protectedarea': self.deployment.protectedarea or '',
             'media': self.get_associated_media(),
         }
 

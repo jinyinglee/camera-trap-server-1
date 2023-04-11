@@ -31,11 +31,26 @@ const columns = [
     label: '樣區名稱',
     minWidth: 90,
   },
-    {
+  {
     id: 'deployment__name',
     label: '相機位置名稱',
     minWidth: 90,
-    },
+  },
+  {
+    id: 'deployment__altitude',
+    label: '海拔',
+    minWidth: 20,
+  },
+  {
+    id: 'deployment__county',
+    label: '縣市',
+    minWidth: 40,
+  },
+  {
+    id: 'deployment__protectedarea',
+    label: '保護留區',
+    minWidth: 40,
+  },
   {
     id: 'media',
     label: '照片',
