@@ -787,6 +787,16 @@ class Image(models.Model):
         return [x['species'] for x in self.annotation if isinstance(x, dict) and x.get('species', '')]
 
     def to_dict(self):
+        county_name = ''
+        protectedarea_name = ''
+        if x := self.deployment.county:
+            if obj := ParameterCode.objects.filter(parametername=x).first():
+                county_name = obj.name
+
+        if x := self.deployment.protectedarea:
+            if obj := ParameterCode.objects.filter(parametername=x).first():
+                protectedarea_name = obj.name
+
         return {
             'id': self.id,
             'species': self.species,
@@ -796,8 +806,8 @@ class Image(models.Model):
             'studyarea__name': self.studyarea.name if self.studyarea_id else None,
             'deployment__name': self.deployment.name if self.deployment_id else None,
             'deployment__altitude': self.deployment.altitude or '',
-            'deployment__county': self.deployment.county or '',
-            'deployment__protectedarea': self.deployment.protectedarea or '',
+            'deployment__county': county_name,
+            'deployment__protectedarea': protectedarea_name,
             'media': self.get_associated_media(),
         }
 
@@ -997,8 +1007,7 @@ class ProjectMember(models.Model):
     member = models.ForeignKey('Contact', on_delete=models.SET_NULL, null=True, blank=True)
     role = models.CharField(max_length=1000, choices=ROLE_CHOICES, null=True, blank=True)
     pmstudyarea =  models.ManyToManyField('StudyArea')
-    
-    
+
 
 class ParameterCode(models.Model):
     TYPE_CHOICES = (

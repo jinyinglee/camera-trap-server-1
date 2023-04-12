@@ -9,6 +9,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
+import Button from '@mui/material/Button';
 
 const columns = [
   { id: 'index', label: '#', minWidth: 10 },
@@ -62,7 +63,7 @@ const columns = [
 const CellContent = (value) => {
 }
 
-const AppSearchDataGrid = ({result, pagination, handleChangePage, handleChangeRowsPerPage}) => {
+const AppSearchDataGrid = ({result, pagination, handleChangePage, handleChangeRowsPerPage, setImageDetail}) => {
   // console.log('result', result);
   return (
     <TableContainer component={Paper}>
@@ -84,10 +85,10 @@ const AppSearchDataGrid = ({result, pagination, handleChangePage, handleChangeRo
           {result.data.map((row, index)=> {
             return (
               <TableRow key={row.id}>
-              {columns.map((column) => {
+                {columns.map((column) => {
                   let value = '';
-                  if (column.id === 'media') {
-                    value = <img src={value} width="50"/>;
+                  if (column.id === 'media' && row[column.id]) {
+                    value = <Button onClick={()=>setImageDetail(row[column.id])}><img src={row[column.id]} width="50"/></Button>;
                   } else if (column.id === 'index') {
                     value = (pagination.pageIndex * pagination.perPage) + index+1;
                   } else {
