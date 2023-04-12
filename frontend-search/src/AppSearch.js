@@ -26,6 +26,7 @@ import AlertTitle from '@mui/material/AlertTitle';
 import { zhTW } from 'date-fns/locale';
 
 import { AppSearchDataGrid } from './AppSearchDataGrid';
+import { AppSearchImageViewer} from './AppSearchImageViewer';
 import { AppSearchCalculation } from './AppSearchCalculation';
 import { cleanFormData } from './Utils';
 import { VERSION } from './Version'
@@ -59,7 +60,8 @@ const initialState = {
     eventInterval: '60',
     fileFormat: 'excel',
     calcType: 'basic-oi',
-  }
+  },
+  imageDetail: '', // replace with path to open image viewer dialog
 };
 
 function reducer(state, action) {
@@ -141,6 +143,11 @@ function reducer(state, action) {
         ...state.calculation,
         [action.name]:  action.value,
       }
+    }
+  case 'setImageDetail':
+    return {
+      ...state,
+      imageDetail: action.path,
     }
   default:
     //throw new Error();
@@ -415,6 +422,7 @@ const AppSearch = () => {
       >
         <CircularProgress color="inherit" />
       </Backdrop>
+      <AppSearchImageViewer setImageViewerClose={() => dispatch({type: 'setImageDetail', path: ''})} imageDetail={state.imageDetail} />
       <h3>篩選條件</h3>
       <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhTW}>
       <Grid container spacing={2}>
@@ -543,7 +551,7 @@ const AppSearch = () => {
         <Grid item xs={12}>
           {(state.result && state.result.data.length > 0) ?
            <>
-           <AppSearchDataGrid result={state.result} handleChangePage={handleChangePage} handleChangeRowsPerPage={handleChangeRowsPerPage} pagination={state.pagination}/>
+             <AppSearchDataGrid result={state.result} handleChangePage={handleChangePage} handleChangeRowsPerPage={handleChangeRowsPerPage} pagination={state.pagination} setImageDetail={(path) => dispatch({type: 'setImageDetail', path: path})} />
              <AppSearchCalculation calcData={state.calculation} setCalcData={dispatch} />
              <Button variant="contained" onClick={handleCalc} style={{marginTop: '10px'}}>下載計算</Button>
              {(state.alertText) ? <Alert severity="error" onClose={()=>{ dispatch({type: 'setAlert', value: ''})}}><AlertTitle>{state.alertTitle}</AlertTitle>{state.alertText}</Alert> : null}
