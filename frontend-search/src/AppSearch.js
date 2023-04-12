@@ -38,6 +38,8 @@ const initialState = {
     startDate: new Date(2014, 0, 1),
     endDate: new Date(),
     projects: [{project: null}],
+    counties: [],
+    protectedareas: [],
     keyword: '',
   },
   pagination: {
@@ -47,6 +49,10 @@ const initialState = {
   options: {
     species: [],
     projects: [],
+    named_areas: {
+      county: [],
+      protectedarea: [],
+    },
     deploymentDict: null,
   },
   isLoading: false,
@@ -87,7 +93,9 @@ function reducer(state, action) {
         ...state.options,
         projects: action.value.projects,
         species: action.value.species,
-      }
+        named_areas: action.value.named_areas,
+      },
+      isInit: true,
     };
   case 'setDeploymentFilter':
     // update option & filter
@@ -155,6 +163,18 @@ function reducer(state, action) {
   }
 }
 
+const fetchOptions = async (urls) => {
+  try {
+    const response = await Promise.all(
+      urls.map(url => fetch(url).then(res => res.json()))
+    )
+    return response
+  } catch (error) {
+    console.log("Error", error)
+  }
+}
+
+
 const AppSearch = () => {
   const today = new Date();
   const todayYMD = `${today.getFullYear()}-${today.getMonth().toString().padStart(2, '0')}-${today.getDay().toString().padStart(2, '0')}`;
@@ -163,15 +183,22 @@ const AppSearch = () => {
   const [state, dispatch] = React.useReducer(reducer, initialState);
 
   useEffect(() => {
-    fetch(`${apiPrefix}species`)
-    .then(resp => resp.json())
-    .then(data => {
-      fetch(`${apiPrefix}projects`)
-        .then(resp2 => resp2.json())
-        .then(data2 => {
-          dispatch({type: 'initOptions', value: {species: data.data, projects: data2.data}});
-        });
-    });
+    const urls = [
+      `${apiPrefix}species`,
+      `${apiPrefix}projects`,
+      `${apiPrefix}named_areas`,
+    ]
+    let options = {};
+    fetchOptions(urls).then( resp => {
+      resp.forEach( x => {
+        if (x.category == 'named_areas') {
+          options.named_areas = x.data
+        } else {
+          options[x.category] = x.data
+        }
+      })
+      dispatch({type: 'initOptions', value: options});
+    })
   }, []);
 
   //useEffect(() => {
@@ -196,6 +223,7 @@ const AppSearch = () => {
 
     dispatch({type: 'startLoading'});
     console.log('fetch:', searchApiUrl);
+
     fetch(encodeURI(searchApiUrl), {
       //body: JSON.stringify({filter: formData}),
       mode: 'same-origin',
@@ -249,7 +277,6 @@ const AppSearch = () => {
 
   const handleChangePage = (e, pageIndex) => {
     const pp = (state.pagination.perPage === 10) ? 20 : state.pagination.perPage;
-    console.log(pageIndex, pp, '---');
     dispatch({type:'setPagination', pageIndex: pageIndex, perPage: pp});
     fetchData({pageIndex: pageIndex, perPage: pp});
   }
@@ -497,10 +524,10 @@ const AppSearch = () => {
             <ProjectFilterBox index={index}/>
           </Grid>
         )}
-        <Grid item xs={6}>
+        <Grid item xs={4}>
           <Box>
             <Grid container>
-              <Grid item xs={4}>
+              <Grid item xs={6}>
                 <FormControl variant="standard" sx={{ m: 1, minWidth: 120 }}>
                   <InputLabel id="demo-simple-select-standard-label">比較</InputLabel>
                   <Select
@@ -519,7 +546,7 @@ const AppSearch = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={4}>
+              <Grid item xs={6}>
                 <FormControl variant="standard" sx={{ m: 1}}>
                   <TextField variant="standard" label="海拔" value={state.filter.altitude || ''} onChange={(e) => dispatch({type: 'setFilter', name: 'altitude', value: e.target.value})}InputProps={{
                     endAdornment: <InputAdornment position="end">m</InputAdornment>,
@@ -529,21 +556,58 @@ const AppSearch = () => {
             </Grid>
           </Box>
         </Grid>
-        <Grid item xs={3}>
+        <Grid item xs={2}>
+          <FormControl variant="standard" sx={{ m: 1, minWidth: 200 }}>
+            <Autocomplete
+              multiple
+              options={state.options.named_areas.county}
+              getOptionLabel={(option) => option.name}
+              value={state.filter.counties}
+              onChange={(e, value) => { dispatch({type: 'setFilter', name: 'counties', value: value}) }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  variant="standard"
+                  label="縣市"
+                />
+              )}
+            />
+          </FormControl>
+          {/*
           <TextField
             label="縣市"
             variant="standard"
             value={state.filter.county}
             onChange={(e)=> dispatch({type: 'setFilter', name: 'county', value: e.target.value})}
           />
+           */}
         </Grid>
-        <Grid item xs={3}>
+        <Grid item xs={6}>
+          <FormControl variant="standard" sx={{ m: 1, marginLeft: 2, minWidth: 400 }}>
+            <Autocomplete
+              multiple
+              options={state.options.named_areas.protectedarea}
+              getOptionLabel={(option) => option.name}
+              value={state.filter.county}
+              onChange={(e, value) => dispatch({type: 'setFilter', name: 'protectedareas', value: value})}
+              groupBy={(option) => option.category}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  variant="standard"
+                  label="保護留區"
+                />
+              )}
+            />
+          </FormControl>
+          {/*
           <TextField
             label="保護留區"
             variant="standard"
             value={state.filter.protectedarea}
             onChange={(e)=> dispatch({type: 'setFilter', name: 'protectedarea', value: e.target.value})}
           />
+           */}
         </Grid>
         <Grid item xs={3}>
           <Button variant="contained" onClick={handleSubmit}>搜尋</Button>

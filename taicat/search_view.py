@@ -4,6 +4,8 @@ import logging
 import time
 from datetime import datetime
 import re
+import operator
+from functools import reduce
 
 from django.shortcuts import render, redirect
 from django.http import (
@@ -29,6 +31,7 @@ from taicat.models import (
     Deployment,
     StudyArea,
     Species,
+    ParameterCode,
 )
 from .utils import (
     get_species_list,
@@ -52,10 +55,37 @@ def index(request):
     }
     return render(request, 'search/search_index.html', context)
 
+def api_named_areas(request):
+    data = {
+        'county': [],
+        'protectedarea': [],
+    }
+
+    county_list = ParameterCode.objects.filter(type='county').all()
+    protectedarea_list = ParameterCode.objects.filter(type='protectedarea').all()
+    for i in county_list:
+        data['county'].append({
+            'id': i.id,
+            'parametername': i.parametername,
+            'name': i.name,
+        })
+    for i in protectedarea_list:
+        data['protectedarea'].append({
+            'id': i.id,
+            'parametername': i.parametername,
+            'name': i.name,
+            'category': i.pmajor,
+        })
+    return JsonResponse({
+        'category': 'named_areas',
+        'data': data
+    })
+
 
 def api_get_species(request):
     species_list = [x.to_dict() for x in Species.objects.filter(status='I').all()]
     return JsonResponse({
+        'category': 'species',
         'data': species_list,
         'total': len(species_list)
     })
@@ -98,6 +128,7 @@ def api_get_projects(request):
 
     projects = public_projects + my_projects
     return JsonResponse({
+        'category': 'projects',
         'data': projects,
         'total': len(projects)
     })
@@ -179,11 +210,17 @@ def api_search(request):
                     if v2 and op == 'range':
                         query = query.filter(deployment__altitude__gte=v1, deployment__altitude__lte=v2)
 
-            if value := filter_dict.get('county'):
-                query = query.filter(deployment__county__icontains=value)
+            if values := filter_dict.get('counties'):
+                q_list = []
+                for x in values:
+                    q_list.append(Q(deployment__county__icontains=x['parametername']))
 
-            if value := filter_dict.get('protectedarea'):
-                query = query.filter(deployment__protectedarea__icontains=value)
+                query = query.filter(reduce(operator.or_, q_list))
+
+            if values := filter_dict.get('protectedareas'):
+                q_list = []
+                for x in values:
+                    q_list.append(Q(deployment__protectedareas__icontains=x['parametername']))
 
             if len(sp_values) > 0:
                 query = query.filter(species__in=sp_values)
