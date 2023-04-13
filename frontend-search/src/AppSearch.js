@@ -289,9 +289,9 @@ const AppSearch = () => {
 
   const handleCalc = () => {
     const formDataCleaned = cleanFormData(state.filter, state.options.deploymentDict);
-    console.log(formDataCleaned);
+    //console.log(formDataCleaned);
     if (!formDataCleaned.species) {
-      dispatch({type: 'setAlert', value: '必須至少選一個物種'});
+      dispatch({type: 'setAlert', text: '必須至少選一個物種', title:'注意'});
     } else {
       const calc = JSON.stringify(state.calculation);
       const d = JSON.stringify(formDataCleaned);
