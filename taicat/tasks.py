@@ -8,6 +8,8 @@ from django.conf import settings
 from celery import shared_task
 from celery.utils.log import get_task_logger
 
+from taicat.utils import save_calculation
+
 logger = get_task_logger(__name__)
 
 from taicat.models import (
@@ -23,6 +25,10 @@ from .utils import (
 
 @shared_task
 def process_image_annotation_task(deployment_journal_id, data):
+    datetime_from = None
+    datetime_to = None
+    species_list = []
+
     deployment_journal = DeploymentJournal.objects.get(pk=deployment_journal_id)
     deployment_journal.upload_status = 'start-annotation'
     next_status = 'start-media'
@@ -58,12 +64,23 @@ def process_image_annotation_task(deployment_journal_id, data):
             img.last_updated = datetime.now()
 
         else:
+            for a in anno:
+                if sp := a.get('species', ''):
+                    if sp not in species_list:
+                        species_list.append(sp)
+
+            dt_ = datetime.fromtimestamp(i[3], utc_tz)
+            if datetime_from is None or dt_ < datetime_from:
+                datetime_from = dt_
+            elif datetime_to is None or dt_ > datetime_to:
+                datetime_to = dt_
+
             image_uuid = str(ObjectId())
             img = Image(
                 deployment_id=deployment_journal.deployment_id,
                 source_data={'id': i[0]},
                 filename=i[2],
-                datetime=datetime.fromtimestamp(i[3], utc_tz),
+                datetime=dt_,
                 image_hash=i[6],
                 annotation=anno,
                 memo=data['key'],
@@ -97,10 +114,10 @@ def process_image_annotation_task(deployment_journal_id, data):
 
         img.save()
         #image_map[i[0]] = [img.id, img.image_uuid]
-
         set_image_annotation(img)
-
 
     # done
     deployment_journal.upload_status = next_status
     deployment_journal.save()
+
+    save_calculation(species_list, datetime_from, datetime_to, deployment_journal.deployment)

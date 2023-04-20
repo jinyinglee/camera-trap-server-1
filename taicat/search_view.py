@@ -39,6 +39,7 @@ from .utils import (
     calc_output,
     calc_output2,
     calc_from_cache,
+    calculated_data,
     get_my_project_list,
 )
 
@@ -240,7 +241,8 @@ def api_search(request):
             out_format = calc_dict['fileFormat']
             calc_type = calc_dict['calcType']
 
-            results = calc(query, calc_data, query_start, query_end)
+            # results = calc(query, calc_data, query_start, query_end)
+            results = calculated_data(filter_dict, calc_data)
             # print(results, out_format, calc_type)
             #results = calc_from_cache(filter_dict, calc_dict)
             #content = calc_output2(results, out_format, request.GET.get('filter'), request.GET.get('calc'))
