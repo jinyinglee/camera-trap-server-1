@@ -444,6 +444,7 @@ class Deployment(models.Model):
     verbatim_locality = models.CharField(max_length=1000, blank=True, null=True)
     # 是否已棄用
     deprecated = models.BooleanField(default=False, blank=True)
+    calculation_data = models.JSONField(default=dict, blank=True, null=True)
 
     def __str__(self):
         return f'<Deployment {self.name}>'
@@ -1023,3 +1024,17 @@ class ParameterCode(models.Model):
     pmajor = models.CharField('上階層名稱',max_length=1000 ,null=True, blank=True)
     description = models.CharField('參數描述',max_length=1000, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
+
+
+class Calculation(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
+    studyarea = models.ForeignKey(StudyArea, on_delete=models.SET_NULL, null=True)
+    deployment = models.ForeignKey(Deployment, on_delete=models.SET_NULL, null=True)
+    #year = models.PositiveSmallIntegerField('year')
+    #month = models.PositiveSmallIntegerField('month')
+    datetime_from = models.DateTimeField(null=True, db_index=True)
+    datetime_to = models.DateTimeField(null=True, db_index=True)
+    species = models.CharField('species', max_length=1000, null=True, default='', blank=True, db_index=True)
+    image_interval = models.PositiveSmallIntegerField('image interval')
+    event_interval = models.PositiveSmallIntegerField('event interval')
+    data = models.JSONField(default=dict, blank=True, null=True)
