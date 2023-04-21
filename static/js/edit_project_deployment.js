@@ -391,10 +391,10 @@ function getDep(id,sa_name){
 
                     let protectedarea_a = protectedarea.slice();
                     for (let j = 0; j < protectedarea_a.length; j++) {
-                        b = response[i][6].split(',')
-                        for  (let k = 0; k < b.length; k++) {
-                            if (protectedarea_a[j].toString().search(b[k].toString())){
-                                protectedarea_a[j] = protectedarea_a[j].toString().replace(b[k], b[k]+' selected')
+                        res_item = response[i][6].split(',')
+                        for  (let k = 0; k < res_item.length; k++) {
+                            if (protectedarea_a[j].toString().search(res_item[k].toString())){
+                                protectedarea_a[j] = protectedarea_a[j].toString().replace(res_item[k], res_item[k]+' selected')
                             }
                         }
                     }
