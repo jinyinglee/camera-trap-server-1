@@ -12,15 +12,21 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import Backdrop from '@mui/material/Backdrop';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
 import CircularProgress from '@mui/material/CircularProgress';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import InputLabel from '@mui/material/InputLabel';
+import FormControl from '@mui/material/FormControl';
+import InputAdornment from '@mui/material/InputAdornment';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 
 import { zhTW } from 'date-fns/locale';
 
 import { AppSearchDataGrid } from './AppSearchDataGrid';
+import { AppSearchImageViewer} from './AppSearchImageViewer';
 import { AppSearchCalculation } from './AppSearchCalculation';
 import { cleanFormData } from './Utils';
 import { VERSION } from './Version'
@@ -32,6 +38,8 @@ const initialState = {
     startDate: new Date(2014, 0, 1),
     endDate: new Date(),
     projects: [{project: null}],
+    counties: [],
+    protectedareas: [],
     keyword: '',
   },
   pagination: {
@@ -41,6 +49,10 @@ const initialState = {
   options: {
     species: [],
     projects: [],
+    named_areas: {
+      county: [],
+      protectedarea: [],
+    },
     deploymentDict: null,
   },
   isLoading: false,
@@ -54,7 +66,8 @@ const initialState = {
     eventInterval: '60',
     fileFormat: 'excel',
     calcType: 'basic-oi',
-  }
+  },
+  imageDetail: '', // replace with path to open image viewer dialog
 };
 
 function reducer(state, action) {
@@ -80,7 +93,9 @@ function reducer(state, action) {
         ...state.options,
         projects: action.value.projects,
         species: action.value.species,
-      }
+        named_areas: action.value.named_areas,
+      },
+      isInit: true,
     };
   case 'setDeploymentFilter':
     // update option & filter
@@ -137,11 +152,28 @@ function reducer(state, action) {
         [action.name]:  action.value,
       }
     }
+  case 'setImageDetail':
+    return {
+      ...state,
+      imageDetail: action.path,
+    }
   default:
     //throw new Error();
     console.error('reducer errr!!!');
   }
 }
+
+const fetchOptions = async (urls) => {
+  try {
+    const response = await Promise.all(
+      urls.map(url => fetch(url).then(res => res.json()))
+    )
+    return response
+  } catch (error) {
+    console.log("Error", error)
+  }
+}
+
 
 const AppSearch = () => {
   const today = new Date();
@@ -151,15 +183,22 @@ const AppSearch = () => {
   const [state, dispatch] = React.useReducer(reducer, initialState);
 
   useEffect(() => {
-    fetch(`${apiPrefix}species`)
-    .then(resp => resp.json())
-    .then(data => {
-      fetch(`${apiPrefix}projects`)
-        .then(resp2 => resp2.json())
-        .then(data2 => {
-          dispatch({type: 'initOptions', value: {species: data.data, projects: data2.data}});
-        });
-    });
+    const urls = [
+      `${apiPrefix}species`,
+      `${apiPrefix}projects`,
+      `${apiPrefix}named_areas`,
+    ]
+    let options = {};
+    fetchOptions(urls).then( resp => {
+      resp.forEach( x => {
+        if (x.category == 'named_areas') {
+          options.named_areas = x.data
+        } else {
+          options[x.category] = x.data
+        }
+      })
+      dispatch({type: 'initOptions', value: options});
+    })
   }, []);
 
   //useEffect(() => {
@@ -184,6 +223,7 @@ const AppSearch = () => {
 
     dispatch({type: 'startLoading'});
     console.log('fetch:', searchApiUrl);
+
     fetch(encodeURI(searchApiUrl), {
       //body: JSON.stringify({filter: formData}),
       mode: 'same-origin',
@@ -237,7 +277,6 @@ const AppSearch = () => {
 
   const handleChangePage = (e, pageIndex) => {
     const pp = (state.pagination.perPage === 10) ? 20 : state.pagination.perPage;
-    console.log(pageIndex, pp, '---');
     dispatch({type:'setPagination', pageIndex: pageIndex, perPage: pp});
     fetchData({pageIndex: pageIndex, perPage: pp});
   }
@@ -250,9 +289,9 @@ const AppSearch = () => {
 
   const handleCalc = () => {
     const formDataCleaned = cleanFormData(state.filter, state.options.deploymentDict);
-    console.log(formDataCleaned);
+    //console.log(formDataCleaned);
     if (!formDataCleaned.species) {
-      dispatch({type: 'setAlert', value: '必須至少選一個物種'});
+      dispatch({type: 'setAlert', text: '必須至少選一個物種', title:'注意'});
     } else {
       const calc = JSON.stringify(state.calculation);
       const d = JSON.stringify(formDataCleaned);
@@ -398,7 +437,7 @@ const AppSearch = () => {
         </Paper>
       </Box>
     );
-  }
+  };
 
   console.log('state', state);
 
@@ -410,8 +449,9 @@ const AppSearch = () => {
       >
         <CircularProgress color="inherit" />
       </Backdrop>
+      <AppSearchImageViewer setImageViewerClose={() => dispatch({type: 'setImageDetail', path: ''})} imageDetail={state.imageDetail} />
       <h3>篩選條件</h3>
-      <LocalizationProvider dateAdapter={AdapterDateFns} locale={zhTW}>
+      <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhTW}>
       <Grid container spacing={2}>
         <Grid item xs={3}>
           <Autocomplete
@@ -484,14 +524,98 @@ const AppSearch = () => {
             <ProjectFilterBox index={index}/>
           </Grid>
         )}
-
+        <Grid item xs={4}>
+          <Box>
+            <Grid container>
+              <Grid item xs={6}>
+                <FormControl variant="standard" sx={{ m: 1, minWidth: 120 }}>
+                  <InputLabel id="demo-simple-select-standard-label">比較</InputLabel>
+                  <Select
+                    labelId="demo-simple-select-standard-label"
+                    id="demo-simple-select-standard"
+                    value={state.filter.altitudeOperator || ''}
+                    onChange={(e) => dispatch({type: 'setFilter', name: 'altitudeOperator', value: e.target.value})}
+                    label="比較"
+                    variant="standard"
+                  >
+                    <MenuItem value="">-- 選擇 --</MenuItem>
+                    <MenuItem value="eq">{"="}</MenuItem>
+                    <MenuItem value="gt">{">="}</MenuItem>
+                    <MenuItem value="lt">{"<="}</MenuItem>
+                    <MenuItem value="range">{"範圍"}</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={6}>
+                <FormControl variant="standard" sx={{ m: 1}}>
+                  <TextField variant="standard" label="海拔" value={state.filter.altitude || ''} onChange={(e) => dispatch({type: 'setFilter', name: 'altitude', value: e.target.value})}InputProps={{
+                    endAdornment: <InputAdornment position="end">m</InputAdornment>,
+                  }} helperText='範圍的話用"-"，標示，例如: 600-1200' />
+                </FormControl>
+              </Grid>
+            </Grid>
+          </Box>
+        </Grid>
+        <Grid item xs={2}>
+          <FormControl variant="standard" sx={{ m: 1, minWidth: 200 }}>
+            <Autocomplete
+              multiple
+              options={state.options.named_areas.county}
+              getOptionLabel={(option) => option.name}
+              value={state.filter.counties}
+              onChange={(e, value) => { dispatch({type: 'setFilter', name: 'counties', value: value}) }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  variant="standard"
+                  label="縣市"
+                />
+              )}
+            />
+          </FormControl>
+          {/*
+          <TextField
+            label="縣市"
+            variant="standard"
+            value={state.filter.county}
+            onChange={(e)=> dispatch({type: 'setFilter', name: 'county', value: e.target.value})}
+          />
+           */}
+        </Grid>
+        <Grid item xs={6}>
+          <FormControl variant="standard" sx={{ m: 1, marginLeft: 2, minWidth: 400 }}>
+            <Autocomplete
+              multiple
+              options={state.options.named_areas.protectedarea}
+              getOptionLabel={(option) => option.name}
+              value={state.filter.county}
+              onChange={(e, value) => dispatch({type: 'setFilter', name: 'protectedareas', value: value})}
+              groupBy={(option) => option.category}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  variant="standard"
+                  label="保護留區"
+                />
+              )}
+            />
+          </FormControl>
+          {/*
+          <TextField
+            label="保護留區"
+            variant="standard"
+            value={state.filter.protectedarea}
+            onChange={(e)=> dispatch({type: 'setFilter', name: 'protectedarea', value: e.target.value})}
+          />
+           */}
+        </Grid>
         <Grid item xs={3}>
           <Button variant="contained" onClick={handleSubmit}>搜尋</Button>
         </Grid>
         <Grid item xs={12}>
           {(state.result && state.result.data.length > 0) ?
            <>
-           <AppSearchDataGrid result={state.result} handleChangePage={handleChangePage} handleChangeRowsPerPage={handleChangeRowsPerPage} pagination={state.pagination}/>
+             <AppSearchDataGrid result={state.result} handleChangePage={handleChangePage} handleChangeRowsPerPage={handleChangeRowsPerPage} pagination={state.pagination} setImageDetail={(path) => dispatch({type: 'setImageDetail', path: path})} />
              <AppSearchCalculation calcData={state.calculation} setCalcData={dispatch} />
              <Button variant="contained" onClick={handleCalc} style={{marginTop: '10px'}}>下載計算</Button>
              {(state.alertText) ? <Alert severity="error" onClose={()=>{ dispatch({type: 'setAlert', value: ''})}}><AlertTitle>{state.alertTitle}</AlertTitle>{state.alertText}</Alert> : null}
