@@ -106,9 +106,9 @@ $( function() {
                                     <td><input type="text" name="longitude" class="form-control"></td>
                                     <td><input type="text" name="latitude" class="form-control"></td>
                                     <td><input type="text" name="altitude" value="" class="form-control"></td>
-                                    <td><select name="county" class="selectpicker form-control" data-live-search-placeholder="搜索" data-live-search="true">${county}</select></td>
-                                    <td><select name="protectedarea" class="selectpicker form-control" data-live-search-placeholder="搜索" data-live-search="true">${protectedarea}</select></td>
-                                    <td><select name="vegetation" class="selectpicker form-control" data-live-search-placeholder="搜索" data-live-search="true">${vegetation}</select></td>
+                                    <td><select name="county" class="selectpicker form-control" data-live-search-placeholder="搜尋" data-live-search="true" data-none-selected-text="--請選擇--">${county}</select></td>
+                                    <td><select name="protectedarea" class="selectpicker form-control" data-live-search-placeholder="搜尋" data-live-search="true" data-none-selected-text="--請選擇--" multiple>${protectedarea}</select></td>
+                                    <td><select name="vegetation" class="selectpicker form-control" data-live-search-placeholder="搜尋" data-live-search="true" data-none-selected-text="--請選擇--">${vegetation}</select></td>
                                     <td><input type="text" name="landcover" class="form-control"></td>
                                     <td><input type="checkbox" name="deprecated" value="${new_id}"></td>
                                     <td><a class="removeButton btn bg-white text-gray">x</a></td>
@@ -212,9 +212,9 @@ $( function() {
         });
         protectedareas = []
         $('#deployment [name="protectedarea"]').each(function(){
-            protectedareas.push($(this).val());
+            protectedareas.push($(this).val().toString());
         });
-        
+
         landcovers = []
         $('#deployment [name="landcover"]').each(function(){
             landcovers.push($(this).val());
@@ -234,7 +234,7 @@ $( function() {
         $('input[name="deprecated"]:checked').each(function(){
             deprecated.push($(this).val());
         });
-
+        
         $.ajax({
         type: 'POST',
         url: "/api/add_deployment",
@@ -311,12 +311,12 @@ $( function() {
                     <td><input type="text" name="longitude" class="form-control" value="${response[i][2]}"></td>
                     <td><input type="text" name="latitude" class="form-control" value="${response[i][3]}"></td>
                     <td><input type="text" name="altitude" class="form-control" value="${response[i][4]}"></td>
-                    <td><select name="county" class="selectpicker form-control"
-                    data-live-search-placeholder="搜索" data-live-search="true">${county_a}</select></td>
-                    <td><select name="protectedarea" class="selectpicker form-control"
-                    data-live-search-placeholder="搜索" data-live-search="true">${protectedarea_a}</select></td>
-                    <td><select name="vegetation" class="selectpicker form-control"
-                    data-live-search-placeholder="搜索" data-live-search="true">${vegetation_a}</select></td>
+                    <td><select name="county" class="selectpicker form-control" data-none-selected-text="--請選擇--"
+                    data-live-search-placeholder="搜尋" data-live-search="true">${county_a}</select></td>
+                    <td><select name="protectedarea" class="selectpicker form-control" data-none-selected-text="--請選擇--"
+                    data-live-search-placeholder="搜尋" data-live-search="true" multiple>${protectedarea_a}</select></td>
+                    <td><select name="vegetation" class="selectpicker form-control" data-none-selected-text="--請選擇--"
+                    data-live-search-placeholder="搜尋" data-live-search="true">${vegetation_a}</select></td>
                     <td><input type="text" name="landcover" class="form-control" value="${response[i][8]}"></td>
                     <td><input type="checkbox" name="deprecated" value="${i}" ${d_checked}></td>
                     <td><a class="removeButton btn bg-white text-gray" data-did="${response[i][0]}">x</a></td>
@@ -389,13 +389,13 @@ function getDep(id,sa_name){
                         d_checked='checked';
                     }
 
-                    let protectedarea_a = [];
-                    for (let j = 0; j < protectedarea.length; j++) {
-                        if (response[i][6]){
-                            a = protectedarea[j].toString().replace(response[i][6], response[i][6]+' selected')
-                            protectedarea_a.push(a)
-                        }else{
-                            protectedarea_a.push(protectedarea[j].toString())
+                    let protectedarea_a = protectedarea.slice();
+                    for (let j = 0; j < protectedarea_a.length; j++) {
+                        b = response[i][6].split(',')
+                        for  (let k = 0; k < b.length; k++) {
+                            if (protectedarea_a[j].toString().search(b[k].toString())){
+                                protectedarea_a[j] = protectedarea_a[j].toString().replace(b[k], b[k]+' selected')
+                            }
                         }
                     }
                     
@@ -426,10 +426,10 @@ function getDep(id,sa_name){
                         <td><input type="text" name="longitude" class="form-control" value="${response[i][2]}"></td>
                         <td><input type="text" name="latitude" class="form-control" value="${response[i][3]}"></td>
                         <td><input type="text" name="altitude" class="form-control" value="${response[i][4]}"></td>
-                        <td><select name="county" class="selectpicker form-control" 
-                        data-live-search-placeholder="搜索" data-live-search="true">${county_a}</select></td>
-                        <td><select name="protectedarea" class="selectpicker form-control" data-live-search-placeholder="搜索" data-live-search="true">${protectedarea_a}</select></td>
-                        <td><select name="vegetation" class="selectpicker form-control"data-live-search-placeholder="搜索" data-live-search="true">${vegetation_a}</select></td>
+                        <td><select name="county" class="selectpicker form-control"  data-none-selected-text="--請選擇--"
+                        data-live-search-placeholder="搜尋" data-live-search="true">${county_a}</select></td>
+                        <td><select name="protectedarea" class="selectpicker form-control" data-live-search-placeholder="搜尋" data-live-search="true" data-none-selected-text="--請選擇--" multiple>${protectedarea_a}</select></td>
+                        <td><select name="vegetation" class="selectpicker form-control"data-live-search-placeholder="搜尋" data-none-selected-text="--請選擇--" data-live-search="true">${vegetation_a}</select></td>
                         <td><input type="text" name="landcover" class="form-control" value="${response[i][8]}"></td>
                         <td><input type="checkbox" name="deprecated" value="${i}" ${d_checked}></td>
                         <td><a class="removeButton btn bg-white text-gray" data-did="${response[i][0]}">x</a></td>
@@ -466,7 +466,7 @@ function getVegetationItem(){
             headers:{"X-CSRFToken": $crf_token},
             async:false,
             success: function (data) {
-                obj2.push(`<option value=''}></option>`)
+                obj2.push(`<option value=''} selected>--請選擇--</option>`)
                 for (let i = 0; i < data.length; i++) {
                     obj2.push(`<option value=${data[i]['parametername']}>${data[i]['name']}</option>`)
                 }
@@ -488,7 +488,7 @@ function getCountyItem(){
             headers:{"X-CSRFToken": $crf_token},
             async:false,
             success: function (data) {
-                obj4.push(`<option value=''}></option>`)
+                obj4.push(`<option value=''} selected>--請選擇--</option>`)
                 for (let i = 0; i < data.length; i++) {
                     obj4.push(`<option value=${data[i]['parametername']}>${data[i]['name']}</option>`)
                 }
@@ -510,7 +510,6 @@ function getProtectedareaItem(){
             headers:{"X-CSRFToken": $crf_token},
             async:false,
             success: function (data) {
-                obj3.push(`<option value=''}></option>`)
                 for (let i = 0; i < data.length; i++) {
                     obj3.push(`<option value=${data[i]['parametername']}>${data[i]['name']}</option>`)
                 }
