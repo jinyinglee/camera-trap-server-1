@@ -510,6 +510,12 @@ def get_studyarea_member(project_id,studyarea_id):
             member_list += [m]
     return member_list
 
+
+def get_none_studyarea_project_member(project_id,role):
+    uploader = [m.member_id for m in ProjectMember.objects.filter(project_id=project_id,role__in=role,pmstudyarea__isnull=True)]
+
+    return uploader
+
 def sanitize_date(input):
     if len(input) != 8:
         return ''
