@@ -16,7 +16,7 @@
 {% block body %} {% csrf_token %}
 <input type="hidden" name="pk" value="{{ pk }}"></input>
 <div class="container content">
-    {% if is_project_authorized %}
+    {% if is_project_authorized or is_project_public %}
     <div class="panel panel-project">
         <div class="panel-body">
             <div class="row mb-3">
