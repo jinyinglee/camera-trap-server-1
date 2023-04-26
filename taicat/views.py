@@ -1706,6 +1706,14 @@ def generate_download_excel(request, pk):
     email = requests.get('email', '')
     start_date = requests.get('start_date')
     end_date = requests.get('end_date')
+    # check_authorized to read ppl data
+    member_id = request.session.get('id', None)
+    is_authorized = check_if_authorized(request, pk)
+    member_list = get_project_member(pk)
+    
+    if is_authorized or (member_id in member_list):
+        is_authorized = True
+    
     date_filter = ''
     if ((start_date and start_date != ProjectStat.objects.filter(project_id=pk).first().earliest_date.strftime("%Y-%m-%d")) or (end_date and end_date != ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d"))):
         start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
@@ -1741,6 +1749,10 @@ def generate_download_excel(request, pk):
     if folder_name := requests.get('folder_name'):
         folder_filter = f"AND i.folder_name = '{folder_name}'"
 
+    human_filter = ''
+    if is_authorized:
+        human_filter = "AND i.species not like '%人%'"
+    
     n = f'download_{str(ObjectId())}_{datetime.datetime.now().strftime("%Y-%m-%d")}.csv'
     download_dir = os.path.join(settings.MEDIA_ROOT, 'download')
     sql = f"""copy ( SELECT i.project_id AS "計畫ID", p.name AS "計畫名稱", i.image_uuid AS "影像ID", 
@@ -1752,7 +1764,7 @@ def generate_download_excel(request, pk):
                             LEFT JOIN taicat_studyarea ssa ON sa.parent_id = ssa.id
                             JOIN taicat_deployment d ON i.deployment_id = d.id
                             JOIN taicat_project p ON i.project_id = p.id
-                            WHERE i.project_id = {pk} {date_filter} {conditions} {spe_conditions} {time_filter} {folder_filter}
+                            WHERE i.project_id = {pk} {date_filter} {conditions} {spe_conditions} {time_filter} {folder_filter} {human_filter}
                             ORDER BY i.created DESC, i.project_id ASC ) to stdout with delimiter ',' csv header;"""
     with connection.cursor() as cursor:
         with open(os.path.join(download_dir, n), 'w+') as fp:
@@ -1967,3 +1979,21 @@ def get_parameter_name(request):
         } for x in parameter_name]
         
     return JsonResponse(code, safe=False)
+
+def check_login(request):
+    # check_member_authorized
+    response = {}
+    response['message'] = None
+    
+    pk = request.POST.get('pk')
+    member_id = request.session.get('id', None)
+    mem_obj = None
+    response['redirect'] = True
+    # 資料未填寫完成
+    if member_id:
+        response['redirect'] = False
+        mem_obj = Contact.objects.filter(id=member_id).values_list('name','email','identity').first()
+        if None in mem_obj:
+            response['messages'] = '使用者名稱/電子郵件/身份狀態 填寫未完成'
+    
+    return HttpResponse(json.dumps(response), content_type='application/json')
