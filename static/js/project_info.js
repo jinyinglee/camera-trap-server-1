@@ -135,6 +135,26 @@ $('.sa-select').on('change', function(){
 })
 
 
+$('#downloadButton').on('click', function(){
+    let pk = $('input[name=pk]').val();
+    alert("api/check_login/" + pk)
+    $.ajax({
+        type: "POST",
+        url: "/api/check_login/",
+        headers:{'X-CSRFToken': $csrf_token},
+        success: function(response){
+            if (response.redirect){
+                $('#loginModal').modal('show')    
+            }else{
+                $('#downloadModal').modal('show')
+            }
+        },
+        error:function(){
+            alert('未知錯誤，請聯繫管理員');
+            }
+        })
+        
+    })
 
 
 $('.download').on('click', function(){
