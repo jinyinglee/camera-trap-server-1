@@ -3,7 +3,7 @@ from django.http import response
 from django.shortcuts import render, HttpResponse, redirect
 import json
 from django.db import connection
-from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Organization, Project, Species, StudyAreaStat, ProjectMember
+from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Organization, Project, Species, StudyAreaStat, ProjectMember,ParameterCode
 from django.db.models import Count, Window, F, Sum, Min, Q, Max
 from django.db.models.functions import ExtractYear
 from django.template import loader
@@ -22,7 +22,7 @@ from django.core.mail import EmailMessage
 import threading
 from django.http import response, JsonResponse
 from .models import *
-from taicat.utils import get_my_project_list, get_project_member
+from taicat.utils import get_my_project_list, get_project_member, get_studyarea_member,get_none_studyarea_project_member
 from django.db.models.functions import Trunc, TruncDate
 from .utils import (
     DecimalEncoder,
@@ -64,7 +64,7 @@ def send_upload_notification(upload_history_id, member_list, request):
 
     try:
         email_list = []
-        email = Contact.objects.filter(id__in=member_list).values('email')
+        email = Contact.objects.filter(id__in=member_list).values('email').exclude(email__isnull=True).exclude(email__exact='')
         for e in email:
             email_list += [e['email']]
         uh = UploadHistory.objects.filter(id=upload_history_id)
@@ -166,12 +166,18 @@ def update_upload_history(request):
                 upload_history_id = uh.id
             if DeploymentJournal.objects.filter(id=deployment_journal_id).exists():
                 project_id = DeploymentJournal.objects.filter(id=deployment_journal_id).values('project_id')[0]['project_id']
+                studyarea_id = DeploymentJournal.objects.filter(id=deployment_journal_id).values('studyarea_id')[0]['studyarea_id']
             else:
                 response = {'messages': 'failed due to no associated record in DeploymentJournal table'}
                 return JsonResponse(response)
-            members = get_project_member(project_id) # 所有計劃下的成員
+            project_members = get_project_member(project_id) # 所有計劃下的成員
+            studyarea_members = get_studyarea_member(project_id,studyarea_id) # 樣區成員，含總管理人
+            studyarea_none_member = get_none_studyarea_project_member(project_id,['uploader','project_admin'])# 未選擇樣區的資料上傳者/個別計畫管理人
+            studyarea_members.extend(studyarea_none_member)
+            email_list = list(set(studyarea_members)) 
+
             final_members = []
-            for m in members:
+            for m in project_members:
                 # 每次都建立新的通知
                 try:
                     un = UploadNotification(
@@ -180,10 +186,10 @@ def update_upload_history(request):
                     )
                     un.save()
                     final_members += [m]
-                except:
+                except Exception as e:
                     pass # contact已經不在則移除
             # 每次都寄信
-            res = send_upload_notification(upload_history_id, final_members, request)
+            res = send_upload_notification(upload_history_id, email_list, request)
             if res.get('status') == 'fail':
                 response = {'messages': 'failed during sending email'}
                 return JsonResponse(response)
@@ -551,19 +557,20 @@ def personal_info(request):
     # login required
     is_login = request.session.get('is_login', False)
     first_login = request.session.get('first_login', False)
-
+    identities = ParameterCode.objects.filter(type='identity').values("name","pmajor","type","parametername")
     if request.method == 'POST':
         first_login = False
         orcid = request.session.get('orcid')
         name = request.POST.get('name')
         email = request.POST.get('email')
-        Contact.objects.filter(orcid=orcid).update(name=name, email=email)
+        identity = request.POST.get('identity')
+        Contact.objects.filter(orcid=orcid).update(name=name, email=email,identity=identity)
         request.session["name"] = name
 
     if is_login:
         info = Contact.objects.filter(
             orcid=request.session["orcid"]).values().first()
-        return render(request, 'base/personal_info.html', {'info': info, 'first_login': first_login})
+        return render(request, 'base/personal_info.html', {'info': info, 'first_login': first_login,'identities':identities})
     else:
         messages.error(request, '請先登入')
         return render(request, 'base/personal_info.html')

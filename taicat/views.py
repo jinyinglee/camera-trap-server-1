@@ -5,6 +5,7 @@ from django.http import (
     JsonResponse,
     StreamingHttpResponse,
 )
+from django.core.serializers import serialize
 from django.shortcuts import redirect, render, HttpResponse
 from django.utils.timezone import make_aware
 from django.views.decorators.csrf import csrf_exempt
@@ -924,6 +925,7 @@ def edit_project_members(request, pk):
             temp = list(Contact.objects.filter(organization=i['id'], is_organization_admin=True).all().values('name', 'email'))
             organization_admin.extend(temp)
 
+        study_area = StudyArea.objects.filter(project_id=pk)
         # other members
         members = ProjectMember.objects.filter(project_id=pk).all()
 
@@ -945,10 +947,21 @@ def edit_project_members(request, pk):
 
             # Edit member
             elif data['action'] == 'edit':
+                data = dict(request.POST)
                 data.pop('action')
                 data.pop('csrfmiddlewaretoken')
                 for i in data:
-                    ProjectMember.objects.filter(member_id=i, project_id=pk).update(role=data[i])
+                    m = re.search(r'(.*?)_studyareas_id', i)
+                    if m:
+                        list_id = [str(x['id']) for x in list(ProjectMember.objects.get(member_id=m.group(1), project_id=pk).pmstudyarea.all().values('id'))] 
+                        for item in data[i]:
+                            if item not in list_id:
+                                ProjectMember.objects.get(member_id=m.group(1), project_id=pk).pmstudyarea.add(StudyArea.objects.get(id=item))
+                        for item in list_id:
+                            if item not in data[i]:
+                                ProjectMember.objects.get(member_id=m.group(1), project_id=pk).pmstudyarea.remove(StudyArea.objects.get(id=item))
+                    else:
+                        ProjectMember.objects.filter(member_id=i, project_id=pk).update(role=data[i][0])
                 messages.success(request, '儲存成功')
             # Remove member
             else:
@@ -957,6 +970,7 @@ def edit_project_members(request, pk):
 
         return render(request, 'project/edit_project_members.html', {'members': members, 'pk': pk,
                                                                      'organization_admin': organization_admin,
+                                                                     'study_area': study_area, 
                                                                      'is_authorized': is_authorized})
     else:
         messages.error(request, '您的權限不足')
@@ -982,12 +996,11 @@ def get_deployment(request):
         id = request.POST.get('study_area_id')
 
         with connection.cursor() as cursor:
-            query = """SELECT id, name, longitude, latitude, altitude, landcover, vegetation, verbatim_locality, 
+            query = """SELECT id, name, longitude, latitude, altitude, county, protectedarea, vegetation,landcover, verbatim_locality, 
                         geodetic_datum, deprecated FROM taicat_deployment 
                         WHERE study_area_id = {} ORDER BY id ASC;"""
             cursor.execute(query.format(id))
             data = cursor.fetchall()
-
         return HttpResponse(json.dumps(data, cls=DecimalEncoder), content_type='application/json')
 
 
@@ -1004,6 +1017,8 @@ def add_deployment(request):
         latitudes = res.getlist('latitudes[]')
         altitudes = res.getlist('altitudes[]')
         landcovers = res.getlist('landcovers[]')
+        counties = res.getlist('counties[]')
+        protectedareas = res.getlist('protectedareas[]')
         vegetations = res.getlist('vegetations[]')
         did = res.getlist('did[]')
         deprecated = res.getlist('deprecated[]')
@@ -1025,12 +1040,15 @@ def add_deployment(request):
                         longitude=longitudes[i], 
                         latitude=latitudes[i], 
                         altitude=altitudes[i],
+                        county=counties[i], 
+                        protectedarea=protectedareas[i], 
                         landcover=landcovers[i], 
                         vegetation=vegetations[i],
                         deprecated=dep)
             else:
                 new_did = Deployment.objects.create(project_id=project_id, study_area_id=study_area_id, geodetic_datum=geodetic_datum,
                             name=names[i], longitude=longitudes[i], latitude=latitudes[i], altitude=altitudes[i],
+                            county=counties[i],protectedarea=protectedareas[i],
                             landcover=landcovers[i], vegetation=vegetations[i], deprecated=dep)
                 ids.append(new_did.id)
 
@@ -1039,7 +1057,7 @@ def add_deployment(request):
         
         if ids:
             with connection.cursor() as cursor:
-                query = f"""SELECT id, name, longitude, latitude, altitude, landcover, vegetation, verbatim_locality, 
+                query = f"""SELECT id, name, longitude, latitude, altitude, county, protectedarea, vegetation, landcover, verbatim_locality, 
                             geodetic_datum, deprecated FROM taicat_deployment 
                             WHERE id in ({str(ids).replace('[','').replace(']','')}) ORDER BY id ASC;"""
                 cursor.execute(query.format(study_area_id))
@@ -1858,3 +1876,21 @@ def api_update_deployment_journals(request, pk):
 def get_gap_choice(request):
     gc = DeploymentJournal.GAP_CHOICES
     return HttpResponse(json.dumps(gc), content_type='application/json')
+
+def get_parameter_name(request):
+    if request.method == "GET":
+        pn_type = request.GET.get('type')
+        if ParameterCode.objects.filter(type=pn_type).exists():
+            parameter_name =ParameterCode.objects.filter(type=pn_type).values("name","pmajor","type","parametername")
+        else:
+            parameter_name = ''
+            
+            
+        code = [{
+            'name':x['name'],
+            'pmajor': x['pmajor'],
+            'type':x['type'],
+            'parametername': x['parametername']
+        } for x in parameter_name]
+        
+    return JsonResponse(code, safe=False)

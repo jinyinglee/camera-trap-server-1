@@ -4,6 +4,8 @@ import logging
 import time
 from datetime import datetime
 import re
+import operator
+from functools import reduce
 
 from django.shortcuts import render, redirect
 from django.http import (
@@ -29,6 +31,7 @@ from taicat.models import (
     Deployment,
     StudyArea,
     Species,
+    ParameterCode,
 )
 from .utils import (
     get_species_list,
@@ -36,6 +39,7 @@ from .utils import (
     calc_output,
     calc_output2,
     calc_from_cache,
+    calculated_data,
     get_my_project_list,
 )
 
@@ -52,10 +56,37 @@ def index(request):
     }
     return render(request, 'search/search_index.html', context)
 
+def api_named_areas(request):
+    data = {
+        'county': [],
+        'protectedarea': [],
+    }
+
+    county_list = ParameterCode.objects.filter(type='county').all()
+    protectedarea_list = ParameterCode.objects.filter(type='protectedarea').all()
+    for i in county_list:
+        data['county'].append({
+            'id': i.id,
+            'parametername': i.parametername,
+            'name': i.name,
+        })
+    for i in protectedarea_list:
+        data['protectedarea'].append({
+            'id': i.id,
+            'parametername': i.parametername,
+            'name': i.name,
+            'category': i.pmajor,
+        })
+    return JsonResponse({
+        'category': 'named_areas',
+        'data': data
+    })
+
 
 def api_get_species(request):
     species_list = [x.to_dict() for x in Species.objects.filter(status='I').all()]
     return JsonResponse({
+        'category': 'species',
         'data': species_list,
         'total': len(species_list)
     })
@@ -98,6 +129,7 @@ def api_get_projects(request):
 
     projects = public_projects + my_projects
     return JsonResponse({
+        'category': 'projects',
         'data': projects,
         'total': len(projects)
     })
@@ -161,6 +193,36 @@ def api_search(request):
                 #    query = query.filter(deployment_id__in=values)
             elif values := filter_dict.get('studyareas'):
                 query = query.filter(studyarea_id__in=values)
+
+            if value := filter_dict.get('altitude'):
+                if op := filter_dict.get('altitudeOperator'):
+                    val_list = value.split('-')
+                    v1 = int(val_list[0])
+                    v2 = None
+                    if len(val_list) >= 2:
+                        v2 = int(val_list[1])
+                    if v1:
+                        if op == 'eq':
+                            query = query.filter(deployment__altitude=v1)
+                        elif op == 'gt':
+                            query = query.filter(deployment__altitude__gte=v1)
+                        elif op == 'lt':
+                            query = query.filter(deployment__altitude__lte=v1)
+                    if v2 and op == 'range':
+                        query = query.filter(deployment__altitude__gte=v1, deployment__altitude__lte=v2)
+
+            if values := filter_dict.get('counties'):
+                q_list = []
+                for x in values:
+                    q_list.append(Q(deployment__county__icontains=x['parametername']))
+
+                query = query.filter(reduce(operator.or_, q_list))
+
+            if values := filter_dict.get('protectedareas'):
+                q_list = []
+                for x in values:
+                    q_list.append(Q(deployment__protectedareas__icontains=x['parametername']))
+
             if len(sp_values) > 0:
                 query = query.filter(species__in=sp_values)
 
@@ -179,7 +241,8 @@ def api_search(request):
             out_format = calc_dict['fileFormat']
             calc_type = calc_dict['calcType']
 
-            results = calc(query, calc_data, query_start, query_end)
+            # results = calc(query, calc_data, query_start, query_end)
+            results = calculated_data(filter_dict, calc_data)
             # print(results, out_format, calc_type)
             #results = calc_from_cache(filter_dict, calc_dict)
             #content = calc_output2(results, out_format, request.GET.get('filter'), request.GET.get('calc'))

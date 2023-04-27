@@ -54,7 +54,7 @@
                             <div class="col-4 my-auto">
                                 <select class="selectpicker form-control" data-width="100%" data-style="btn-new" name="role">
                                     <option value="project_admin">個別計畫承辦人</option>
-                                    <option value="uploader">資料上傳者</option>
+                                    <option value="uploader" selected>資料上傳者</option>
                                 </select>
                             </div>
                             <div class="col-2 my-auto">
@@ -72,7 +72,8 @@
                             <tr>
                                 <td class="w-20">計畫成員</td>
                                 <td class="w-35">電子郵件</td>
-                                <td class="w-35">權限設置</td>
+                                <td class="w-20">權限設置</td>
+                                <td class="w-20">負責樣區</td>
                                 <td class="w-10"></td>
                             </tr>
                             
@@ -83,13 +84,13 @@
                                 <tr class="align-middle"  >
                                     <td class="w-20">{{ i.name }}</td>
                                     <td class="w-35">{{ i.email }}</td>
-                                    <td class="w-35">
+                                    <td class="w-20">
                                         <select class="selectpicker form-control" data-width="100%" data-style="btn-new" disabled>
                                             <option>計畫總管理人</option>
                                         </select>
                                     </td>
-                                    <td class="w-10">
-                                    </td>
+                                    <td class="w-20"></td>
+                                    <td class="w-10"></td>
                                 </tr>
                                 {% endfor %}
 
@@ -97,7 +98,7 @@
                                 <tr class="align-middle"  >
                                     <td class="w-20">{{ i.member.name }}</td>
                                     <td class="w-35">{% if i.member.email and i.member.email != 'None'  %}{{ i.member.email }}{% endif %}</td>
-                                    <td class="w-35">
+                                    <td class="w-20">
                                     <!-- disable change current user's (self) permission  -->
                                     {% if request.session.name == i.member.name %}
                                     <select class="selectpicker form-control" data-width="100%" data-style="btn-new" name="{{ i.member_id }}" id="{{ i.member_id }}" disabled>
@@ -107,6 +108,21 @@
                                         <option value="project_admin">個別計畫承辦人</option>
                                         <option value="uploader">資料上傳者</option>
                                     </select>
+                                    </td>
+                                    <td class="w-20">
+                                        {% if request.session.name == i.member.name %}
+                                            <select class="selectpicker form-control" data-width="100%" data-style="btn-new" name="{{ i.member_id }}_studyareas_id" id="{{ i.member_id }}_studyareas_id"  multiple disabled>
+                                        {% else %}
+                                            <select class="selectpicker form-control" data-width="100%" data-style="btn-new" name="{{ i.member_id }}_studyareas_id" id="{{ i.member_id }}_studyareas_id"  multiple>
+                                                {% for item in study_area%}
+                                                    {% if item  in i.pmstudyarea.all %}
+                                                        <option value="{{ item.id }}" selected>{{ item.name }}</option>
+                                                    {% else %}
+                                                        <option value="{{ item.id }}" >{{ item.name }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>  
+                                        {% endif %}
                                     </td>
                                     <td class="w-10" class="text-center">
                                     {% if request.session.name == i.member.name  %}

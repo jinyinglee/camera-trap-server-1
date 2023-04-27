@@ -78,22 +78,11 @@ class Contact(models.Model):
     is_organization_admin = models.BooleanField('是否為計畫總管理人', default=False)
     # is_forestry_bureau = models.BooleanField('是否能進入林務局管考系統', default=False)
     is_system_admin = models.BooleanField('是否為系統管理員', default=False)
+    identity = models.CharField(max_length=1000, blank=True, null=True)
 
     def __str__(self):
         return '<Contact {}> {}'.format(self.id, self.name)
 
-
-class ProjectMember(models.Model):
-    ROLE_CHOICES = (
-        #('system_admin', '系統管理員'),
-        #('organization_admin', '計畫總管理人'),
-        ('project_admin', '個別計畫承辦人'),
-        ('uploader', '資料上傳者'),
-        #('general', '一般使用者'),
-    )
-    project = models.ForeignKey('Project', on_delete=models.SET_NULL, null=True, blank=True, related_name='members')
-    member = models.ForeignKey('Contact', on_delete=models.SET_NULL, null=True, blank=True)
-    role = models.CharField(max_length=1000, choices=ROLE_CHOICES, null=True, blank=True)
 
 
 class Organization(models.Model):
@@ -437,7 +426,7 @@ class Deployment(models.Model):
     # cameraDeploymentEndDateTime
     longitude = models.DecimalField(decimal_places=8, max_digits=20, null=True, blank=True)
     latitude = models.DecimalField(decimal_places=8, max_digits=20, null=True, blank=True)
-    altitude = models.SmallIntegerField(null=True, blank=True)
+    altitude = models.SmallIntegerField(null=True, blank=True, db_index=True)
     # deploymentLocationID
     name = models.CharField(max_length=1000)
     # cameraStatus
@@ -448,11 +437,14 @@ class Deployment(models.Model):
     source_data = models.JSONField(default=dict, blank=True)
 
     geodetic_datum = models.CharField(max_length=10, default='WGS84', choices=GEODETIC_DATUM_CHOICES)
+    county = models.CharField('縣市', max_length=1000, blank=True, null=True, db_index=True)
+    protectedarea = models.CharField('國家公園/保護留區', max_length=1000, blank=True, null=True, db_index=True)
     landcover = models.CharField('土地覆蓋類型', max_length=1000, blank=True, null=True)
     vegetation = models.CharField('植被類型', max_length=1000, blank=True, null=True)
     verbatim_locality = models.CharField(max_length=1000, blank=True, null=True)
     # 是否已棄用
     deprecated = models.BooleanField(default=False, blank=True)
+    calculation_data = models.JSONField(default=dict, blank=True, null=True)
 
     def __str__(self):
         return f'<Deployment {self.name}>'
@@ -796,6 +788,16 @@ class Image(models.Model):
         return [x['species'] for x in self.annotation if isinstance(x, dict) and x.get('species', '')]
 
     def to_dict(self):
+        county_name = ''
+        protectedarea_name = ''
+        if x := self.deployment.county:
+            if obj := ParameterCode.objects.filter(parametername=x).first():
+                county_name = obj.name
+
+        if x := self.deployment.protectedarea:
+            if obj := ParameterCode.objects.filter(parametername=x).first():
+                protectedarea_name = obj.name
+
         return {
             'id': self.id,
             'species': self.species,
@@ -804,6 +806,9 @@ class Image(models.Model):
             'project__name': self.project.name if self.project else None,
             'studyarea__name': self.studyarea.name if self.studyarea_id else None,
             'deployment__name': self.deployment.name if self.deployment_id else None,
+            'deployment__altitude': self.deployment.altitude or '',
+            'deployment__county': county_name,
+            'deployment__protectedarea': protectedarea_name,
             'media': self.get_associated_media(),
         }
 
@@ -989,3 +994,47 @@ class StudyAreaStat(models.Model):
 # 總相片數
 # 相機總工時
 # 出現物種
+
+
+class ProjectMember(models.Model):
+    ROLE_CHOICES = (
+        #('system_admin', '系統管理員'),
+        #('organization_admin', '計畫總管理人'),
+        ('project_admin', '個別計畫承辦人'),
+        ('uploader', '資料上傳者'),
+        #('general', '一般使用者'),
+    )
+    project = models.ForeignKey('Project', on_delete=models.SET_NULL, null=True, blank=True, related_name='members')
+    member = models.ForeignKey('Contact', on_delete=models.SET_NULL, null=True, blank=True)
+    role = models.CharField(max_length=1000, choices=ROLE_CHOICES, null=True, blank=True)
+    pmstudyarea =  models.ManyToManyField('StudyArea')
+
+
+class ParameterCode(models.Model):
+    TYPE_CHOICES = (
+        ('study_area', '樣區'),
+        ('county', '縣市'),
+        ('protectedarea', '保護留區'),
+        ('vegetation', '植被類型'),
+        ('identity', '使用者身份'),
+    )
+    name = models.CharField('參數中文名稱',max_length=1000 ,null=True, blank=True)
+    parametername = models.CharField('參數名稱',max_length=1000 ,null=True, blank=True)
+    type = models.CharField('參數範圍',max_length=1000 ,choices=TYPE_CHOICES, null=True, blank=True)
+    pmajor = models.CharField('上階層名稱',max_length=1000 ,null=True, blank=True)
+    description = models.CharField('參數描述',max_length=1000, null=True, blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+
+class Calculation(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
+    studyarea = models.ForeignKey(StudyArea, on_delete=models.SET_NULL, null=True)
+    deployment = models.ForeignKey(Deployment, on_delete=models.SET_NULL, null=True)
+    #year = models.PositiveSmallIntegerField('year')
+    #month = models.PositiveSmallIntegerField('month')
+    datetime_from = models.DateTimeField(null=True, db_index=True)
+    datetime_to = models.DateTimeField(null=True, db_index=True)
+    species = models.CharField('species', max_length=1000, null=True, default='', blank=True, db_index=True)
+    image_interval = models.PositiveSmallIntegerField('image interval')
+    event_interval = models.PositiveSmallIntegerField('event interval')
+    data = models.JSONField(default=dict, blank=True, null=True)
