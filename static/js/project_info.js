@@ -136,17 +136,20 @@ $('.sa-select').on('change', function(){
 
 
 $('#downloadButton').on('click', function(){
-    let pk = $('input[name=pk]').val();
-    alert("api/check_login/" + pk)
     $.ajax({
         type: "POST",
         url: "/api/check_login/",
         headers:{'X-CSRFToken': $csrf_token},
         success: function(response){
             if (response.redirect){
-                $('#loginModal').modal('show')    
+                if (response.messages){
+                    alert(response.messages);
+                    window.location.replace(window.location.origin+ "/personal_info");
+                }else{
+                    $('#downloadModal').modal('show')    
+                }
             }else{
-                $('#downloadModal').modal('show')
+                $('#downloadModal').modal('show') 
             }
         },
         error:function(){
