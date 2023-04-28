@@ -9,6 +9,7 @@ from .models import (
     ProjectMember,
     Image,
     ParameterCode,
+    DownloadLog,
 )
 
 @admin.register(ProjectMember)
@@ -53,3 +54,9 @@ class ImageAdmin(admin.ModelAdmin):
 class ParameterCodeAdmin(admin.ModelAdmin):
     model = ParameterCode
     list_display = ('name', 'type')
+    
+
+@admin.register(DownloadLog)
+class DownloadLogAdmin(admin.ModelAdmin):
+    model = DownloadLog
+    list_display = ('user_role', 'condiction','file_link')
