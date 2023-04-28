@@ -1038,3 +1038,9 @@ class Calculation(models.Model):
     image_interval = models.PositiveSmallIntegerField('image interval')
     event_interval = models.PositiveSmallIntegerField('event interval')
     data = models.JSONField(default=dict, blank=True, null=True)
+
+class DownloadLog(models.Model):
+    
+    user_role = models.CharField('使用者角色', max_length=1000, null=True, default='', blank=True)
+    condiction = models.CharField('篩選條件', max_length=1000, null=True, default='', blank=True)
+    file_link = models.CharField('下載連結', max_length=1000, null=True, default='', blank=True)

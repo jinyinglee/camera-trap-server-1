@@ -64,6 +64,17 @@ from shapely.geometry import Point
 
 def get_project_info_web(request):
     pk = request.GET.get('pk')
+    # 系統管理員
+    member_id = request.session.get('id', None)
+    is_authorized = Contact.objects.filter(id=member_id, is_system_admin=True).exists()
+    
+    # 團隊成員名單
+    pm_list = get_project_member(pk)
+    if (member_id in pm_list) or is_authorized:
+        is_project_authorized = True
+    else:
+        is_project_authorized = False
+        
     response = {}
     project = Project.objects.get(id=pk)
     sa = StudyArea.objects.filter(project_id=pk, parent_id__isnull=True)
@@ -117,8 +128,14 @@ def get_project_info_web(request):
                 if c < 9:
                     pie_data += [{'name': s_name, 'y': round(i.count/species_total_count*100, 2), 'count': i.count}]
                 else:
-                    other_data += [{'name': s_name, 'y': round(i.count/species_total_count*100, 2), 'count': i.count}]
-                    others.update({'count': others['count']+i.count})
+                    if is_project_authorized:
+                        other_data += [{'name': s_name, 'y': round(i.count/species_total_count*100, 2), 'count': i.count}]
+                        others.update({'count': others['count']+i.count})
+                    else:
+                        if not re.search("人",s_name):
+                            other_data += [{'name': s_name, 'y': round(i.count/species_total_count*100, 2), 'count': i.count}]
+                            others.update({'count': others['count']+i.count})
+                        
             if others['count'] > 0:
                 others.update({'y': round(others['count']/species_total_count*100, 2)})
                 pie_data += [others]
@@ -166,7 +183,8 @@ def get_project_detail(request):
         query = f"""SELECT folder_name,
                         to_char(folder_last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS folder_last_updated
                         FROM taicat_imagefolder
-                        WHERE project_id = {pk}"""
+                        WHERE project_id = {pk}
+                        ORDER BY folder_last_updated desc"""
         cursor.execute(query)
         folder_list = cursor.fetchall()
         columns = list(cursor.description)
@@ -542,8 +560,24 @@ def update_species_pie(request):
 
 def project_info(request, pk):
     project = Project.objects.get(id=pk)
+    # 使用者是否有系統管理者/project_admin/總管理人的權限
     is_authorized = check_if_authorized(request, pk)
-    is_project_authorized = check_if_authorized_project(request, pk)
+    is_project_authorized = False
+    
+    # 系統管理員
+    member_id = request.session.get('id', None)
+    system_admin = Contact.objects.filter(id=member_id, is_system_admin=True).exists()
+    
+    # 團隊成員名單
+    pm_list = get_project_member(pk)
+    if (member_id in pm_list) or is_authorized:
+        is_project_authorized = True
+    else:
+        is_project_authorized = False
+    
+    # 是否為公開計畫
+    is_project_public = Project.objects.filter(id=pk, is_public=True).exists()
+    
     sa = StudyArea.objects.filter(project_id=pk, parent_id__isnull=True)
     sa_list = [str(s.id) for s in sa]
     sa_center = [23.5, 121.2]
@@ -595,8 +629,14 @@ def project_info(request, pk):
                 if c < 9:
                     pie_data += [{'name': s_name, 'y': round(i.count/species_total_count*100, 2), 'count': i.count}]
                 else:
-                    other_data += [{'name': s_name, 'y': round(i.count/species_total_count*100, 2), 'count': i.count}]
-                    others.update({'count': others['count']+i.count})
+                    if is_project_authorized:
+                        other_data += [{'name': s_name, 'y': round(i.count/species_total_count*100, 2), 'count': i.count}]
+                        others.update({'count': others['count']+i.count})
+                    else:
+                        if not re.search("人",s_name):
+                            other_data += [{'name': s_name, 'y': round(i.count/species_total_count*100, 2), 'count': i.count}]
+                            others.update({'count': others['count']+i.count})
+                           
             if others['count'] > 0:
                 others.update({'y': round(others['count']/species_total_count*100, 2)})
                 pie_data += [others]
@@ -605,7 +645,7 @@ def project_info(request, pk):
     return render(request, 'project/project_info.html', {'pk': pk, 'project': project, 'is_authorized': is_authorized,
                                                         'sa_point': sa_center, 'species_count': species_count, 'sa': sa,
                                                         'species_last_updated': species_last_updated, 'pie_data': pie_data,
-                                                        'other_data': other_data, 'sa_list': sa_list, 'zoom':zoom, 'is_project_authorized': is_project_authorized})
+                                                        'other_data': other_data, 'sa_list': sa_list, 'zoom':zoom, 'is_project_authorized': is_project_authorized,'is_project_public':is_project_public})
 
 
 def delete_data(request, pk):
@@ -790,7 +830,7 @@ species_list = ['水鹿', '山羌', '獼猴', '山羊', '野豬', '鼬獾', '白
 def sortFunction(value):
     return value["id"]
 
-
+# 使用者是否有系統管理者/project_admin/總管理人的權限
 def check_if_authorized(request, pk):
     is_authorized = False
     member_id = request.session.get('id', None)
@@ -811,7 +851,7 @@ def check_if_authorized(request, pk):
     return is_authorized
 
 
-# 是否可以看到計畫資訊/詳細內容
+# 是否可以看到計畫資訊/詳細內容(使用者是 系統管理者/團隊成員/總管理人，或公開資料)
 def check_if_authorized_project(request, pk):
     is_authorized = False
     member_id = request.session.get('id', None)
@@ -829,10 +869,10 @@ def check_if_authorized_project(request, pk):
                 organization_id = if_organization_admin.values('organization').first()['organization']
                 if Organization.objects.filter(id=organization_id, projects=pk):
                     is_authorized = True
+    # 計畫是否已公開
     elif Project.objects.filter(id=pk, is_public=True).exists():
         is_authorized = True
     return is_authorized
-
 
 def check_if_authorized_create(request):
     is_authorized = False
@@ -1024,7 +1064,6 @@ def add_deployment(request):
         deprecated = res.getlist('deprecated[]')
         data = []
         ids = []
-
         for i in range(len(names)):
             if str(i) in deprecated:
                 dep = True
@@ -1265,8 +1304,20 @@ def update_datatable(request):
 
 def project_detail(request, pk):
     folder = request.GET.get('folder')
+    # 使用者是否有系統管理者/project_admin/總管理人的權限
     is_authorized = check_if_authorized(request, pk)
-    is_project_authorized = check_if_authorized_project(request, pk)
+    is_project_authorized = False
+    is_public_project = False    
+    member_id = request.session.get('id', None)
+    
+    # 團隊成員
+    member_list = get_project_member(pk)
+    if is_authorized or (member_id in member_list):
+        is_project_authorized = True
+    # 公開
+    if Project.objects.filter(id=pk, is_public=True).exists():
+        is_public_project = True
+    
     with connection.cursor() as cursor:
         query = "SELECT name, funding_agency, code, " \
                 "principal_investigator, " \
@@ -1279,6 +1330,7 @@ def project_detail(request, pk):
     # folder name takes long time
     # folder_list = Image.objects.filter(project_id=pk).order_by('folder_name').distinct('folder_name')
     now = timezone.now()
+    # 是否跟新原始資料的紀錄
     update = False
     last_updated = ProjectStat.objects.filter(project_id=pk).aggregate(Min('last_updated'))['last_updated__min']
     if last_updated:
@@ -1343,6 +1395,7 @@ def project_detail(request, pk):
                         count=q['total'],
                         project_id=pk)
                     p_sp.save()
+                    
     # update imagefolder table
     # update = False
     last_updated = ImageFolder.objects.filter(project_id=pk).aggregate(Min('last_updated'))['last_updated__min']
@@ -1372,8 +1425,10 @@ def project_detail(request, pk):
                     folder_last_updated=f_last_updated,
                     project_id=pk)
                 img_f.save()
-
-    species = ProjectSpecies.objects.filter(project_id=pk).values_list('count', 'name').order_by('count')
+    if is_authorized:
+        species = ProjectSpecies.objects.filter(project_id=pk).values_list('count', 'name').order_by('count')
+    else:
+        species = ProjectSpecies.objects.filter(project_id=pk).values_list('count', 'name').order_by('count').exclude(name__iregex=r'人')
 
     if ProjectStat.objects.filter(project_id=pk).first().latest_date and ProjectStat.objects.filter(project_id=pk).first().earliest_date:
         latest_date = ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d")
@@ -1385,7 +1440,8 @@ def project_detail(request, pk):
         query = f"""SELECT folder_name,
                         to_char(folder_last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS folder_last_updated
                         FROM taicat_imagefolder
-                        WHERE project_id = {pk}"""
+                        WHERE project_id = {pk} 
+                        ORDER BY folder_last_updated desc"""
         cursor.execute(query)
         folder_list = cursor.fetchall()
         columns = list(cursor.description)
@@ -1397,6 +1453,8 @@ def project_detail(request, pk):
             results.append(row_dict)
     # edit permission
     user_id = request.session.get('id', None)
+    
+    # 系統管理員 / 個別計畫承辦人 / 計畫總管理人 跟 check_if_authorized (系統管理者/project_admin/總管理人的權限)結果一樣
     editable = False
     if user_id:
         # 系統管理員 / 個別計畫承辦人
@@ -1407,6 +1465,7 @@ def project_detail(request, pk):
             organization_id = Contact.objects.filter(id=user_id, is_organization_admin=True).values('organization').first()['organization']
             if Organization.objects.filter(id=organization_id, projects=pk):
                 editable = True
+                
     study_area = StudyArea.objects.filter(project_id=pk).order_by('name')
     sa_list = Project.objects.get(pk=pk).get_sa_list()
     sa_d_list = Project.objects.get(pk=pk).get_sa_d_list()
@@ -1418,6 +1477,20 @@ def project_detail(request, pk):
             project_list += [{'label': p.name, 'value': p.id}]
     else:
         project_list = []
+    tmp_county_list = Deployment.objects.filter(project=pk).values("county").distinct("county").exclude(county__exact='').exclude(county__exact=None)
+    tmp=[]
+    for i in tmp_county_list:
+        tmp.append(i['county'])
+    county_list = ParameterCode.objects.filter(type='county',parametername__in= tmp).values("name","type","parametername")
+    
+    tmp_protectedarea_list = Deployment.objects.filter(project=pk).values("protectedarea").distinct("protectedarea").exclude(protectedarea__exact='').exclude(protectedarea__exact=None)
+    tmp_protectedarea = set()
+    for i in tmp_protectedarea_list:
+        item = i['protectedarea'].split(',')
+        for j in item:
+            tmp_protectedarea.add(j)
+    protectedarea_list = ParameterCode.objects.filter(type='protectedarea',parametername__in= tmp_protectedarea).order_by('parametername').values("name","type","parametername")
+
 
     return render(request, 'project/project_detail.html',
                   {'project_name_len': len(project_info[0]), 'project_info': project_info, 'species': species, 'pk': pk,
@@ -1425,7 +1498,8 @@ def project_detail(request, pk):
                    'earliest_date': earliest_date, 'latest_date': latest_date,
                    'editable': editable, 'is_authorized': is_authorized,
                    'folder_list': results, 'sa_list': list(sa_list), 'sa_d_list': sa_d_list, 
-                   'projects': project_list, 'is_project_authorized': is_project_authorized})
+                   'projects': project_list, 'is_project_authorized': is_project_authorized,'is_public_project':is_public_project,
+                   'county_list':county_list,'protectedarea_list':protectedarea_list})
 
 
 def update_edit_autocomplete(request):
@@ -1444,7 +1518,16 @@ def data(request):
     _length = requests.get('length')
     orderby = requests.get('orderby', 'datetime')
     sort = requests.get('sort', 'asc')
-
+    # 系統管理員
+    member_id = request.session.get('id', None)
+    is_project_authorized = Contact.objects.filter(id=member_id, is_system_admin=True).exists()
+    is_authorized = check_if_authorized(request, pk)
+    # 團隊成員名單
+    member_list = get_project_member(pk)    
+    if is_authorized or (member_id in member_list):
+        is_authorized = True
+        is_project_authorized = True
+    
     start_date = requests.get('start_date')
     end_date = requests.get('end_date')
     date_filter = ''
@@ -1471,6 +1554,9 @@ def data(request):
             x = [i for i in species]
             x = str(x).replace('[', '(').replace(']', ')')
             spe_conditions = f"AND species IN {x}"
+    else:
+        if not is_project_authorized:
+            spe_conditions = "AND i.species NOT IN ('人','人（有槍）','人＋狗','狗＋人','獵人','砍草工人','研究人員','研究人員自己','除草工人')"
 
     time_filter = ''  # 要先減掉8的時差
     if times := requests.get('times'):
@@ -1480,18 +1566,40 @@ def data(request):
     folder_filter = ''
     if folder_name := requests.get('folder_name'):
         folder_filter = f"AND folder_name = '{folder_name}'"
+    
+    # Deployment table
+    county_filter = ''
+    if county_name := requests.get('county_name'):
+        county_filter = f" AND county = '{county_name}'"
+        
+    protectarea_filter = ''
+    if protectarea_name := requests.get('protectarea_name'):
+        protectarea_filter = f" AND protectedarea like '%{protectarea_name}%'"
 
+    tmp_deployment_sql = """SELECT * FROM taicat_deployment WHERE project_id = {}{}{}"""
+    deployment_sql = tmp_deployment_sql.format(pk,county_filter,protectarea_filter)
+    
     with connection.cursor() as cursor:
-        query = """SELECT i.id, i.studyarea_id, i.deployment_id, i.filename, i.species,
-                        i.life_stage, i.sex, i.antler, i.animal_id, i.remarks, i.file_url, i.image_uuid, i.from_mongo,
-                        to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, i.memo, i.specific_bucket
-                        FROM taicat_image i
-                        JOIN taicat_deployment d ON d.id = i.deployment_id
-                        WHERE i.project_id = {} {} {} {} {} {}
-                        ORDER BY {} {}, i.id ASC
-                        LIMIT {} OFFSET {}"""
+        if is_project_authorized:
+            query = """SELECT i.id, i.studyarea_id, i.deployment_id, i.filename, i.species,
+                            i.life_stage, i.sex, i.antler, i.animal_id, i.remarks, i.file_url, i.image_uuid, i.from_mongo,
+                            to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, i.memo, i.specific_bucket
+                            FROM taicat_image i
+                            JOIN ({}) d ON d.id = i.deployment_id
+                            WHERE i.project_id = {} {} {} {} {} {}
+                            ORDER BY {} {}, i.id ASC
+                            LIMIT {} OFFSET {}"""
+        else:
+            query = """SELECT i.id, i.studyarea_id, i.deployment_id, i.filename, i.species,
+                            i.life_stage, i.sex, i.antler, i.animal_id, i.remarks, i.file_url, i.image_uuid, i.from_mongo,
+                            to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, i.memo, i.specific_bucket
+                            FROM taicat_image i
+                            JOIN ({}) d ON d.id = i.deployment_id
+                            WHERE i.species not in ('人','人（有槍）','人＋狗','狗＋人','獵人','砍草工人','研究人員','研究人員自己','除草工人') and i.project_id = {} {} {} {} {} {}
+                            ORDER BY {} {}, i.id ASC
+                            LIMIT {} OFFSET {}"""
         # set limit = 1000 to avoid bad psql query plan
-        cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, orderby, sort, 1000, _start))
+        cursor.execute(query.format(deployment_sql,pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, orderby, sort, 1000, _start))
         image_info = cursor.fetchall()
         # print(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, 1000, _start))
     if image_info:
@@ -1506,10 +1614,17 @@ def data(request):
         df = df.merge(d_names).merge(sa_names)
 
         with connection.cursor() as cursor:
-            query = """SELECT COUNT(*)
+            if is_project_authorized:
+                query = """SELECT COUNT(*)
                             FROM taicat_image i
-                            WHERE project_id = {} {} {} {} {} {}"""
-            cursor.execute(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter))
+                            JOIN ({}) d ON d.id = i.deployment_id
+                            WHERE i.project_id = {} {} {} {} {} {}"""
+            else:
+                query = """SELECT COUNT(*)
+                            FROM taicat_image i
+                            JOIN ({}) d ON d.id = i.deployment_id
+                            WHERE i.species not in ('人','人（有槍）','人＋狗','狗＋人','獵人','砍草工人','研究人員','研究人員自己','除草工人') and i.project_id = {} {} {} {} {} {}"""
+            cursor.execute(query.format(deployment_sql, pk, date_filter, conditions, spe_conditions, time_filter, folder_filter))
             count = cursor.fetchone()
         recordsTotal = count[0]
 
@@ -1633,6 +1748,16 @@ def generate_download_excel(request, pk):
     email = requests.get('email', '')
     start_date = requests.get('start_date')
     end_date = requests.get('end_date')
+    # check_authorized to read ppl data
+    member_id = request.session.get('id', None)
+    project_name = list(Project.objects.filter(id=pk).values("name"))[0]['name']
+    # 有權限拿人的資料
+    is_authorized = check_if_authorized(request, pk)
+    member_list = get_project_member(pk)    
+    if is_authorized or (member_id in member_list):
+        is_authorized = True
+    
+    user_role = ParameterCode.objects.get(parametername=Contact.objects.get(id=member_id).identity).name
     date_filter = ''
     if ((start_date and start_date != ProjectStat.objects.filter(project_id=pk).first().earliest_date.strftime("%Y-%m-%d")) or (end_date and end_date != ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d"))):
         start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
@@ -1658,6 +1783,9 @@ def generate_download_excel(request, pk):
             x = [i for i in species]
             x = str(x).replace('[', '(').replace(']', ')')
             spe_conditions = f" AND i.species IN {x}"
+    else:
+        if not is_authorized:
+            spe_conditions = "AND i.species NOT IN ('人','人（有槍）','人＋狗','狗＋人','獵人','砍草工人','研究人員','研究人員自己','除草工人')"
 
     time_filter = ''  # 要先減掉8的時差
     if times := requests.get('times'):
@@ -1668,6 +1796,19 @@ def generate_download_excel(request, pk):
     if folder_name := requests.get('folder_name'):
         folder_filter = f"AND i.folder_name = '{folder_name}'"
 
+    # Deployment table
+    county_filter = ''
+    if county_name := requests.get('county_name'):
+        county_filter = f" AND county = '{county_name}'"
+
+    protectarea_filter = ''
+    if protectarea_name := requests.get('protectarea_name'):
+        protectarea_filter = f" AND protectedarea like '%{protectarea_name}%'"
+
+    tmp_deployment_sql = """SELECT * FROM taicat_deployment WHERE project_id = {}{}{}"""
+    deployment_sql = tmp_deployment_sql.format(pk,county_filter,protectarea_filter)
+    
+    
     n = f'download_{str(ObjectId())}_{datetime.datetime.now().strftime("%Y-%m-%d")}.csv'
     download_dir = os.path.join(settings.MEDIA_ROOT, 'download')
     sql = f"""copy ( SELECT i.project_id AS "計畫ID", p.name AS "計畫名稱", i.image_uuid AS "影像ID", 
@@ -1677,20 +1818,22 @@ def generate_download_excel(request, pk):
                             FROM taicat_image i
                             JOIN taicat_studyarea sa ON i.studyarea_id = sa.id
                             LEFT JOIN taicat_studyarea ssa ON sa.parent_id = ssa.id
-                            JOIN taicat_deployment d ON i.deployment_id = d.id
+                            JOIN ({deployment_sql}) d ON d.id = i.deployment_id
                             JOIN taicat_project p ON i.project_id = p.id
                             WHERE i.project_id = {pk} {date_filter} {conditions} {spe_conditions} {time_filter} {folder_filter}
                             ORDER BY i.created DESC, i.project_id ASC ) to stdout with delimiter ',' csv header;"""
     with connection.cursor() as cursor:
         with open(os.path.join(download_dir, n), 'w+') as fp:
             cursor.copy_expert(sql, fp)
-
     download_url = request.scheme+"://" + \
         request.META['HTTP_HOST']+settings.MEDIA_URL + \
         os.path.join('download', n)
     if settings.ENV == 'prod':
         download_url = download_url.replace('http', 'https')
-
+    # download_log
+    condiction_log = f'''專案名稱:{project_name}, 日期：{date_filter}。樣區 / 相機位置：{conditions} 。物種：{spe_conditions} 。時間：{time_filter}。縣市：{county_filter}。保護留區：{protectarea_filter}。資料夾：{folder_filter} 。'''
+    download_log_sql = DownloadLog(user_role=user_role, condiction=condiction_log,file_link=download_url)#file_link=download_url
+    download_log_sql.save()
     email_subject = '[臺灣自動相機資訊系統] 下載資料'
     email_body = render_to_string('project/download.html', {'download_url': download_url, })
     send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, [email])
@@ -1894,3 +2037,23 @@ def get_parameter_name(request):
         } for x in parameter_name]
         
     return JsonResponse(code, safe=False)
+
+def check_login(request):
+    # check_member_authorized
+    response = {}
+    response['messages'] = False
+    member_id = request.session.get('id', None)
+    mem_obj = None
+    response['redirect'] = True
+    if member_id:
+        response['redirect'] = False
+        mem_obj = Contact.objects.filter(id=member_id).values_list('name','email','identity').first()
+        # 資料未填寫完成
+        if None in mem_obj or '' in mem_obj :
+            response['redirect'] = True
+            response['messages'] = '使用者名稱/電子郵件/身份狀態 填寫未完成'
+    else:
+        # 訪客
+        response['redirect'] = False
+        response['messages'] = '尚未登入'
+    return HttpResponse(json.dumps(response), content_type='application/json')
