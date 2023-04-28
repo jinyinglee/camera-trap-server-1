@@ -1306,7 +1306,7 @@ def project_detail(request, pk):
     folder = request.GET.get('folder')
     # 使用者是否有系統管理者/project_admin/總管理人的權限
     is_authorized = check_if_authorized(request, pk)
-    is_project_authorized = True
+    is_project_authorized = False
     is_public_project = False    
     member_id = request.session.get('id', None)
     
