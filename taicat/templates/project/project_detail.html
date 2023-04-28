@@ -13,7 +13,7 @@
 <input type="hidden" name="get-folder" value="{{ folder }}"></input>
 <input type="hidden" name="project-name" value="{{ project_info.0 }}"></input>
 <div class="container box">
-  {% if is_project_authorized %}
+  {% if is_public_project %}
       {% if project_name_len > 35 %}
       <div class="row pb-2 pt-4 header overflow-auto h-120">
       {% else %}
