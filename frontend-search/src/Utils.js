@@ -15,9 +15,8 @@ const cleanFormData = (formData, depOptions) => {
       cleaned[v] = format(formData[v], 'yyyy-MM-dd');
     } else if ( v === 'projects') {
       let deploymentIds = [];
-      // console.log(formData);
       for (const i in formData['projects']) {
-        if (formData['projects'][i].project !== null) {
+        if (formData['projects'][i].hasOwnProperty('project') && formData['projects'][i].project !== null) {
           const projectId = formData['projects'][i].project.id;
           if (formData['projects'][i].hasOwnProperty('deployments') && formData['projects'][i].deployments.length > 0) {
             deploymentIds = deploymentIds.concat(formData['projects'][i].deployments.map(x => x.deployment_id));

@@ -208,26 +208,37 @@ def calculated_data(filter_args, calc_args):
     results = {}
     for sp in species:
         results[sp] = []
-        for did in deps:
-            dep = Deployment.objects.get(pk=did)
-            if res := Calculation.objects.filter(
-                deployment=dep,
+        res = None
+        if deps:
+            for did in deps:
+                dep = Deployment.objects.get(pk=did)
+                res = Calculation.objects.filter(
+                        deployment=dep,
+                        datetime_from__gte=start_dt,
+                        datetime_to__lte=end_dt,
+                        image_interval=image_interval,
+                        event_interval=event_interval
+                ).all()
+                #print(res, dep, start_dt, end_dt, image_interval, event_interval)
+        else:
+            res = Calculation.objects.filter(
                 datetime_from__gte=start_dt,
                 datetime_to__lte=end_dt,
                 image_interval=image_interval,
                 event_interval=event_interval
-            ).all():
-                #print(res, dep, start_dt, end_dt, image_interval, event_interval)
-                for cal in res:
-                    #results[sp].append(cal.data)
-                    results[sp].append({
-                        'project': dep.project.name,
-                        'studyarea': dep.study_area.name,
-                        'name': dep.name,
-                        'year': cal.datetime_from.year,
-                        'month': cal.datetime_from.month,
-                        'calc': cal.data
-                    })
+            ).all()
+        if res:
+            for cal in res:
+                #results[sp].append(cal.data)
+                dep = cal.deployment
+                results[sp].append({
+                    'project': dep.project.name,
+                    'studyarea': dep.study_area.name,
+                    'name': dep.name,
+                    'year': cal.datetime_from.year,
+                    'month': cal.datetime_from.month,
+                    'calc': cal.data
+                })
     return results
 
 def calc(query, calc_data, query_start, query_end):
