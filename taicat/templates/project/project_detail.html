@@ -13,7 +13,7 @@
 <input type="hidden" name="get-folder" value="{{ folder }}"></input>
 <input type="hidden" name="project-name" value="{{ project_info.0 }}"></input>
 <div class="container box">
-  {% if is_public_project %}
+  {% if is_public_project or is_project_authorized %}
       {% if project_name_len > 35 %}
       <div class="row pb-2 pt-4 header overflow-auto h-120">
       {% else %}
@@ -116,11 +116,10 @@
               <select id="select-folder" name="folder_name" class="mb-2" placeholder="請選擇資料夾名稱">
                 <option value="">請選擇資料夾名稱</option>
               </select>
-              {% comment %} <p class="mb-1"><strong>海拔</strong></p>
+              <p class="mb-1"><strong>海拔</strong></p>
               <p id="altitude-content" class="font-sm"></p>
               <input type="text" class="d-none" id="altitude" readonly />
               <div id="altitude-slider" class="w-75 mx-auto mb-5"></div>
-              </div> {% endcomment %}
               <p class="mb-1"><strong>縣市</strong></p>
               <select id="select-county" name="county_name" class="selectpicker form-control" data-live-search-placeholder="搜尋" data-live-search="true" data-none-selected-text="--請選擇--">
               <option value='' selected>--請選擇--</option>
@@ -147,6 +146,8 @@
           </div>
           <input type="hidden" name="start_date" value="" />
           <input type="hidden" name="end_date" value="" />
+          <input type="hidden" name="start_altitude" value="" />
+          <input type="hidden" name="end_altitude" value="" />
         </form>
       </div>
       <div class="col-10 remain">
