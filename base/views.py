@@ -439,10 +439,10 @@ def add_org_admin(request):
 def login_for_test(request):
     next = request.GET.get('next')
     role = request.GET.get('role')
-    info = Contact.objects.filter(name=role).values('name', 'id').first()
+    info = Contact.objects.filter(name=role).values('name', 'id','orcid').first()
     request.session["is_login"] = True
     request.session["name"] = role
-    request.session["orcid"] = ''
+    request.session["orcid"] = info["orcid"]
     request.session["id"] = info['id']
     request.session["first_login"] = False
 
@@ -566,7 +566,7 @@ def personal_info(request):
         identity = request.POST.get('identity')
         Contact.objects.filter(orcid=orcid).update(name=name, email=email,identity=identity)
         request.session["name"] = name
-
+        
     if is_login:
         info = Contact.objects.filter(
             orcid=request.session["orcid"]).values().first()
