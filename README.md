@@ -14,6 +14,16 @@ folder: `frontend-search`
 $ cd frontend-search
 ```
 
+Setting Environment
+`.env` for local development
+`.env.prod` for production build
+
+local development setting:
+```
+MY_ENV=dev
+API_URL=http://127.0.0.1:8000/api/
+```
+
 Install packages
 
 ```bash
