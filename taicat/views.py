@@ -178,6 +178,8 @@ def get_project_detail(request):
     else:
         latest_date, earliest_date = None, None
 
+    altitude_range = Deployment.objects.filter(project_id=pk,deprecated=False).aggregate(Max("altitude"), Min("altitude"))
+    
     results = []
     with connection.cursor() as cursor:
         query = f"""SELECT folder_name,
@@ -194,11 +196,12 @@ def get_project_detail(request):
                 row_dict[col.name] = row[i]
             results.append(row_dict)
     response['folder_list'] = results
-
     response['latest_date'] = latest_date
     response['earliest_date'] = earliest_date
     response['sa_d_list'] = Project.objects.get(pk=pk).get_sa_d_list()
     response['sa_list'] = Project.objects.get(pk=pk).get_sa_list()
+    response['altitude__max'] = altitude_range['altitude__max']
+    response['altitude__min'] = altitude_range['altitude__min']
 
     study_area = []
     for sa in StudyArea.objects.filter(project_id=pk).order_by('name'):
@@ -1575,9 +1578,14 @@ def data(request):
     protectarea_filter = ''
     if protectarea_name := requests.get('protectarea_name'):
         protectarea_filter = f" AND protectedarea like '%{protectarea_name}%'"
-
-    tmp_deployment_sql = """SELECT * FROM taicat_deployment WHERE project_id = {}{}{}"""
-    deployment_sql = tmp_deployment_sql.format(pk,county_filter,protectarea_filter)
+        
+    start_altitude = requests.get('start_altitude')
+    end_altitude = requests.get('end_altitude')
+    altitude_filter = ''
+    if protectarea_name := requests.get('start_altitude'):
+        altitude_filter = f" AND altitude BETWEEN {start_altitude} AND {end_altitude}"
+    tmp_deployment_sql = """SELECT * FROM taicat_deployment WHERE project_id = {}{}{}{}"""
+    deployment_sql = tmp_deployment_sql.format(pk,county_filter,protectarea_filter,altitude_filter)
     
     with connection.cursor() as cursor:
         if is_project_authorized:
@@ -1805,8 +1813,13 @@ def generate_download_excel(request, pk):
     if protectarea_name := requests.get('protectarea_name'):
         protectarea_filter = f" AND protectedarea like '%{protectarea_name}%'"
 
-    tmp_deployment_sql = """SELECT * FROM taicat_deployment WHERE project_id = {}{}{}"""
-    deployment_sql = tmp_deployment_sql.format(pk,county_filter,protectarea_filter)
+    start_altitude = requests.get('start_altitude')
+    end_altitude = requests.get('end_altitude')
+    altitude_filter = ''
+    if protectarea_name := requests.get('start_altitude'):
+        altitude_filter = f" AND altitude BETWEEN {start_altitude} AND {end_altitude}"
+    tmp_deployment_sql = """SELECT * FROM taicat_deployment WHERE project_id = {}{}{}{}"""
+    deployment_sql = tmp_deployment_sql.format(pk,county_filter,protectarea_filter,altitude_filter)
     
     
     n = f'download_{str(ObjectId())}_{datetime.datetime.now().strftime("%Y-%m-%d")}.csv'

@@ -67,7 +67,19 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
 
           }
 
+          if(response.altitude__min) {
 
+          $( "#altitude-slider" ).slider({
+            range: true,
+            min: response.altitude__min,
+            max: response.altitude__max,
+            values: [ response.altitude__min, response.altitude__max ],
+            slide: function( event, ui ) {
+              $('#altitude-content').html((ui.values[ 0 ] ) + "公尺 至 " + (ui.values[1])) + "公尺"},
+          });
+          $("#altitude-content").html($("#altitude-slider").slider("values",0) + "公尺 至 " + $("#altitude-slider").slider("values",1) + "公尺");
+        }
+        //TODO start_date
 
           // date slider
           if(response.earliest_date) {
@@ -247,6 +259,8 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                     d.sa =  window.conditions.sa;
                     d.start_date = window.conditions.start_date;
                     d.end_date = window.conditions.end_date;
+                    d.start_altitude = window.conditions.start_altitude;
+                    d.end_altitude = window.conditions.end_altitude;
                     d.deployment = window.conditions.deployment;
                     d.folder_name = window.conditions.folder_name;
                     d.county_name = window.conditions.county_name;
@@ -410,7 +424,19 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
               // radio
               $('.fa-check').remove()
               $('<i class="fas fa-check title-dark w-12"></i>').insertBefore($("input[type=radio].all"))
-  
+
+              if (response.altitude__min) {
+                $( "#altitude-slider" ).slider({
+                  range: true,
+                  min: response.altitude__min,
+                  max: response.altitude__max,
+                  values: [ response.altitude__min, response.altitude__max ],
+                  slide: function( event, ui ) {
+                    $('#altitude-content').html((ui.values[ 0 ] ) + "公尺 至 " + (ui.values[1]) + "公尺")},
+                });
+                $("#altitude-content").html($("#altitude-slider").slider("values",0) + "公尺 至 " + $("#altitude-slider").slider("values",1) +"公尺");
+              }
+
               if (response.earliest_date) {
                     $("#date-slider").slider({
                     range: true,
@@ -843,6 +869,10 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                 $("input[name=start_date]").val((new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10));
                 $("input[name=end_date]").val((new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
             }
+            if (response.altitude__min) {
+              $("input[name=start_altitude]").val($("#altitude-slider").slider("values",0));
+              $("input[name=end_altitude]").val($("#altitude-slider").slider("values",1));
+            }
             $("input[name=email]").val($("#download-email").val())
             $.ajax({
                     data: $('#downloadForm').serialize(),
@@ -1049,6 +1079,8 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
             pk : $("input[name=pk]").val(),
             species : $('input[name="species-filter"]:checked').map(function(){return $(this).val();}).get(),
             sa :  $("input[name=sa-filter]:checked").val(),
+            start_altitude : $("#altitude-slider").slider("values",0),
+            end_altitude : $("#altitude-slider").slider("values",1),
             //{% if earliest_date != None %}
             start_date : (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10),
             end_date : (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10),
