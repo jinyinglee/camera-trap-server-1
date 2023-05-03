@@ -41,13 +41,17 @@ from .utils import (
     calc_from_cache,
     calculated_data,
     get_my_project_list,
+    apply_search_filter,
 )
 
 from .views import (
     check_if_authorized,
     check_if_authorized_create,
 )
-
+from taicat.tasks import (
+    process_download_data_task,
+    process_download_calculated_data_task,
+)
 
 def index(request):
     context = {
@@ -157,74 +161,10 @@ def api_search(request):
         query_end = datetime.now()
         query = Image.objects.filter()
         # TODO: 考慮 auth
+
         if request.GET.get('filter'):
             filter_dict = json.loads(request.GET['filter'])
-            #print(filter_dict, flush=True)
-            project_ids = []
-            if value := filter_dict.get('keyword'):
-                rows = Project.objects.values_list('id', flat=True).filter(keyword__icontains=value)
-                project_ids = list(rows)
-                if len(project_ids) > 0:
-                    query = query.filter(project_id__in=project_ids)
-                else:
-                    query = query.filter(project_id__in=[9999]) # 關鍵字沒有就都不要搜到
-            #if values := filter_dict.get('projects'):
-            #        project_ids = values
-
-            sp_values = []
-            if values := filter_dict.get('species'):
-                sp_values += values
-            if value := filter_dict.get('speciesText'):
-                sp_values += [value]
-
-            if value := filter_dict.get('startDate'):
-                dt = make_aware(datetime.strptime(value, '%Y-%m-%d'))
-                query_start = dt
-                query = query.filter(datetime__gte=dt)
-            if value := filter_dict.get('endDate'):
-                dt = make_aware(datetime.strptime(value, '%Y-%m-%d'))
-                query_end = dt
-                query = query.filter(datetime__lte=dt)
-            if values := filter_dict.get('deployments'):
-                query = query.filter(deployment_id__in=values)
-                #if len(project_ids):
-                #    query = query.filter(Q(deployment_id__in=values) | Q(project_id__in=project_ids))
-                # else:
-                #    query = query.filter(deployment_id__in=values)
-            elif values := filter_dict.get('studyareas'):
-                query = query.filter(studyarea_id__in=values)
-
-            if value := filter_dict.get('altitude'):
-                if op := filter_dict.get('altitudeOperator'):
-                    val_list = value.split('-')
-                    v1 = int(val_list[0])
-                    v2 = None
-                    if len(val_list) >= 2:
-                        v2 = int(val_list[1])
-                    if v1:
-                        if op == 'eq':
-                            query = query.filter(deployment__altitude=v1)
-                        elif op == 'gt':
-                            query = query.filter(deployment__altitude__gte=v1)
-                        elif op == 'lt':
-                            query = query.filter(deployment__altitude__lte=v1)
-                    if v2 and op == 'range':
-                        query = query.filter(deployment__altitude__gte=v1, deployment__altitude__lte=v2)
-
-            if values := filter_dict.get('counties'):
-                q_list = []
-                for x in values:
-                    q_list.append(Q(deployment__county__icontains=x['parametername']))
-
-                query = query.filter(reduce(operator.or_, q_list))
-
-            if values := filter_dict.get('protectedareas'):
-                q_list = []
-                for x in values:
-                    q_list.append(Q(deployment__protectedareas__icontains=x['parametername']))
-
-            if len(sp_values) > 0:
-                query = query.filter(species__in=sp_values)
+            query = apply_search_filter(filter_dict)
 
         if request.GET.get('pagination'):
             pagination = json.loads(request.GET['pagination'])
@@ -233,6 +173,8 @@ def api_search(request):
 
         download = request.GET.get('download', '')
         calc_data = request.GET.get('calc', '')
+        downloadData = request.GET.get('downloadData', '')
+
         if calc_data:
             calc_data = json.loads(calc_data)
 
@@ -241,6 +183,7 @@ def api_search(request):
             out_format = calc_dict['fileFormat']
             calc_type = calc_dict['calcType']
 
+            '''
             # results = calc(query, calc_data, query_start, query_end)
             results = calculated_data(filter_dict, calc_data)
             # print(results, out_format, calc_type)
@@ -253,9 +196,32 @@ def api_search(request):
             response['Content-Disposition'] = 'attachment; filename=camera-trap-calculation-{}.{}'.format(
                 calc_type,
                 'csv' if out_format == 'csv' else 'xlsx')
-            #print ('--------------', flush=True)
-            return response
 
+            return response
+            '''
+            email = request.GET.get('email', '')
+            message = 'processing'
+            if member_id := request.session.get('id', None):
+                host = request.META['HTTP_HOST']
+                process_download_calculated_data_task.delay(email, filter_dict, calc_dict, calc_type, out_format, calc_data, host)
+            else:
+                message = 'no member_id'
+
+            return JsonResponse({
+                'message': message
+            })
+        elif downloadData:
+            email = request.GET.get('email', '')
+            message = 'processing'
+            if member_id := request.session.get('id', None):
+                host = request.META['HTTP_HOST']
+                process_download_data_task.delay(email, filter_dict, member_id, host)
+            else:
+                message = 'no member_id'
+
+            return JsonResponse({
+                'message': message
+            })
         else:
             total = query.values('id').order_by('id').count()
             rows = query.all()[start:end]

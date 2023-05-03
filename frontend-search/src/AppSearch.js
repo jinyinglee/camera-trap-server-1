@@ -295,8 +295,8 @@ const AppSearch = () => {
     } else {
       const calc = JSON.stringify(state.calculation);
       const d = JSON.stringify(formDataCleaned);
+      /*
       const searchApiUrl = `${apiPrefix}search?filter=${d}&calc=${calc}&download=1`;
-
       dispatch({type: 'startLoading'});
       console.log('fetch:', searchApiUrl);
       fetch(encodeURI(searchApiUrl), {
@@ -325,7 +325,116 @@ const AppSearch = () => {
           console.log('calc error:', error.message);
           dispatch({type: 'stopLoading', text: error.message, title: 'server err'});
         });
+      */
+      const searchApiUrl = `${apiPrefix}check_login/`;
+      console.log('fetch:', searchApiUrl);
+      fetch(encodeURI(searchApiUrl), {
+        mode: 'same-origin',
+        headers: {
+          'content-type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest', // for Django request.is_ajax()
+          //'X-CSRFToken': csrftoken,
+        },
+        method: 'GET',
+      })
+        .then(resp => resp.json())
+        .then( data => {
+          if (data.messages) {
+            //alert(data.messages);
+            //if (data.redirect && data.redirect === true) {
+            //  window.location.replace(window.location.origin+ "/personal_info");
+            //} else {
+            //console.log(document.getElementById('downloadModal'))
+            $('#downloadModal').modal('show')
+
+            const dl = document.getElementById('download-submit')
+            dl.onclick = () => {
+              //$('.download').on('click', function(){ // 這個會重複呼叫?
+              // console.log('download!!')
+              const emailInput = document.getElementById('download-email')
+              const searchApiUrl = `${apiPrefix}search?filter=${d}&calc=${calc}&download=1`;
+              console.log('fetch:', searchApiUrl);
+
+              fetch(encodeURI(searchApiUrl), {
+                mode: 'same-origin',
+                headers: {
+                  'content-type': 'application/json',
+                  'X-Requested-With': 'XMLHttpRequest', // for Django request.is_ajax()
+                  //'X-CSRFToken': csrftoken,
+                },
+                method: 'GET',
+              })
+              .then( resp => resp.json() )
+                .then( data2 => {
+                console.log(data2);
+              })
+              .catch( error => {
+                console.log('downloadData error:', error.message);
+              })
+            $('#downloadModal').modal('hide')
+            }
+        }
+      }).catch((error)=>{
+        console.log('calc error:', error.message);
+      });
     }
+  }
+
+  const handleDownload = () => {
+    const searchApiUrl = `${apiPrefix}check_login/`;
+
+    console.log('fetch:', searchApiUrl);
+    fetch(encodeURI(searchApiUrl), {
+      mode: 'same-origin',
+      headers: {
+        'content-type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest', // for Django request.is_ajax()
+        //'X-CSRFToken': csrftoken,
+      },
+      method: 'GET',
+    })
+      .then(resp => resp.json())
+      .then( data => {
+        if (data.messages) {
+          //alert(data.messages);
+          //if (data.redirect && data.redirect === true) {
+          //  window.location.replace(window.location.origin+ "/personal_info");
+          //} else {
+          //console.log(document.getElementById('downloadModal'))
+          $('#downloadModal').modal('show')
+          const formDataCleaned = cleanFormData(state.filter, state.options.deploymentDict)
+          const d = JSON.stringify(formDataCleaned)
+          // console.log($('.download'), 'eeee')
+          const dl = document.getElementById('download-submit')
+          dl.onclick = () => {
+            //$('.download').on('click', function(){ // 這個會重複呼叫?
+            // console.log('download!!')
+            const emailInput = document.getElementById('download-email')
+            const searchApiUrl = `${apiPrefix}search?filter=${d}&email=${emailInput.value}&downloadData=1`;
+            console.log('fetch:', searchApiUrl);
+
+            fetch(encodeURI(searchApiUrl), {
+              mode: 'same-origin',
+              headers: {
+                'content-type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest', // for Django request.is_ajax()
+                //'X-CSRFToken': csrftoken,
+              },
+              method: 'GET',
+            })
+              .then( resp => resp.json() )
+              .then( data2 => {
+                console.log(data2);
+              })
+              .catch( error => {
+                console.log('downloadData error:', error.message);
+              })
+            $('#downloadModal').modal('hide')
+            }
+        }
+      }).catch((error)=>{
+        console.log('calc error:', error.message);
+      });
   }
 
   const ProjectFilterBox = ({index}) => {
@@ -616,11 +725,14 @@ const AppSearch = () => {
           {(state.result && state.result.data.length > 0) ?
            <>
              <AppSearchDataGrid result={state.result} handleChangePage={handleChangePage} handleChangeRowsPerPage={handleChangeRowsPerPage} pagination={state.pagination} setImageDetail={(path) => dispatch({type: 'setImageDetail', path: path})} />
+             <button type="button" className="btn btn-success" onClick={handleDownload} style={{marginTop: '24px'}}>
+               下載搜尋結果
+             </button>
              <AppSearchCalculation calcData={state.calculation} setCalcData={dispatch} />
              <Button variant="contained" onClick={handleCalc} style={{marginTop: '10px'}}>下載計算</Button>
              {(state.alertText) ? <Alert severity="error" onClose={()=>{ dispatch({type: 'setAlert', value: ''})}}><AlertTitle>{state.alertTitle}</AlertTitle>{state.alertText}</Alert> : null}
              <div>
-           <button type="button" className="btn btn-warning" data-bs-toggle="modal" data-bs-target="#exampleModal" style={{marginTop: '24px'}}>
+               <button type="button" className="btn btn-warning" data-bs-toggle="modal" data-bs-target="#exampleModal" style={{marginTop: '24px'}}>
                  計算項目說明
                </button>
              </div>
