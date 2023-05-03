@@ -203,5 +203,5 @@ def process_download_calculated_data_task(email, filter_dict, calc_dict, calc_ty
         Path('download', filename))
     email_subject = '[臺灣自動相機資訊系統] 下載計算資料'
     email_body = render_to_string('project/download.html', {'download_url': download_url, })
-    #print('email', email_subject, email_body)
+    #print('email', email_subject, email_body, email)
     send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, [email])

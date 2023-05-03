@@ -339,21 +339,22 @@ const AppSearch = () => {
       })
         .then(resp => resp.json())
         .then( data => {
+          console.log('check_login', data);
           if (data.messages) {
-            //alert(data.messages);
+            alert(data.messages);
             if (data.redirect && data.redirect === true) {
               window.location.replace(window.location.origin+ "/personal_info");
-            } else {
-              //console.log(document.getElementById('downloadModal'))
+            }
+          } else {
+            //console.log(document.getElementById('downloadModal'))
             $('#downloadModal').modal('show')
               const dl = document.getElementById('download-submit')
               dl.onclick = () => {
                 //$('.download').on('click', function(){ // 這個會重複呼叫?
                 // console.log('download!!')
                 const emailInput = document.getElementById('download-email')
-                const searchApiUrl = `${apiPrefix}search?filter=${d}&calc=${calc}&download=1`;
+                const searchApiUrl = `${apiPrefix}search?filter=${d}&email=${emailInput.value}&calc=${calc}&download=1`;
                 console.log('fetch:', searchApiUrl);
-
                 fetch(encodeURI(searchApiUrl), {
                   mode: 'same-origin',
                   headers: {
@@ -372,7 +373,6 @@ const AppSearch = () => {
                   })
                 $('#downloadModal').modal('hide')
               }
-            }
           }
         }).catch((error)=>{
           console.log('calc error:', error.message);
@@ -399,8 +399,8 @@ const AppSearch = () => {
           alert(data.messages);
           if (data.redirect && data.redirect === true) {
             window.location.replace(window.location.origin+ "/personal_info");
-            } else {
-
+          }
+        } else {
           $('#downloadModal').modal('show')
           const formDataCleaned = cleanFormData(state.filter, state.options.deploymentDict)
           const d = JSON.stringify(formDataCleaned)
@@ -430,7 +430,6 @@ const AppSearch = () => {
                 console.log('downloadData error:', error.message);
               })
             $('#downloadModal').modal('hide')
-            }
             }
         }
       }).catch((error)=>{
