@@ -1074,13 +1074,24 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
 
 
       $('#submitSelect').on('click', function(){
-        window.conditions = {
+
+        try{
+          start_altitude = $("#altitude-slider").slider("values",0);
+          end_altitude = $("#altitude-slider").slider("values",1);
+        }
+        catch(e){
+          start_altitude = null
+          end_altitude = null
+        }
+        
+        if (start_altitude){
+          window.conditions = {
             times : $("input[name=times]").val(),
             pk : $("input[name=pk]").val(),
             species : $('input[name="species-filter"]:checked').map(function(){return $(this).val();}).get(),
             sa :  $("input[name=sa-filter]:checked").val(),
-            start_altitude : $("#altitude-slider").slider("values",0),
-            end_altitude : $("#altitude-slider").slider("values",1),
+            start_altitude : start_altitude,
+            end_altitude : end_altitude,
             //{% if earliest_date != None %}
             start_date : (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10),
             end_date : (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10),
@@ -1091,6 +1102,24 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
             protectarea_name : $('#select-protectarea option:selected').val(),
           }
           $('#img-table').DataTable().draw();
+        }else{
+          window.conditions = {
+            times : $("input[name=times]").val(),
+            pk : $("input[name=pk]").val(),
+            species : $('input[name="species-filter"]:checked').map(function(){return $(this).val();}).get(),
+            sa :  $("input[name=sa-filter]:checked").val(),
+            //{% if earliest_date != None %}
+            start_date : (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10),
+            end_date : (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10),
+            //{% endif %}
+            deployment : $('input[name="d-filter"]:checked').map(function(){return $(this).val();}).get(),
+            folder_name : $('#select-folder option:selected').val(),
+            county_name : $('#select-county option:selected').val(),
+            protectarea_name : $('#select-protectarea option:selected').val(),
+          }
+          $('#img-table').DataTable().draw();
+        }
+        
   
       })
 
