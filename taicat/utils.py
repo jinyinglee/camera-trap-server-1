@@ -3,7 +3,8 @@ import json
 from tempfile import NamedTemporaryFile
 import collections
 import threading
-
+from functools import reduce
+import operator
 from operator import itemgetter
 from datetime import (
     datetime,
@@ -19,7 +20,8 @@ from django.core.cache import cache
 from django.db.models import (
     Max,
     Min,
-    Count
+    Count,
+    Q,
 )
 from django.db.models.functions import (
     Trunc,
@@ -840,7 +842,11 @@ def apply_search_filter(filter_dict={}):
     if values := filter_dict.get('protectedareas'):
         q_list = []
         for x in values:
-            q_list.append(Q(deployment__protectedareas__icontains=x['parametername']))
+            # 只有一筆就用 eq, 多筆就加上前後 ","
+            q_list.append(Q(deployment__protectedarea__icontains=x['parametername']+','))
+            q_list.append(Q(deployment__protectedarea__icontains=','+x['parametername']))
+            q_list.append(Q(deployment__protectedarea=x['parametername']))
+        query = query.filter(reduce(operator.or_, q_list))
 
     if len(sp_values) > 0:
         query = query.filter(species__in=sp_values)

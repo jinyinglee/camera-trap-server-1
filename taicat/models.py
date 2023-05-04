@@ -789,14 +789,23 @@ class Image(models.Model):
 
     def to_dict(self):
         county_name = ''
+        protectedarea_name_list = []
         protectedarea_name = ''
         if x := self.deployment.county:
             if obj := ParameterCode.objects.filter(parametername=x).first():
                 county_name = obj.name
 
         if x := self.deployment.protectedarea:
-            if obj := ParameterCode.objects.filter(parametername=x).first():
-                protectedarea_name = obj.name
+            if ',' in x:
+                name_list = x.split(',')
+            else:
+                name_list = [x]
+
+            for i in name_list:
+                if obj := ParameterCode.objects.filter(parametername=i).first():
+                    protectedarea_name_list.append(obj.name)
+
+            protectedarea_name = ', '.join(protectedarea_name_list)
 
         return {
             'id': self.id,
