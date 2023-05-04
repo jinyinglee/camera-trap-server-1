@@ -41,6 +41,7 @@ const initialState = {
     counties: [],
     protectedareas: [],
     keyword: '',
+    altitudeOperator: 'eq',
   },
   pagination: {
     pageIndex: 0,
@@ -642,7 +643,7 @@ const AppSearch = () => {
                   <Select
                     labelId="demo-simple-select-standard-label"
                     id="demo-simple-select-standard"
-                    value={state.filter.altitudeOperator || ''}
+                    value={state.filter.altitudeOperator || 'eq'}
                     onChange={(e) => dispatch({type: 'setFilter', name: 'altitudeOperator', value: e.target.value})}
                     label="比較"
                     variant="standard"

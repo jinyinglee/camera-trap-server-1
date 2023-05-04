@@ -45,5 +45,4 @@ for project in Project.objects.all():
                             detail = json.loads(m[1])
                             calc_by_detail(d['id'], detail[0], detail[1], detail[6], dep)
 
-
 print(proj_count, dep_count)

@@ -36,7 +36,7 @@ from taicat.models import (
 from .utils import (
     get_species_list,
     calc,
-    calc_output,
+    calc_output_file,
     calc_output2,
     calc_from_cache,
     calculated_data,
@@ -183,7 +183,7 @@ def api_search(request):
             out_format = calc_dict['fileFormat']
             calc_type = calc_dict['calcType']
 
-            '''
+            ''' direct download
             # results = calc(query, calc_data, query_start, query_end)
             results = calculated_data(filter_dict, calc_data)
             # print(results, out_format, calc_type)
@@ -201,6 +201,17 @@ def api_search(request):
             '''
             email = request.GET.get('email', '')
             message = 'processing'
+
+            ''' save to media
+            results = calculated_data(filter_dict, calc_data)
+            from pathlib import Path
+            content = calc_output(results, out_format, json.dumps(filter_dict), json.dumps(calc_data))
+            download_dir = Path(settings.MEDIA_ROOT, 'download')
+
+            with open(Path(download_dir, 'foo.xlsx'), 'wb') as outfile:
+                outfile.write(content)
+                #print('===============')
+            '''
             if member_id := request.session.get('id', None):
                 host = request.META['HTTP_HOST']
                 process_download_calculated_data_task.delay(email, filter_dict, calc_dict, calc_type, out_format, calc_data, host)

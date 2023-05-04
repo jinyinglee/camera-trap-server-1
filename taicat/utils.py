@@ -3,7 +3,8 @@ import json
 from tempfile import NamedTemporaryFile
 import collections
 import threading
-
+from functools import reduce
+import operator
 from operator import itemgetter
 from datetime import (
     datetime,
@@ -19,7 +20,8 @@ from django.core.cache import cache
 from django.db.models import (
     Max,
     Min,
-    Count
+    Count,
+    Q,
 )
 from django.db.models.functions import (
     Trunc,
@@ -197,37 +199,69 @@ def calculated_data(filter_args, calc_args):
     start_dt = None
     end_dt = None
     if start_date := filter_args.get('startDate', ''):
-        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+        start_dt = make_aware(datetime.strptime(start_date, '%Y-%m-%d'))
 
     if end_date := filter_args.get('endDate', ''):
-        end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+        end_dt = make_aware(datetime.strptime(end_date, '%Y-%m-%d'))
 
     image_interval = calc_args.get('imageInterval')
     event_interval = calc_args.get('eventInterval')
     #dt = datetime.strptime(start_date, '%Y-%m-%d')
     results = {}
+
+    query = Deployment.objects.filter(id__in=deps)
+
+    if value := filter_args.get('altitude'):
+        if op := filter_args.get('altitudeOperator'):
+            val_list = value.split('-')
+            v1 = int(val_list[0])
+            v2 = None
+            if len(val_list) >= 2:
+                v2 = int(val_list[1])
+            if v1:
+                if op == 'eq':
+                    query = query.filter(altitude=v1)
+                elif op == 'gt':
+                    query = query.filter(altitude__gte=v1)
+                elif op == 'lt':
+                    query = query.filter(altitude__lte=v1)
+            if v2 and op == 'range':
+                query = query.filter(altitude__gte=v1, altitude__lte=v2)
+
+    if values := filter_dict.get('counties'):
+        q_list = []
+        for x in values:
+            q_list.append(Q(county__icontains=x['parametername']))
+
+        query = query.filter(reduce(operator.or_, q_list))
+
+    if values := filter_dict.get('protectedareas'):
+        q_list = []
+        for x in values:
+            # 只有一筆就用 eq, 多筆就加上前後 ","
+            q_list.append(Q(protectedarea__icontains=x['parametername']+','))
+            q_list.append(Q(protectedarea__icontains=','+x['parametername']))
+            q_list.append(Q(protectedarea=x['parametername']))
+
+        query = query.filter(reduce(operator.or_, q_list))
+
+    deployment_list = query.values('id', 'name', 'project__name', 'study_area__name').all()
+    #print(deployment_list)
+
     for sp in species:
         results[sp] = []
-        res = None
+        cal_query = Calculation.objects.filter(
+            datetime_from__gte=start_dt,
+            datetime_to__lte=end_dt,
+            image_interval=image_interval,
+            event_interval=event_interval,
+            species=sp
+        )
         if deps:
-            for did in deps:
-                dep = Deployment.objects.get(pk=did)
-                res = Calculation.objects.filter(
-                        deployment=dep,
-                        datetime_from__gte=start_dt,
-                        datetime_to__lte=end_dt,
-                        image_interval=image_interval,
-                        event_interval=event_interval
-                ).all()
-                #print(res, dep, start_dt, end_dt, image_interval, event_interval)
-        else:
-            res = Calculation.objects.filter(
-                datetime_from__gte=start_dt,
-                datetime_to__lte=end_dt,
-                image_interval=image_interval,
-                event_interval=event_interval
-            ).all()
-        if res:
+            dep_ids = [x['id'] for x in deployment_list]
+            cal_query = cal_query.filter(deployment_id__in=dep_ids)
+
+        if res := cal_query.all():
             for cal in res:
                 #results[sp].append(cal.data)
                 dep = cal.deployment
@@ -239,6 +273,7 @@ def calculated_data(filter_args, calc_args):
                     'month': cal.datetime_from.month,
                     'calc': cal.data
                 })
+
     return results
 
 def calc(query, calc_data, query_start, query_end):
@@ -297,12 +332,13 @@ def calc(query, calc_data, query_start, query_end):
                             })
     return results
 
-def calc_output(results, file_format, filter_str, calc_str):
+def calc_output_file(results, file_format, filter_str, calc_str, target_file=''):
     '''
     filter_str, calc_str for display query condition
     '''
     if file_format == 'csv':
         '''csv 多物種會全部放在一個大表
+        not test (2023.05.05)
         '''
         #with tempfile.TemporaryFile('w+t') as fp:
         with NamedTemporaryFile('w+t') as tmp:
@@ -329,87 +365,89 @@ def calc_output(results, file_format, filter_str, calc_str):
             return tmp.read()
 
     elif file_format == 'excel':
-        with NamedTemporaryFile() as tmp:
-            wb = Workbook()
-            ws = wb.active
-            query_condition = 'filters:'+ filter_str + 'calc:' + calc_str
-            calcData = json.loads(calc_str)
-            ws.cell(row=1, column=1, value=query_condition)
-            sheets = []
-            sheet_index = 0
-            for sp in results:
-                row_index = 1
-                sheets.append(wb.create_sheet(title=sp))
-                if calcData.get('calcType') == 'basic-oi':
-                    header_str = '計劃,樣區,相機位置,年,月,物種,相機工作時數,有效照片數,目擊事件數,OI1,OI2,OI3,'+','.join(f'相機工作天{day}' for day in range(1, 32))  # ,捕獲回合比例,存缺,'+','.join(f'活動機率day{day}' for day in range(1, 32))
-                    header_list = header_str.split(',')
-                    for h, v in enumerate(header_list):
-                        sheets[sheet_index].cell(row=1, column=h+1, value=v)
+        wb = Workbook()
+        ws = wb.active
+        query_condition = 'filters:'+ filter_str + 'calc:' + calc_str
+        calcData = json.loads(calc_str)
+        ws.cell(row=1, column=1, value=query_condition)
+        sheets = []
+        sheet_index = 0
+        for sp in results:
+            row_index = 1
+            sheets.append(wb.create_sheet(title=sp))
+            if calcData.get('calcType') == 'basic-oi':
+                header_str = '計劃,樣區,相機位置,年,月,物種,相機工作時數,有效照片數,目擊事件數,OI1,OI2,OI3,'+','.join(f'相機工作天{day}' for day in range(1, 32))  # ,捕獲回合比例,存缺,'+','.join(f'活動機率day{day}' for day in range(1, 32))
+                header_list = header_str.split(',')
+                for h, v in enumerate(header_list):
+                    sheets[sheet_index].cell(row=1, column=h+1, value=v)
 
-                    for i in results[sp]:
+                for i in results[sp]:
+                    row_index += 1
+                    sheets[sheet_index].cell(row=row_index, column=1, value=i['project'])
+                    sheets[sheet_index].cell(row=row_index, column=2, value=i['studyarea'])
+                    sheets[sheet_index].cell(row=row_index, column=3, value=i['name'])
+                    sheets[sheet_index].cell(row=row_index, column=4, value=i['year'])
+                    sheets[sheet_index].cell(row=row_index, column=5, value=i['month'])
+                    sheets[sheet_index].cell(row=row_index, column=6, value=sp)
+                    sheets[sheet_index].cell(row=row_index, column=7, value=sum(i['calc'][0])*24 if i['calc'][0] else '')
+                    sheets[sheet_index].cell(row=row_index, column=8, value=i['calc'][1])
+                    sheets[sheet_index].cell(row=row_index, column=9, value=i['calc'][2])
+                    sheets[sheet_index].cell(row=row_index, column=10, value=i['calc'][3])
+                    sheets[sheet_index].cell(row=row_index, column=11, value='')
+                    sheets[sheet_index].cell(row=row_index, column=12, value=i['calc'][5])
+                    for day_index, working in enumerate(i['calc'][0]):
+                        sheets[sheet_index].cell(row=row_index, column=13+day_index, value=working)
+
+            elif calcData.get('calcType') == 'pod':
+                header_str = '計劃,樣區,相機位置,年,月,物種,拍到天數,相機工作天數,POD,' + ','.join(f'偵測到/未偵測到{day_index+1}' for day_index in range(0, 31))
+                header_list = header_str.split(',')
+                for h, v in enumerate(header_list):
+                    sheets[sheet_index].cell(row=1, column=h+1, value=v)
+
+                for i in results[sp]:
+                    row_index += 1
+                    count = 0
+                    for d in i['calc'][7]:
+                        if d[0]:
+                            count += 1
+                    sum_working_days = sum(i['calc'][0])
+                    sheets[sheet_index].cell(row=row_index, column=1, value=i['project'])
+                    sheets[sheet_index].cell(row=row_index, column=2, value=i['studyarea'])
+                    sheets[sheet_index].cell(row=row_index, column=3, value=i['name'])
+                    sheets[sheet_index].cell(row=row_index, column=4, value=i['year'])
+                    sheets[sheet_index].cell(row=row_index, column=5, value=i['month'])
+                    sheets[sheet_index].cell(row=row_index, column=6, value=sp)
+                    sheets[sheet_index].cell(row=row_index, column=7, value=count)
+                    sheets[sheet_index].cell(row=row_index, column=8, value=sum_working_days)
+                    sheets[sheet_index].cell(row=row_index, column=9, value=count*1.0/sum_working_days if sum_working_days > 0 else 'N/A')
+                    for day_index, d in enumerate(i['calc'][7]):
+                        sheets[sheet_index].cell(row=row_index, column=10 + day_index, value=d[0])
+
+            elif calcData.get('calcType') == 'apoa':
+                header_str = '計劃,樣區,相機位置,物種,date,' + ','.join(f'{hour:02}' for hour in range(0, 24))  # ,捕獲回合比例,存缺,'+','.join(f'活動機率day{day}' for day in range(1, 32))
+                header_list = header_str.split(',')
+                for h, v in enumerate(header_list):
+                    sheets[sheet_index].cell(row=1, column=h+1, value=v)
+
+                for i in results[sp]:
+                    for day_index, hours in enumerate(i['calc'][7]):
                         row_index += 1
                         sheets[sheet_index].cell(row=row_index, column=1, value=i['project'])
                         sheets[sheet_index].cell(row=row_index, column=2, value=i['studyarea'])
                         sheets[sheet_index].cell(row=row_index, column=3, value=i['name'])
-                        sheets[sheet_index].cell(row=row_index, column=4, value=i['year'])
-                        sheets[sheet_index].cell(row=row_index, column=5, value=i['month'])
-                        sheets[sheet_index].cell(row=row_index, column=6, value=sp)
-                        sheets[sheet_index].cell(row=row_index, column=7, value=sum(i['calc'][0])*24 if i['calc'][0] else '')
-                        sheets[sheet_index].cell(row=row_index, column=8, value=i['calc'][1])
-                        sheets[sheet_index].cell(row=row_index, column=9, value=i['calc'][2])
-                        sheets[sheet_index].cell(row=row_index, column=10, value=i['calc'][3])
-                        sheets[sheet_index].cell(row=row_index, column=11, value='')
-                        sheets[sheet_index].cell(row=row_index, column=12, value=i['calc'][5])
-                        for day_index, working in enumerate(i['calc'][0]):
-                            sheets[sheet_index].cell(row=row_index, column=13+day_index, value=working)
+                        sheets[sheet_index].cell(row=row_index, column=4, value=sp)
+                        sheets[sheet_index].cell(row=row_index, column=5, value=f"{i['year']}-{i['month']}-{day_index+1}")
+                        for hour_index, hour in enumerate(hours[1]):
+                            sheets[sheet_index].cell(row=row_index, column=6+hour_index, value=hour)
 
-                elif calcData.get('calcType') == 'pod':
-                    header_str = '計劃,樣區,相機位置,年,月,物種,拍到天數,相機工作天數,POD,' + ','.join(f'偵測到/未偵測到{day_index+1}' for day_index in range(0, 31))
-                    header_list = header_str.split(',')
-                    for h, v in enumerate(header_list):
-                        sheets[sheet_index].cell(row=1, column=h+1, value=v)
+            sheet_index += 1
 
-                    for i in results[sp]:
-                        row_index += 1
-                        count = 0
-                        for d in i['calc'][7]:
-                            if d[0]:
-                                count += 1
-                        sum_working_days = sum(i['calc'][0])
-                        sheets[sheet_index].cell(row=row_index, column=1, value=i['project'])
-                        sheets[sheet_index].cell(row=row_index, column=2, value=i['studyarea'])
-                        sheets[sheet_index].cell(row=row_index, column=3, value=i['name'])
-                        sheets[sheet_index].cell(row=row_index, column=4, value=i['year'])
-                        sheets[sheet_index].cell(row=row_index, column=5, value=i['month'])
-                        sheets[sheet_index].cell(row=row_index, column=6, value=sp)
-                        sheets[sheet_index].cell(row=row_index, column=7, value=count)
-                        sheets[sheet_index].cell(row=row_index, column=8, value=sum_working_days)
-                        sheets[sheet_index].cell(row=row_index, column=9, value=count*1.0/sum_working_days if sum_working_days > 0 else 'N/A')
-                        for day_index, d in enumerate(i['calc'][7]):
-                            sheets[sheet_index].cell(row=row_index, column=10 + day_index, value=d[0])
-
-                elif calcData.get('calcType') == 'apoa':
-                    header_str = '計劃,樣區,相機位置,物種,date,' + ','.join(f'{hour:02}' for hour in range(0, 24))  # ,捕獲回合比例,存缺,'+','.join(f'活動機率day{day}' for day in range(1, 32))
-                    header_list = header_str.split(',')
-                    for h, v in enumerate(header_list):
-                        sheets[sheet_index].cell(row=1, column=h+1, value=v)
-
-                    for i in results[sp]:
-                        for day_index, hours in enumerate(i['calc'][7]):
-                            row_index += 1
-                            sheets[sheet_index].cell(row=row_index, column=1, value=i['project'])
-                            sheets[sheet_index].cell(row=row_index, column=2, value=i['studyarea'])
-                            sheets[sheet_index].cell(row=row_index, column=3, value=i['name'])
-                            sheets[sheet_index].cell(row=row_index, column=4, value=sp)
-                            sheets[sheet_index].cell(row=row_index, column=5, value=f"{i['year']}-{i['month']}-{day_index+1}")
-                            for hour_index, hour in enumerate(hours[1]):
-                                sheets[sheet_index].cell(row=row_index, column=6+hour_index, value=hour)
-
-                sheet_index += 1
-
-            wb.save(tmp.name)
-            tmp.seek(0)
-            return tmp.read()
+            if target_file:
+                wb.save(target_file)
+            #wb.save(tmp.name)
+            #tmp.seek(0)
+            #return tmp.read()
+            return target_file
 
 def calc_output2(results, file_format, filter_str, calc_str):
     '''
@@ -750,31 +788,32 @@ def half_year_ago(year, month):
 
 def save_calculation(species_list, datetime_from, datetime_to, deployment):
     for sp in species_list:
-        for img_int in [30, 60]:
-            for e_int in [2, 5, 10, 30, 60]:
-                result = deployment.calculate(datetime_from.year, datetime_from.month, sp, img_int, e_int)
-                if c := Calculation.objects.filter(
-                        deployment=deployment,
-                        datetime_from=datetime_from,
-                        datetime_to=datetime_to,
-                        image_interval=img_int,
-                        event_interval=e_int,
-                        species=sp).first():
-                    c.data = result
-                    c.save()
-                else:
-                    c = Calculation(
-                        deployment=deployment,
-                        studyarea=deployment.study_area,
-                        project=deployment.project,
-                        datetime_from=datetime_from,
-                        datetime_to=datetime_to,
-                        species=sp,
-                        image_interval=img_int,
-                        event_interval=e_int,
-                        data=result
-                    )
-                    c.save()
+        if species := sp['species'].strip():
+            for img_int in [30, 60]:
+                for e_int in [2, 5, 10, 30, 60]:
+                    result = deployment.calculate(datetime_from.year, datetime_from.month, sp, img_int, e_int)
+                    if c := Calculation.objects.filter(
+                            deployment=deployment,
+                            datetime_from=datetime_from,
+                            datetime_to=datetime_to,
+                            image_interval=img_int,
+                            event_interval=e_int,
+                            species=sp['species']).first():
+                        c.data = result
+                        c.save()
+                    else:
+                        c = Calculation(
+                            deployment=deployment,
+                            studyarea=deployment.study_area,
+                            project=deployment.project,
+                            datetime_from=datetime_from,
+                            datetime_to=datetime_to,
+                            species=sp['species'],
+                            image_interval=img_int,
+                            event_interval=e_int,
+                            data=result
+                        )
+                        c.save()
 
 def apply_search_filter(filter_dict={}):
     query = Image.objects.filter()
@@ -840,7 +879,11 @@ def apply_search_filter(filter_dict={}):
     if values := filter_dict.get('protectedareas'):
         q_list = []
         for x in values:
-            q_list.append(Q(deployment__protectedareas__icontains=x['parametername']))
+            # 只有一筆就用 eq, 多筆就加上前後 ","
+            q_list.append(Q(deployment__protectedarea__icontains=x['parametername']+','))
+            q_list.append(Q(deployment__protectedarea__icontains=','+x['parametername']))
+            q_list.append(Q(deployment__protectedarea=x['parametername']))
+        query = query.filter(reduce(operator.or_, q_list))
 
     if len(sp_values) > 0:
         query = query.filter(species__in=sp_values)
