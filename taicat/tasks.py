@@ -33,7 +33,7 @@ from base.models import UploadHistory
 from .utils import (
     set_image_annotation,
     calculated_data,
-    calc_output,
+    calc_output_file,
 )
 
 @shared_task
@@ -188,14 +188,18 @@ def process_download_data_task(email, filter_dict, member_id, host):
 
 @shared_task
 def process_download_calculated_data_task(email, filter_dict, calc_dict, calc_type, out_format, calc_data, host):
+    #print(email, filter_dict, calc_dict, calc_type, out_format, calc_data, host)
     results = calculated_data(filter_dict, calc_data)
-    content = calc_output(results, out_format, json.dumps(filter_dict), json.dumps(calc_data))
 
+    download_dir = Path(settings.MEDIA_ROOT, 'download')
     ext = 'csv' if out_format == 'csv' else 'xlsx'
     filename = f'download_calculated_{str(ObjectId())}_{datetime.now().strftime("%Y-%m-%d")}.{ext}'
-    download_dir = Path(settings.MEDIA_ROOT, 'download')
-    with open(Path(download_dir, filename), 'wb') as outfile:
-        outfile.write(content)
+    target_file = Path(download_dir, filename)
+    content = calc_output_file(results, out_format, json.dumps(filter_dict), json.dumps(calc_data), target_file)
+
+    #with open(Path(download_dir, filename), 'wb') as outfile:
+    #    outfile.write(content)
+    #print('===============')
 
     download_url = "https://{}{}{}".format(
         host,
@@ -203,5 +207,5 @@ def process_download_calculated_data_task(email, filter_dict, calc_dict, calc_ty
         Path('download', filename))
     email_subject = '[臺灣自動相機資訊系統] 下載計算資料'
     email_body = render_to_string('project/download.html', {'download_url': download_url, })
-    #print('email', email_subject, email_body, email)
+    # print('email', email_subject, email_body, email, download_url)
     send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, [email])
