@@ -228,14 +228,14 @@ def calculated_data(filter_args, calc_args):
             if v2 and op == 'range':
                 query = query.filter(altitude__gte=v1, altitude__lte=v2)
 
-    if values := filter_dict.get('counties'):
+    if values := filter_args.get('counties'):
         q_list = []
         for x in values:
             q_list.append(Q(county__icontains=x['parametername']))
 
         query = query.filter(reduce(operator.or_, q_list))
 
-    if values := filter_dict.get('protectedareas'):
+    if values := filter_args.get('protectedareas'):
         q_list = []
         for x in values:
             # 只有一筆就用 eq, 多筆就加上前後 ","
