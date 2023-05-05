@@ -4,7 +4,6 @@
 FROM node:14-alpine as static
 WORKDIR /build
 COPY ./frontend-search /build
-
 RUN yarn install
 RUN yarn build
 
@@ -54,6 +53,6 @@ COPY ./scripts/start /srv/start
 RUN sed -i 's/\r$//g' /srv/start
 RUN chmod +x /srv/start
 
-COPY --from=0 /build/dist /asset/asset/js
+COPY --from=static /build/dist /build/js
 
 ENTRYPOINT ["/srv/entrypoint"]
