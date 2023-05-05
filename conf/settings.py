@@ -151,7 +151,8 @@ USE_TZ = True
 default_static_dir = os.path.join(BASE_DIR, 'static')
 STATIC_URL = '/static/'
 STATIC_ROOT = env('STATIC_ROOT', default=default_static_dir)
-STATICFILES_DIRS = [default_static_dir, ]
+# STATICFILES_DIRS = [default_static_dir, ]
+STATICFILES_DIRS = [default_static_dir, '/build'] # for nodejs build static
 
 CACHES = {
     "default": {
