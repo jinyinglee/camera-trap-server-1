@@ -178,7 +178,6 @@ def get_project_detail(request):
     else:
         latest_date, earliest_date = None, None
 
-    altitude_range = Deployment.objects.filter(project_id=pk,deprecated=False).aggregate(Max("altitude"), Min("altitude"))
     
     results = []
     with connection.cursor() as cursor:
@@ -200,9 +199,11 @@ def get_project_detail(request):
     response['earliest_date'] = earliest_date
     response['sa_d_list'] = Project.objects.get(pk=pk).get_sa_d_list()
     response['sa_list'] = Project.objects.get(pk=pk).get_sa_list()
-    response['altitude__max'] = altitude_range['altitude__max']
-    response['altitude__min'] = altitude_range['altitude__min']
-
+    
+    # altitude_range = Deployment.objects.filter(project_id=pk,deprecated=False).aggregate(Max("altitude"), Min("altitude"))
+    # response['altitude__max'] = altitude_range['altitude__max']
+    # response['altitude__min'] = altitude_range['altitude__min']
+    
     study_area = []
     for sa in StudyArea.objects.filter(project_id=pk).order_by('name'):
         d_list = []
@@ -235,7 +236,6 @@ def get_project_detail(request):
 
     
     response['editable'] = editable
-    
     return HttpResponse(json.dumps(response), content_type='application/json')
 
 
@@ -1494,6 +1494,10 @@ def project_detail(request, pk):
             tmp_protectedarea.add(j)
     protectedarea_list = ParameterCode.objects.filter(type='protectedarea',parametername__in= tmp_protectedarea).order_by('parametername').values("name","type","parametername")
 
+    altitude_range = Deployment.objects.filter(project_id=pk,deprecated=False).aggregate(Max("altitude"), Min("altitude"))
+    altitude__max = altitude_range['altitude__max'] if altitude_range['altitude__max'] != None else 0
+    altitude__min = altitude_range['altitude__min'] if altitude_range['altitude__min'] != None else 0
+
 
     return render(request, 'project/project_detail.html',
                   {'project_name_len': len(project_info[0]), 'project_info': project_info, 'species': species, 'pk': pk,
@@ -1502,7 +1506,8 @@ def project_detail(request, pk):
                    'editable': editable, 'is_authorized': is_authorized,
                    'folder_list': results, 'sa_list': list(sa_list), 'sa_d_list': sa_d_list, 
                    'projects': project_list, 'is_project_authorized': is_project_authorized,'is_public_project':is_public_project,
-                   'county_list':county_list,'protectedarea_list':protectedarea_list})
+                   'county_list':county_list,'protectedarea_list':protectedarea_list,
+                   'altitude__min':altitude__min,'altitude__max':altitude__max})
 
 
 def update_edit_autocomplete(request):
@@ -1806,17 +1811,22 @@ def generate_download_excel(request, pk):
 
     # Deployment table
     county_filter = ''
-    if county_name := requests.get('county_name'):
-        county_filter = f" AND county = '{county_name}'"
+    county_name = ''
+    if county_name_code := requests.get('county_name'):
+        county_filter = f" AND county = '{county_name_code}'"
+        county_name  = ParameterCode.objects.get(parametername=county_name_code).name
 
     protectarea_filter = ''
-    if protectarea_name := requests.get('protectarea_name'):
-        protectarea_filter = f" AND protectedarea like '%{protectarea_name}%'"
+    protectarea_name = ''
+    if protectarea_name_code := requests.get('protectarea_name'):
+        protectarea_filter = f" AND protectedarea like '%{protectarea_name_code}%'"
+        protectarea_name  = ParameterCode.objects.get(parametername=protectarea_name_code).name
 
     start_altitude = requests.get('start_altitude')
     end_altitude = requests.get('end_altitude')
     altitude_filter = ''
-    if protectarea_name := requests.get('start_altitude'):
+    
+    if start_altitude:
         altitude_filter = f" AND altitude BETWEEN {start_altitude} AND {end_altitude}"
     tmp_deployment_sql = """SELECT * FROM taicat_deployment WHERE project_id = {}{}{}{}"""
     deployment_sql = tmp_deployment_sql.format(pk,county_filter,protectarea_filter,altitude_filter)
@@ -1844,7 +1854,7 @@ def generate_download_excel(request, pk):
     if settings.ENV == 'prod':
         download_url = download_url.replace('http', 'https')
     # download_log
-    condiction_log = f'''專案名稱:{project_name}, 日期：{date_filter}。樣區 / 相機位置：{conditions} 。物種：{spe_conditions} 。時間：{time_filter}。縣市：{county_filter}。保護留區：{protectarea_filter}。資料夾：{folder_filter} 。'''
+    condiction_log = f'''專案名稱:{project_name}, 日期：{date_filter}。樣區 / 相機位置：{conditions} 。海拔：{start_altitude}~{end_altitude}。物種：{spe_conditions} 。時間：{time_filter}。縣市：{county_name}。保護留區：{protectarea_name}。資料夾：{folder_filter} 。'''
     download_log_sql = DownloadLog(user_role=user_role, condiction=condiction_log,file_link=download_url)#file_link=download_url
     download_log_sql.save()
     email_subject = '[臺灣自動相機資訊系統] 下載資料'

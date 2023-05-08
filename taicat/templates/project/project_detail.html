@@ -118,17 +118,19 @@
               </select>
               <p class="mb-1"><strong>海拔</strong></p>
               <p id="altitude-content" class="font-sm"></p>
-              <input type="text" class="d-none" id="altitude" readonly />
-              <div id="altitude-slider" class="w-75 mx-auto mb-5"></div>
+              起：<input type="text" class="datepicker form-control w-10" placeholder="{{altitude__min}}" name="start_altitude"/>公尺
+              <span class="my-auto">～</span>
+              訖：<input type="text" class="datepicker form-control w-10" type="text" placeholder="{{altitude__max}}" name="end_altitude"/>公尺
+              <input type="text" class="d-none" id="altitude"/>
               <p class="mb-1"><strong>縣市</strong></p>
-              <select id="select-county" name="county_name" class="selectpicker form-control" data-live-search-placeholder="搜尋" data-live-search="true" data-none-selected-text="--請選擇--">
+              <select id="select-county" name="county_name" class="selectpicker form-control" data-live-search-placeholder="搜尋" value="" data-live-search="true" data-none-selected-text="--請選擇--">
               <option value='' selected>--請選擇--</option>
               {% for i in county_list%}  
                   <option value={{i.parametername}}>{{i.name}}</option>
               {% endfor %} 
             </select>
               <p class="mb-1"><strong>保護留區</strong></p>
-              <select id="select-protectarea" name="protectarea_name" class="selectpicker form-control" data-live-search-placeholder="搜尋" data-live-search="true" data-none-selected-text="--請選擇--">
+              <select id="select-protectarea" name="protectarea_name" class="selectpicker form-control" data-live-search-placeholder="搜尋" value="" data-live-search="true" data-none-selected-text="--請選擇--">
               <option value='' selected>--請選擇--</option>
               {% for i in protectedarea_list%}  
                   <option value={{i.parametername}}>{{i.name}}</option>
@@ -146,8 +148,6 @@
           </div>
           <input type="hidden" name="start_date" value="" />
           <input type="hidden" name="end_date" value="" />
-          <input type="hidden" name="start_altitude" value="" />
-          <input type="hidden" name="end_altitude" value="" />
         </form>
       </div>
       <div class="col-10 remain">
