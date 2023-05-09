@@ -16,7 +16,7 @@
 {% block body %} {% csrf_token %}
 <input type="hidden" name="pk" value="{{ pk }}"></input>
 <div class="container content">
-    {% if is_project_authorized %}
+    {% if is_project_authorized or is_project_public %}
     <div class="panel panel-project">
         <div class="panel-body">
             <div class="row mb-3">
@@ -63,7 +63,7 @@
                     <div class="row mb-2">
                         <div class="col-sm-6 col-md-6 text-gray">資料下載</div>
                         <div class="col-sm-6 col-md-6">
-                            <a class="oversight text-green text-decoration-none pointer" data-bs-toggle="modal" data-bs-target="#downloadModal">下載</a>
+                            <a class="oversight text-green text-decoration-none pointer" id="downloadButton">下載</a>
                         </div>
                     </div>
                     <div class="row mb-2">

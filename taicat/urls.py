@@ -29,7 +29,9 @@ urlpatterns = [
     path('api/get_project_info_web/', views.get_project_info_web, name='get_project_info_web'),
     path('api/get_gap_choice/', views.get_gap_choice, name='get_gap_choice'),
     path('api/get_parameter_name/', views.get_parameter_name, name='get_parameter_name'),
+    path('api/check_login/', views.check_login, name='check_login'),
     path('download/<pk>', views.download_request, name='download'),
+    
     #    path('download/data/<uidb64>/<token>', views.download_data, name='download_data'),
     path('search/', search_view.index, name='search'),
     path('api/search', search_view.api_search, name='get_search'),

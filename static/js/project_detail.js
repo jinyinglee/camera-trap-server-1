@@ -67,7 +67,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
 
           }
 
-
+        //TODO start_date
 
           // date slider
           if(response.earliest_date) {
@@ -247,8 +247,12 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                     d.sa =  window.conditions.sa;
                     d.start_date = window.conditions.start_date;
                     d.end_date = window.conditions.end_date;
+                    d.start_altitude = window.conditions.start_altitude;
+                    d.end_altitude = window.conditions.end_altitude;
                     d.deployment = window.conditions.deployment;
                     d.folder_name = window.conditions.folder_name;
+                    d.county_name = window.conditions.county_name;
+                    d.protectarea_name = window.conditions.protectarea_name;
                     d.orderby = $('.orderby svg.sort-icon-active').data('orderby');
                     d.sort = $('.orderby svg.sort-icon-active').data('sort');
                   },
@@ -408,7 +412,13 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
               // radio
               $('.fa-check').remove()
               $('<i class="fas fa-check title-dark w-12"></i>').insertBefore($("input[type=radio].all"))
-  
+              
+              $("input[name=start_altitude]").val('')
+              $("input[name=end_altitude]").val('')
+              
+              $("#select-county").each(function() { this.selectedIndex = 0 }).attr("selected", true)
+              $("#select-protectarea").each(function() { this.selectedIndex = 0 }).attr("selected", true)
+
               if (response.earliest_date) {
                     $("#date-slider").slider({
                     range: true,
@@ -841,6 +851,10 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                 $("input[name=start_date]").val((new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10));
                 $("input[name=end_date]").val((new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10));
             }
+
+            start_altitude = $("input[name=start_altitude]").val();
+            end_altitude = $("input[name=end_altitude]").val();
+
             $("input[name=email]").val($("#download-email").val())
             $.ajax({
                     data: $('#downloadForm').serialize(),
@@ -1042,7 +1056,35 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
 
 
       $('#submitSelect').on('click', function(){
-        window.conditions = {
+
+        try{
+          start_altitude = $("input[name=start_altitude]").val();
+          end_altitude = $("input[name=end_altitude]").val();
+        }catch(e){
+          start_altitude = null
+          end_altitude = null
+        }
+        
+        if (start_altitude){
+          window.conditions = {
+            times : $("input[name=times]").val(),
+            pk : $("input[name=pk]").val(),
+            species : $('input[name="species-filter"]:checked').map(function(){return $(this).val();}).get(),
+            sa :  $("input[name=sa-filter]:checked").val(),
+            start_altitude : start_altitude,
+            end_altitude : end_altitude,
+            //{% if earliest_date != None %}
+            start_date : (new Date($("#date-slider").slider("values",0)*1000)).toISOString().substring(0, 10),
+            end_date : (new Date($("#date-slider").slider("values",1)*1000)).toISOString().substring(0, 10),
+            //{% endif %}
+            deployment : $('input[name="d-filter"]:checked').map(function(){return $(this).val();}).get(),
+            folder_name : $('#select-folder option:selected').val(),
+            county_name : $('#select-county option:selected').val(),
+            protectarea_name : $('#select-protectarea option:selected').val(),
+          }
+          $('#img-table').DataTable().draw();
+        }else{
+          window.conditions = {
             times : $("input[name=times]").val(),
             pk : $("input[name=pk]").val(),
             species : $('input[name="species-filter"]:checked').map(function(){return $(this).val();}).get(),
@@ -1053,8 +1095,12 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
             //{% endif %}
             deployment : $('input[name="d-filter"]:checked').map(function(){return $(this).val();}).get(),
             folder_name : $('#select-folder option:selected').val(),
+            county_name : $('#select-county option:selected').val(),
+            protectarea_name : $('#select-protectarea option:selected').val(),
           }
           $('#img-table').DataTable().draw();
+        }
+        
   
       })
 
@@ -1087,3 +1133,31 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
             $('button.download').prop('disabled', true);
         }
     }
+    $('#downloadButton').on('click', function(){
+      $.ajax({
+          type: "POST",
+          url: "/api/check_login/",
+          headers:{'X-CSRFToken': $csrf_token},
+          success: function(response){
+              if (response.redirect){
+                  if (response.messages){
+                      alert(response.messages);
+                      window.location.replace(window.location.origin+ "/personal_info");
+                  }else{
+                      $('#downloadModal').modal('show')    
+                  }
+              }else{
+                  if (response.messages){
+                      alert(response.messages);
+                      $('#loginModal').modal('show') 
+                  }
+                  else{
+                      $('#downloadModal').modal('show') 
+                  }
+              }
+          },
+          error:function(){
+              alert('未知錯誤，請聯繫管理員');
+              }
+          })
+      })

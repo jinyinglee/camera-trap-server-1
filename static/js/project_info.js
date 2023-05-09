@@ -134,8 +134,34 @@ $('.sa-select').on('change', function(){
     } 
 })
 
-
-
+    $('#downloadButton').on('click', function(){
+      $.ajax({
+          type: "POST",
+          url: "/api/check_login/",
+          headers:{'X-CSRFToken': $csrf_token},
+          success: function(response){
+              if (response.redirect){
+                  if (response.messages){
+                      alert(response.messages);
+                      window.location.replace(window.location.origin+ "/personal_info");
+                  }else{
+                      $('#downloadModal').modal('show')    
+                  }
+              }else{
+                  if (response.messages){
+                      alert(response.messages);
+                      $('#loginModal').modal('show') 
+                  }
+                  else{
+                      $('#downloadModal').modal('show') 
+                  }
+              }
+          },
+          error:function(){
+              alert('未知錯誤，請聯繫管理員');
+              }
+          })
+      })
 
 $('.download').on('click', function(){
     

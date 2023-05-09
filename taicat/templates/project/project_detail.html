@@ -13,7 +13,7 @@
 <input type="hidden" name="get-folder" value="{{ folder }}"></input>
 <input type="hidden" name="project-name" value="{{ project_info.0 }}"></input>
 <div class="container box">
-  {% if is_project_authorized %}
+  {% if is_public_project or is_project_authorized %}
       {% if project_name_len > 35 %}
       <div class="row pb-2 pt-4 header overflow-auto h-120">
       {% else %}
@@ -32,7 +32,9 @@
             {% if editable %}
             <button class="btn btn-outline-success" id="edit_button" data-edit="off"><i class="fa fa-xs fa-pencil w-12"></i> 編輯模式</button>
             {% endif %}
-            <a class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#downloadModal"><i class="fas fa-file-csv  w-12"></i> 下載篩選資料</a>
+            <a class="btn btn-outline-success" id="downloadButton"><i class="fas fa-file-csv  w-12"></i> 下載篩選資料</a>
+            {% comment %} <a class="oversight text-green text-decoration-none pointer" id="downloadButton">下載</a> {% endcomment %}
+
             {% comment %} <a class="btn btn-outline-success download"><i class="fas fa-file-csv"></i> 下載篩選資料</a> {% endcomment %}
           </div>
         </div>
@@ -114,6 +116,26 @@
               <select id="select-folder" name="folder_name" class="mb-2" placeholder="請選擇資料夾名稱">
                 <option value="">請選擇資料夾名稱</option>
               </select>
+              <p class="mb-1"><strong>海拔</strong></p>
+              <p id="altitude-content" class="font-sm"></p>
+              起：<input type="text" class="datepicker form-control w-10" placeholder="{{altitude__min}}" name="start_altitude"/>公尺
+              <span class="my-auto">～</span>
+              訖：<input type="text" class="datepicker form-control w-10" type="text" placeholder="{{altitude__max}}" name="end_altitude"/>公尺
+              <input type="text" class="d-none" id="altitude"/>
+              <p class="mb-1"><strong>縣市</strong></p>
+              <select id="select-county" name="county_name" class="selectpicker form-control" data-live-search-placeholder="搜尋" value="" data-live-search="true" data-none-selected-text="--請選擇--">
+              <option value='' selected>--請選擇--</option>
+              {% for i in county_list%}  
+                  <option value={{i.parametername}}>{{i.name}}</option>
+              {% endfor %} 
+            </select>
+              <p class="mb-1"><strong>保護留區</strong></p>
+              <select id="select-protectarea" name="protectarea_name" class="selectpicker form-control" data-live-search-placeholder="搜尋" value="" data-live-search="true" data-none-selected-text="--請選擇--">
+              <option value='' selected>--請選擇--</option>
+              {% for i in protectedarea_list%}  
+                  <option value={{i.parametername}}>{{i.name}}</option>
+              {% endfor %}
+            </select>
               <p class="mb-1"><strong>拍攝時間</strong></p>
               <div class="w-75 mx-auto mb-2">
                 <input type="time" id="times" name="times" step="2" />

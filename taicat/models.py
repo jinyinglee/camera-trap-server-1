@@ -789,14 +789,23 @@ class Image(models.Model):
 
     def to_dict(self):
         county_name = ''
+        protectedarea_name_list = []
         protectedarea_name = ''
         if x := self.deployment.county:
             if obj := ParameterCode.objects.filter(parametername=x).first():
                 county_name = obj.name
 
         if x := self.deployment.protectedarea:
-            if obj := ParameterCode.objects.filter(parametername=x).first():
-                protectedarea_name = obj.name
+            if ',' in x:
+                name_list = x.split(',')
+            else:
+                name_list = [x]
+
+            for i in name_list:
+                if obj := ParameterCode.objects.filter(parametername=i).first():
+                    protectedarea_name_list.append(obj.name)
+
+            protectedarea_name = ', '.join(protectedarea_name_list)
 
         return {
             'id': self.id,
@@ -1038,3 +1047,9 @@ class Calculation(models.Model):
     image_interval = models.PositiveSmallIntegerField('image interval')
     event_interval = models.PositiveSmallIntegerField('event interval')
     data = models.JSONField(default=dict, blank=True, null=True)
+
+class DownloadLog(models.Model):
+    
+    user_role = models.CharField('使用者角色', max_length=1000, null=True, default='', blank=True)
+    condiction = models.CharField('篩選條件', max_length=1000, null=True, default='', blank=True)
+    file_link = models.CharField('下載連結', max_length=1000, null=True, default='', blank=True)

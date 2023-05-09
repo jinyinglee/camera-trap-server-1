@@ -6,15 +6,18 @@
 {% block title %}自動相機監測影像及資料管理系統::資料篩選與計算{% endblock title %}
 
 {% block script %}
+<script src="https://code.jquery.com/jquery-3.6.1.js"></script>
+<script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'js/search-jquery-ui.js' %}"></script>
   {% if env == "dev" %}
     <script src="{% static 'js/search.dev.js' %}"></script>
   {% else %}
-      <script src="/asset/js/search.min.js"></script>
+    <script src="{% static 'js/search.min.js' %}"></script>
   {% endif %}
 {% endblock %}
 
 {% block style %}
-<link href="{% static 'css/search_index.css' %}" rel="stylesheet">
+      <link href="{% static 'css/search_index.css' %}" rel="stylesheet">
 {% endblock %}
 
 {% block body %}
@@ -29,6 +32,28 @@
     </div>
   </div>
   <!-- end The Modal -->
+
+  <div class="modal fade" id="downloadModal" tabindex="-1" aria-labelledby="downloadModalLabel" aria-hidden="true">
+<div class="modal-dialog">
+    <div class="modal-content">
+    <div class="modal-header">
+        <h5 class="modal-title title-dark">下載資料</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+        <p>檔案為離線產生，處理完成後，系統會寄下載資訊到您輸入的電子郵件信箱。如未收到信件，請檢查您的郵件設定，如仍未收到信件，請聯絡我們。</p>
+        <p>請輸入您的電子郵件：</p>
+        <div class="d-flex justify-content-start">
+        <input class="form-control w-75" type="text" id="download-email" />
+        <svg id="email-check" xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="lightgrey" class="bi bi-check my-auto" viewBox="0 0 16 16">
+            <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
+        </svg>
+        <button class="ms-1 btn btn-outline-success download" id="download-submit">送出</button>
+        </div>
+    </div>
+    </div>
+</div>
+  </div>
 
   {% include "./inc_calculate_description.html" %}
 
