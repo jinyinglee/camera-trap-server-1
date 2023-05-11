@@ -37,9 +37,9 @@ ENV TZ=Asia/Taipei
 WORKDIR /code
 
 # Package
-ENV VIRTUAL_ENV=/opt/venv
-RUN python3 -m venv $VIRTUAL_ENV
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+#ENV VIRTUAL_ENV=/opt/venv
+#RUN python3 -m venv $VIRTUAL_ENV
+#ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 COPY requirements requirements
 RUN pip install --upgrade pip
