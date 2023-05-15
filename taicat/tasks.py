@@ -141,10 +141,13 @@ def process_download_data_task(email, filter_dict, member_id, host):
     download_dir = Path(settings.MEDIA_ROOT, 'download')
     filename = f'download_{str(ObjectId())}_{datetime.now().strftime("%Y-%m-%d")}.csv'
     query = apply_search_filter(filter_dict)
+    query = query.values_list('project_id', 'project__name', 'image_uuid', 'studyarea__name', 'deployment__name', 'filename', 'datetime', 'species', 'life_stage', 'sex', 'antler', 'animal_id', 'remarks')
     header = ['計畫ID', '計畫名稱', '影像ID', '樣區/子樣區', '相機位置', '檔名', '拍攝時間', '物種', '年齡', '性別', '角況', '個體ID', '備註']
     with open(Path(download_dir, filename), 'w') as csvfile:
         spamwriter = csv.writer(csvfile)
         spamwriter.writerow(header)
+        for row in query.all():
+            ''' much slower
         for i in query.all():
             row = [
                 i.project_id,
@@ -161,6 +164,8 @@ def process_download_data_task(email, filter_dict, member_id, host):
                 i.animal_id,
                 i.remarks
             ]
+            row = i
+            '''
             spamwriter.writerow(row)
 
     download_url = "https://{}{}{}".format(
@@ -177,7 +182,7 @@ def process_download_data_task(email, filter_dict, member_id, host):
         #condiction_log = f'''專案名稱:{project_name}, 日期：{date_filter}。樣區 / 相機位置：{conditions} 。物種：{spe_conditions} 。時間：{time_filter}。縣市：{county_filter}。保護留區：{protectarea_filter}。資料夾：{folder_filter} 。'''
     download_log_sql = DownloadLog(
         user_role=user_role,
-        condiction=json.dumps(filter_dict),
+        condiction=json.dumps(filter_dict)[0:1000],
         file_link=download_url)
     download_log_sql.save()
 
