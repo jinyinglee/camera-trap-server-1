@@ -6,9 +6,6 @@
 {% block title %}自動相機監測影像及資料管理系統::資料篩選與計算{% endblock title %}
 
 {% block script %}
-<script src="https://code.jquery.com/jquery-3.6.1.js"></script>
-<script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
-    <script src="{% static 'js/search-jquery-ui.js' %}"></script>
   {% if env == "dev" %}
     <script src="{% static 'js/search.dev.js' %}"></script>
   {% else %}
