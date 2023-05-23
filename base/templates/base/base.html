@@ -50,8 +50,8 @@
   </head>
 
   <body>
-    {% if request.session.is_login %}
-      {% if request.COOKIES.announcementread %}
+    {% if request.session.is_login and request.COOKIES and request.session.id %}
+      {% if "announcementread" in request.COOKIES %}
         {% if request.COOKIES.announcementread  != request.session.id|announcement_expire_time %}
           {% if request.session.id|announcement_content != None %}
           <div class="alert alert-warning alert-dismissible fade show" role="alert" id="alert-content">
@@ -64,12 +64,12 @@
       {% else %}
         {% if request.session.id|announcement_content != None %}
           <div class="alert alert-warning alert-dismissible fade show" role="alert" id="alert-content">
-            <strong class="badge">公告!</strong>    
+            <strong class="badge">公告!</strong>
             <a href="{% url 'desktop'%}"> {{ request.session.id|announcement_content }} </a>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" id="alert-box"></button>
           </div>
         {% endif %}
-      {% endif %}        
+      {% endif %}
     {% endif %}
     <nav class="navbar navbar-expand-lg navbar-dark navbar-gradient">
       <div class="container-fluid">
@@ -172,6 +172,12 @@
             <div class="my-3">
               <a class="btn btn-light w-100" id="getAuth"> 使用 ORCID 帳號登入 </a>
             </div>
+	    ＊測試用登入＊<br />
+            <a class="btn btn-light" href="{% url 'login_for_test' %}?role=計畫總管理人&next={{ request.path }}"> 計畫總管理人 </a>
+            <a class="btn btn-light" href="{% url 'login_for_test' %}?role=個別計畫承辦人&next={{ request.path }}"> 計畫承辦人 </a>
+            <a class="btn btn-light" href="{% url 'login_for_test' %}?role=資料上傳者&next={{ request.path }}"> 資料上傳者 </a>
+            <a class="btn btn-light" href="{% url 'login_for_test' %}?role=系統管理員&next={{ request.path }}"> 系統管理員 </a>
+
             <div class="text-gray">
               還沒有帳號？
               <a href="https://orcid.org/register" class="text-green" target="_blank">
