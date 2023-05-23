@@ -10,7 +10,6 @@ from django.utils.timezone import make_aware
 from taicat.models import Image, Project, Deployment, Calculation
 from taicat.utils import save_calculation
 
-
 def calc_by_detail(did, year, month, working_days, deployment):
     rows = []
     query_ym = Image.objects.filter(
@@ -46,3 +45,17 @@ for project in Project.objects.all():
                             calc_by_detail(d['id'], detail[0], detail[1], detail[6], dep)
 
 print(proj_count, dep_count)
+
+
+'''
+SP = '山羌'
+im_list = Image.objects.filter(species=SP, datetime__gte=datetime(2022,11,1), datetime__lt=datetime(2022,12,1), deployment_id=13909).all()
+#for i in im_list:
+#    print(i.id, i.datetime)
+dep = Deployment.objects.get(id=13909)
+#print(dep.count_working_day(2022, 11))
+res = dep.calculate(2022, 11, '山羌', 60, 60)
+
+save_calculation([{'species': '山羌'}], datetime(2022,11,1), datetime(2022,12,1), dep)
+print(res)
+'''

@@ -623,7 +623,7 @@ class Deployment(models.Model):
             datetime__year=year,
             datetime__month=month,
             species=species
-        )
+        ).order_by('datetime')
 
         # by_species = query_ym.values('species').annotate(count=Count('species'))
         last_datetime = None
@@ -658,7 +658,9 @@ class Deployment(models.Model):
                         image_count_oi1 += 1
                 else:
                     # OI3
+                    #print(image, image['id'], image_interval_seconds, delta_count)
                     if delta_count >= image_interval_seconds:
+                        #print ('ocunt!!')
                         image_count += 1
                         delta_count = 0
 
