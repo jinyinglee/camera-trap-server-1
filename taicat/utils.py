@@ -788,10 +788,11 @@ def half_year_ago(year, month):
 
 def save_calculation(species_list, datetime_from, datetime_to, deployment):
     for sp in species_list:
+        # print('sp', sp, datetime_from.year, datetime_from.month)
         if species := sp['species'].strip():
             for img_int in [30, 60]:
                 for e_int in [2, 5, 10, 30, 60]:
-                    result = deployment.calculate(datetime_from.year, datetime_from.month, sp, img_int, e_int)
+                    result = deployment.calculate(datetime_from.year, datetime_from.month, sp['species'], img_int, e_int)
                     if c := Calculation.objects.filter(
                             deployment=deployment,
                             datetime_from=datetime_from,
@@ -800,6 +801,7 @@ def save_calculation(species_list, datetime_from, datetime_to, deployment):
                             event_interval=e_int,
                             species=sp['species']).first():
                         c.data = result
+                        #print(result, img_int, e_int, 'res', sp['species'], c.id)
                         c.save()
                     else:
                         c = Calculation(
@@ -813,6 +815,7 @@ def save_calculation(species_list, datetime_from, datetime_to, deployment):
                             event_interval=e_int,
                             data=result
                         )
+                        #print('createu')
                         c.save()
 
 def apply_search_filter(filter_dict={}):
