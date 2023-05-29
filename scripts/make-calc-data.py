@@ -18,18 +18,26 @@ def calc_by_detail(did, year, month, working_days, deployment):
         datetime__month=month,
     )
     by_species = query_ym.values('species').annotate(count=Count('species'))
-    save_calculation(
-        by_species,
-        make_aware(datetime(year, month, 1)),
-        make_aware(datetime(year, month, len(working_days))+timedelta(days=1)),
-        deployment)
-    print(did, year, month, deployment)
+    sp_list = []
+    for sp in by_species:
+        if sp := sp['species'].strip():
+            sp_list.append(sp)
+    if sp_list:
+        save_calculation(
+            sp_list,
+            #make_aware(datetime(year, month, 1)),
+            #make_aware(datetime(year, month, len(working_days))+timedelta(seconds=-1)),
+            year,
+            month,
+            deployment)
+        #print(did, year, month, deployment)
     return rows
 
 dep_count = 0
 proj_count = 0
 for project in Project.objects.all():
-    print(project.id, project, '=================')
+#for project in Project.objects.filter(id=329).all():
+    #print(project.id, project, '=================')
     if stats := project.count_stats():
         proj_count += 1
         begin = time.time()
@@ -49,13 +57,15 @@ print(proj_count, dep_count)
 
 '''
 SP = '山羌'
-im_list = Image.objects.filter(species=SP, datetime__gte=datetime(2022,11,1), datetime__lt=datetime(2022,12,1), deployment_id=13909).all()
+#im_list = Image.objects.filter(species=SP, datetime__gte=datetime(2022,11,1), datetime__lt=datetime(2022,12,1), deployment_id=13909).all()
 #for i in im_list:
 #    print(i.id, i.datetime)
 dep = Deployment.objects.get(id=13909)
 #print(dep.count_working_day(2022, 11))
-res = dep.calculate(2022, 11, '山羌', 60, 60)
-
-save_calculation([{'species': '山羌'}], datetime(2022,11,1), datetime(2022,12,1), dep)
-print(res)
+#res = dep.calculate(2022, 12, '山羌', 60, 60)
+#res = dep.calculate(2023, 1, '山羌', 60, 60)
+#print(res)
+save_calculation(['山羌'], 2022, 11, dep)
+save_calculation(['山羌'], 2022, 12, dep)
+#save_calculation(['山羌'], 2023, 1, dep)
 '''
