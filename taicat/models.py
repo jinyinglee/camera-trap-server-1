@@ -25,6 +25,18 @@ from django.contrib.postgres.indexes import GinIndex
 from django.conf import settings
 from django.core.cache import cache, caches
 
+# put this function in utils will cause circular import
+def timezone_utc_to_tw(ts):
+    '''apply +8 time delta
+    '''
+    if ts:
+        return ts + timedelta(hours=8)
+    return 0
+
+def timezone_tw_to_utc(ts):
+    if ts:
+        return ts + timedelta(hours=-8)
+    return 0
 
 def find_the_gap(year, array):
     # print (year, array,'----')
@@ -463,8 +475,8 @@ class Deployment(models.Model):
         根據 DeploymentJournal 記錄
         '''
         num_month = monthrange(year, month)[1]
-        month_start = make_aware(datetime(year, month, 1))
-        month_end = make_aware(datetime(year, month, num_month))
+        month_start = make_aware(timezone_tw_to_utc(datetime(year, month, 1)))
+        month_end = make_aware(timezone_tw_to_utc(datetime(year, month, num_month)))
         month_stat = [0] * num_month
 
         query = DeploymentJournal.objects.filter(
@@ -603,28 +615,32 @@ class Deployment(models.Model):
                 })
         return gaps
 
-    def calculate(self, year, month, species, image_interval, event_interval):
+    def calculate(self, year, month, species, image_interval, event_interval, to_save=False):
         '''default
         POD: occasion (回合): 1 天, session (期間): 1 月
         APOA: occation: 1 小時
         '''
         working_days = self.count_working_day(year, month)[0]
-        #print(self.id, year, month, working_days)
+        #print(self.id, year, month, species, working_days)
         sum_working_hours = sum(working_days) * 24
         image_interval_seconds = image_interval * 60
         event_interval_seconds = event_interval * 60
         days_in_month = monthrange(year, month)[1]
 
-        # print(year, month, working_days, sum_working_hours)
-
         # count image num
+        day_start = timezone_tw_to_utc(datetime(year, month, 1))
+        day_start = make_aware(day_start)
+        day_end = day_start + timedelta(days=days_in_month) # ex: 12/1 - 12/31 => 11/30 16:00 => 12/31 16:00
+        day_end = day_end
+        #print(day_start, day_end)
         query_ym_sp = Image.objects.filter(
             deployment_id=self.id,
-            datetime__year=year,
-            datetime__month=month,
+            #datetime__year=year,
+            #datetime__month=month,
+            datetime__range=[day_start, day_end],
             species=species
         ).order_by('datetime')
-
+        # print(day_start, day_end)
         # by_species = query_ym.values('species').annotate(count=Count('species'))
         last_datetime = None
         image_count = 0 # OI3
@@ -637,8 +653,10 @@ class Deployment(models.Model):
         rows = list(query_ym_sp.values('id', 'datetime', 'animal_id').all())
         # OI1, OI3, event count
         for image in rows:
+            image_dt = timezone_utc_to_tw(image['datetime'])
+            # print(image['id'], image_dt)
             if last_datetime:
-                delta = image['datetime'] - last_datetime
+                delta = image_dt - last_datetime
                 delta_seconds = (delta.days * 86400) + delta.seconds
                 delta_count += delta_seconds # 累加
                 delta_count_oi1 += delta_seconds # 累加
@@ -676,7 +694,7 @@ class Deployment(models.Model):
                 if image['animal_id']:
                     image_count_oi1 += 1
 
-            last_datetime = image['datetime']
+            last_datetime = image_dt
 
         # OI2
         last_datetime = None
@@ -684,7 +702,7 @@ class Deployment(models.Model):
         for image in query_ym_sp.values('deployment', 'datetime', 'species').order_by().annotate(Count('id')):
             #print (year, month, rows)
             if last_datetime:
-                delta = image['datetime'] - last_datetime
+                delta = image_dt - last_datetime
                 delta_seconds = (delta.days * 86400) + delta.seconds
                 delta_count += delta_seconds # 累加
                 # print (image.id, image.datetime, delta_seconds, delta_count)
@@ -697,7 +715,7 @@ class Deployment(models.Model):
                 # 第一張照片, 直接加 1
                 image_count_oi2 = 1
 
-            last_datetime = image['datetime']
+            last_datetime = image_dt
 
         by_day = query_ym_sp.values('datetime__day').annotate(count=Count('datetime__day')).order_by('datetime__day')
         by_hour = query_ym_sp.values('datetime__day', 'datetime__hour').annotate(count=Count('*')).order_by('datetime__day', 'datetime__hour')
@@ -709,13 +727,42 @@ class Deployment(models.Model):
         # note: [[0, [0]*24]] * days_in_month => call by reference error (一個改全部變)
         mdh = [[0, [0 for h in range(24)]] for x in range(days_in_month)]
         for day in by_day:
-            mdh[day['datetime__day']-1][0] = 1
+            # print(day, mdh, day['datetime__day']-1, len(mdh))
+            if len(mdh) > day['datetime__day'] - 1:
+                mdh[day['datetime__day']-1][0] = 1
         for hour in by_hour:
-            mdh[hour['datetime__day']-1][1][hour['datetime__hour']] = 1
+            if len(mdh) > hour['datetime__day']-1:
+                mdh[hour['datetime__day']-1][1][hour['datetime__hour']] = 1
 
         #print (i['species'], image_count, event_count, oi3, pod, by_day.count(), mdh)
         # print(year, month, species, working_days)
-        return [working_days, image_count, event_count, oi1, oi2, oi3, pod, mdh]
+        result = [working_days, image_count, event_count, oi1, oi2, oi3, pod, mdh]
+        if to_save:
+            if c := Calculation.objects.filter(
+                    deployment=self,
+                    datetime_from=day_start,
+                    datetime_to=day_end,
+                    image_interval=image_interval,
+                    event_interval=event_interval,
+                    species=species).first():
+                c.data = result
+                c.save()
+            else:
+                c = Calculation(
+                    deployment=self,
+                    studyarea=self.study_area,
+                    project=self.project,
+                    datetime_from=day_start,
+                    datetime_to=day_end,
+                    species=species,
+                    image_interval=image_interval,
+                    event_interval=event_interval,
+                    data=result
+                )
+                #print('createu')
+                c.save()
+
+        return result
 
     def get_calc_cache(self):
         if rows := caches['file'].get(f'calc-dep-{self.id}'):
@@ -789,6 +836,7 @@ class Image(models.Model):
     def species_list(self):
         return [x['species'] for x in self.annotation if isinstance(x, dict) and x.get('species', '')]
 
+    # Image.to_dict
     def to_dict(self):
         county_name = ''
         protectedarea_name_list = []
@@ -813,7 +861,7 @@ class Image(models.Model):
             'id': self.id,
             'species': self.species,
             'filename': self.filename,
-            'datetime': self.datetime.strftime('%Y-%m-%d %H:%M:%S') if self.datetime else '',
+            'datetime': timezone_utc_to_tw(self.datetime).strftime('%Y-%m-%d %H:%M:%S') if self.datetime else '',
             'project__name': self.project.name if self.project else None,
             'studyarea__name': self.studyarea.name if self.studyarea_id else None,
             'deployment__name': self.deployment.name if self.deployment_id else None,
