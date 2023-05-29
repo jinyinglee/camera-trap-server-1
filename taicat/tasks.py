@@ -38,15 +38,16 @@ from .utils import (
 
 @shared_task
 def process_image_annotation_task(deployment_journal_id, data):
-    datetime_from = None
-    datetime_to = None
-    species_list = []
+    # aware datetime object
+    utc_tz = pytz.timezone(settings.TIME_ZONE)
 
+    datetime_from = datetime.fromtimestamp(data['image_list'][0][3], utc_tz)
+    datetime_to = datetime.fromtimestamp(data['image_list'][0][3], utc_tz)
+    species_list = []
+    is_save_calculation = False
     deployment_journal = DeploymentJournal.objects.get(pk=deployment_journal_id)
     deployment_journal.upload_status = 'start-annotation'
     next_status = 'start-media'
-    # aware datetime object
-    utc_tz = pytz.timezone(settings.TIME_ZONE)
 
     # find if is specific_bucket
     bucket_name = data.get('bucket_name', '')
@@ -57,6 +58,7 @@ def process_image_annotation_task(deployment_journal_id, data):
     folder_name = data.get('folder_name', '')
 
     for i in data['image_list']:
+        #print(datetime_to, datetime_from, 'iiii')
         img_info_payload = None
         # prevent json load error
         exif_str = i[9].replace('\\u0000', '') if i[9] else '{}'
@@ -77,15 +79,16 @@ def process_image_annotation_task(deployment_journal_id, data):
             img.last_updated = datetime.now()
 
         else:
+            is_save_calculation = True
             for a in anno:
                 if sp := a.get('species', ''):
                     if sp not in species_list:
                         species_list.append(sp)
 
             dt_ = datetime.fromtimestamp(i[3], utc_tz)
-            if datetime_from is None or dt_ < datetime_from:
+            if dt_ < datetime_from:
                 datetime_from = dt_
-            elif datetime_to is None or dt_ > datetime_to:
+            elif dt_ > datetime_to:
                 datetime_to = dt_
 
             image_uuid = str(ObjectId())
@@ -133,7 +136,21 @@ def process_image_annotation_task(deployment_journal_id, data):
     deployment_journal.upload_status = next_status
     deployment_journal.save()
 
-    save_calculation(species_list, datetime_from, datetime_to, deployment_journal.deployment)
+    #print(datetime_from, datetime_to, 'xxxx')
+    #save_calculation(species_list, datetime_from, datetime_to, deployment_journal.deployment)
+    if is_save_calculation:
+        months = (datetime_to.year - datetime_from.year) * 12 + (datetime_to.month - datetime_from.month)
+        yx = datetime_from.year
+        mx = datetime_from.month
+        #print(months, yx, mx)
+        for m in range(0, months+1):
+            #print(species_list, yx, mx, deployment_journal.deployment, m)
+            dt = datetime(yx, mx, 1)
+            save_calculation(species_list, yx, mx, deployment_journal.deployment)
+            mx += 1
+            if mx > 12:
+                yx += 1
+                mx = 1
 
 
 @shared_task

@@ -8,7 +8,8 @@ import operator
 from operator import itemgetter
 from datetime import (
     datetime,
-    date
+    date,
+    timedelta,
 )
 import logging
 from calendar import (
@@ -50,6 +51,8 @@ from taicat.models import (
     HomePageStat,
     DeletedImage,
     Calculation,
+    timezone_utc_to_tw,
+    timezone_tw_to_utc,
 )
 
 import geopandas as gpd
@@ -198,11 +201,16 @@ def calculated_data(filter_args, calc_args):
     species = filter_args.get('species')
     start_dt = None
     end_dt = None
+
     if start_date := filter_args.get('startDate', ''):
-        start_dt = make_aware(datetime.strptime(start_date, '%Y-%m-%d'))
+        start_dt =timezone_tw_to_utc(datetime.strptime(start_date, '%Y-%m-%d'))
+        # ex: 2022-11-30 16:00:00:00
+        start_dt = make_aware(start_dt)
 
     if end_date := filter_args.get('endDate', ''):
-        end_dt = make_aware(datetime.strptime(end_date, '%Y-%m-%d'))
+        end_dt = timezone_tw_to_utc(datetime.strptime(end_date, '%Y-%m-%d')+timedelta(days=1))
+        # ex: 2022-12-31 16:00:00:00
+        end_dt = make_aware(end_dt) 
 
     image_interval = calc_args.get('imageInterval')
     event_interval = calc_args.get('eventInterval')
@@ -247,7 +255,6 @@ def calculated_data(filter_args, calc_args):
 
     deployment_list = query.values('id', 'name', 'project__name', 'study_area__name').all()
     #print(deployment_list)
-
     for sp in species:
         results[sp] = []
         cal_query = Calculation.objects.filter(
@@ -261,16 +268,18 @@ def calculated_data(filter_args, calc_args):
             dep_ids = [x['id'] for x in deployment_list]
             cal_query = cal_query.filter(deployment_id__in=dep_ids)
 
+        #print (cal_query.query, start_dt, end_dt)
         if res := cal_query.all():
             for cal in res:
+                # print (cal.datetime_from, cal.datetime_to, cal.id)
                 #results[sp].append(cal.data)
                 dep = cal.deployment
                 results[sp].append({
                     'project': dep.project.name,
                     'studyarea': dep.study_area.name,
                     'name': dep.name,
-                    'year': cal.datetime_from.year,
-                    'month': cal.datetime_from.month,
+                    'year': cal.datetime_to.year,
+                    'month': cal.datetime_to.month,
                     'calc': cal.data
                 })
 
@@ -786,37 +795,14 @@ def half_year_ago(year, month):
     ]
 
 
-def save_calculation(species_list, datetime_from, datetime_to, deployment):
+def save_calculation(species_list, year, month, deployment):
+    print('save_calcultaion: {} {} {} {}'.format(species_list, year, month, deployment.id))
     for sp in species_list:
         # print('sp', sp, datetime_from.year, datetime_from.month)
-        if species := sp['species'].strip():
-            for img_int in [30, 60]:
-                for e_int in [2, 5, 10, 30, 60]:
-                    result = deployment.calculate(datetime_from.year, datetime_from.month, sp['species'], img_int, e_int)
-                    if c := Calculation.objects.filter(
-                            deployment=deployment,
-                            datetime_from=datetime_from,
-                            datetime_to=datetime_to,
-                            image_interval=img_int,
-                            event_interval=e_int,
-                            species=sp['species']).first():
-                        c.data = result
-                        #print(result, img_int, e_int, 'res', sp['species'], c.id)
-                        c.save()
-                    else:
-                        c = Calculation(
-                            deployment=deployment,
-                            studyarea=deployment.study_area,
-                            project=deployment.project,
-                            datetime_from=datetime_from,
-                            datetime_to=datetime_to,
-                            species=sp['species'],
-                            image_interval=img_int,
-                            event_interval=e_int,
-                            data=result
-                        )
-                        #print('createu')
-                        c.save()
+        species = sp.strip()
+        for img_int in [30, 60]:
+            for e_int in [2, 5, 10, 30, 60]:
+                result = deployment.calculate(year, month, species, img_int, e_int, to_save=True)
 
 def apply_search_filter(filter_dict={}):
     query = Image.objects.filter()
@@ -840,11 +826,11 @@ def apply_search_filter(filter_dict={}):
 
     if value := filter_dict.get('startDate'):
         dt = make_aware(datetime.strptime(value, '%Y-%m-%d'))
-        query_start = dt
+        query_start = timezone_utc_to_tw(dt)
         query = query.filter(datetime__gte=dt)
     if value := filter_dict.get('endDate'):
         dt = make_aware(datetime.strptime(value, '%Y-%m-%d'))
-        query_end = dt
+        query_end = timezone_utc_to_tw(dt)
         query = query.filter(datetime__lte=dt)
     if values := filter_dict.get('deployments'):
         query = query.filter(deployment_id__in=values)

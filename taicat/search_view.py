@@ -1,6 +1,5 @@
 import json
 import math
-import logging
 import time
 from datetime import datetime
 import re
@@ -215,6 +214,8 @@ def api_search(request):
             if member_id := request.session.get('id', None):
                 host = request.META['HTTP_HOST']
                 process_download_calculated_data_task.delay(email, filter_dict, calc_dict, calc_type, out_format, calc_data, host)
+                #results = calculated_data(filter_dict, calc_data)
+                #print(results)
             else:
                 message = 'no member_id'
 
