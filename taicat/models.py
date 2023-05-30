@@ -475,8 +475,11 @@ class Deployment(models.Model):
         根據 DeploymentJournal 記錄
         '''
         num_month = monthrange(year, month)[1]
-        month_start = make_aware(timezone_tw_to_utc(datetime(year, month, 1)))
-        month_end = make_aware(timezone_tw_to_utc(datetime(year, month, num_month)))
+        #month_start = make_aware(timezone_tw_to_utc(datetime(year, month, 1)))
+        #month_end = make_aware(timezone_tw_to_utc(datetime(year, month, num_month)))
+        ## deployment_journal 的 working_start, working_end timezone +8 的時間 (台灣時間)，不是 shift 過的，所以不用特別處理timezone
+        month_start = make_aware(datetime(year, month, 1))
+        month_end = make_aware(datetime(year, month, num_month))
         month_stat = [0] * num_month
 
         query = DeploymentJournal.objects.filter(
@@ -495,13 +498,14 @@ class Deployment(models.Model):
             overlap_range = [max(i.working_start, month_start), min(i.working_end, month_end)]
             gap_days = (overlap_range[0]-month_start).days
             duration_days = (overlap_range[1]-overlap_range[0]).days+1
+            #print(overlap_range, gap_days, duration_days)
             for index, stat in enumerate(month_stat):
                 if index >= gap_days and index < gap_days + duration_days:
                     month_stat[index] = 1
                     month_stat_part[index] = 1
 
             ret.append([i.working_start.strftime('%Y-%m-%d'), i.working_end.strftime('%Y-%m-%d')])
-
+            #print(month_stat, ret)
         return month_stat, ret
 
     # cache moved to cache-files
@@ -725,6 +729,7 @@ class Deployment(models.Model):
         pod = by_day.count() * 1.0 / sum(working_days) if sum(working_days) > 0 else 'N/A'
         # month, day, hour
         # note: [[0, [0]*24]] * days_in_month => call by reference error (一個改全部變)
+        #print (by_day, by_hour)
         mdh = [[0, [0 for h in range(24)]] for x in range(days_in_month)]
         for day in by_day:
             # print(day, mdh, day['datetime__day']-1, len(mdh))
