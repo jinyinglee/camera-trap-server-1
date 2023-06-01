@@ -104,7 +104,7 @@
             </li>
           </ul>
           <div class="d-flex">
-            {% if 'is_login' not in request.session %}
+            {% if 'is_login' not in request.session or not request.session.is_login %}{% HACK session storage warning %}
             <a class="btn btn-orange " data-bs-toggle="modal" data-bs-target="#loginModal">登入</a>
             {% else %}
             <ul class="navbar-nav">
@@ -172,12 +172,6 @@
             <div class="my-3">
               <a class="btn btn-light w-100" id="getAuth"> 使用 ORCID 帳號登入 </a>
             </div>
-	    ＊測試用登入＊<br />
-            <a class="btn btn-light" href="{% url 'login_for_test' %}?role=計畫總管理人&next={{ request.path }}"> 計畫總管理人 </a>
-            <a class="btn btn-light" href="{% url 'login_for_test' %}?role=個別計畫承辦人&next={{ request.path }}"> 計畫承辦人 </a>
-            <a class="btn btn-light" href="{% url 'login_for_test' %}?role=資料上傳者&next={{ request.path }}"> 資料上傳者 </a>
-            <a class="btn btn-light" href="{% url 'login_for_test' %}?role=系統管理員&next={{ request.path }}"> 系統管理員 </a>
-
             <div class="text-gray">
               還沒有帳號？
               <a href="https://orcid.org/register" class="text-green" target="_blank">
