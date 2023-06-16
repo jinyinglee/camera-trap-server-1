@@ -577,7 +577,9 @@ def personal_info(request):
 
 
 def home(request):
-    return render(request, 'base/home.html')
+    context = {'env': settings.ENV}
+
+    return render(request, 'base/home.html',context)
 
 
 def get_species_data(request):
