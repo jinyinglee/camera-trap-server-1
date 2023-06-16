@@ -63,6 +63,18 @@ let content_dict = {'web':{'title': '網頁操作','content':`
       </div>
     </div>
   </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="heading6">
+      <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse6" aria-expanded="false" aria-controls="collapse6">
+      我下載的excel檔案是亂碼，可以怎麼處理？
+      </button>
+    </h2>
+    <div id="collapse6" class="accordion-collapse collapse" aria-labelledby="heading6" data-bs-parent="#accordionExample">
+      <div class="accordion-body">
+      <p>打開excel，點選上方的「資料」後，選擇「取得外部資料」並選取您欲打開的excel檔案，於檔案來源下拉選單中選擇包含UTF-8的選項，並以逗號分隔，應可排除亂碼問題。</p>
+      </div>
+    </div>
+  </div>
 </div>
 `},
 
