@@ -60,6 +60,8 @@ from openpyxl import Workbook
 from bson.objectid import ObjectId
 import geopandas as gpd
 from shapely.geometry import Point
+from django.views.decorators.http import require_GET
+
 
 
 def get_project_info_web(request):
@@ -2080,3 +2082,22 @@ def check_login(request):
         response['redirect'] = False
         response['messages'] = '尚未登入'
     return HttpResponse(json.dumps(response), content_type='application/json')
+
+@require_GET
+def robots_txt(request):
+
+    if settings.ENV =='prod':
+        lines = [
+            "User-Agent: *",
+            "Disallow: /admin/",
+        ]
+
+        return HttpResponse("\n".join(lines), content_type="text/plain")
+
+    else:
+        lines = [
+            "User-Agent: *",
+            "Disallow: /",
+        ]
+
+        return HttpResponse("\n".join(lines), content_type="text/plain")

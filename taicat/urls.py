@@ -3,6 +3,8 @@ from . import (
     views,
     search_view
 )
+from .views import robots_txt
+
 
 urlpatterns = [
     path('project/overview', views.project_overview, name='project_overview'),
@@ -47,4 +49,6 @@ urlpatterns = [
     path('edit_sa', views.edit_sa, name='edit_sa'),
     path('update_species_map', views.update_species_map, name='update_species_map'),
     path('update_edit_autocomplete', views.update_edit_autocomplete, name='update_edit_autocomplete'),
+    
+    path("robots.txt", robots_txt),
 ]
