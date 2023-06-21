@@ -10,10 +10,10 @@ import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
 
 const columns = [
   { id: 'index', label: '#', minWidth: 10 },
-  { id: 'id', label: 'ID', minWidth: 60 },
   { id: 'filename', label: '檔案名稱', minWidth: 100 },
   { id: 'species', label: '物種', minWidth: 70 },
   {
@@ -45,12 +45,12 @@ const columns = [
   {
     id: 'deployment__county',
     label: '縣市',
-    minWidth: 40,
+    minWidth: 90,
   },
   {
     id: 'deployment__protectedarea',
     label: '保護留區',
-    minWidth: 40,
+    minWidth: 90,
   },
   {
     id: 'media',
@@ -75,6 +75,7 @@ const AppSearchDataGrid = ({result, pagination, handleChangePage, handleChangeRo
                 key={column.id}
                 align={column.align}
                 style={{ minWidth: column.minWidth }}
+                sx={{ background: '#257455', color: '#FFF'}}
               >
                 {column.label}
               </TableCell>
@@ -87,6 +88,7 @@ const AppSearchDataGrid = ({result, pagination, handleChangePage, handleChangeRo
               <TableRow key={row.id}>
                 {columns.map((column) => {
                   let value = '';
+                  let hiddenID = '';
                   if (column.id === 'media' && row[column.id]) {
                     value = <Button onClick={()=>setImageDetail(row[column.id])}><img src={row[column.id]} width="50"/></Button>;
                   } else if (column.id === 'index') {
@@ -94,9 +96,13 @@ const AppSearchDataGrid = ({result, pagination, handleChangePage, handleChangeRo
                   } else {
                     value = row[column.id];
                   }
+
+                  if (column.id === 'filename') {
+                    hiddenID = <Box sx={{ fontSize: '10px', color: '#FFF'}} variants="span">{row['id']}</Box>
+                  }
                   return (
                     <TableCell key={column.id} align={column.align}>
-                      {value}
+                      {value}{hiddenID}
                     </TableCell>
                   );
                 })}

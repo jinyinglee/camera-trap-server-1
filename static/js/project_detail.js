@@ -192,7 +192,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                         allEqual(antler_array) ? $('#edit-antler').val(antler_array[0]) : $('#edit-antler').val('');
                         allEqual(animal_id_array) ? $('#edit-animal_id').val(animal_id_array[0]) : $('#edit-animal_id').val('');
                         allEqual(remarks_array) ? $('#edit-remarks').val(remarks_array[0]) : $('#edit-remarks').val('');
-  
+                      console.log(current_row, 'xxx');
                         // image or videos
                         if (allEqual(imguuid_array)){
                           $('#edit-filename').html(current_row['filename'])
@@ -302,7 +302,8 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                   // lazy loading for videos
                   var watcher2 = new IntersectionObserver(onEnterView2);
                   var lazyVideos = document.querySelectorAll("video");
-                  for (let v of lazyVideos) {
+                for (let v of lazyVideos) {
+                  console.log('vvv', v);
                       watcher2.observe(v); // 開始監視
                       v.removeAttribute('controls');
                   }
@@ -315,7 +316,7 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
                           }
                       }
                   }
-  
+                console.log('yyyy', );
                   // event listener for loading video & img
                   $('img').on('error',function(event) {
                     $(this).parent().html('<p align="center" class="cannot-load">無法載入</p>')

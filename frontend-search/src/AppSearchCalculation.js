@@ -6,12 +6,33 @@ import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import Select from '@mui/material/Select';
 import Grid from '@mui/material/Grid';
+import Typography from '@mui/material/Typography';
 
 const AppSearchCalculation = ({calcData, setCalcData}) => {
   return (
     <>
-      <h3 style={{ marginTop: '50px'}}>分析與計算</h3>
+      <Typography sx={{
+        marginTop: '50px',
+        marginBottom: '20px',
+        fontSize: '24px',
+        color: '#59AE68'
+      }}>分析與計算</Typography>
       <Grid container spacing={2}>
+        <Grid item xs={4}>
+          <FormControl fullWidth>
+            <InputLabel id="label-calc-type">計算項目</InputLabel>
+            <Select
+              labelId="label-calc-type"
+              value={calcData.calcType}
+              label="計算項目"
+              onChange={(e)=>setCalcData({type: 'setCalcData', name:'calcType', value: e.target.value})}
+            >
+              <MenuItem value="basic-oi">基本（相機工作時數, 有效照片數, 目擊事件數, OI）</MenuItem>
+              <MenuItem value="pod">捕獲回合比例、存缺</MenuItem>
+              <MenuItem value="apoa">活動機率(APOA)</MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
         <Grid item xs={2}>
           <FormControl fullWidth>
             <InputLabel id="label-session">回合</InputLabel>
@@ -56,21 +77,7 @@ const AppSearchCalculation = ({calcData, setCalcData}) => {
             </Select>
           </FormControl>
         </Grid>
-        <Grid item xs={4}>
-          <FormControl fullWidth>
-            <InputLabel id="label-calc-type">計算項目</InputLabel>
-            <Select
-              labelId="label-calc-type"
-              value={calcData.calcType}
-              label="計算項目"
-              onChange={(e)=>setCalcData({type: 'setCalcData', name:'calcType', value: e.target.value})}
-            >
-              <MenuItem value="basic-oi">基本（相機工作時數, 有效照片數, 目擊事件數, OI）</MenuItem>
-              <MenuItem value="pod">捕獲回合比例、存缺</MenuItem>
-              <MenuItem value="apoa">活動機率(APOA)</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
+
         <Grid item xs={2}>
           <FormControl fullWidth>
             <InputLabel id="label-file-format">檔案格式</InputLabel>
