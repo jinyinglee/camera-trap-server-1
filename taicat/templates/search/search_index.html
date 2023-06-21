@@ -14,7 +14,8 @@
 {% endblock %}
 
 {% block style %}
-      <link href="{% static 'css/search_index.css' %}" rel="stylesheet">
+    <link href="{% static 'css/search_index.css' %}" rel="stylesheet">
+    <link rel=stylesheet type="text/css" href="{% static 'css/tw/theme.css'">
 {% endblock %}
 
 {% block body %}
@@ -54,13 +55,13 @@
 
   {% include "./inc_calculate_description.html" %}
 
-  <div class="row mb-10">
-    <h4 class="title-dark px-3 py-0">資料篩選與計算</h4>
+  <div class="row">
+    <h4 class="title-dark" style="margin: 0 0 30px -10px;font-size:30px">資料篩選與計算</h4>
   </div>
   <div class="panel">
-    <div class="panel-body">
-      <div id="app-search"></div>
-    </div>
+    <!--div class="panel-body"-->
+    <div id="app-search"></div>
+    <!--/div-->
   </div>
 </div>
 {% endblock %}
