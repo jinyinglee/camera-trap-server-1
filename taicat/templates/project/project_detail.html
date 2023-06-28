@@ -6,184 +6,67 @@
 <script src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
 <script src="{% static 'js/datatable-settings.js' %}"></script>
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.dataTables.min.css" />
+
+<script src="{% static 'js/gsap.min.js' %}"></script>
+<script src="{% static 'js/ScrollTrigger.min.js' %}"></script>
+
+<link rel="stylesheet" href="{% static 'css/theme.css' %}" />
 <link rel="stylesheet" href="{% static 'css/project_detail.css' %}" />
 
-{% endblock head %} {% block body %}
+
+
+
+{% endblock head %} 
+{% block body %}
 <input type="hidden" name="pk" value="{{ pk }}"></input>
 <input type="hidden" name="get-folder" value="{{ folder }}"></input>
 <input type="hidden" name="project-name" value="{{ project_info.0 }}"></input>
-<div class="container box">
-  {% if is_public_project or is_project_authorized %}
-      {% if project_name_len > 35 %}
-      <div class="row pb-2 pt-4 header overflow-auto h-120">
-      {% else %}
-      <div class="row pb-2 pt-4 header overflow-auto">
-      {% endif %}
-      <div class="col-2">
-        <a class="text-gray back text-decoration-none align-middle" href="{% url 'project_info' pk %}"><i class="fa fa-chevron-left w-12"></i> 返回計畫資訊</a>
-      </div>
-      <div class="col-10">
-        <div class="d-flex justify-content-between align-items-center">
-          <h4 class="title-dark p-0">{{ project_info.0 }}</h4>
-          <!--
-           <i class="fa fa-info-circle" style="cursor: pointer" data-bs-toggle="modal" data-bs-target="#infoModal"></i>
-          -->
-          <div>
-            {% if editable %}
-            <button class="btn btn-outline-success" id="edit_button" data-edit="off"><i class="fa fa-xs fa-pencil w-12"></i> 編輯模式</button>
-            {% endif %}
-            <a class="btn btn-outline-success" id="downloadButton"><i class="fas fa-file-csv  w-12"></i> 下載篩選資料</a>
-            {% comment %} <a class="oversight text-green text-decoration-none pointer" id="downloadButton">下載</a> {% endcomment %}
-
-            {% comment %} <a class="btn btn-outline-success download"><i class="fas fa-file-csv"></i> 下載篩選資料</a> {% endcomment %}
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="col-2 bg-white shadow-sm remain">
-        <form action="{% url 'download' pk %}" method="post" id="downloadForm">
-          {% csrf_token %}
-          <input type="hidden" name="email" value="" />
-          <div class="row">
-            <div class="mt-3 d-flex justify-content-between">
-              <p>篩選條件</p>
-              <div>
-                <button type="button" class="btn btn-orange py-0 px-1 fs-14" id="submitSelect">篩選</button>
-                <button type="button" class="btn btn-light border-secondary py-0 px-1 clear fs-14">清除</button>
-              </div>
-            </div>
-            <hr class="hr-style"/>
-            <div class="scroll-part">
-              <p class="mt-3 mb-1 d-flex justify-content-between">
-                <strong>物種</strong>
-              </p>
-              <ul id="species-list" class="font-sm ls-none">
-                <li id="species-list-all">
-                  <label class="form-check-label">
-                    <i class="fas fa-check title-dark  w-12"></i>
-                    <input id="species-all-option" class="filter all" type="checkbox" name="species-filter" value="all" checked />
-                    全部
-                  </label>
-                </li>
-                {% for i in species %}
-                <li>
-                  <label class="form-check-label w-100">
-                    <i class="fas fa-check title-dark  w-12"></i>
-                    <input class="filter" type="checkbox" name="species-filter" value="{{ i.1 }}" checked />
-                    {{ i.1 }} ({{i.0}})
-                  </label>
-                </li>
-                {% endfor %}
-              </ul>
-              <p class="mb-1"><strong>樣區 / 相機位置</strong></p>
-              <input type="hidden" id="checkbox-all-unchecked" value="false" />
-              <ul id="studyarea-list" class="font-sm ls-none">
-                <li>
-                  <label class="form-check-label">
-                    <i class="fas fa-check title-dark w-12"></i>
-                    <input class="filter all" type="radio" name="sa-filter" value="" checked />
-                    全部
-                  </label>
-                </li>
-                {% for i in study_area %} {% if i.parent_id == None %}
-                <li>
-                  <label class="form-check-label w-100">
-                    <input class="filter studyarea-name" type="radio" name="sa-filter" value="{{ i.id }}" id="{{ i.id }}" data-bs-toggle="collapse" href="#collapse_{{ i.id }}" role="button" aria-expanded="false" aria-controls="collapse_{{ i.id }}" />
-                    {{ i.name }}
-                  </label>
-                </li>
-                <div class="collapse" id="collapse_{{ i.id }}">
-                  {% if i.deployment_set.all != None %}
-                  <li>
-                    <label class="form-check-label w-auto">
-                      <input class="filter all" type="checkbox" name="d-filter" value="all" data-parent-radio="{{ i.id }}" />
-                      全部
-                    </label>
-                  </li>
-                  {% for j in i.deployment_set.all|dictsort:"name" %}
-                  <li>
-                    <label class="form-check-label w-auto">
-                      <input class="filter" type="checkbox" name="d-filter" value="{{ j.id }}" data-parent-radio="{{ i.id }}" />
-                      {{ j.name }}
-                    </label>
-                  </li>
-                  {% endfor %} {% endif %}
-                </div>
-                {% endif %} {% endfor %}
-              </ul>
-              <p class="mb-1"><strong>資料夾名稱</strong></p>
-              <select id="select-folder" name="folder_name" class="mb-2" placeholder="請選擇資料夾名稱">
-                <option value="">請選擇資料夾名稱</option>
-              </select>
-              <p class="mb-1"><strong>海拔</strong></p>
-              <p id="altitude-content" class="font-sm"></p>
-              起：<input type="text" class="datepicker form-control w-10" placeholder="{{altitude__min}}" name="start_altitude"/>公尺
-              <span class="my-auto">～</span>
-              訖：<input type="text" class="datepicker form-control w-10" type="text" placeholder="{{altitude__max}}" name="end_altitude"/>公尺
-              <input type="text" class="d-none" id="altitude"/>
-              <p class="mb-1"><strong>縣市</strong></p>
-              <select id="select-county" name="county_name" class="selectpicker form-control" data-live-search-placeholder="搜尋" value="" data-live-search="true" data-none-selected-text="--請選擇--">
-              <option value='' selected>--請選擇--</option>
-              {% for i in county_list%}  
-                  <option value={{i.parametername}}>{{i.name}}</option>
-              {% endfor %} 
-            </select>
-              <p class="mb-1"><strong>保護留區</strong></p>
-              <select id="select-protectarea" name="protectarea_name" class="selectpicker form-control" data-live-search-placeholder="搜尋" value="" data-live-search="true" data-none-selected-text="--請選擇--">
-              <option value='' selected>--請選擇--</option>
-              {% for i in protectedarea_list%}  
-                  <option value={{i.parametername}}>{{i.name}}</option>
-              {% endfor %}
-            </select>
-              <p class="mb-1"><strong>拍攝時間</strong></p>
-              <div class="w-75 mx-auto mb-2">
-                <input type="time" id="times" name="times" step="2" />
-              </div>
-              <p class="mb-1"><strong>拍攝日期</strong></p>
-              <p id="date-content" class="font-sm"></p>
-              <input type="text" class="d-none" id="date" readonly />
-              <div id="date-slider" class="w-75 mx-auto mb-5"></div>
-            </div>
-          </div>
-          <input type="hidden" name="start_date" value="" />
-          <input type="hidden" name="end_date" value="" />
-        </form>
-      </div>
-      <div class="col-10 remain">
-        <table class="table table-borderless w-100 px-3 h-100" id="img-table">
-          <thead class="fw-bold title-dark">
-            <tr>
-              <td><input type="checkbox" id="edit-all" class="edit-checkbox" name="edit" /></td>
-              <td>樣區</td>
-              <td class="orderby pointer">相機位置<i data-orderby="d.name" class="fa-solid fa-sort sort-icon"></i></td>
-              <td>檔名</td>
-              <td class="orderby pointer">日期時間<i data-orderby="i.datetime" class="fa-solid fa-sort-down sort-icon-active"></i></td>
-              <td>物種</td>
-              <td>年齡</td>
-              <td>性別</td>
-              <td>角況</td>
-              <td>個體ID</td>
-              <td>備註</td>
-              <td>影像</td>
-              <td>image_uuid</td>
-              <td>image_id</td>
-            </tr>
-          </thead>
-        </table>
-      </div>
-    </div>
-    {% else %}
-    <div class="alert alert-danger alert-dismissible fade show mt-50p" role="alert">
-        您的權限不足
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-      </div>
-      <a class="btn btn-outline-success" href="{% url 'project_overview' %}">回上一頁</a>
-    {% endif %}
-  </div>
-
+{% csrf_token %}
+	<!--下載跳匡-->
+	<div class="pop-box down-pop" id="downloadModal" style="display: none;">
+		<div class="center-box">
+			<div class="wbox">
+				<div class="xx">
+					<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+						<g id="Group_789" data-name="Group 789" transform="translate(-1679 -599)">
+							<g id="Ellipse_4" data-name="Ellipse 4" transform="translate(1679 599)" fill="none" stroke="#257455" stroke-width="2">
+								<circle cx="20" cy="20" r="20" stroke="none"/>
+								<circle cx="20" cy="20" r="19" fill="none"/>
+							</g>
+							<g id="Group_712" data-name="Group 712" transform="translate(-133.5 164.5)">
+								<line id="Line_1" data-name="Line 1" x1="16" y2="16" transform="translate(1824.5 446.5)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+								<line id="Line_2" data-name="Line 2" x2="16" y2="16" transform="translate(1824.5 446.5)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+							</g>
+						</g>
+					</svg>
+				</div>
+				<div class="titlebox" id="downloadModal">
+					下載篩選資料
+				</div>
+				<div class="contentbox">
+					<p class="marb_20">
+						檔案為離線產生，處理完成後，系統會寄下載資訊到您輸入的電子郵件信箱。如未收到信件，請檢查您的郵件設定，如仍未收到信件，請聯絡我們。
+					</p>
+					<div class="input-item d-flex justify-content-start">
+						<input class="form-control w-80" type="text" id="download-email" placeholder="請輸入您的電子郵件"/>
+						<svg id="email-check" xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="lightgrey" class="bi bi-check my-auto" viewBox="0 0 16 16">
+							<path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
+						</svg>
+					</div>
+					<div class="btn-center">
+						<button class="btn-green" id="canceldownload">
+							取消
+						</button>
+						<button class="btn-green btn btn-outline-success download"   disabled>
+							確認送出
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
   <!-- Edit Modal -->
-  <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+  {% comment %} <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content edit-content">
         <div class="modal-body" id="modal-text">
@@ -254,12 +137,6 @@
               <div class="col-1"></div>
               <div class="col-3 my-auto">日期時間</div>
               <div class="col-7" id="edit-datetime">
-                <!--
-                <input class="form-control" style="height: 38px" id="edit-datetime" type="datetime-local" name="datetime" step="1">
-                <div class="notice d-none">
-                  時間格式錯誤，請至少填寫至分鐘
-                </div>
-                -->              
               </div>
               <div class="col-1"></div>
             </div>
@@ -330,101 +207,524 @@
         </div>
       </div>
     </div>
+  </div> {% endcomment %}
+	<!--詳細＋編輯跳匡 打開隱藏背後卷軸-->
+	<div class="pop-box photode-pop" id="editModal"  style="display: none;">
+		<div class="center-box photocontent edit-content">
+			<div class="photo-debox ">
+				<div class="xx">
+					<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+						<g id="Group_789" data-name="Group 789" transform="translate(-1679 -599)">
+							<g id="Ellipse_4" data-name="Ellipse 4" transform="translate(1679 599)" fill="none" stroke="#257455" stroke-width="2">
+								<circle cx="20" cy="20" r="20" stroke="none"/>
+								<circle cx="20" cy="20" r="19" fill="none"/>
+							</g>
+							<g id="Group_712" data-name="Group 712" transform="translate(-133.5 164.5)">
+								<line id="Line_1" data-name="Line 1" x1="16" y2="16" transform="translate(1824.5 446.5)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+								<line id="Line_2" data-name="Line 2" x2="16" y2="16" transform="translate(1824.5 446.5)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+							</g>
+						</g>
+					</svg>
+				</div>
+				<div class="left-photobox" id="modal-text">
+					<button class="arl">
+						<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+							<g id="Group_798" data-name="Group 798" transform="translate(-380 -695)">
+								<g id="Ellipse_2969" data-name="Ellipse 2969" transform="translate(380 695)" fill="#fff" stroke="#257455" stroke-width="1">
+									<circle cx="20" cy="20" r="20" stroke="none"/>
+									<circle cx="20" cy="20" r="19.5" fill="none"/>
+								</g>
+								<g id="Group_795" data-name="Group 795" transform="translate(397 708)">
+									<line id="Line_6" data-name="Line 6" x1="6.549" y2="6.549" transform="translate(0)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+									<line id="Line_7" data-name="Line 7" x1="6.549" y1="6.549" transform="translate(0 6.549)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+								</g>
+							</g>
+						</svg>
+					</button>
+					<button class="arr">
+						<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+							<g id="Group_797" data-name="Group 797" transform="translate(-890 -690)">
+								<g id="Ellipse_2970" data-name="Ellipse 2970" transform="translate(890 690)" fill="#fff" stroke="#257455" stroke-width="1">
+									<circle cx="20" cy="20" r="20" stroke="none"/>
+									<circle cx="20" cy="20" r="19.5" fill="none"/>
+								</g>
+								<g id="Group_796" data-name="Group 796" transform="translate(-247.774 -982.049)">
+									<line id="Line_6" data-name="Line 6" x2="6.549" y2="6.549" transform="translate(1154.5 1685.5)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+									<line id="Line_7" data-name="Line 7" y1="6.549" x2="6.549" transform="translate(1154.5 1692.049)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+								</g>
+							</g>
+						</svg>
+					</button>
+					<div class="img-all">
+						<div class="item" id="edit-image"></div>
+					</div>
+				</div>
+				<div class="right-form">
+					<form novalidate action="{% url 'edit_image' pk %}" method="post" autocomplete="off" id="editForm">
+						{% csrf_token %}
+					<div class="top-infbox">
+						<div class="itembox">
+							<h3>檔名</h3>
+							<p id="edit-filename"></p>
+						</div>
+						<div class="itembox">
+							<h3>日期時間</h3>
+							<p id="edit-datetime"></p>
+						</div>
+					</div>
+					<div class="form-area">
+						<div class="input-item">
+							<p class="title">計畫</p>
+							<div class="autocomplete">
+								<input id="edit-project_id" type="hidden" name="project_id" />
+								<input class="form-control" id="edit-project" type="text" />
+							</div>
+							<div class="notice d-none">
+								必填欄位
+							</div>
+						</div>
+						<div class="item-2">
+							<div class="input-item">
+								<p class="title">樣區</p>
+								<div class="autocomplete">
+									<input id="edit-studyarea_id" type="hidden" name="studyarea_id" />
+									<input class="form-control" id="edit-studyarea" type="text" />
+								</div>
+								<div class="notice d-none">
+									必填欄位
+								</div>
+							</div>
+							<div class="input-item">
+								<p class="title">相機位置</p>
+								<div class="autocomplete">
+									<input class="form-control" id="edit-deployment" type="text" />
+									<input id="edit-deployment_id" type="hidden" name="deployment_id" />
+								</div>
+								<div class="notice d-none">
+									必填欄位
+								</div>
+							</div>
+						</div>
+
+						<div class="item-2">
+							<div class="input-item">
+								<p class="title">物種</p>
+								<div class="autocomplete">
+									<input class="form-control" id="edit-species" type="text" name="species" />
+								</div>
+								<div class="notice d-none">
+									必填欄位
+								</div>
+							</div>
+							<div class="input-item">
+								<p class="title">年齡</p>
+								<div>
+									<div class="autocomplete">
+										<input class="form-control" id="edit-life_stage" type="text" name="life_stage" />
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="item-2">
+							<div class="input-item">
+								<p class="title">性別</p>
+									<div class="autocomplete">
+									  <input class="form-control" id="edit-sex" type="text" name="sex" />
+									</div>
+							</div>
+							<div class="input-item">
+								<p class="title">角況</p>
+								<div class="autocomplete">
+									<input class="form-control" id="edit-antler" type="text" name="antler" />
+								</div>
+							</div>
+						</div>
+						<div class="item-2">
+							<div class="input-item">
+								<p class="title">個體ID</p>
+								<input class="form-control" id="edit-animal_id" type="text" name="animal_id" />
+							</div>
+							<div class="input-item">
+								<p class="title">備註</p>
+								<input class="form-control" id="edit-remarks" type="text" name="remarks" />
+							</div>
+						</div>
+						<input type="hidden" id="edit-image_uuid" name="image_uuid" value="" />
+						<input type="hidden" id="edit-image_id" name="image_id" value="" />
+						<input type="hidden" id="edit-page_info" name="page_info" value="" />
+					</form>
+						<div class="btn-area edit-footer">
+							<button class="btn-greeno">取消</button>
+							<button class="btn-green edit-submit">確認儲存</button>
+						</div>
+					</div>
+
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="box">
+	{% comment %} <div class="container box"> {% endcomment %}
+	<div class="innbox gray-bg">
+		<div class="main-box">
+			<div class="main-title flex-spb">
+				<div class="flex-boxleft">
+					<a href="{% url 'project_info' pk %}" class="back-btn">
+						<svg xmlns="http://www.w3.org/2000/svg" width="9.377" height="15.927" viewBox="0 0 9.377 15.927">
+							<g id="Group_736" data-name="Group 736" transform="translate(1.414 1.414)">
+								<line id="Line_6" data-name="Line 6" x1="6.549" y2="6.549" transform="translate(0)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+								<line id="Line_7" data-name="Line 7" x1="6.549" y1="6.549" transform="translate(0 6.549)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+							</g>
+						</svg>
+						<p>返回</p>
+					</a>
+					<h2>{{ project_info.0 }}</h2>
+				</div>
+
+				{% comment %} this could be part of datatable {% endcomment %}
+				<div class="right-btnaera">
+					<button class="edi-btn" id="edit_button" data-edit="off">
+						<svg id="Group_749" data-name="Group 749" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="20" height="19.999" viewBox="0 0 20 19.999">
+							<g id="Group_748" data-name="Group 748" clip-path="url(#clip-path)">
+								<path id="Path_10217" data-name="Path 10217" d="M20,4.238a2.818,2.818,0,0,1-.855,2q-3.8,3.8-7.6,7.6-1.8,1.8-3.613,3.6a1.215,1.215,0,0,1-.45.279q-3.29,1.11-6.586,2.2a1.082,1.082,0,0,1-.4.078.546.546,0,0,1-.446-.786Q.775,17,1.512,14.792c.256-.769.509-1.54.774-2.306a1.037,1.037,0,0,1,.231-.384Q8.133,6.477,13.756.861A2.744,2.744,0,0,1,17.741.853q.734.724,1.46,1.457A2.747,2.747,0,0,1,20,4.238M7.447,16.318,17,6.767,13.233,3,3.678,12.549l3.768,3.769M17.837,5.967c.2-.192.414-.38.607-.587a1.622,1.622,0,0,0,.03-2.23c-.523-.565-1.071-1.108-1.634-1.633a1.578,1.578,0,0,0-2-.128,9.64,9.64,0,0,0-.828.753l3.824,3.825M6.4,16.925,3.073,13.6,1.406,18.587,6.4,16.925" transform="translate(0 0)" fill="#257455"/>
+							</g>
+						</svg>
+						編輯模式
+					</button>
+					<button class="dow-btn" id="downloadButton">
+						<svg xmlns="http://www.w3.org/2000/svg" width="18.808" height="17.276" viewBox="0 0 18.808 17.276">
+							<g id="Group_752" data-name="Group 752" transform="translate(0 0)">
+								<path id="Path_10218" data-name="Path 10218" d="M9.386,174.34H2.506a2.36,2.36,0,0,1-2.5-2.5c0-1,0-2,0-2.994a.78.78,0,0,1,1.539-.187,1.365,1.365,0,0,1,.024.316c0,.973,0,1.947,0,2.92a.792.792,0,0,0,.862.873q6.979,0,13.957,0a.786.786,0,0,0,.851-.858c0-.99,0-1.979,0-2.969a.788.788,0,1,1,1.566-.011c0,1,0,2,0,2.994a2.347,2.347,0,0,1-2.416,2.414q-3.5.006-7,0" transform="translate(0.001 -157.064)" fill="#257455"/>
+								<path id="Path_10219" data-name="Path 10219" d="M76.534,11.7v-.346q0-5.212,0-10.425a1.374,1.374,0,0,1,.043-.386A.767.767,0,0,1,77.41.006.8.8,0,0,1,78.1.7,2.786,2.786,0,0,1,78.1,1q0,5.2,0,10.4v.316c.38-.3.722-.572,1.063-.845q.794-.635,1.585-1.272a.784.784,0,1,1,.989,1.211q-1.936,1.559-3.879,3.11a.78.78,0,0,1-1.09-.007q-1.894-1.514-3.784-3.033a.78.78,0,1,1,.965-1.226c.788.622,1.57,1.253,2.354,1.88.062.049.126.1.23.174" transform="translate(-67.914 -0.001)" fill="#257455"/>
+							</g>
+						</svg>
+						下載篩選資料
+					</button>
+				</div>
+				{% comment %} this could be part of datatable {% endcomment %}
+
+			</div>
+
+
+			<div class="pjflex-content">
+				{% comment %} condiction search start  {% endcomment %}
+				<div class="left-selectlist">
+					<div class="opitem-btn">
+						篩<br/>選<br/>條<br/>件
+					</div>
+					<div class="topitem">
+						<h3 class="light-green">篩選條件</h3>
+						<div class="right-btn">
+							<button class="red" id="submitSelect">篩選</button>
+							<button class="clear">清除</button>
+						</div>
+					</div>
+					<div class="sscro-area">
+						<div class="item-set1">
+							<div class="settitle-box">
+								<h4>物種</h4>
+								<div class="arrup">
+									<img src="{% static 'image/arrup.svg' %}" alt="">
+								</div>
+							</div>
+							<ul class="check-list" id="species-list">
+								<!---點選給li now-->
+								<li class="now filter all" id="species-list-all">
+									<div class="cir-checkbox flex-box form-check-label">
+										<img class="coricon" src="{% static 'image/correct.svg' %}" alt="">
+									</div>
+									<p>
+										<input id="species-all-option" class="filter all" type="hidden" name="species-filter" value="all" checked />
+										全部
+									</p>
+								</li>
+								{% for i in species %}
+									<li class="now filter" name="species-filter">
+										<input class="filter" type="checkbox" name="species-filter" value="{{ i.1 }}" checked />
+										<div class="cir-checkbox form-check-label w-100">
+											<img class="coricon" src="{% static 'image/correct.svg' %}"  alt="">
+										</div>
+										<p>{{ i.1 }} ({{i.0}})</p>
+									</li>
+								{% endfor %}
+
+							</ul>
+						</div>
+						<div class="item-set1">
+							<div class="settitle-box">
+								<h4>樣區 / 相機位置</h4>
+								<div class="arrup">
+									<img src="{% static 'image/arrup.svg' %}" alt="">
+								</div>
+							</div>
+							<ul class="check-list camera-local" id="studyarea-list" >
+							<input type="hidden" id="checkbox-all-unchecked" value="false" />
+								<li class="now">
+									<div class="flex-box">
+										<div class="cir-checkbox"> <img class="coricon" src="{% static 'image/correct.svg' %}" alt=""> </div>
+										<p>
+											<input class="filter all" type="radio" name="sa-filter" value="" checked /> 全部
+										</p>
+									</div>
+								</li>
+								{% for i in study_area %} {% if i.parent_id == None %}
+									<li>
+										<div class="flex-box" data-parent-radio="{{ i.id }}" >
+											<div class="cir-checkbox">
+												<img class="coricon" src="{% static 'image/correct.svg' %}" alt="">
+											</div>
+											<p>
+												<input class="filter studyarea-name" type="radio" name="sa-filter" value="{{ i.id }}" id="{{ i.id }}" data-bs-toggle="collapse" href="#collapse_{{ i.id }}" role="button" aria-expanded="false" aria-controls="collapse_{{ i.id }}" />
+												{{ i.name }}
+											</p>
+										</div>
+										
+										<div class="check2-layerbox" id="collapse_{{ i.id }}">
+											<ul>
+												{% if i.deployment_set.all != None %}
+													<li>
+														<p><input class="filter all" type="checkbox" name="d-filter" value="all" data-parent-radio="{{ i.id }}" />全部</p>
+													</li>
+													{% for j in i.deployment_set.all|dictsort:"name" %}
+														<li>
+															<input class="filter" type="checkbox" name="d-filter" value="{{ j.id }}" data-parent-radio="{{ i.id }}" />
+															{{ j.name }}
+														</li>
+													{% endfor %} 
+												{% endif %}
+											</ul>
+										</div>
+									</li>
+								
+								{% endif %} {% endfor %}
+								
+							</ul>
+						</div>
+						<div class="item-other">
+							<div class="item1">
+								<h4>資料夾名稱</h4>
+								<div class="input-item">
+									{% comment %} 3 & 4 的css衝突 {% endcomment %}
+									<select id="select-folder" name="folder_name" placeholder="請選擇資料夾名稱">
+										<option value="">請選擇資料夾名稱</option>
+									  </select>
+								</div>
+							</div>
+							<div class="item1">
+								<h4>海拔</h4>
+								<div class="input-item">
+									{% comment %} <select name="" id="">
+										<option value="">範圍請用”-“標示</option>
+										<option value=""> > </option>
+										<option value=""> < </option>
+									</select> {% endcomment %}
+								</div>
+								<div class="input-item right30">
+									{% comment %} <input type="text">
+									<span class="m">m</span> {% endcomment %}
+									<p id="altitude-content" class="font-sm"></p>
+									起：<input type="text" class="datepicker form-control w-10" placeholder="{{altitude__min}}" name="start_altitude"/>公尺
+									<span class="my-auto">～</span>
+									訖：<input type="text" class="datepicker form-control w-10" type="text" placeholder="{{altitude__max}}" name="end_altitude"/>公尺
+									<input type="text" class="d-none" id="altitude"/>
+								</div>
+							</div>
+							<div class="item1">
+								<h4>縣市</h4>
+								<div class="input-item">
+									<select id="select-county" name="county_name" class="selectpicker form-control" data-live-search-placeholder="搜尋" value="" data-live-search="true" data-none-selected-text="--請選擇--">
+										<option value='' selected>請選擇</option>
+										{% for i in county_list%}  
+											<option value={{i.parametername}}>{{i.name}}</option>
+										{% endfor %} 
+									{% comment %} <select name="" id="">
+										<option value="">請選擇</option>
+									{% endcomment %}
+									</select> 
+								</div>
+							</div>
+							<div class="item1">
+								<h4>保護留區</h4>
+								<div class="input-item">
+									<select id="select-protectarea" name="protectarea_name" class="selectpicker form-control" data-live-search-placeholder="搜尋" value="" data-live-search="true" data-none-selected-text="--請選擇--">
+										<option value='' selected>請選擇</option>
+										{% for i in protectedarea_list%}  
+											<option value={{i.parametername}}>{{i.name}}</option>
+										{% endfor %}
+									  </select>
+								</div>
+							</div>
+							<div class="item1">
+								<h4>拍攝時間</h4>
+								<div class="input-item right30">
+									<input type="time" id="times" name="times" step="2" />
+									<button class="icon-clock">
+										<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+											<g id="Group_739" data-name="Group 739" transform="translate(-408 -2324)">
+												<g id="Ellipse_50" data-name="Ellipse 50" transform="translate(408 2324)" fill="#fff" stroke="#257455" stroke-width="1.5">
+													<circle cx="11" cy="11" r="11" stroke="none"/>
+													<circle cx="11" cy="11" r="10.25" fill="none"/>
+												</g>
+												<g id="Group_740" data-name="Group 740" transform="translate(419 2329.5)">
+													<line id="Line_16" data-name="Line 16" y2="4.998" transform="translate(0)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="1.5"/>
+													<line id="Line_17" data-name="Line 17" x2="3.332" y2="3.332" transform="translate(0 4.998)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="1.5"/>
+												</g>
+											</g>
+										</svg>
+									</button>
+								</div>
+							</div>
+							<div class="item1">
+								<h4>拍攝日期</h4>
+									<div class="input-item date-select">
+										<input type="text" name="start_date" value="">
+										<button class="date-cal">
+											<svg xmlns="http://www.w3.org/2000/svg" width="24" height="25.211" viewBox="0 0 24 25.211">
+												<g id="Group_3" data-name="Group 3" transform="translate(0 0)">
+													<g id="Group_686" data-name="Group 686">
+														<path id="Path_10209" data-name="Path 10209" d="M4.771,1.8C4.995.617,5.65-.011,6.628,0c.951.011,1.6.652,1.8,1.788h7.163A1.862,1.862,0,0,1,16.38.322a1.765,1.765,0,0,1,1.17-.316,1.843,1.843,0,0,1,1.666,1.8c.526,0,1.057-.011,1.587,0a4.414,4.414,0,0,1,.918.095,2.955,2.955,0,0,1,2.272,2.8c0,.084.005.169.005.253q0,8.553,0,17.106a2.929,2.929,0,0,1-1.8,2.887A2.987,2.987,0,0,1,21,25.2q-9,.023-18,.007A2.967,2.967,0,0,1,.011,22.277C-.009,21.508,0,20.739,0,19.97q0-7.512,0-15.024A2.957,2.957,0,0,1,2.046,1.97a3.937,3.937,0,0,1,1.047-.162c.56-.026,1.121-.007,1.678-.007M1.2,8.414v.324q0,6.639,0,13.277a1.825,1.825,0,0,0,1.987,2H20.822A1.823,1.823,0,0,0,22.8,22.038q0-6.653,0-13.305V8.414Zm0-1.232H22.8c0-.853.023-1.688-.007-2.52a1.687,1.687,0,0,0-1.412-1.6,20.671,20.671,0,0,0-2.158-.016c-.205,1.115-.822,1.731-1.769,1.752-.989.022-1.59-.544-1.884-1.776H8.42A1.832,1.832,0,0,1,6.636,4.794C5.644,4.81,4.984,4.182,4.78,3.03c-.692,0-1.387-.049-2.073.013a1.7,1.7,0,0,0-1.5,1.618c-.03.833-.007,1.667-.007,2.522M7.2,2.4c0-.187.008-.375,0-.562a.614.614,0,0,0-.61-.638A.606.606,0,0,0,6,1.825c-.013.384-.014.768,0,1.152a.6.6,0,0,0,.594.622A.607.607,0,0,0,7.2,2.962c.009-.187,0-.375,0-.562M18,2.421h0c0-.215.015-.432,0-.646a.6.6,0,0,0-.583-.575.594.594,0,0,0-.608.576c-.021.411-.02.825,0,1.236a.59.59,0,0,0,.6.586.6.6,0,0,0,.6-.588c.015-.2,0-.393,0-.59" transform="translate(0 0)" fill="#257455"/>
+														<path id="Path_10210" data-name="Path 10210" d="M47.962,145.811c0-.319-.01-.638,0-.956a1.174,1.174,0,0,1,1.159-1.144q.928-.018,1.856,0a1.172,1.172,0,0,1,1.165,1.166c.014.6.011,1.2,0,1.8a1.18,1.18,0,0,1-1.191,1.231c-.6.019-1.2.018-1.8,0a1.184,1.184,0,0,1-1.2-1.226c-.006-.291,0-.581,0-.872h0m2.975-.885H49.172v1.766h1.765Z" transform="translate(-44.354 -132.903)" fill="#257455"/>
+														<path id="Path_10211" data-name="Path 10211" d="M131.813,145.762c0-.319-.011-.638,0-.956a1.166,1.166,0,0,1,1.121-1.122q.969-.028,1.94,0a1.159,1.159,0,0,1,1.116,1.126c.018.618.014,1.238.005,1.856a1.176,1.176,0,0,1-1.181,1.212c-.609.021-1.219.021-1.828,0a1.179,1.179,0,0,1-1.178-1.215c-.006-.3,0-.6,0-.9h0m2.978-.87h-1.772v1.762h1.772Z" transform="translate(-121.903 -132.873)" fill="#257455"/>
+														<path id="Path_10212" data-name="Path 10212" d="M219.816,145.886c0,.281.005.563,0,.844a1.18,1.18,0,0,1-1.176,1.217c-.608.022-1.219.021-1.827,0a1.177,1.177,0,0,1-1.183-1.209q-.014-.886,0-1.772a1.182,1.182,0,0,1,1.231-1.218q.858-.007,1.715,0a1.188,1.188,0,0,1,1.241,1.237c.005.3,0,.6,0,.9m-1.2-.919h-1.775v1.755h1.775Z" transform="translate(-199.419 -132.943)" fill="#257455"/>
+														<path id="Path_10213" data-name="Path 10213" d="M52.1,233.578c0,.319.011.638,0,.956a1.171,1.171,0,0,1-1.143,1.13q-.942.023-1.884,0a1.168,1.168,0,0,1-1.152-1.151c-.015-.609-.012-1.219,0-1.828a1.175,1.175,0,0,1,1.175-1.217c.609-.021,1.219-.02,1.828,0a1.179,1.179,0,0,1,1.184,1.209c.007.3,0,.6,0,.9h0m-2.968.877H50.89V232.68H49.136Z" transform="translate(-44.312 -214.062)" fill="#257455"/>
+														<path id="Path_10214" data-name="Path 10214" d="M135.957,233.58c0,.309.009.619,0,.928a1.176,1.176,0,0,1-1.147,1.157q-.942.023-1.884,0a1.168,1.168,0,0,1-1.15-1.152c-.015-.609-.012-1.219,0-1.828a1.175,1.175,0,0,1,1.177-1.215c.609-.02,1.219-.02,1.828,0a1.179,1.179,0,0,1,1.182,1.211c.007.3,0,.6,0,.9h0m-2.984.873h1.775v-1.759h-1.775Z" transform="translate(-121.863 -214.062)" fill="#257455"/>
+														<path id="Path_10215" data-name="Path 10215" d="M215.661,233.554c0-.291-.005-.581,0-.872a1.179,1.179,0,0,1,1.18-1.213c.609-.02,1.219-.02,1.828,0a1.175,1.175,0,0,1,1.179,1.213q.014.886,0,1.772a1.184,1.184,0,0,1-1.235,1.214q-.858.007-1.715,0a1.186,1.186,0,0,1-1.236-1.214c-.007-.3,0-.6,0-.9m2.98-.861h-1.77v1.766h1.77Z" transform="translate(-199.453 -214.062)" fill="#257455"/>
+													</g>
+												</g>
+											</svg>
+										</button>
+									</div>
+									<div class="input-item date-select">
+										<input type="text" name="end_date" value="">
+										<button class="date-cal">
+											<svg xmlns="http://www.w3.org/2000/svg" width="24" height="25.211" viewBox="0 0 24 25.211">
+												<g id="Group_3" data-name="Group 3" transform="translate(0 0)">
+													<g id="Group_686" data-name="Group 686">
+														<path id="Path_10209" data-name="Path 10209" d="M4.771,1.8C4.995.617,5.65-.011,6.628,0c.951.011,1.6.652,1.8,1.788h7.163A1.862,1.862,0,0,1,16.38.322a1.765,1.765,0,0,1,1.17-.316,1.843,1.843,0,0,1,1.666,1.8c.526,0,1.057-.011,1.587,0a4.414,4.414,0,0,1,.918.095,2.955,2.955,0,0,1,2.272,2.8c0,.084.005.169.005.253q0,8.553,0,17.106a2.929,2.929,0,0,1-1.8,2.887A2.987,2.987,0,0,1,21,25.2q-9,.023-18,.007A2.967,2.967,0,0,1,.011,22.277C-.009,21.508,0,20.739,0,19.97q0-7.512,0-15.024A2.957,2.957,0,0,1,2.046,1.97a3.937,3.937,0,0,1,1.047-.162c.56-.026,1.121-.007,1.678-.007M1.2,8.414v.324q0,6.639,0,13.277a1.825,1.825,0,0,0,1.987,2H20.822A1.823,1.823,0,0,0,22.8,22.038q0-6.653,0-13.305V8.414Zm0-1.232H22.8c0-.853.023-1.688-.007-2.52a1.687,1.687,0,0,0-1.412-1.6,20.671,20.671,0,0,0-2.158-.016c-.205,1.115-.822,1.731-1.769,1.752-.989.022-1.59-.544-1.884-1.776H8.42A1.832,1.832,0,0,1,6.636,4.794C5.644,4.81,4.984,4.182,4.78,3.03c-.692,0-1.387-.049-2.073.013a1.7,1.7,0,0,0-1.5,1.618c-.03.833-.007,1.667-.007,2.522M7.2,2.4c0-.187.008-.375,0-.562a.614.614,0,0,0-.61-.638A.606.606,0,0,0,6,1.825c-.013.384-.014.768,0,1.152a.6.6,0,0,0,.594.622A.607.607,0,0,0,7.2,2.962c.009-.187,0-.375,0-.562M18,2.421h0c0-.215.015-.432,0-.646a.6.6,0,0,0-.583-.575.594.594,0,0,0-.608.576c-.021.411-.02.825,0,1.236a.59.59,0,0,0,.6.586.6.6,0,0,0,.6-.588c.015-.2,0-.393,0-.59" transform="translate(0 0)" fill="#257455"/>
+														<path id="Path_10210" data-name="Path 10210" d="M47.962,145.811c0-.319-.01-.638,0-.956a1.174,1.174,0,0,1,1.159-1.144q.928-.018,1.856,0a1.172,1.172,0,0,1,1.165,1.166c.014.6.011,1.2,0,1.8a1.18,1.18,0,0,1-1.191,1.231c-.6.019-1.2.018-1.8,0a1.184,1.184,0,0,1-1.2-1.226c-.006-.291,0-.581,0-.872h0m2.975-.885H49.172v1.766h1.765Z" transform="translate(-44.354 -132.903)" fill="#257455"/>
+														<path id="Path_10211" data-name="Path 10211" d="M131.813,145.762c0-.319-.011-.638,0-.956a1.166,1.166,0,0,1,1.121-1.122q.969-.028,1.94,0a1.159,1.159,0,0,1,1.116,1.126c.018.618.014,1.238.005,1.856a1.176,1.176,0,0,1-1.181,1.212c-.609.021-1.219.021-1.828,0a1.179,1.179,0,0,1-1.178-1.215c-.006-.3,0-.6,0-.9h0m2.978-.87h-1.772v1.762h1.772Z" transform="translate(-121.903 -132.873)" fill="#257455"/>
+														<path id="Path_10212" data-name="Path 10212" d="M219.816,145.886c0,.281.005.563,0,.844a1.18,1.18,0,0,1-1.176,1.217c-.608.022-1.219.021-1.827,0a1.177,1.177,0,0,1-1.183-1.209q-.014-.886,0-1.772a1.182,1.182,0,0,1,1.231-1.218q.858-.007,1.715,0a1.188,1.188,0,0,1,1.241,1.237c.005.3,0,.6,0,.9m-1.2-.919h-1.775v1.755h1.775Z" transform="translate(-199.419 -132.943)" fill="#257455"/>
+														<path id="Path_10213" data-name="Path 10213" d="M52.1,233.578c0,.319.011.638,0,.956a1.171,1.171,0,0,1-1.143,1.13q-.942.023-1.884,0a1.168,1.168,0,0,1-1.152-1.151c-.015-.609-.012-1.219,0-1.828a1.175,1.175,0,0,1,1.175-1.217c.609-.021,1.219-.02,1.828,0a1.179,1.179,0,0,1,1.184,1.209c.007.3,0,.6,0,.9h0m-2.968.877H50.89V232.68H49.136Z" transform="translate(-44.312 -214.062)" fill="#257455"/>
+														<path id="Path_10214" data-name="Path 10214" d="M135.957,233.58c0,.309.009.619,0,.928a1.176,1.176,0,0,1-1.147,1.157q-.942.023-1.884,0a1.168,1.168,0,0,1-1.15-1.152c-.015-.609-.012-1.219,0-1.828a1.175,1.175,0,0,1,1.177-1.215c.609-.02,1.219-.02,1.828,0a1.179,1.179,0,0,1,1.182,1.211c.007.3,0,.6,0,.9h0m-2.984.873h1.775v-1.759h-1.775Z" transform="translate(-121.863 -214.062)" fill="#257455"/>
+														<path id="Path_10215" data-name="Path 10215" d="M215.661,233.554c0-.291-.005-.581,0-.872a1.179,1.179,0,0,1,1.18-1.213c.609-.02,1.219-.02,1.828,0a1.175,1.175,0,0,1,1.179,1.213q.014.886,0,1.772a1.184,1.184,0,0,1-1.235,1.214q-.858.007-1.715,0a1.186,1.186,0,0,1-1.236-1.214c-.007-.3,0-.6,0-.9m2.98-.861h-1.77v1.766h1.77Z" transform="translate(-199.453 -214.062)" fill="#257455"/>
+													</g>
+												</g>
+											</svg>
+										</button>
+									</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				{% comment %} condiction search start  {% endcomment %}
+
+				<div class="right-tablecont">
+					<div class="delete-area">
+						<button>刪除</button>
+						<p>*點擊列表即可編輯</p>
+					</div>
+					<div class="table-area">
+						<table class="phototable" id="img-table">
+							<thead>
+								<tr>
+									<td class="first-check"><input class="inp-check" type="checkbox"></td>
+									<td class="nth1">樣區</td>
+									<td class="nth2">
+										<div class="sortbox">
+											<p>相機位置</p>
+											<div class="sortbtn">
+												<svg xmlns="http://www.w3.org/2000/svg" width="11" height="19" viewBox="0 0 11 19">
+													<path class="upar" id="Polygon_23" data-name="Polygon 23" d="M4.676,1.2a1,1,0,0,1,1.648,0l3.6,5.235A1,1,0,0,1,9.1,8H1.9a1,1,0,0,1-.824-1.567Z" fill="#78d989" opacity="0.996"/>
+													<path class="downar" id="Polygon_24" data-name="Polygon 24" d="M4.676,1.2a1,1,0,0,1,1.648,0l3.6,5.235A1,1,0,0,1,9.1,8H1.9a1,1,0,0,1-.824-1.567Z" transform="translate(11 19) rotate(180)" fill="#78d989" opacity="0.996"/>
+												</svg>
+											</div>
+										</div>
+									</td>
+									<td class="nth3">檔名</td>
+									<td class="nth4">
+										<div class="sortbox">
+											<p>日期時間</p>
+											<div class="sortbtn">
+												<svg xmlns="http://www.w3.org/2000/svg" width="11" height="19" viewBox="0 0 11 19">
+													<path class="upar" id="Polygon_23" data-name="Polygon 23" d="M4.676,1.2a1,1,0,0,1,1.648,0l3.6,5.235A1,1,0,0,1,9.1,8H1.9a1,1,0,0,1-.824-1.567Z" fill="#78d989" opacity="0.996"/>
+													<path class="downar" id="Polygon_24" data-name="Polygon 24" d="M4.676,1.2a1,1,0,0,1,1.648,0l3.6,5.235A1,1,0,0,1,9.1,8H1.9a1,1,0,0,1-.824-1.567Z" transform="translate(11 19) rotate(180)" fill="#78d989" opacity="0.996"/>
+												</svg>
+											</div>
+										</div>
+									</td>
+									<td>物種</td>
+									<td>年齡</td>
+									<td>性別</td>
+									<td>角況</td>
+									<td class="nth9">個體ID</td>
+									<td class="nth10">備註</td>
+									<td>影像</td>
+									<td>image_uuid</td>
+									<td>image_id</td>
+								</tr>
+							</thead>
+						</table>
+					</div>
+					{% comment %} <div class="page-inf">
+						<div class="leftbox">
+							<p>正在檢視第 11 至 20 筆，總共 253 筆</p>
+							<div class="evpage">
+								<p>每頁顯示</p>
+								<div class="input-item">
+									<select  id="rowsPerPage">
+										<option value="10">10</option>
+										<option value="25">25</option>
+										<option value="50">50</option>
+										<option value="100">100</option>
+									</select>
+								</div>
+								<p>筆</p>
+							</div>
+						</div>
+						<div class="page-num">
+							<!--現在位置加now-->
+							<a href="#" class="num">1</a>
+							<a href="#" class="back">
+								<svg xmlns="http://www.w3.org/2000/svg" width="9.187" height="17.053" viewBox="0 0 9.187 17.053">
+									<g id="pre" transform="translate(111.483 17.054) rotate(180)">
+										<g id="Group_17" data-name="Group 17" transform="translate(102.297 0)">
+											<path id="Path_59" data-name="Path 59" d="M111.291,8.059,103.417.185a.656.656,0,0,0-.928.928L109.9,8.523l-7.411,7.411a.656.656,0,0,0,.928.928l7.874-7.874A.656.656,0,0,0,111.291,8.059Z" transform="translate(-102.297 0)" fill="#529a81"/>
+										</g>
+									</g>
+								</svg>
+
+								<p>上一頁</p>
+							</a>
+							<a href="#" class="num">2</a>
+							<a href="#" class="num now">3</a>
+							<a href="#" class="num">4</a>
+							<a href="#" class="next">
+								<p>下一頁</p>
+								<svg xmlns="http://www.w3.org/2000/svg" width="9.187" height="17.053" viewBox="0 0 9.187 17.053">
+									<g id="next" transform="translate(-102.297 0)">
+										<g id="Group_17" data-name="Group 17" transform="translate(102.297 0)">
+											<path id="Path_59" data-name="Path 59" d="M111.291,8.059,103.417.185a.656.656,0,0,0-.928.928L109.9,8.523l-7.411,7.411a.656.656,0,0,0,.928.928l7.874-7.874A.656.656,0,0,0,111.291,8.059Z" transform="translate(-102.297 0)" fill="#529a81"/>
+										</g>
+									</g>
+								</svg>
+
+							</a>
+							<a href="#" class="num">5</a>
+						</div>
+					</div> {% endcomment %}
+				</div>
+
+				{% comment %} data table QQ end  {% endcomment %}
+			</div>
+
+		</div>
+	</div>	
+	
+
+	{% endblock body %} {% block script %}
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/selectize.min.js" integrity="sha512-JiDSvppkBtWM1f9nPRajthdgTCZV3wtyngKUqVHlAs0d5q72n5zpM3QMOLmuNws2vkYmmLn4r1KfnPzgC/73Mw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+	<script src="{% static 'js/project_detail_new.js' %}"></script>
+  
+	{% endblock script %}
   </div>
-
-  <!-- Info Modal 
-  <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title title-dark">計畫基本資訊</h5>
-          {% if is_authorized %}
-          <a class="btn btn-outline-success ms-2" href="{% url 'edit_project_basic' pk %}"><i class="fa fa-xs fa-pencil"></i> 計畫管理</a>
-          {% endif %}
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <table class="table table-borderless">
-            <tr>
-              <td class="px-3">委辦單位</td>
-              {% if project_info.1 != None and project_info.1 != 'None' %}
-              <td class="text-gray">{{ project_info.1 }}</td>
-              {% else %}
-              <td></td>
-              {% endif %}
-            </tr>
-            <tr>
-              <td class="px-3">計畫編號</td>
-              {% if project_info.1 != None and project_info.2 != 'None' %}
-              <td class="text-gray">{{ project_info.2 }}</td>
-              {% else %}
-              <td></td>
-              {% endif %}
-            </tr>
-            <tr>
-              <td class="px-3">計畫主持人</td>
-              {% if project_info.1 != None and project_info.3 != 'None' %}
-              <td class="text-gray">{{ project_info.3 }}</td>
-              {% else %}
-              <td></td>
-              {% endif %}
-            </tr>
-            <tr>
-              <td class="px-3">計畫時間</td>
-              <td class="text-gray">{{ project_info.4 }} 至 {{ project_info.5 }}</td>
-            </tr>
-            <tr>
-              <td class="px-3">相機樣點運作及缺失比例</td>
-              <td><a class="oversight text-green text-decoration-none" href="{% url 'project_oversight' pk %}">查看</a></td>
-            </tr>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-  -->
-
-  <!-- Download Modal -->
-  <div class="modal fade" id="downloadModal" tabindex="-1" aria-labelledby="downloadModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title title-dark">下載篩選資料</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <p>檔案為離線產生，處理完成後，系統會寄下載資訊到您輸入的電子郵件信箱。如未收到信件，請檢查您的郵件設定，如仍未收到信件，請聯絡我們。</p>
-          <p>請輸入您的電子郵件：</p>
-          <div class="d-flex justify-content-start">
-            <input class="form-control w-75" type="text" id="download-email" />
-            <svg id="email-check" xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="lightgrey" class="bi bi-check my-auto" viewBox="0 0 16 16">
-              <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
-            </svg>
-            <button class="ms-1 btn btn-outline-success download" disabled>送出</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- delete modal -->
-  <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-body">
-          <p class="fs-20">確定刪除？</p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
-          <a class="btn btn-danger" id="deleteData">刪除</a>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {% endblock body %} {% block script %}
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/selectize.min.js" integrity="sha512-JiDSvppkBtWM1f9nPRajthdgTCZV3wtyngKUqVHlAs0d5q72n5zpM3QMOLmuNws2vkYmmLn4r1KfnPzgC/73Mw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="{% static 'js/project_detail.js' %}"></script>
-
-  {% endblock script %}
-</div>
+  
