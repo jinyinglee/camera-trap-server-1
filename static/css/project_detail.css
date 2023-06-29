@@ -39,9 +39,9 @@
     color: black !important;
   }
 
-  .dataTables_wrapper {
+  /* .dataTables_wrapper {
     background-color: white;
-  }
+  } */
 
   #img-table {
     margin: 0 auto;
@@ -121,7 +121,7 @@
   }
 
   /* studyarea */
-  .studyarea-list-area ul {
+  /* .studyarea-list-area ul {
     padding: 0;
     list-style: none;
   }
@@ -129,16 +129,16 @@
   .studyarea-list-area li {
     padding: 15px 0;
     cursor: pointer;
-  }
+  } */
 
   /* sub studyarea */
-  .collapse>li {
+  /* .collapse>li {
     margin-left: 10%;
   }
 
   .collapse-s>li {
     margin-left: 20%;
-  }
+  } */
 
   /* font small */
   .font-sm {
@@ -187,7 +187,7 @@
   }
 
   .w-12 {
-    width: 12px;
+    width: 10px;
     margin-right: 5px;
     margin-left: 5px;
   }
@@ -223,3 +223,38 @@
     height: 14px;
     margin-left: 5px;
   }
+
+  body{
+    background: #f7f7f7 !important;
+  }
+
+  .innbox {
+    padding-top: 0px;
+    }
+  
+  #img-table thead tr td{
+    background: #257455 !important;
+    color: #fff;
+  }
+  
+  #img-table tbody tr td{
+    background: #fff !important;
+    color:black;
+  }
+
+
+  /* #times::-webkit-calendar-picker-indicator {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22"><g id="Group_739" data-name="Group 739" transform="translate(-408 -2324)"><g id="Ellipse_50" data-name="Ellipse 50" transform="translate(408 2324)" fill="#fff" stroke="#257455" stroke-width="1.5"><circle cx="11" cy="11" r="11" stroke="none"/><circle cx="11" cy="11" r="10.25" fill="none"/></g><g id="Group_740" data-name="Group 740" transform="translate(419 2329.5)"><line id="Line_16" data-name="Line 16" y2="4.998" transform="translate(0)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="1.5"/><line id="Line_17" data-name="Line 17" x2="3.332" y2="3.332" transform="translate(0 4.998)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="1.5"/></g></g></svg>');
+    background-size: 16px 16px;
+    background-repeat: no-repeat;
+    background-position: center;
+    width: 16px;
+    height: 16px;
+    opacity: 0.6;
+  } */
+  
+  #edit-image video{
+    padding-top : 75px;
+    padding-bottom : 75px;
+  }
+  

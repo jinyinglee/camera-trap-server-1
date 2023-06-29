@@ -1,99 +1,176 @@
 {% extends 'base/base.html' %}
 {% block head %}
 {% load static %} {% endblock head %} {% block style %}
+<link href="{% static 'css/theme.css' %}" rel="stylesheet">
 <link href="{% static 'css/upload_history.css' %}" rel="stylesheet">
+<link href="{% static 'js/gsap.min.js' %}" >
+<link href="{% static 'js/ScrollTrigger.min.js' %}" >
+<script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
+
 {% endblock %} {% block body %}
 <div class="container content">
-  <div class="row mb-10">
-    <h4 class="title-dark">上傳紀錄</h4>
-  </div>
-  <div class="row">
-    <div class="bg-white shadow px-0 mx-2">
-      <table class="t m-0">
-        <thead>
-          <tr>
-            <th>建立時間</th>
-            <th>最後更新時間</th>
-            <th>上傳資料夾名稱</th>
-            <th>所屬計畫</th>
-            <th>樣區</th>
-            <th>相機位置</th>
-            <th class="pr-10">上傳結果</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if rows %}
-            {% for i in rows %}
-            <tr>
-              <td>{{ i.0 }}</td>
-              <td>{{ i.1 }}</td>
-              <td>{{ i.2 }}</td>
-              <td>{{ i.3 }}</td>
-              <td>{{ i.4 }}</td>
-              <td>{{ i.5 }}</td>
-              <td class="pr-0">
-                {% if i.6 == 'finished' %}
-                <div class="flex-center">
-                  已完成 <img class="up-icon ms-1" src="{% static 'icon/upload-success.png' %}" />
-                  </div>
-                {% elif i.6 == 'unfinished' %}
-                <div class="flex-center">
-                  未完成 <img class="up-icon ms-1" src="{% static 'icon/upload-fail.png' %}" />
-                </div>
-                <a class="setModal link error" data-deployment_journal_id="{{ i.8 }}" data-species_error="{{ i.9 }}" data-upload_error="{{ i.10 }}"
-                >檢視錯誤</a>
-                {% elif i.6 == 'uploading' %}
-                <div class="flex-center">
-                  上傳中 <img class="up-icon ms-1" src="{% static 'icon/upload-gray.png' %}" />
-                </div>
-                {% endif %}
-              </td>
-              <td class="pl-10">
-                {% if i.2 != '' %}
-                  <a class="link" href="{% url 'project_detail' pk=i.7 %}?folder={{ i.2 }}" target="_blank">查看</a>
-                {% else %}
-                  <a class="link" href="{% url 'project_detail' pk=i.7 %}" target="_blank">查看</a>
-                {% endif %}
-              </td>
-            </tr>
-            {% endfor %}
-          {% else %}
-          <tr>
-            <td colspan="8">暫無紀錄</td>
-          </tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
 
-<!-- Modal -->
+	
+	<div class="innbox gray-bg">
+		<div class="main-box">
+			<div class="main-title flex-spb">
+
+				<h2>上傳紀錄</h2>
+				<div class="search-box">
+					<div class="input-item">
+						<input type="text" placeholder="請輸入關鍵字">
+						<button class="searchicon">
+							<svg xmlns="http://www.w3.org/2000/svg" width="21.061" height="21.061" viewBox="0 0 21.061 21.061">
+								<g id="Group_718" data-name="Group 718" transform="translate(-966.939 -1128)">
+									<g id="Group_719" data-name="Group 719" transform="translate(968 1128)">
+										<g id="Ellipse_5" data-name="Ellipse 5" transform="translate(2)" fill="none" stroke="#257455" stroke-width="1.5">
+											<circle cx="9" cy="9" r="9" stroke="none"/>
+											<circle cx="9" cy="9" r="8.25" fill="none"/>
+										</g>
+										<line id="Line_5" data-name="Line 5" x1="5" y2="5" transform="translate(0 15)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="1.5"/>
+									</g>
+								</g>
+							</svg>
+						</button>
+					</div>
+				</div>
+			</div>
+			<div class="wbg-box marb_50">
+				<div class="ov-scroll">
+					<table class="upload-table" cellpadding="0" cellspacing="0" border="0">
+					<tr>
+						<td>
+							建立時間
+						</td>
+						<td>
+							最後更新時間
+						</td>
+						<td>上傳資料夾名稱</td>
+						<td>所屬計畫</td>
+						<td>樣區</td>
+						<td>相機位置</td>
+						<td>上傳結果</td>
+						<td>詳細</td>
+					</tr>
+					<tr>
+
+						{% if rows %}
+						{% for i in rows %}
+						<tr>
+							<td>
+								{{ i.0|slice:"0:10" }}<br>
+								{{ i.0|slice:"11:" }}
+							</td> 
+							<td>
+								{{ i.1|slice:"0:10" }}<br>
+								{{ i.1|slice:"11:" }}
+							</td>
+							<td>{{ i.2 }}</td>
+							<td>{{ i.3 }}</td>
+							<td>{{ i.4 }}</td>
+							<td>{{ i.5 }}</td>
+
+						<td>
+							<div class="infbox">
+							{% if i.6 == 'finished' %}
+								<p>已完成</p>
+								<img class="icon-2" src={% static 'image/corrar.svg' %}>
+							{% elif i.6 == 'unfinished' %}
+								<p>未完成 </p>
+								<img class="icon-1" src={% static 'image/misxx.svg' %}>
+							{% elif i.6 == 'uploading' %}
+								<p>上傳中 </p>
+								<img class="up-icon ms-1" src="{% static 'icon/upload-gray.png' %}" />
+							{% endif %}
+							</div>
+							{% if i.6 == 'unfinished' %}
+							<button class="whybox setModal" data-deployment_journal_id="{{ i.8 }}" data-species_error="{{ i.9 }}" data-upload_error="{{ i.10 }}">檢視錯誤</button>
+							{% endif %}
+						</td>
+						<td>
+							{% if i.2 != '' %}
+							  <button> <a class="detail-btn" href="{% url 'project_detail' pk=i.7 %}?folder={{ i.2 }}" target="_blank">查看 </a></button>
+							{% else %}
+							  <button> <a  class="detail-btn" href="{% url 'project_detail' pk=i.7 %}" target="_blank">查看 </a></button>
+							{% endif %}
+						</td>
+						</tr>
+						{% endfor %}
+					  {% else %}
+					  <tr>
+						<td colspan="8">暫無紀錄</td>
+					  </tr>
+					  {% endif %}
+					</tr>
+				</table>
+				</div>
+			</div>
+		</div>
+
+
+
+
+
+			<!-- Modal -->
 <div class="modal fade" id="errorModal">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title title-dark" id=errorModalLabel">錯誤訊息</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div class="flex-center species-error">
-          <img class="up-icon me-1" src="{% static 'icon/upload-fail.png' %}" /> 物種欄位未完整填寫
-        </div>
-        <div class="flex-center upload-error">
-          <img class="up-icon me-1" src="{% static 'icon/upload-fail.png' %}" /> 影像未成功上傳
-        </div>
-        <div class="flex-center justify-content-end">
-          <img class="me-1 up-icon" src="{% static 'icon/download-green.png' %}" /><a href="" class="link error-link">下載錯誤清單</a>
-        </div>
-      </div>
-    </div>
+	<div class="modal-dialog">
+	  <div class="modal-content">
+		<div class="modal-header">
+		  <h5 class="modal-title title-dark" id="errorModalLabel">錯誤訊息</h5>
+		  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+		</div>
+		<div class="modal-body">
+		  <div class="flex-center species-error">
+			<img class="up-icon me-1" src="{% static 'icon/upload-fail.png' %}" /> 物種欄位未完整填寫
+		  </div>
+		  <div class="flex-center upload-error">
+			<img class="up-icon me-1" src="{% static 'icon/upload-fail.png' %}" /> 影像未成功上傳
+		  </div>
+		  <div class="flex-center justify-content-end">
+			<img class="me-1 up-icon" src="{% static 'icon/download-green.png' %}" /><a href="" class="link error-link">下載錯誤清單</a>
+		  </div>
+		</div>
+	  </div>
+	</div>
   </div>
-</div>
+  
+  
+			<div class="page-num">
+				<!--現在位置加now-->
+				<a href="#" class="num">1</a>
+				<a href="#" class="back">
+					<svg xmlns="http://www.w3.org/2000/svg" width="9.187" height="17.053" viewBox="0 0 9.187 17.053">
+						<g id="pre" transform="translate(111.483 17.054) rotate(180)">
+							<g id="Group_17" data-name="Group 17" transform="translate(102.297 0)">
+								<path id="Path_59" data-name="Path 59" d="M111.291,8.059,103.417.185a.656.656,0,0,0-.928.928L109.9,8.523l-7.411,7.411a.656.656,0,0,0,.928.928l7.874-7.874A.656.656,0,0,0,111.291,8.059Z" transform="translate(-102.297 0)" fill="#529a81"/>
+							</g>
+						</g>
+					</svg>
 
+					<p>上一頁</p>
+				</a>
+				<a href="#" class="num">2</a>
+				<a href="#" class="num now">3</a>
+				<a href="#" class="num">4</a>
+				<a href="#" class="next">
+					<p>下一頁</p>
+					<svg xmlns="http://www.w3.org/2000/svg" width="9.187" height="17.053" viewBox="0 0 9.187 17.053">
+						<g id="next" transform="translate(-102.297 0)">
+							<g id="Group_17" data-name="Group 17" transform="translate(102.297 0)">
+								<path id="Path_59" data-name="Path 59" d="M111.291,8.059,103.417.185a.656.656,0,0,0-.928.928L109.9,8.523l-7.411,7.411a.656.656,0,0,0,.928.928l7.874-7.874A.656.656,0,0,0,111.291,8.059Z" transform="translate(-102.297 0)" fill="#529a81"/>
+							</g>
+						</g>
+					</svg>
 
-{% endblock body %} {% block script %}
-<script src="{% static 'js/upload_history.js' %}"></script>
+				</a>
+				<a href="#" class="num">5</a>
+			</div>
+		</div>
+	</div>
 
-{% endblock script %}
+	{% endblock body %} {% block script %}
+	<script src="{% static 'js/upload_history.js' %}"></script>
+	
+	{% endblock script %}
+	
+	

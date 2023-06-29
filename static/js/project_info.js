@@ -313,7 +313,7 @@ function setSpeciesPie(pie_data, other_data, deployment_points){
                         click: function(event) {
                             // 修改左側地圖成heatmap
                             if (this.name == '其他物種'){
-                                alert('請由右側「其他物種」折疊選單選擇物種')
+                                alert('請由下方「其他物種」折疊選單選擇物種')
                             } else {
                                 updateSpeciesMap(this.name)
                             }

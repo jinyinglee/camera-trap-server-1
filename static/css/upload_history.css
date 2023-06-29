@@ -57,3 +57,11 @@
   .pl-10 {
     padding-left: 10px
   }
+
+  body{
+    background: #f7f7f7 !important;
+  }
+
+  .innbox {
+    padding-top: 0px;
+    }
