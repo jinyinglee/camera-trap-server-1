@@ -98,4 +98,9 @@ $(function () {
         location.reload();
       });
     });
+
+  const yearSelector = document.getElementById('year-selector')
+  yearSelector.onselect = (e) => {
+    console.log(e, e.target)
+  }
   })
