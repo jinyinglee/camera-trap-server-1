@@ -304,3 +304,13 @@
     .innbox {
     padding-top: 0px;
     }
+    .dateicon {
+        position: absolute;
+        background: url("../image/calendar.svg") no-repeat top center;
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        background-size: cover;
+        top: 12px;
+        right: 10px
+    }

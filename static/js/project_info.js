@@ -134,37 +134,38 @@ $('.sa-select').on('change', function(){
     } 
 })
 
-    $('#downloadButton').on('click', function(){
-      $.ajax({
-          type: "POST",
-          url: "/api/check_login/",
-          headers:{'X-CSRFToken': $csrf_token},
-          success: function(response){
-              if (response.redirect){
-                  if (response.messages){
-                      alert(response.messages);
-                      window.location.replace(window.location.origin+ "/personal_info");
-                  }else{
-                      $('#downloadModal').modal('show')    
-                  }
-              }else{
-                  if (response.messages){
-                      alert(response.messages);
-                      $('#loginModal').modal('show') 
-                  }
-                  else{
-                      $('#downloadModal').modal('show') 
-                  }
-              }
-          },
-          error:function(){
-              alert('未知錯誤，請聯繫管理員');
-              }
-          })
-      })
+$('#downloadButton').on('click', function () {
+    $.ajax({
+      type: "POST",
+      url: "/api/check_login/",
+      headers: { 'X-CSRFToken': $csrf_token },
+      success: function (response) {
+  
+        if (response.redirect) {
+          if (response.messages) {
+            alert(response.messages);
+            window.location.replace(window.location.origin + "/personal_info");
+          } else {
+            $('#downloadModal').modal('show')
+          }
+        } else {
+          if (response.messages) {
+            alert(response.messages);
+            $('#loginModal').modal('show')
+          }
+          else {
+            $('#downloadModal').modal('show')
+          }
+        }
+      },
+      error: function () {
+        alert('未知錯誤，請聯繫管理員');
+      }
+    })
+  })
+
 
 $('.download').on('click', function(){
-    
     $.ajax({
         data: {'email': $("#download-email").val()},            
         type: "POST",
@@ -179,7 +180,6 @@ $('.download').on('click', function(){
             $('#downloadModal').modal('hide')
         }
         })
-        
     })
 
 
@@ -582,3 +582,39 @@ function pointToLayer(count, latlng) {
     } 
 
 
+
+
+    let date_locale = { days: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
+                    daysShort: ['日', '一', '二', '三', '四', '五', '六'],
+                    daysMin: ['日', '一', '二', '三', '四', '五', '六'],
+                    months: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'],
+                    monthsShort: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'],
+                    today: '今天',
+                    clear: '清除',
+                    dateFormat: 'yyyy-MM-dd',   
+                    timeFormat: 'HH:mm',
+                    firstDay: 1}
+
+    let start_date_picker = new AirDatepicker('#start_date',
+    { locale: date_locale});
+
+
+    let end_date_picker = new AirDatepicker('#end_date',
+        { locale: date_locale });
+
+
+    $('.show_start').on('click', function(){
+        if (start_date_picker.visible) {
+            start_date_picker.hide();
+        } else {
+            start_date_picker.show();
+        }
+    })
+
+    $('.show_end').on('click', function(){
+        if (end_date_picker.visible) {
+            end_date_picker.hide();
+        } else {
+            end_date_picker.show();
+        }
+    })
