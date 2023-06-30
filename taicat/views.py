@@ -969,7 +969,6 @@ def edit_project_members(request, pk):
         for i in organization_id:
             temp = list(Contact.objects.filter(organization=i['id'], is_organization_admin=True).all().values('name', 'email'))
             organization_admin.extend(temp)
-
         study_area = StudyArea.objects.filter(project_id=pk)
         # other members
         members = ProjectMember.objects.filter(project_id=pk).all()
@@ -1006,6 +1005,14 @@ def edit_project_members(request, pk):
                             if item not in data[i]:
                                 ProjectMember.objects.get(member_id=m.group(1), project_id=pk).pmstudyarea.remove(StudyArea.objects.get(id=item))
                     else:
+                        # 判斷是否有studyarea，有則移除，沒有照舊
+                        tmp = str(i)+'_studyareas_id'
+                        if tmp not in data.keys():
+                            list_id = [str(x['id']) for x in list(ProjectMember.objects.get(member_id=i, project_id=pk).pmstudyarea.all().values('id'))] 
+                            if len(list_id) > 0 :
+                                for item in list_id:
+                                    ProjectMember.objects.get(member_id=i, project_id=pk).pmstudyarea.remove(StudyArea.objects.get(id=item))
+                            
                         ProjectMember.objects.filter(member_id=i, project_id=pk).update(role=data[i][0])
                 messages.success(request, '儲存成功')
             # Remove member
