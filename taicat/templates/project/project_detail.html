@@ -11,6 +11,7 @@
 <script src="{% static 'js/ScrollTrigger.min.js' %}"></script>
 
 <link rel="stylesheet" href="{% static 'css/theme.css' %}" />
+<link rel="stylesheet" href="{% static 'css/air-datepicker.css' %}">
 <link rel="stylesheet" href="{% static 'css/project_detail.css' %}" />
 
 
@@ -577,8 +578,8 @@
 							<div class="item1">
 								<h4>拍攝日期</h4>
 									<div class="input-item date-select">
-										<input type="text" name="start_date" value="">
-										<button class="date-cal">
+										<input name="start_date" class="form-control filter" id="start_date" type="text" placeholder="YYYY-MM-DD">
+										 <button class="date-cal show_start">
 											<svg xmlns="http://www.w3.org/2000/svg" width="24" height="25.211" viewBox="0 0 24 25.211">
 												<g id="Group_3" data-name="Group 3" transform="translate(0 0)">
 													<g id="Group_686" data-name="Group 686">
@@ -595,8 +596,8 @@
 										</button>
 									</div>
 									<div class="input-item date-select">
-										<input type="text" name="end_date" value="">
-										<button class="date-cal">
+										<input name="end_date" class="form-control filter" id="end_date" type="text" placeholder="YYYY-MM-DD" />
+										<button class="date-cal show_end">
 											<svg xmlns="http://www.w3.org/2000/svg" width="24" height="25.211" viewBox="0 0 24 25.211">
 												<g id="Group_3" data-name="Group 3" transform="translate(0 0)">
 													<g id="Group_686" data-name="Group 686">
@@ -722,9 +723,9 @@
 	
 
 	{% endblock body %} {% block script %}
+	<script src="{% static 'js/air-datepicker.js' %}"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/selectize.min.js" integrity="sha512-JiDSvppkBtWM1f9nPRajthdgTCZV3wtyngKUqVHlAs0d5q72n5zpM3QMOLmuNws2vkYmmLn4r1KfnPzgC/73Mw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 	<script src="{% static 'js/project_detail.js' %}"></script>
-  
 	{% endblock script %}
   </div>
   

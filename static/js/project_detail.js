@@ -483,21 +483,8 @@ $(document).ready(function () {
         $("#select-county").each(function () { this.selectedIndex = 0 }).attr("selected", true)
         $("#select-protectarea").each(function () { this.selectedIndex = 0 }).attr("selected", true)
 
-        if (response.earliest_date) {
-          $("#date-slider").slider({
-            range: true,
-            min: new Date(response.earliest_date).getTime() / 1000,
-            max: new Date(response.latest_date).getTime() / 1000,
-            step: 86400,
-            values: [new Date(response.earliest_date).getTime() / 1000, new Date(response.latest_date).getTime() / 1000],
-            slide: function (event, ui) {
-              $('#date-content').html((new Date(ui.values[0] * 1000).toISOString().substring(0, 10)) + "至" +
-                (new Date(ui.values[1] * 1000)).toISOString().substring(0, 10))
-            },
-          });
-          $("#date-content").html((new Date($("#date-slider").slider("values", 0) * 1000).toISOString().substring(0, 10)) + "至" +
-            (new Date($("#date-slider").slider("values", 1) * 1000)).toISOString().substring(0, 10));
-        }
+        $("input[name='start_date']").attr('placeholder',new Date(response.earliest_date).toISOString().substring(0, 10));
+        $("input[name='end_date']").attr('placeholder',new Date(response.latest_date).toISOString().substring(0, 10));
 
         // folder
         $selectf[0].selectize.setValue('');
@@ -951,17 +938,34 @@ $(document).ready(function () {
 
       // download
       $('.download').on('click', function () {
-        if (response.earliest_date) {
-          $("input[name=start_date]").val((new Date($("#date-slider").slider("values", 0) * 1000)).toISOString().substring(0, 10));
-          $("input[name=end_date]").val((new Date($("#date-slider").slider("values", 1) * 1000)).toISOString().substring(0, 10));
-        }
 
+        try {
+          start_altitude = $("input[name=start_altitude]").val();
+          end_altitude = $("input[name=end_altitude]").val();
+        } catch (e) {
+          start_altitude = null
+          end_altitude = null
+        }
+    
         start_altitude = $("input[name=start_altitude]").val();
         end_altitude = $("input[name=end_altitude]").val();
 
-        $("input[name=email]").val($("#download-email").val())
         $.ajax({
-          data: $('#downloadForm').serialize(),
+          data: { 
+            'email':$("input[name=email]").val(),
+            // 'times': $("input[name=times]").val(),
+            'pk': $("input[name=pk]").val(),
+            // 'species-filter': $('input[name="species-filter"]:checked').map(function () { return $(this).val(); }).get(),
+            // 'sa-filter': $("input[name=sa-filter]:checked").val(),
+            // 'start_altitude': start_altitude,
+            // 'end_altitude': end_altitude,
+            'start_date': $("input[name=start_date]").val(),
+            'end_date':$("input[name=end_date]").val(),
+            // 'd-filter': $('input[name="d-filter"]:checked').map(function () { return $(this).val(); }).get(),
+            // 'folder_name': $('#select-folder option:selected').val(),
+            // 'county_name': $('#select-county option:selected').val(),
+            // 'protectarea_name': $('#select-protectarea option:selected').val(),
+            },
           type: "POST",
           headers: { 'X-CSRFToken': $csrf_token },
           url: "/download/" + pk,
@@ -1163,7 +1167,7 @@ $(document).ready(function () {
 
 // 篩選查詢
   $('#submitSelect').on('click', function () {
-console.log($('input[name="species-filter"]:checked').map(function () { return $(this).val(); }).get())
+// console.log($('input[name="species-filter"]:checked').map(function () { return $(this).val(); }).get())
     try {
       start_altitude = $("input[name=start_altitude]").val();
       end_altitude = $("input[name=end_altitude]").val();
@@ -1172,10 +1176,6 @@ console.log($('input[name="species-filter"]:checked').map(function () { return $
       end_altitude = null
     }
 
-    // alert("$start_date' 1 ===",$("input[name='start_date']"))
-    // alert("$start_date' 2 ===",$("input[name=start_date]").val())
-
-    
 
 
     if (start_altitude) {
@@ -1200,8 +1200,8 @@ console.log($('input[name="species-filter"]:checked').map(function () { return $
         pk: $("input[name=pk]").val(),
         species: $('input[name="species-filter"]:checked').map(function () { return $(this).val(); }).get(),
         sa: $("input[name=sa-filter]:checked").val(),
-        start_date: (new Date($("#date-slider").slider("values", 0) * 1000)).toISOString().substring(0, 10),
-        end_date: (new Date($("#date-slider").slider("values", 1) * 1000)).toISOString().substring(0, 10),
+        start_date: $("input[name='start_date']").val(),
+        end_date: $("input[name='end_date']").val(),
         deployment: $('input[name="d-filter"]:checked').map(function () { return $(this).val(); }).get(),
         folder_name: $('#select-folder option:selected').val(),
         county_name: $('#select-county option:selected').val(),
@@ -1323,3 +1323,36 @@ $('#canceldownload').on('click', function (event) {
 			});
 		}
 	});
+
+  let date_locale = { days: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
+    daysShort: ['日', '一', '二', '三', '四', '五', '六'],
+    daysMin: ['日', '一', '二', '三', '四', '五', '六'],
+    months: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'],
+    monthsShort: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'],
+    today: '今天',
+    clear: '清除',
+    dateFormat: 'yyyy-MM-dd',   
+    timeFormat: 'HH:mm',
+    firstDay: 1}
+
+let start_date_picker = new AirDatepicker('#start_date',{ locale: date_locale});
+
+
+let end_date_picker = new AirDatepicker('#end_date',{ locale: date_locale });
+
+
+$('.show_start').on('click', function(){
+  if (start_date_picker.visible) {
+    start_date_picker.hide();
+  } else {
+    start_date_picker.show();
+  }
+})
+
+$('.show_end').on('click', function(){
+  if (end_date_picker.visible) {
+    end_date_picker.hide();
+  } else {
+    end_date_picker.show();
+  }
+})
