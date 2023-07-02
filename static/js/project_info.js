@@ -96,8 +96,6 @@ function getSaPoints(sa_list){
                     })
                     .addTo(map))
               );
-      
-
         }
     });  
 }
@@ -134,6 +132,7 @@ $('.sa-select').on('change', function(){
     } 
 })
 
+// download 
 $('#downloadButton').on('click', function () {
     $.ajax({
       type: "POST",
@@ -146,7 +145,7 @@ $('#downloadButton').on('click', function () {
             alert(response.messages);
             window.location.replace(window.location.origin + "/personal_info");
           } else {
-            $('#downloadModal').modal('show')
+            $('#downloadModal').fadeIn();
           }
         } else {
           if (response.messages) {
@@ -154,7 +153,8 @@ $('#downloadButton').on('click', function () {
             $('#loginModal').modal('show')
           }
           else {
-            $('#downloadModal').modal('show')
+            // $('.down-pop').fadeIn();
+            $('#downloadModal').fadeIn();
           }
         }
       },
@@ -166,6 +166,8 @@ $('#downloadButton').on('click', function () {
 
 
 $('.download').on('click', function(){
+    // $("input[name=email]").val($("#download-email").val())
+
     $.ajax({
         data: {'email': $("#download-email").val()},            
         type: "POST",
@@ -174,15 +176,27 @@ $('.download').on('click', function(){
         success: function(){
             alert('請求已送出');
             $('#downloadModal').modal('hide')
+            $('.down-pop').fadeOut();
         },
         error:function(){
             alert('未知錯誤，請聯繫管理員');
             $('#downloadModal').modal('hide')
+            $('.down-pop').fadeOut();
         }
         })
     })
 
+    $('.down-pop .xx').on('click', function (event) {
+        $('.down-pop').fadeOut();
+      });
+      $('#canceldownload').on('click', function (event) {
+        $('.down-pop').fadeOut();
+      });
 
+      $("#download-email").keyup(function () {
+        ValidateEmail($(this).val())
+      });
+    
 
 $('ul.nav-tab li').on('click', function(){
     $('ul.nav-tab li').removeClass('active');
@@ -445,7 +459,6 @@ function updateSpeciesPie(){
 
     let start_date = $('input[name="start_date"]').val()
     let end_date = $('input[name="end_date"]').val()
-
     if ((!start_date) & (!end_date) & (title == '全部')){
         setSpeciesPie(window.pie_data, window.other_data, []);
         getSaPoints(window.sa_list)
