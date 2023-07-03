@@ -43,3 +43,86 @@
     .ml-6 {
       margin-left: 6px
     }
+
+    body {
+      line-height: normal;
+      color: #333;
+      letter-spacing: 0.05em;
+    }
+
+    .search-pagination-box {
+      font-size: 16px;
+      padding: 25px 20px;
+      /*marginBottom: '40px',*/
+      width: 1240px;
+      font-family: 'Arial', 'Noto Sans TC', sans-serif;
+      color: #555;
+    }
+    .search-pagination-flex {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      /*marginBottom: '40px',*/
+    }
+    .search-pagination-label {
+      line-height: 30px;
+      font-size: 16px;
+    }
+    .search-pagination-input {
+      line-height: 30px;
+      font-size: 16px;
+      width: 80px;
+      margin: 0px 10px;
+      color: #555;
+    }
+    .search-pagination-select {
+      color: #555;
+      appearance: none;
+      background: url("/static/image/arrselect.svg") right 15px center no-repeat;
+      background-color: #FFF;
+      width: 100%;
+      border: 1px solid #ddd;
+      height: 50px;
+      border-radius: 5px;
+      padding: 0px 15px;
+      font-size: 16px;
+    }
+    .search-pagination-description {
+      color: #555;
+      line-height: 30px;
+      font-size: 16px;
+    }
+    .search-pagination-arrl {
+      background: none;
+      margin-left: 10px;
+      cursor: pointer;
+      padding: 0;
+      font-family: 'Microsoft JhengHei', sans-serif;
+      border: none;
+      outline: none;
+    }
+    .search-pagination-arrl:hover circle {
+      -webkit-transition: all .3s;
+      fill: #257455;
+    }
+    .search-pagination-arrl:hover line {
+      -webkit-transition: all .3s;
+      stroke: #FFF;
+    }
+    .search-pagination-arrr {
+      background: none;
+      margin-left: 10px;
+      cursor: pointer;
+      padding: 0;
+      font-family: 'Microsoft JhengHei', sans-serif;
+      border: none;
+      outline: none;
+    }
+    .search-pagination-arrr:hover circle {
+      -webkit-transition: all .3s;
+      fill: #257455;
+    }
+    .search-pagination-arrr:hover line {
+      -webkit-transition: all .3s;
+      stroke: #FFF;
+    }
