@@ -7,13 +7,18 @@ from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Org
 from django.db.models import Count, Window, F, Sum, Min, Q, Max
 from django.db.models.functions import ExtractYear
 from django.template import loader
-import requests
+from django.core.paginator import Paginator
 from django.contrib import messages
+from django.core.files.storage import FileSystemStorage
+from django.utils import timezone
+
+import requests
+
 import time
 import pandas as pd
-from django.utils import timezone
+
 from datetime import datetime, timedelta
-from django.core.files.storage import FileSystemStorage
+
 import os
 from django.conf import settings
 # from django.core.mail import send_mail
@@ -245,9 +250,36 @@ def get_error_file_list(request, deployment_journal_id):
 
 
 def upload_history(request):
-    rows = []
-    if member_id := request.session.get('id', None):
-        my_project_list = get_my_project_list(member_id,[])
+
+    if request.method == 'GET':
+
+        rows = []
+        if member_id := request.session.get('id', None):
+            my_project_list = get_my_project_list(member_id,[])
+            q = request.GET.get('q', '')
+            page_number = request.GET.get('page', 1)
+
+            query = UploadHistory.objects.filter(deployment_journal__project_id__in=my_project_list).values_list('created', 'last_updated', 'deployment_journal__folder_name', 'deployment_journal__project__name', 'deployment_journal__studyarea__name', 'deployment_journal__deployment__name', 'status', 'deployment_journal__project_id', 'deployment_journal__id').order_by('-created')
+
+            if q:
+                query = query.filter(Q(deployment_journal__project__name__icontains=q) |
+                                     Q(deployment_journal__folder_name__icontains=q) |
+                                     Q(deployment_journal__studyarea__name__icontains=q) |
+                                     Q(deployment_journal__deployment__name__icontains=q))
+
+            paginator = Paginator(query.all(), 20)
+            page_obj = paginator.get_page(page_number)
+            page_range = paginator.get_elided_page_range(number=page_number)
+
+            return render(request, 'base/upload_history.html', {'page_obj': page_obj, 'page_range': page_range, 'q': q})
+
+    elif request.method == 'POST':
+        if x := request.POST.get('q-text'):
+            return redirect(f'/upload-history?q={x}')
+        else:
+            return redirect(f'/upload-history')
+
+        '''
         query = """SELECT to_char(up.created AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS'),
                     to_char(up.last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS'),
                     dj.folder_name, p.name, s.name, d.name, up.status, dj.project_id, up.deployment_journal_id,
@@ -261,7 +293,7 @@ def upload_history(request):
         with connection.cursor() as cursor:
             cursor.execute(query.format(str(my_project_list).replace('[','(').replace(']',')')))
             rows = cursor.fetchall()
-    return render(request, 'base/upload_history.html', {'rows': rows})
+        '''
 
 
 def faq(request):

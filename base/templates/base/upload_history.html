@@ -17,9 +17,11 @@
 
 				<h2>上傳紀錄</h2>
 				<div class="search-box">
+                                  <form method="POST" action="/upload-history">
+                                    {% csrf_token %}
 					<div class="input-item">
-						<input type="text" placeholder="請輸入關鍵字">
-						<button class="searchicon">
+						<input type="text" placeholder="請輸入關鍵字"{% if q != '' %} value="{{ q }}"{% endif %} id="q-text" name="q-text">
+						<button class="searchicon" id="q-button">
 							<svg xmlns="http://www.w3.org/2000/svg" width="21.061" height="21.061" viewBox="0 0 21.061 21.061">
 								<g id="Group_718" data-name="Group 718" transform="translate(-966.939 -1128)">
 									<g id="Group_719" data-name="Group 719" transform="translate(968 1128)">
@@ -33,6 +35,7 @@
 							</svg>
 						</button>
 					</div>
+                                  </form>
 				</div>
 			</div>
 			<div class="wbg-box marb_50">
@@ -54,16 +57,16 @@
 					</tr>
 					<tr>
 
-						{% if rows %}
-						{% for i in rows %}
+						{% if page_obj %}
+						{% for i in page_obj %}
 						<tr>
 							<td>
-								{{ i.0|slice:"0:10" }}<br>
-								{{ i.0|slice:"11:" }}
+								{{ i.0|date:'Y-m-d' }}<br>
+								{{ i.0|date:'H:m:s' }}
 							</td> 
 							<td>
-								{{ i.1|slice:"0:10" }}<br>
-								{{ i.1|slice:"11:" }}
+								{{ i.1|date:'Y-m-d' }}<br>
+								{{ i.1|date:'H:m:s' }}
 							</td>
 							<td>{{ i.2 }}</td>
 							<td>{{ i.3 }}</td>
@@ -88,11 +91,11 @@
 							{% endif %}
 						</td>
 						<td>
-							{% if i.2 != '' %}
-							  <button> <a class="detail-btn" href="{% url 'project_detail' pk=i.7 %}?folder={{ i.2 }}" target="_blank">查看 </a></button>
-							{% else %}
-							  <button> <a  class="detail-btn" href="{% url 'project_detail' pk=i.7 %}" target="_blank">查看 </a></button>
-							{% endif %}
+						  {% if i.2 != '' %}
+						  <a class="detail-btn" href="{% url 'project_detail' pk=i.7 %}?folder={{ i.2 }}" target="_blank">查看 </a>
+						  {% else %}
+						  <a class="detail-btn" href="{% url 'project_detail' pk=i.7 %}" target="_blank">查看2 </a>
+						  {% endif %}
 						</td>
 						</tr>
 						{% endfor %}
@@ -134,42 +137,55 @@
 	</div>
   </div>
   
-  
-			<div class="page-num">
-				<!--現在位置加now-->
-				<a href="#" class="num">1</a>
-				<a href="#" class="back">
-					<svg xmlns="http://www.w3.org/2000/svg" width="9.187" height="17.053" viewBox="0 0 9.187 17.053">
-						<g id="pre" transform="translate(111.483 17.054) rotate(180)">
-							<g id="Group_17" data-name="Group 17" transform="translate(102.297 0)">
-								<path id="Path_59" data-name="Path 59" d="M111.291,8.059,103.417.185a.656.656,0,0,0-.928.928L109.9,8.523l-7.411,7.411a.656.656,0,0,0,.928.928l7.874-7.874A.656.656,0,0,0,111.291,8.059Z" transform="translate(-102.297 0)" fill="#529a81"/>
-							</g>
-						</g>
-					</svg>
 
-					<p>上一頁</p>
-				</a>
-				<a href="#" class="num">2</a>
-				<a href="#" class="num now">3</a>
-				<a href="#" class="num">4</a>
-				<a href="#" class="next">
-					<p>下一頁</p>
-					<svg xmlns="http://www.w3.org/2000/svg" width="9.187" height="17.053" viewBox="0 0 9.187 17.053">
-						<g id="next" transform="translate(-102.297 0)">
-							<g id="Group_17" data-name="Group 17" transform="translate(102.297 0)">
-								<path id="Path_59" data-name="Path 59" d="M111.291,8.059,103.417.185a.656.656,0,0,0-.928.928L109.9,8.523l-7.411,7.411a.656.656,0,0,0,.928.928l7.874-7.874A.656.656,0,0,0,111.291,8.059Z" transform="translate(-102.297 0)" fill="#529a81"/>
-							</g>
-						</g>
-					</svg>
+  <div class="page-num">
+    <!--現在位置加now-->
+    {% if page_obj.has_previous %}
+    <a href="?page=1" class="num">1</a>
+    <a href="?page={{ page_obj.previous_page_number }}" class="back">
+      <svg xmlns="http://www.w3.org/2000/svg" width="9.187" height="17.053" viewBox="0 0 9.187 17.053">
+	<g id="pre" transform="translate(111.483 17.054) rotate(180)">
+	  <g id="Group_17" data-name="Group 17" transform="translate(102.297 0)">
+	    <path id="Path_59" data-name="Path 59" d="M111.291,8.059,103.417.185a.656.656,0,0,0-.928.928L109.9,8.523l-7.411,7.411a.656.656,0,0,0,.928.928l7.874-7.874A.656.656,0,0,0,111.291,8.059Z" transform="translate(-102.297 0)" fill="#529a81"/>
+	  </g>
+	</g>
+      </svg>
 
-				</a>
-				<a href="#" class="num">5</a>
-			</div>
-		</div>
+      <p>上一頁</p>
+    </a>
+    {% endif %}
+
+    {% for p in page_range %}
+      {% if page_obj.number == p %}
+        <a href="?page={{ p }}{% if q %}&q={{ q }}{% endif %}{% if q %}&q={{ q }}{% endif %}" class="num now">{{ p }}</a>
+      {% else %}
+        {% if p == page_obj.paginator.ELLIPSIS %}
+          <a href="#" class="num">...</a>
+        {% else %}
+          <a href="?page={{ p }}{% if q %}&q={{ q }}{% endif %}" class="num">{{ p }}</a>
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}" class="next">
+      <p>下一頁</p>
+      <svg xmlns="http://www.w3.org/2000/svg" width="9.187" height="17.053" viewBox="0 0 9.187 17.053">
+	<g id="next" transform="translate(-102.297 0)">
+	  <g id="Group_17" data-name="Group 17" transform="translate(102.297 0)">
+	    <path id="Path_59" data-name="Path 59" d="M111.291,8.059,103.417.185a.656.656,0,0,0-.928.928L109.9,8.523l-7.411,7.411a.656.656,0,0,0,.928.928l7.874-7.874A.656.656,0,0,0,111.291,8.059Z" transform="translate(-102.297 0)" fill="#529a81"/>
+	  </g>
+	</g>
+      </svg>
+    </a>
+    <a href="?page={{ page_obj.paginator.num_pages }}{% if q %}&q={{ q }}{% endif %}" class="num">{{ page_obj.paginator.num_pages }}</a>
+    {% endif %}
+  </div>
 	</div>
+</div>
 
-	{% endblock body %} {% block script %}
-	<script src="{% static 'js/upload_history.js' %}"></script>
+{% endblock body %} {% block script %}
+<script src="{% static 'js/upload_history.js' %}"></script>
 	
 	{% endblock script %}
 	
