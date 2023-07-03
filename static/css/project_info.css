@@ -314,3 +314,15 @@
         top: 12px;
         right: 10px
     }
+    .mx-3 {
+        margin-right: 1rem !important;
+        margin-left: 0 !important;
+    }
+    .air-datepicker{
+        z-index: 9000!important;
+    }
+    
+    #downloadModal{
+        top: 0px !important;
+        z-index: 9999;
+    }
