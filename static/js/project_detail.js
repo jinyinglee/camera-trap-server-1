@@ -4,7 +4,6 @@ $(document).ready(function () {
 
 
   let pk = $('input[name=pk]').val();
-  console.log("this pk =123= ", pk)
 
   $.ajax({
     type: 'GET',
@@ -31,48 +30,7 @@ $(document).ready(function () {
       // select folder from url
       $selectf[0].selectize.setValue($('input[name=get-folder]'));
 
-      //還是樣區/相機位置
       /* sub studyarea */
-      /// TODO 這邊要補齊
-      let sa_html = '';
-      for (i = 0; i < response.study_area.length; i++) {
-        sa_html = 
-        `<li>
-            <div class="flex-box">
-              <div class="cir-checkbox">
-                <img class="coricon" src="{% static 'image/correct.svg' %}" alt="">
-              </div>
-              <p>
-              <input class="filter" type="radio" name="sa-filter" value="${response.study_area[i].id}"  data-parent="${response.study_area[i].parent_id}" id="${response.study_area[i].id}" data-bs-toggle="collapse"
-              href="#collapse_s_${response.study_area[i].id}" role="button" aria-expanded="false" aria-controls="collapse_s_${response.study_area[i].id}">
-           - ${response.study_area[i].name}
-              </p>
-            </div>
-            <div class="collapse collapse-s" id="collapse_s_${response.study_area[i].id}">`
-        if (response.study_area[i].deployment_set.length > 0) {
-          sa_html += `
-                <li>
-                  <p><input class="filter all" type="checkbox" name="d-filter" value="all" data-parent-radio="${response.study_area[i].id}" />全部</p>
-                </li>
-                `
-    
-          for (j = 0; j < response.study_area[i]['deployment_set'].length; j++) {
-            sa_html += `
-            <ul>
-              <li>
-                input class="filter" type="checkbox" name="d-filter" value="${response.study_area[i]['deployment_set'][j]['id']}" data-parent-radio="${response.study_area[i].id}">
-                    ${response.study_area[i]['deployment_set'][j]['name']}
-              </li>
-            </ul>
-              `
-          }
-        }
-        sa_html += `</div></li>`
-
-        $(`#collapse_${response.study_area[i].parent_id}`).append(sa_html)
-
-      }
-      // 樣區/相機位置 結束
 
 
       //TODO start_date
@@ -112,7 +70,7 @@ $(document).ready(function () {
       // 右邊Table內容 開始
       // initalize datatable & redraw table
       let table = $('#img-table').DataTable({
-        dom:"<'row' <'col-6'B>>"+
+        dom:
           "<'row' <'col-sm-11' > tr>" +
         "<'row p-3'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
 
@@ -128,143 +86,124 @@ $(document).ready(function () {
         filter: false,
         
         // 編輯的按鈕
-        buttons: [
-          {
-            text: '編輯',
-            className: 'btn btn-outline-success btn-sm e-button d-none disabled',
-            action: function (e, dt, node, config) {
+        // buttons: [
+        //   {
+        //     text: '編輯',
+        //     className: 'btn btn-outline-success btn-sm e-button d-none disabled',
+        //     action: function (e, dt, node, config) {
 
-              let img_array = []
-              let imguuid_array = []
-              let sa_array = []
-              let dep_array = []
-              let species_array = []
-              let sex_array = []
-              let life_stage_array = []
-              let antler_array = []
-              let animal_id_array = []
-              let remarks_array = []
-              $("input.edit-checkbox:checked").not('#edit-all').each(function () {
-                if (!$(this).parent().hasClass("dataTables_sizing")) {
-                  current_row = table.row($(this).parent()).data();
-                  img_array.push(current_row['image_id'])
-                  imguuid_array.push(current_row['image_uuid'])
-                  sa_array.push(current_row['saname'])
-                  dep_array.push(current_row['dname'])
-                  species_array.push(current_row['species'])
-                  sex_array.push(current_row['sex'])
-                  life_stage_array.push(current_row['life_stage'])
-                  antler_array.push(current_row['antler'])
-                  animal_id_array.push(current_row['animal_id'])
-                  remarks_array.push(current_row['remarks'])
+        //       let img_array = []
+        //       let imguuid_array = []
+        //       let sa_array = []
+        //       let dep_array = []
+        //       let species_array = []
+        //       let sex_array = []
+        //       let life_stage_array = []
+        //       let antler_array = []
+        //       let animal_id_array = []
+        //       let remarks_array = []
+        //       $("input.edit-checkbox:checked").not('#edit-all').each(function () {
+        //         if (!$(this).parent().hasClass("dataTables_sizing")) {
+        //           current_row = table.row($(this).parent()).data();
+        //           img_array.push(current_row['image_id'])
+        //           imguuid_array.push(current_row['image_uuid'])
+        //           sa_array.push(current_row['saname'])
+        //           dep_array.push(current_row['dname'])
+        //           species_array.push(current_row['species'])
+        //           sex_array.push(current_row['sex'])
+        //           life_stage_array.push(current_row['life_stage'])
+        //           antler_array.push(current_row['antler'])
+        //           animal_id_array.push(current_row['animal_id'])
+        //           remarks_array.push(current_row['remarks'])
 
-                  if (img_array.length > 1) { // TODO 或是直接按row
-                    $('.arl, .arr').addClass('d-none');
-                    $('#editModal').off('keydown');
-                  } else {
-                    $('.arl, .arr').removeClass('d-none');
-                    // 切換上下張的功能
-                    let c_row = $(this).parent()
-                    let idx = table.column(c_row).index();
-                    changeEditContent(c_row.parent(), idx);
-                  }
-                }
-              });
+        //           if (img_array.length > 1) { // TODO 或是直接按row
+        //             $('.arl, .arr').addClass('d-none');
+        //             $('#editModal').off('keydown');
+        //           } else {
+        //             $('.arl, .arr').removeClass('d-none');
+        //             // 切換上下張的功能
+        //             let c_row = $(this).parent()
+        //             let idx = table.column(c_row).index();
+        //             changeEditContent(c_row.parent(), idx);
+        //           }
+        //         }
+        //       });
 
-              console.log(" Info  1 ==== ")
-              $('#edit-image_id').val(img_array)
-              // remove notice info
-              $('#edit-studyarea, #edit-deployment, #edit-project').removeClass('notice-border')
-              $('.notice').addClass('d-none');
-              // clean studyarea & deployment id
-              $('#edit-studyarea_id').val('')
-              $('#edit-deployment_id').val('')
+        //       console.log(" Info  1 ==== ")
+        //       $('#edit-image_id').val(img_array)
+        //       // remove notice info
+        //       $('#edit-studyarea, #edit-deployment, #edit-project').removeClass('notice-border')
+        //       $('.notice').addClass('d-none');
+        //       // clean studyarea & deployment id
+        //       $('#edit-studyarea_id').val('')
+        //       $('#edit-deployment_id').val('')
 
-              $('#edit-project').val($('input[name=project-name]').val());
-              $('#edit-project_id').val(pk);
-              $sa.autocomplete('option', 'source', response.sa_list);
-              console.log(" Info  2 ==== ")
-              if (allEqual(sa_array)) {
-                $('#edit-studyarea').val(sa_array[0])
-                $dep.autocomplete('option', 'source', response.sa_d_list[current_row['saname']]);
-              } else {
-                $('#edit-studyarea').val('')
-                $dep.autocomplete('option', 'source', '');
-              }
-              allEqual(dep_array) ? $('#edit-deployment').val(dep_array[0]) : $('#edit-deployment').val('');
-              allEqual(species_array) ? $('#edit-species').val(species_array[0]) : $('#edit-species').val('');
-              allEqual(life_stage_array) ? $('#edit-life_stage').val(life_stage_array[0]) : $('#edit-life_stage').val('');
-              allEqual(sex_array) ? $('#edit-sex').val(sex_array[0]) : $('#edit-sex').val('');
-              allEqual(antler_array) ? $('#edit-antler').val(antler_array[0]) : $('#edit-antler').val('');
-              allEqual(animal_id_array) ? $('#edit-animal_id').val(animal_id_array[0]) : $('#edit-animal_id').val('');
-              allEqual(remarks_array) ? $('#edit-remarks').val(remarks_array[0]) : $('#edit-remarks').val('');
+        //       $('#edit-project').val($('input[name=project-name]').val());
+        //       $('#edit-project_id').val(pk);
+        //       $sa.autocomplete('option', 'source', response.sa_list);
+        //       console.log(" Info  2 ==== ")
+        //       if (allEqual(sa_array)) {
+        //         $('#edit-studyarea').val(sa_array[0])
+        //         $dep.autocomplete('option', 'source', response.sa_d_list[current_row['saname']]);
+        //       } else {
+        //         $('#edit-studyarea').val('')
+        //         $dep.autocomplete('option', 'source', '');
+        //       }
+        //       allEqual(dep_array) ? $('#edit-deployment').val(dep_array[0]) : $('#edit-deployment').val('');
+        //       allEqual(species_array) ? $('#edit-species').val(species_array[0]) : $('#edit-species').val('');
+        //       allEqual(life_stage_array) ? $('#edit-life_stage').val(life_stage_array[0]) : $('#edit-life_stage').val('');
+        //       allEqual(sex_array) ? $('#edit-sex').val(sex_array[0]) : $('#edit-sex').val('');
+        //       allEqual(antler_array) ? $('#edit-antler').val(antler_array[0]) : $('#edit-antler').val('');
+        //       allEqual(animal_id_array) ? $('#edit-animal_id').val(animal_id_array[0]) : $('#edit-animal_id').val('');
+        //       allEqual(remarks_array) ? $('#edit-remarks').val(remarks_array[0]) : $('#edit-remarks').val('');
 
-              console.log(" Info  3 ==== ")
-              // image or videos
-              if (allEqual(imguuid_array)) {
-                $('#edit-filename').html(current_row['filename'])
-                $('#edit-datetime').html(current_row['datetime'])
-                $('#edit-image').html(current_row['file_url'])
-              } else {
-                $('#edit-filename').html('')
-                $('#edit-datetime').html('')
-                $('#edit-image').html('')
-              }
+        //       console.log(" Info  3 ==== ")
+        //       // image or videos
+        //       if (allEqual(imguuid_array)) {
+        //         $('#edit-filename').html(current_row['filename'])
+        //         $('#edit-datetime').html(current_row['datetime'])
+        //         $('#edit-image').html(current_row['file_url'])
+        //       } else {
+        //         $('#edit-filename').html('')
+        //         $('#edit-datetime').html('')
+        //         $('#edit-image').html('')
+        //       }
 
-              $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').addClass('h-auto');
-              $('#edit-image video').addClass('w-100');
-              $('#edit-image video').addClass('h-auto');
-              $('#edit-image video source').on('error', function (event) {
-                $(this).parent().parent().html('<p align="center" class="cannot-load">無法載入</p>')
-              })
-              $('#edit-image video source, #edit-image img').on('error', function (event) {
-                $(this).parent().html('<p align="center" class="cannot-load">無法載入</p>')
-              })
+        //       $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').addClass('h-auto');
+        //       $('#edit-image video').addClass('w-100');
+        //       $('#edit-image video').addClass('h-auto');
+        //       $('#edit-image video source').on('error', function (event) {
+        //         $(this).parent().parent().html('<p align="center" class="cannot-load">無法載入</p>')
+        //       })
+        //       $('#edit-image video source, #edit-image img').on('error', function (event) {
+        //         $(this).parent().html('<p align="center" class="cannot-load">無法載入</p>')
+        //       })
 
-              $('.photode-pop').fadeIn();
-	            $('body').css("overflow", "hidden");
-              // $('#editModal').modal('show');
-
-
-          // 編輯模式按鈕動作
-          $('#edit_button').on('click', function() {
-            if($('.del-check').css("display") == "none"){
-              $('.del-check').css({
-                display: "table-cell"
-              });
-              $('.delete-area').css({
-                display: "flex"
-              });
-            }else{
-              $('.del-check').css({
-                display: "none"
-              });
-              $('.delete-area').css({
-                display: "none"
-              });
-            }
-          });
+        //       $('.photode-pop').fadeIn();
+	      //       $('body').css("overflow", "hidden");
+        //       // $('#editModal').modal('show');
 
 
-              // disable edit
-              let editable = response.editable;
-              if ((editable != true) || ($('#edit_button').data('edit') == 'off')) {
-                $('.edit-content input').attr('disabled', 'disabled')
-                $('.edit-footer').addClass('d-none')
-              } else {
-                $('.edit-content input').prop("disabled", false)
-                $('.edit-footer').removeClass('d-none')
-              }
-            }
-          },
-          {
-            text: '刪除',
-            className: 'btn btn-outline-secondary btn-sm d-button d-none disabled',
-            action: function (e, dt, node, config) {
-              $('#deleteModal').modal('show')
-            }
-          }
-        ],
+
+        //       // disable edit
+        //       let editable = response.editable;
+        //       if ((editable != true) || ($('#edit_button').data('edit') == 'off')) {
+        //         $('.edit-content input').attr('disabled', 'disabled')
+        //         $('.edit-footer').addClass('d-none')
+        //       } else {
+        //         $('.edit-content input').prop("disabled", false)
+        //         $('.edit-footer').removeClass('d-none')
+        //       }
+        //     }
+        //   },
+        //   {
+        //     text: '刪除',
+        //     className: 'btn btn-outline-secondary btn-sm d-button d-none disabled',
+        //     action: function (e, dt, node, config) {
+        //       $('#deleteModal').modal('show')
+        //     }
+        //   }
+        // ],
         ajax: {
           type: "POST",
           dataType: 'json',
@@ -467,6 +406,7 @@ $(document).ready(function () {
         $('input[type=radio].all').prop('checked', true);
         $('input[name=sa-filter]:not(.all)').closest('li').removeClass('now');
         $('input[name=sa-filter].all').closest('li').addClass('now');
+        $(`.check2-layerbox`).css({ display: 'none'});
 
         // 物種
         $("input[name='species-filter']").prop('checked',true);
@@ -483,21 +423,8 @@ $(document).ready(function () {
         $("#select-county").each(function () { this.selectedIndex = 0 }).attr("selected", true)
         $("#select-protectarea").each(function () { this.selectedIndex = 0 }).attr("selected", true)
 
-        if (response.earliest_date) {
-          $("#date-slider").slider({
-            range: true,
-            min: new Date(response.earliest_date).getTime() / 1000,
-            max: new Date(response.latest_date).getTime() / 1000,
-            step: 86400,
-            values: [new Date(response.earliest_date).getTime() / 1000, new Date(response.latest_date).getTime() / 1000],
-            slide: function (event, ui) {
-              $('#date-content').html((new Date(ui.values[0] * 1000).toISOString().substring(0, 10)) + "至" +
-                (new Date(ui.values[1] * 1000)).toISOString().substring(0, 10))
-            },
-          });
-          $("#date-content").html((new Date($("#date-slider").slider("values", 0) * 1000).toISOString().substring(0, 10)) + "至" +
-            (new Date($("#date-slider").slider("values", 1) * 1000)).toISOString().substring(0, 10));
-        }
+        $("input[name='start_date']").val('')
+        $("input[name='end_date']").val('')
 
         // folder
         $selectf[0].selectize.setValue('');
@@ -726,13 +653,6 @@ $(document).ready(function () {
                     </div>
                       <p>${data['species'][i]['name']} (${data['species'][i]['count']})</p>
                   </li>`)
-
-                  // `<li>
-                  //             <label class="form-check-label">
-                  //             <input class="filter" type="checkbox" name="species-filter" value="${data['species'][i]['name']}" checked>
-                  //                 ${data['species'][i]['name']} (${data['species'][i]['count']})
-                  //             </label>
-                  //             </li>`)
               }
               if ($("input[name=species-filter].all").is(':checked')) {
                 $("#species-list li label").children('svg').remove()
@@ -751,13 +671,9 @@ $(document).ready(function () {
               // species: if other checkbox checked, uncheck 'all'
               $("input[name='species-filter'].filter:not(.all)").unbind('click');
               $("#species-list-all").click(function (){
-                alert("QQ")
               })
               
-              alert("ha");
-
               $("input[name='species-filter'].filter:not(.all)").click(function () {
-                alert("haha")
                 // $("#species-list-all label").children('svg').remove()
                 $("#species-list-all").toggleClass('now');
                 // 先移除自己本身的再判斷
@@ -792,17 +708,24 @@ $(document).ready(function () {
         }
       });
 
-      // 樣區
-      // radio style for studyarea & cameralocation
-      $("input[name=sa-filter]").parent().parent().on('click', function (event) {
-        
-        $(`input[type=checkbox][name=d-filter].filter`).prop('checked', false);
-        let radio_group = $(this).data('parent-radio');
-        // alert($(this).data('parent-radio'))
-        if (radio_group) {
-          $(`input[name=d-filter][data-parent-radio=${radio_group}]`).prop('checked', true);
-          $(this).addClass('now');
 
+      $("input[name=sa-filter]:not(.all)").parent().parent().on('click', function (event) {
+
+        let radio_group = $(this).data('parent-radio');
+        
+        // 樣區
+        $(`#li_${radio_group}`).toggleClass('now')
+        if ($(`#li_${radio_group}`).hasClass('now')){
+          $("#sa-list-all").removeClass('now');
+        }
+        if ($(`#li_${radio_group}`).hasClass("now")){
+          $(`#collapse_${radio_group}`).css({ display: 'flex'});
+          $(`input[name=sa-filter][id=${radio_group}]`).prop('checked', true);
+          $("input[name='sa-filter'].all").removeAttr('checked')
+          $(`input[name=d-filter][data-parent-radio=${radio_group}]`).prop('checked', true);
+        }else{
+          $(`#li_${radio_group}`).children('input').removeAttr('checked')
+          $(`#collapse_${radio_group}`).css({ display: 'none'});
         }
       });
 
@@ -820,6 +743,8 @@ $(document).ready(function () {
           $(`input[data-parent-radio=${parent_radio}][type=checkbox]`).prop('checked', true)
         } else {
           $(`input[data-parent-radio=${parent_radio}][type=checkbox]`).prop('checked', false)
+          $(`#li_${radio_group}`).children('input').removeAttr('checked')
+          $(`#collapse_${radio_group}`).css({ display: 'none'});
         }
         // radio
         $(`input[name=sa-filter]:checked`).prop('checked', false)
@@ -842,9 +767,9 @@ $(document).ready(function () {
         $(`input[name=sa-filter][id=${parent_radio}]`).parent().parent().parent().addClass('now');
         $(`input[name=sa-filter]:not([id=${parent_radio}])`).parent().parent().parent().removeClass('now');
 
-        // $('<i class="fas fa-check title-dark w-12"></i>').insertBefore($(`input[name=sa-filter][id=${parent_radio}]`));
       })
-// 06done
+
+
       $("li[name='species-filter'].filter:not(.all)").on('click', function () {
         // 先移除自己本身的再判斷
         $(this).toggleClass('now')
@@ -861,12 +786,12 @@ $(document).ready(function () {
       // species: if 'all' checked, check all checkbox 06done
       $("#species-list-all").on('click', function (event) {
         $("#species-list-all").toggleClass('now');
-        if ($(this).hasClass("now")){
+        if ($("#species-list-all").hasClass("now")){
           $("li[name='species-filter']").addClass('now');
           $("input[name='species-filter']").prop('checked',true);
         }else{
           $("li[name='species-filter']").removeClass('now');
-          $("input[name='species-filter']").removeAttr('checked');
+          $("input[name='species-filter']").prop('checked',false);
         }
         // BUG 按清除後，這邊沒有功用
         // alert($('input[name="species-filter"]:checked').map(function () { return $(this).val();}).get())
@@ -951,17 +876,34 @@ $(document).ready(function () {
 
       // download
       $('.download').on('click', function () {
-        if (response.earliest_date) {
-          $("input[name=start_date]").val((new Date($("#date-slider").slider("values", 0) * 1000)).toISOString().substring(0, 10));
-          $("input[name=end_date]").val((new Date($("#date-slider").slider("values", 1) * 1000)).toISOString().substring(0, 10));
-        }
 
+        try {
+          start_altitude = $("input[name=start_altitude]").val();
+          end_altitude = $("input[name=end_altitude]").val();
+        } catch (e) {
+          start_altitude = null
+          end_altitude = null
+        }
+    
         start_altitude = $("input[name=start_altitude]").val();
         end_altitude = $("input[name=end_altitude]").val();
 
-        $("input[name=email]").val($("#download-email").val())
         $.ajax({
-          data: $('#downloadForm').serialize(),
+          data: { 
+            'email':$("input[name=email]").val(),
+            'times': $("input[name=times]").val(),
+            'pk': $("input[name=pk]").val(),
+            'species-filter': $('input[name="species-filter"]:checked').map(function () { return $(this).val(); }).get(),
+            'sa-filter': $("input[name=sa-filter]:checked").val(),
+            'start_altitude': start_altitude,
+            'end_altitude': end_altitude,
+            'start_date': $("input[name=start_date]").val(),
+            'end_date':$("input[name=end_date]").val(),
+            'd-filter': $('input[name="d-filter"]:checked').map(function () { return $(this).val(); }).get(),
+            'folder_name': $('#select-folder option:selected').val(),
+            'county_name': $('#select-county option:selected').val(),
+            'protectarea_name': $('#select-protectarea option:selected').val(),
+            },
           type: "POST",
           headers: { 'X-CSRFToken': $csrf_token },
           url: "/download/" + pk,
@@ -1093,16 +1035,30 @@ $(document).ready(function () {
   });
 
 
+// 編輯模式按鈕動作
+$('#edit_button').on('click', function() {
+  if($('.delete-area').css("display") == "none"){
+    $('.del-check').css({
+      display: "table-cell"
+    });
+    $('.delete-area').css({
+      display: "flex"
+    });
+  }else{
+    $('.del-check').css({
+      display: "none"
+    });
+    $('.delete-area').css({
+      display: "none"
+    });
+  }
+});
 
-  $('#edit-all').on('click', function () {
-    if ($('#edit-all').is(':checked')) {
-      $('.edit-checkbox').prop('checked', true)
-    } else {
-      $('.edit-checkbox').each(function () {
-        $('.edit-checkbox').prop('checked', false)
-      });
-    }
-  })
+$('#deleteButton').on('click', function() {
+  $('#deleteModal').modal('show')
+})
+
+
 
 
 
@@ -1163,7 +1119,7 @@ $(document).ready(function () {
 
 // 篩選查詢
   $('#submitSelect').on('click', function () {
-console.log($('input[name="species-filter"]:checked').map(function () { return $(this).val(); }).get())
+// console.log($('input[name="species-filter"]:checked').map(function () { return $(this).val(); }).get())
     try {
       start_altitude = $("input[name=start_altitude]").val();
       end_altitude = $("input[name=end_altitude]").val();
@@ -1172,10 +1128,6 @@ console.log($('input[name="species-filter"]:checked').map(function () { return $
       end_altitude = null
     }
 
-    // alert("$start_date' 1 ===",$("input[name='start_date']"))
-    // alert("$start_date' 2 ===",$("input[name=start_date]").val())
-
-    
 
 
     if (start_altitude) {
@@ -1200,8 +1152,8 @@ console.log($('input[name="species-filter"]:checked').map(function () { return $
         pk: $("input[name=pk]").val(),
         species: $('input[name="species-filter"]:checked').map(function () { return $(this).val(); }).get(),
         sa: $("input[name=sa-filter]:checked").val(),
-        start_date: (new Date($("#date-slider").slider("values", 0) * 1000)).toISOString().substring(0, 10),
-        end_date: (new Date($("#date-slider").slider("values", 1) * 1000)).toISOString().substring(0, 10),
+        start_date: $("input[name='start_date']").val(),
+        end_date: $("input[name='end_date']").val(),
         deployment: $('input[name="d-filter"]:checked').map(function () { return $(this).val(); }).get(),
         folder_name: $('#select-folder option:selected').val(),
         county_name: $('#select-county option:selected').val(),
@@ -1293,22 +1245,17 @@ $('#canceldownload').on('click', function (event) {
 });
 
 
-  // sort變色
-	// $('.upar').on('click', function() {
-	// 	$(this).css("fill", "#FFF");
-	// 	$('.downar').css("fill", "#78d989");
-	// });
-	// $('.downar').on('click', function() {
-	// 	$(this).css("fill", "#FFF");
-	// 	$('.upar').css("fill", "#78d989");
-	// });
 
   // 收起物種或者樣區/相機位置 的 條件欄 然後 加入 add/remove class
 
 	$('.settitle-box').on('click', function() {
 		$(this).next('.check-list').slideToggle();
 		$(this).toggleClass('now');
+	});
 
+	$('.check2-layerbox').on('click', function() {
+		$(this).next('.check-list').slideToggle();
+		$(this).toggleClass('now');
 	});
 
   // 左側條件縮排 視窗過小時，會執行，調整過後會出問題
@@ -1323,3 +1270,53 @@ $('#canceldownload').on('click', function (event) {
 			});
 		}
 	});
+
+  let date_locale = { days: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
+    daysShort: ['日', '一', '二', '三', '四', '五', '六'],
+    daysMin: ['日', '一', '二', '三', '四', '五', '六'],
+    months: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'],
+    monthsShort: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'],
+    today: '今天',
+    clear: '清除',
+    dateFormat: 'yyyy-MM-dd',   
+    timeFormat: 'HH:mm',
+    firstDay: 1}
+
+let start_date_picker = new AirDatepicker('#start_date',{ locale: date_locale});
+
+
+let end_date_picker = new AirDatepicker('#end_date',{ locale: date_locale });
+
+
+$('.show_start').on('click', function(){
+  if (start_date_picker.visible) {
+    start_date_picker.hide();
+  } else {
+    start_date_picker.show();
+  }
+})
+
+$('.show_end').on('click', function(){
+  if (end_date_picker.visible) {
+    end_date_picker.hide();
+  } else {
+    end_date_picker.show();
+  }
+})
+
+// TODO 樣區
+// radio style for studyarea & cameralocation
+
+$(`#sa-list-all`).on('click', function (event) {
+  if ($(`#sa-list-all`).hasClass("now")){
+    $(`#sa-list-all`).removeClass("now");
+    $("input[name='sa-filter'].all").removeAttr('checked');
+  }else{
+    $('input[type=radio]').prop('checked', false);
+    $('input[type=radio].all').prop('checked', true);
+    $('input[name=sa-filter]:not(.all)').closest('li').removeClass('now');
+    $('input[name=sa-filter].all').closest('li').addClass('now');
+    $(`.check2-layerbox`).css({ display: 'none'});
+  }
+})
+

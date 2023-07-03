@@ -253,8 +253,29 @@
     opacity: 0.6;
   } */
   
+.icon-clock {
+  position: absolute;
+  background: url("../image/icon-clock.svg") no-repeat top center;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  /* background-size: cover; */
+  top: 12px;
+  right: 10px
+}
+
+
+
   #edit-image video{
     padding-top : 75px;
     padding-bottom : 75px;
   }
+
+  #downloadModal{
+    top: 0px !important;
+    z-index: 9999;
+}
   
+.check2-layerbox {
+  display: none;
+}

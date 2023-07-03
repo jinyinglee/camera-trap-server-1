@@ -11,6 +11,7 @@
 <script src="{% static 'js/ScrollTrigger.min.js' %}"></script>
 
 <link rel="stylesheet" href="{% static 'css/theme.css' %}" />
+<link rel="stylesheet" href="{% static 'css/air-datepicker.css' %}">
 <link rel="stylesheet" href="{% static 'css/project_detail.css' %}" />
 
 
@@ -21,9 +22,10 @@
 <input type="hidden" name="pk" value="{{ pk }}"></input>
 <input type="hidden" name="get-folder" value="{{ folder }}"></input>
 <input type="hidden" name="project-name" value="{{ project_info.0 }}"></input>
-{% csrf_token %}
+	
 	<!--下載跳匡-->
 	<div class="pop-box down-pop" id="downloadModal" style="display: none;">
+		{% csrf_token %}
 		<div class="center-box">
 			<div class="wbox">
 				<div class="xx">
@@ -48,7 +50,7 @@
 						檔案為離線產生，處理完成後，系統會寄下載資訊到您輸入的電子郵件信箱。如未收到信件，請檢查您的郵件設定，如仍未收到信件，請聯絡我們。
 					</p>
 					<div class="input-item d-flex justify-content-start">
-						<input class="form-control w-80" type="text" id="download-email" placeholder="請輸入您的電子郵件"/>
+						<input class="form-control w-80" type="text" name='email' id="download-email" placeholder="請輸入您的電子郵件"/>
 						<svg id="email-check" xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="lightgrey" class="bi bi-check my-auto" viewBox="0 0 16 16">
 							<path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
 						</svg>
@@ -65,149 +67,6 @@
 			</div>
 		</div>
 	</div>
-  <!-- Edit Modal -->
-  {% comment %} <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content edit-content">
-        <div class="modal-body" id="modal-text">
-          <div class="d-flex justify-content-end">
-            <i class="fa-solid fa-circle-xmark pointer w-30 text-grey edit-xx"></i>            
-          </div>
-          <div class="row my-3 align-items-center">
-            <div class="col-1 d-flex justify-content-end">
-              <!--<span class="edit-prev text-grey pointer"><</span>-->
-              <i class="edit-prev text-grey pointer w-12 fa-solid fa-angle-left"></i>
-            </div>
-            <div class="col-10" id="edit-image"></div>
-            <div class="col-1 d-flex justify-content-start">
-              <i class="edit-next text-grey pointer w-12 fa-solid fa-angle-right"></i>
-            </div>
-          </div>
-          <form novalidate action="{% url 'edit_image' pk %}" method="post" autocomplete="off" id="editForm">
-            {% csrf_token %}
-            <div class="row my-3">
-              <div class="col-1"></div>
-              <div class="col-3 my-auto">計畫</div>
-              <div class="col-7">
-                <div class="autocomplete">
-                  <input id="edit-project_id" type="hidden" name="project_id" />
-                  <input class="form-control" id="edit-project" type="text" />
-                </div>
-                <div class="notice d-none">
-                  必填欄位
-                </div>
-              </div>
-              <div class="col-1"></div>
-            </div>
-            <div class="row my-3">
-              <div class="col-1"></div>
-              <div class="col-3 my-auto">樣區</div>
-              <div class="col-7">
-                <div class="autocomplete">
-                  <input id="edit-studyarea_id" type="hidden" name="studyarea_id" />
-                  <input class="form-control" id="edit-studyarea" type="text" />
-                </div>
-                <div class="notice d-none">
-                  必填欄位
-                </div>
-              </div>
-              <div class="col-1"></div>
-            </div>
-            <div class="row my-3">
-              <div class="col-1"></div>
-              <div class="col-3 my-auto">相機位置</div>
-              <div class="col-7">
-                <div class="autocomplete">
-                  <input class="form-control" id="edit-deployment" type="text" />
-                  <input id="edit-deployment_id" type="hidden" name="deployment_id" />
-                </div>
-                <div class="notice d-none">
-                  必填欄位
-                </div>
-              </div>
-              <div class="col-1"></div>
-            </div>
-            <div class="row my-3">
-              <div class="col-1"></div>
-              <div class="col-3 my-auto">檔名</div>
-              <div class="col-7" id="edit-filename"></div>
-              <div class="col-1"></div>
-            </div>
-            <div class="row my-3">
-              <div class="col-1"></div>
-              <div class="col-3 my-auto">日期時間</div>
-              <div class="col-7" id="edit-datetime">
-              </div>
-              <div class="col-1"></div>
-            </div>
-            <div class="row my-3">
-              <div class="col-1"></div>
-              <div class="col-3 my-auto">物種</div>
-              <div class="col-7">
-                <div class="autocomplete">
-                  <input class="form-control" id="edit-species" type="text" name="species" />
-                </div>
-              </div>
-              <div class="col-1"></div>
-            </div>
-            <div class="row my-3">
-              <div class="col-1"></div>
-              <div class="col-3 my-auto">年齡</div>
-              <div class="col-7">
-                <div class="autocomplete">
-                  <input class="form-control" id="edit-life_stage" type="text" name="life_stage" />
-                </div>
-              </div>
-              <div class="col-1"></div>
-            </div>
-            <div class="row my-3">
-              <div class="col-1"></div>
-              <div class="col-3 my-auto">性別</div>
-              <div class="col-7">
-                <div class="autocomplete">
-                  <input class="form-control" id="edit-sex" type="text" name="sex" />
-                </div>
-              </div>
-              <div class="col-1"></div>
-            </div>
-            <div class="row my-3">
-              <div class="col-1"></div>
-              <div class="col-3 my-auto">角況</div>
-              <div class="col-7">
-                <div class="autocomplete">
-                  <input class="form-control" id="edit-antler" type="text" name="antler" />
-                </div>
-              </div>
-              <div class="col-1"></div>
-            </div>
-            <div class="row my-3">
-              <div class="col-1"></div>
-              <div class="col-3 my-auto">個體ID</div>
-              <div class="col-7">
-                <input class="form-control" id="edit-animal_id" type="text" name="animal_id" />
-              </div>
-              <div class="col-1"></div>
-            </div>
-            <div class="row my-3">
-              <div class="col-1"></div>
-              <div class="col-3 my-auto">備註</div>
-              <div class="col-7">
-                <input class="form-control" id="edit-remarks" type="text" name="remarks" />
-              </div>
-              <div class="col-1"></div>
-            </div>
-            <input type="hidden" id="edit-image_uuid" name="image_uuid" value="" />
-            <input type="hidden" id="edit-image_id" name="image_id" value="" />
-            <input type="hidden" id="edit-page_info" name="page_info" value="" />
-          </form>
-        </div>
-        <div class="modal-footer edit-footer">
-          <a class="btn btn-outline-success" data-bs-dismiss="modal">取消</a>
-          <a class="btn btn-orange edit-submit">儲存</a>
-        </div>
-      </div>
-    </div>
-  </div> {% endcomment %}
 	<!--詳細＋編輯跳匡 打開隱藏背後卷軸-->
 	<div class="pop-box photode-pop" id="editModal"  style="display: none;">
 		<div class="center-box photocontent edit-content">
@@ -459,7 +318,7 @@
 							</div>
 							<ul class="check-list camera-local" id="studyarea-list" >
 							<input type="hidden" id="checkbox-all-unchecked" value="false" />
-								<li class="now">
+								<li id="sa-list-all" class="now">
 									<div class="flex-box">
 										<div class="cir-checkbox"> <img class="coricon" src="{% static 'image/correct.svg' %}" alt=""> </div>
 										<p>
@@ -468,7 +327,7 @@
 									</div>
 								</li>
 								{% for i in study_area %} {% if i.parent_id == None %}
-									<li>
+									<li id="li_{{ i.id }}">
 										<div class="flex-box" data-parent-radio="{{ i.id }}" >
 											<div class="cir-checkbox">
 												<img class="coricon" src="{% static 'image/correct.svg' %}" alt="">
@@ -480,7 +339,7 @@
 										</div>
 										
 										<div class="check2-layerbox" id="collapse_{{ i.id }}">
-											<ul>
+											<ul class="check-list">
 												{% if i.deployment_set.all != None %}
 													<li>
 														<p><input class="filter all" type="checkbox" name="d-filter" value="all" data-parent-radio="{{ i.id }}" />全部</p>
@@ -557,28 +416,21 @@
 							<div class="item1">
 								<h4>拍攝時間</h4>
 								<div class="input-item right30">
-									<input type="time" id="times" name="times" step="2" />
+									{% comment %} <input type="text" class="custom-input">
+									<svg class="icon" viewBox="0 0 24 24">
+										<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+									</svg> {% endcomment %}
+									<input type="time" id="times" name="times" step="2" class="timeclock" />
 									<button class="icon-clock">
-										<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
-											<g id="Group_739" data-name="Group 739" transform="translate(-408 -2324)">
-												<g id="Ellipse_50" data-name="Ellipse 50" transform="translate(408 2324)" fill="#fff" stroke="#257455" stroke-width="1.5">
-													<circle cx="11" cy="11" r="11" stroke="none"/>
-													<circle cx="11" cy="11" r="10.25" fill="none"/>
-												</g>
-												<g id="Group_740" data-name="Group 740" transform="translate(419 2329.5)">
-													<line id="Line_16" data-name="Line 16" y2="4.998" transform="translate(0)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="1.5"/>
-													<line id="Line_17" data-name="Line 17" x2="3.332" y2="3.332" transform="translate(0 4.998)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="1.5"/>
-												</g>
-											</g>
-										</svg>
 									</button>
+
 								</div>
 							</div>
 							<div class="item1">
 								<h4>拍攝日期</h4>
 									<div class="input-item date-select">
-										<input type="text" name="start_date" value="">
-										<button class="date-cal">
+										<input name="start_date" class="form-control filter" id="start_date" type="text" placeholder="YYYY-MM-DD">
+										 <button class="date-cal show_start">
 											<svg xmlns="http://www.w3.org/2000/svg" width="24" height="25.211" viewBox="0 0 24 25.211">
 												<g id="Group_3" data-name="Group 3" transform="translate(0 0)">
 													<g id="Group_686" data-name="Group 686">
@@ -595,8 +447,8 @@
 										</button>
 									</div>
 									<div class="input-item date-select">
-										<input type="text" name="end_date" value="">
-										<button class="date-cal">
+										<input name="end_date" class="form-control filter" id="end_date" type="text" placeholder="YYYY-MM-DD" />
+										<button class="date-cal show_end">
 											<svg xmlns="http://www.w3.org/2000/svg" width="24" height="25.211" viewBox="0 0 24 25.211">
 												<g id="Group_3" data-name="Group 3" transform="translate(0 0)">
 													<g id="Group_686" data-name="Group 686">
@@ -620,7 +472,7 @@
 
 				<div class="right-tablecont">
 					<div class="delete-area">
-						<button>刪除</button>
+						<button id="deleteButton">刪除</button>
 						<p>*點擊列表即可編輯</p>
 					</div>
 					<div class="table-area">
@@ -719,12 +571,25 @@
 
 		</div>
 	</div>	
+	<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+		<div class="modal-dialog">
+		  <div class="modal-content">
+			<div class="modal-body">
+			  <p class="fs-20">確定刪除？</p>
+			</div>
+			<div class="modal-footer">
+			  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+			  <a class="btn btn-danger" id="deleteData">刪除</a>
+			</div>
+		  </div>
+		</div>
+	  </div>
 	
 
 	{% endblock body %} {% block script %}
+	<script src="{% static 'js/air-datepicker.js' %}"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/selectize.min.js" integrity="sha512-JiDSvppkBtWM1f9nPRajthdgTCZV3wtyngKUqVHlAs0d5q72n5zpM3QMOLmuNws2vkYmmLn4r1KfnPzgC/73Mw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 	<script src="{% static 'js/project_detail.js' %}"></script>
-  
 	{% endblock script %}
   </div>
   
