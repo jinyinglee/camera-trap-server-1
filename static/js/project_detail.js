@@ -71,7 +71,7 @@ $(document).ready(function () {
       // initalize datatable & redraw table
       let table = $('#img-table').DataTable({
         dom: "<'row' <'col-sm-11' > tr>" +
-        "<'row p-3'<'col-sm-4'i><'col-sm-12 col-md-1'l><'col-sm-15 col-md-7'p>>",
+        "<'row p-3'<'col-sm-4'i><'col-sm-12 col-md-3'l><'col-sm-12 col-md-5'p>>",
         language: language_settings,
         ordering: false,
         processing: true,
@@ -211,7 +211,6 @@ $(document).ready(function () {
       // data-orderby 的 attribute datetime/name 開始
 
       $('.orderby').on('click',function(){
-        alert($(this))
         if ($(this).children('svg').hasClass('fa-sort')){
             $('.orderby:not(this)').children('svg').removeClass('fa-sort-down fa-sort-up sort-icon-active sort-icon').addClass('fa-sort sort-icon');
             $(this).children('svg').removeClass('fa-sort sort-icon-active sort-icon').addClass('fa-sort-down sort-icon-active');
@@ -225,21 +224,6 @@ $(document).ready(function () {
             $(this).children('svg').removeClass('fa-sort sort-icon-active sort-icon').addClass('fa-sort-down sort-icon-active')
             $(this).children('svg').data('sort','asc');
         }
-
-
-        // $('.upar').on('click', function() {
-        //   $(this).css("fill", "#FFF");
-        //   $('.downar').css("fill", "#78d989");
-        //   $(this).data('sort', 'asc');
-
-        //   $('.downar').on('click', function() {
-        //     $(this).css("fill", "#FFF");
-        //     $('.upar').css("fill", "#78d989");
-        //     // table.data('sort', 'desc')
-        //     $(this).data('sort', 'desc');
-
-        
-
         table.draw();
       })
 
