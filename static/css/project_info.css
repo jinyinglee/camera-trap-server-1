@@ -299,6 +299,8 @@
     
     body{
     background: #f7f7f7 !important;
+    /* TODO tmp css wait 2.0 0704 */
+    font-size: 1rem !important;
     }
     
     .innbox {
