@@ -1951,44 +1951,57 @@ def project_oversight(request, pk):
     '''
     相機有運作天數 / 當月天數
     '''
+
+    is_authorized = check_if_authorized(request, pk)
+    public_ids = Project.published_objects.values_list('id', flat=True).all()
+    pk = int(pk)
+    if (pk in list(public_ids)) or is_authorized:
+        project = Project.objects.get(pk=pk)
+    else:
+        return HttpResponse('no auth')
+
     if request.method == 'GET':
         year = request.GET.get('year')
-        is_authorized = check_if_authorized(request, pk)
-        public_ids = Project.published_objects.values_list(
-            'id', flat=True).all()
-        pk = int(pk)
-        if (pk in list(public_ids)) or is_authorized:
-            project = Project.objects.get(pk=pk)
+        studyarea = request.GET.get('studyarea')
 
-            mn = DeploymentJournal.objects.filter(project_id=project.id).aggregate(Max('working_end'), Min('working_start'))
-            year_list = []
-            if mn['working_end__max'] and mn['working_start__min']:
-                year_list = list(range(mn['working_start__min'].year, mn['working_end__max'].year+1))
+    elif request.method == 'POST':
+        year = request.POST.get('year', 0)
+        studyarea = request.POST.get('studyarea')
 
-            # if proj_stats := project.get_or_count_stats():
-            if year:
-                year_int = int(year)
-                # deps = project.get_deployment_list(as_object=True)
-                data = project.count_deployment_journal([year_int])
-                #for sa in data[year]:
-                #    for d in sa['items']:
-                        # print (sa['name'], d['id'], d['name'])
-                #        dep_obj = Deployment.objects.get(pk=d['id'])
-                #        d['gaps'] = dep_obj.find_deployment_journal_gaps(year_int)
-                return render(request, 'project/project_oversight.html', {
-                    'project': project,
-                    'gap_caused_choices': DeploymentJournal.GAP_CHOICES,
-                    'month_label_list': [f'{x} 月'for x in range(1, 13)],
-                    'result': data[year] if year else [],
-                    'year_list': year_list,
-                })
-            else:
-                return render(request, 'project/project_oversight.html', {
-                    'project': project,
-                    'year_list': year_list
-                })
-        else:
-            return HttpResponse('no auth')
+    mn = DeploymentJournal.objects.filter(project_id=project.id).aggregate(Max('working_end'), Min('working_start'))
+    year_list = []
+    if mn['working_end__max'] and mn['working_start__min']:
+        year_list = list(range(mn['working_start__min'].year, mn['working_end__max'].year+1))
+
+    data = {}
+    if year or studyarea:
+        # deps = project.get_deployment_list(as_object=True)
+        if year and studyarea:
+            data = project.count_deployment_journal(year_list=[int(year)], studyarea_ids=[int(studyarea)])
+        elif year and not studyarea:
+            data = project.count_deployment_journal(year_list=[int(year)])
+        elif not year and studyarea:
+            data = project.count_deployment_journal(year_list=year_list, studyarea_ids=[int(studyarea)])
+        #for sa in data[year]:
+        #    for d in sa['items']:
+        # print (sa['name'], d['id'], d['name'])
+        #        dep_obj = Deployment.objects.get(pk=d['id'])
+        #        d['gaps'] = dep_obj.find_deployment_journal_gaps(year_int)
+        return render(request, 'project/project_oversight.html', {
+            'project': project,
+            'gap_caused_choices': DeploymentJournal.GAP_CHOICES,
+            'month_label_list': [f'{x}月'for x in range(1, 13)],
+            'result': data, #data[year] if year else [],
+            'year_list': year_list,
+        })
+    #else:
+
+    print(year, studyarea, 'xxxxxxxxxxxxx')
+    return render(request, 'project/project_oversight.html', {
+        'project': project,
+        'year_list': year_list
+    })
+
 
 @csrf_exempt
 def api_create_or_list_deployment_journals(request):

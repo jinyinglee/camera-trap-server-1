@@ -596,7 +596,8 @@ const AppSearch = () => {
         sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
         open={state.isLoading}
       >
-        <CircularProgress color="inherit" />
+    {/*<CircularProgress color="inherit" />*/}
+    <div className="loader"></div>
       </Backdrop>
       <AppSearchImageViewer setImageViewerClose={() => dispatch({type: 'setImageDetail', path: ''})} imageDetail={state.imageDetail} />
       <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhTW}>

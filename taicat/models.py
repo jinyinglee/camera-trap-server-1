@@ -163,9 +163,13 @@ class Project(models.Model):
             'name': self.name,
         }
 
-    def get_deployment_list(self, as_object=False):
+    def get_deployment_list(self, as_object=False, studyarea_ids=[]):
         res = []
-        sa = self.studyareas.filter(parent__isnull=True).all()
+        if len(studyarea_ids) > 0:
+            sa = self.studyareas.filter(parent__isnull=True, id__in=studyarea_ids).all()
+        else:
+            sa = self.studyareas.filter(parent__isnull=True).all()
+
         for i in sa:
             children = []
             for j in StudyArea.objects.filter(parent_id=i.id).all():
@@ -266,7 +270,7 @@ class Project(models.Model):
                         results.append(dj)
         return results
 
-    def count_deployment_journal(self, year_list=[]):
+    def count_deployment_journal(self, year_list=[], studyarea_ids=[]):
         years = {}
         if len(year_list) == 0:
             mnx = DeploymentJournal.objects.filter(project_id=self.id, is_effective=True).aggregate(Max('working_end'), Min('working_start'))
@@ -277,7 +281,7 @@ class Project(models.Model):
         for year in year_list:
             year_idx = str(year)
             years[year_idx] = []
-            deps = self.get_deployment_list(as_object=True)
+            deps = self.get_deployment_list(as_object=True, studyarea_ids=studyarea_ids)
             for sa_idx, sa in enumerate(deps):
                 items_d = []
                 for d_idx, d in enumerate(sa['deployments']):
