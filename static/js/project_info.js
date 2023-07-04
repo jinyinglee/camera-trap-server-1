@@ -609,11 +609,18 @@ function pointToLayer(count, latlng) {
                     firstDay: 1}
 
     let start_date_picker = new AirDatepicker('#start_date',
-    { locale: date_locale});
+        { locale: date_locale,
+            onSelect: function onSelect(fd, date, inst) {
+                updateSpeciesPie();
+            }
+        });
 
 
     let end_date_picker = new AirDatepicker('#end_date',
-        { locale: date_locale });
+        { locale: date_locale,
+            onSelect: function onSelect(fd, date, inst) {
+                updateSpeciesPie();
+            } });
 
 
     $('.show_start').on('click', function(){

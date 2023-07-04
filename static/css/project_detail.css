@@ -243,27 +243,16 @@
   }
 
 
-  /* #times::-webkit-calendar-picker-indicator {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22"><g id="Group_739" data-name="Group 739" transform="translate(-408 -2324)"><g id="Ellipse_50" data-name="Ellipse 50" transform="translate(408 2324)" fill="#fff" stroke="#257455" stroke-width="1.5"><circle cx="11" cy="11" r="11" stroke="none"/><circle cx="11" cy="11" r="10.25" fill="none"/></g><g id="Group_740" data-name="Group 740" transform="translate(419 2329.5)"><line id="Line_16" data-name="Line 16" y2="4.998" transform="translate(0)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="1.5"/><line id="Line_17" data-name="Line 17" x2="3.332" y2="3.332" transform="translate(0 4.998)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="1.5"/></g></g></svg>');
-    background-size: 16px 16px;
-    background-repeat: no-repeat;
-    background-position: center;
-    width: 16px;
-    height: 16px;
-    opacity: 0.6;
-  } */
+  #times::-webkit-calendar-picker-indicator {
+    position: absolute;
+    background: url("../image/icon-clock.svg") no-repeat top center !important;;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    top: 12px;
+    right: 10px;
+  }
   
-.icon-clock {
-  position: absolute;
-  background: url("../image/icon-clock.svg") no-repeat top center;
-  width: 24px;
-  height: 24px;
-  cursor: pointer;
-  /* background-size: cover; */
-  top: 12px;
-  right: 10px
-}
-
 
 
   #edit-image video{

@@ -84,126 +84,6 @@ $(document).ready(function () {
         scrollX: true,
         // scrollCollapse: true,
         filter: false,
-        
-        // 編輯的按鈕
-        // buttons: [
-        //   {
-        //     text: '編輯',
-        //     className: 'btn btn-outline-success btn-sm e-button d-none disabled',
-        //     action: function (e, dt, node, config) {
-
-        //       let img_array = []
-        //       let imguuid_array = []
-        //       let sa_array = []
-        //       let dep_array = []
-        //       let species_array = []
-        //       let sex_array = []
-        //       let life_stage_array = []
-        //       let antler_array = []
-        //       let animal_id_array = []
-        //       let remarks_array = []
-        //       $("input.edit-checkbox:checked").not('#edit-all').each(function () {
-        //         if (!$(this).parent().hasClass("dataTables_sizing")) {
-        //           current_row = table.row($(this).parent()).data();
-        //           img_array.push(current_row['image_id'])
-        //           imguuid_array.push(current_row['image_uuid'])
-        //           sa_array.push(current_row['saname'])
-        //           dep_array.push(current_row['dname'])
-        //           species_array.push(current_row['species'])
-        //           sex_array.push(current_row['sex'])
-        //           life_stage_array.push(current_row['life_stage'])
-        //           antler_array.push(current_row['antler'])
-        //           animal_id_array.push(current_row['animal_id'])
-        //           remarks_array.push(current_row['remarks'])
-
-        //           if (img_array.length > 1) { // TODO 或是直接按row
-        //             $('.arl, .arr').addClass('d-none');
-        //             $('#editModal').off('keydown');
-        //           } else {
-        //             $('.arl, .arr').removeClass('d-none');
-        //             // 切換上下張的功能
-        //             let c_row = $(this).parent()
-        //             let idx = table.column(c_row).index();
-        //             changeEditContent(c_row.parent(), idx);
-        //           }
-        //         }
-        //       });
-
-        //       console.log(" Info  1 ==== ")
-        //       $('#edit-image_id').val(img_array)
-        //       // remove notice info
-        //       $('#edit-studyarea, #edit-deployment, #edit-project').removeClass('notice-border')
-        //       $('.notice').addClass('d-none');
-        //       // clean studyarea & deployment id
-        //       $('#edit-studyarea_id').val('')
-        //       $('#edit-deployment_id').val('')
-
-        //       $('#edit-project').val($('input[name=project-name]').val());
-        //       $('#edit-project_id').val(pk);
-        //       $sa.autocomplete('option', 'source', response.sa_list);
-        //       console.log(" Info  2 ==== ")
-        //       if (allEqual(sa_array)) {
-        //         $('#edit-studyarea').val(sa_array[0])
-        //         $dep.autocomplete('option', 'source', response.sa_d_list[current_row['saname']]);
-        //       } else {
-        //         $('#edit-studyarea').val('')
-        //         $dep.autocomplete('option', 'source', '');
-        //       }
-        //       allEqual(dep_array) ? $('#edit-deployment').val(dep_array[0]) : $('#edit-deployment').val('');
-        //       allEqual(species_array) ? $('#edit-species').val(species_array[0]) : $('#edit-species').val('');
-        //       allEqual(life_stage_array) ? $('#edit-life_stage').val(life_stage_array[0]) : $('#edit-life_stage').val('');
-        //       allEqual(sex_array) ? $('#edit-sex').val(sex_array[0]) : $('#edit-sex').val('');
-        //       allEqual(antler_array) ? $('#edit-antler').val(antler_array[0]) : $('#edit-antler').val('');
-        //       allEqual(animal_id_array) ? $('#edit-animal_id').val(animal_id_array[0]) : $('#edit-animal_id').val('');
-        //       allEqual(remarks_array) ? $('#edit-remarks').val(remarks_array[0]) : $('#edit-remarks').val('');
-
-        //       console.log(" Info  3 ==== ")
-        //       // image or videos
-        //       if (allEqual(imguuid_array)) {
-        //         $('#edit-filename').html(current_row['filename'])
-        //         $('#edit-datetime').html(current_row['datetime'])
-        //         $('#edit-image').html(current_row['file_url'])
-        //       } else {
-        //         $('#edit-filename').html('')
-        //         $('#edit-datetime').html('')
-        //         $('#edit-image').html('')
-        //       }
-
-        //       $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').addClass('h-auto');
-        //       $('#edit-image video').addClass('w-100');
-        //       $('#edit-image video').addClass('h-auto');
-        //       $('#edit-image video source').on('error', function (event) {
-        //         $(this).parent().parent().html('<p align="center" class="cannot-load">無法載入</p>')
-        //       })
-        //       $('#edit-image video source, #edit-image img').on('error', function (event) {
-        //         $(this).parent().html('<p align="center" class="cannot-load">無法載入</p>')
-        //       })
-
-        //       $('.photode-pop').fadeIn();
-	      //       $('body').css("overflow", "hidden");
-        //       // $('#editModal').modal('show');
-
-
-
-        //       // disable edit
-        //       let editable = response.editable;
-        //       if ((editable != true) || ($('#edit_button').data('edit') == 'off')) {
-        //         $('.edit-content input').attr('disabled', 'disabled')
-        //         $('.edit-footer').addClass('d-none')
-        //       } else {
-        //         $('.edit-content input').prop("disabled", false)
-        //         $('.edit-footer').removeClass('d-none')
-        //       }
-        //     }
-        //   },
-        //   {
-        //     text: '刪除',
-        //     className: 'btn btn-outline-secondary btn-sm d-button d-none disabled',
-        //     action: function (e, dt, node, config) {
-        //       $('#deleteModal').modal('show')
-        //     }
-        //   }
-        // ],
         ajax: {
           type: "POST",
           dataType: 'json',
@@ -222,8 +102,8 @@ $(document).ready(function () {
             d.folder_name = window.conditions.folder_name;
             d.county_name = window.conditions.county_name;
             d.protectarea_name = window.conditions.protectarea_name;
-            d.orderby = $('.orderby svg.sort-icon-active').data('orderby');
-            d.sort = $('.orderby svg.sort-icon-active').data('sort');
+            d.orderby = $('.orderby').data('orderby');
+            d.sort = $('.sortbtn svg path.class').data('sort');
           },
           error: function () {
             $('.dataTables_processing').hide()
@@ -327,44 +207,32 @@ $(document).ready(function () {
         ],
       });
 
+      // data-orderby 的 attribute datetime/name 開始
+      $('.orderby').on('click', function () {
+          table.data('sort', 'asc');
+
+        $('.upar').on('click', function() {
+          $(this).css("fill", "#FFF");
+          $('.downar').css("fill", "#78d989");
+          table.data('sort', 'asc');
+
+        });
+        $('.downar').on('click', function() {
+          $(this).css("fill", "#FFF");
+          $('.upar').css("fill", "#78d989");
+          table.data('sort', 'desc')
+        });
+        
+        table.draw();
+      })
+
       // $('#img-table_length').hide();
       $('#rowsPerPage').on('change', function() {
         let row = $("#rowsPerPage").val() 
         table.page.len(row).draw();
       });
-
       
       // 右邊Table內容 結束
-      // // sort變色
-      $('.upar').on('click', function() {
-        $(this).css("fill", "#FFF");
-        $('.downar').css("fill", "#78d989");
-      });
-      $('.downar').on('click', function() {
-        $(this).css("fill", "#FFF");
-        $('.upar').css("fill", "#78d989");
-      });
-
-      // data-orderby 的 attribute datetime/name 開始
-      $('.orderby').on('click', function () {
-        if ($(this).children('svg').hasClass('fa-sort')) {
-          $('.orderby:not(this)').children('svg').removeClass('fa-sort-down fa-sort-up sort-icon-active sort-icon').addClass('fa-sort sort-icon');
-          $(this).children('svg').removeClass('fa-sort sort-icon-active sort-icon').addClass('fa-sort-down sort-icon-active');
-          $(this).children('svg').data('sort', 'asc');
-        } else if ($(this).children('svg').hasClass('fa-sort-down')) {
-          $('.orderby:not(this)').children('svg').removeClass('fa-sort-down fa-sort-up sort-icon-active sort-icon').addClass('fa-sort sort-icon');
-          $(this).children('svg').removeClass('fa-sort sort-icon-active sort-icon').addClass('fa-sort-up sort-icon-active')
-          $(this).children('svg').data('sort', 'desc');
-        } else {
-          $('.orderby:not(this)').children('svg').removeClass('fa-sort-down fa-sort-up sort-icon-active sort-icon').addClass('fa-sort sort-icon');
-          $(this).children('svg').removeClass('fa-sort sort-icon-active sort-icon').addClass('fa-sort-down sort-icon-active')
-          $(this).children('svg').data('sort', 'asc');
-        }
-
-        table.draw();
-        //getRecordByURL(queryString,null,response.limit,$(this).data('orderby'),$(this).data('sort'))
-      })
-      // data-orderby 的 attribute datetime/name 結束
 
       // 編輯模式 開始
       // edit
@@ -708,32 +576,38 @@ $(document).ready(function () {
         }
       });
 
-
+      // 樣區
       $("input[name=sa-filter]:not(.all)").parent().parent().on('click', function (event) {
-
         let radio_group = $(this).data('parent-radio');
         
         // 樣區
         $(`#li_${radio_group}`).toggleClass('now')
         if ($(`#li_${radio_group}`).hasClass('now')){
           $("#sa-list-all").removeClass('now');
-        }
-        if ($(`#li_${radio_group}`).hasClass("now")){
+          $("input[name='sa-filter'].all").removeAttr('checked');
+          
+          $("input[name='sa-filter']").removeAttr('checked');
+          $("li[name='sa-filter']").removeClass('now');
+          $(`input[name=d-filter]`).prop('checked', false);
+          $(`.check2-layerbox`).css({ display: 'none'});
+
+
+          $(`#li_${radio_group}`).addClass('now')
           $(`#collapse_${radio_group}`).css({ display: 'flex'});
           $(`input[name=sa-filter][id=${radio_group}]`).prop('checked', true);
-          $("input[name='sa-filter'].all").removeAttr('checked')
           $(`input[name=d-filter][data-parent-radio=${radio_group}]`).prop('checked', true);
         }else{
-          $(`#li_${radio_group}`).children('input').removeAttr('checked')
-          $(`#collapse_${radio_group}`).css({ display: 'none'});
+          $("#sa-list-all").addClass('now');
+          $("input[name='sa-filter'].all").prop('checked', true);
+          $(`.check2-layerbox`).css({ display: 'none'});
         }
       });
 
-      // 樣區/相機位置
+      // 相機位置
       // radio style for studyarea & cameralocation: checkbox toggle
+      
       $("input[type=checkbox][name=d-filter].filter.all").on('click', function (event){
         let parent_radio = $(this).data('parent-radio')
-        // 各個項全選
 
         // uncheck other checkbox group
         $(`input[type=checkbox][name=d-filter]:not([data-parent-radio=${parent_radio}])`).prop('checked', false)
@@ -743,14 +617,13 @@ $(document).ready(function () {
           $(`input[data-parent-radio=${parent_radio}][type=checkbox]`).prop('checked', true)
         } else {
           $(`input[data-parent-radio=${parent_radio}][type=checkbox]`).prop('checked', false)
-          $(`#li_${radio_group}`).children('input').removeAttr('checked')
-          $(`#collapse_${radio_group}`).css({ display: 'none'});
+          $(`#li_${parent_radio}`).children('input').removeAttr('checked');
+          $(`#collapse_${parent_radio}`).css({ display: 'none'});
+          $(`#li_${parent_radio}`).removeClass('now');
+
+          $("#sa-list-all").addClass('now');
+          $("input[name='sa-filter'].all").prop('checked', true);
         }
-        // radio
-        $(`input[name=sa-filter]:checked`).prop('checked', false)
-        $(`input[name=sa-filter][id=${parent_radio}]`).prop('checked', true)
-        $(`input[name=sa-filter][id=${parent_radio}]`).parent().parent().parent().addClass('now');
-        $(`input[name=sa-filter]:not([id=${parent_radio}])`).parent().parent().parent().removeClass('now');
       })
 
       // deployment: if other checkbox checked, uncheck 'all'
@@ -766,7 +639,6 @@ $(document).ready(function () {
         $(`input[name=sa-filter][id=${parent_radio}]`).prop('checked', true)
         $(`input[name=sa-filter][id=${parent_radio}]`).parent().parent().parent().addClass('now');
         $(`input[name=sa-filter]:not([id=${parent_radio}])`).parent().parent().parent().removeClass('now');
-
       })
 
 
@@ -1320,3 +1192,7 @@ $(`#sa-list-all`).on('click', function (event) {
   }
 })
 
+
+document.querySelector('#editForm').addEventListener('submit', (e)=>{
+  e.preventDefault();
+});
