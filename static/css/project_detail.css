@@ -370,7 +370,8 @@
 #img-table_previous > a{
   border:none !important;
   background-color: #f8f8f8 !important;
-  background:none !important;
+  /* background:none !important; */
+  color: black;
 }
 
 /* #img-table_previous a:hover {
@@ -387,6 +388,7 @@
 #img-table_next > a{
   border:none !important;
   background-color: #f8f8f8 !important;
+  color: black;
 }
 
 .page-link:focus {
