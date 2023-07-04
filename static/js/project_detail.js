@@ -70,10 +70,8 @@ $(document).ready(function () {
       // 右邊Table內容 開始
       // initalize datatable & redraw table
       let table = $('#img-table').DataTable({
-        dom:
-          "<'row' <'col-sm-11' > tr>" +
-        "<'row p-3'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-
+        dom: "<'row' <'col-sm-11' > tr>" +
+        "<'row p-3'<'col-sm-4'i><'col-sm-12 col-md-1'l><'col-sm-15 col-md-7'p>>",
         language: language_settings,
         ordering: false,
         processing: true,
@@ -102,8 +100,8 @@ $(document).ready(function () {
             d.folder_name = window.conditions.folder_name;
             d.county_name = window.conditions.county_name;
             d.protectarea_name = window.conditions.protectarea_name;
-            d.orderby = $('.orderby').data('orderby');
-            d.sort = $('.sortbtn svg path.class').data('sort');
+            d.orderby = $('.orderby svg.sort-icon-active').data('orderby');
+            d.sort = $('.orderby svg.sort-icon-active').data('sort');
           },
           error: function () {
             $('.dataTables_processing').hide()
@@ -111,6 +109,9 @@ $(document).ready(function () {
           }
         },
         order: [[0, "asc"]],
+        lengthMenu: [
+          [10, 25, 50, -1],
+          [10, 25, 50, 'All']],
         drawCallback: function () {
           $('.dataTables_processing').hide()
           // console.log($(this.api().table().header()));
@@ -178,9 +179,9 @@ $(document).ready(function () {
 
           // adjust columns after 1000 ms
 
-          // setTimeout(function () {
-          //   $.fn.dataTable.tables({ visible: false, api: true }).columns.adjust();
-          // }, 1000);
+          setTimeout(function () {
+            $.fn.dataTable.tables({ visible: false, api: true }).columns.adjust();
+          }, 1000);
         },
 
         columns: [
@@ -208,21 +209,37 @@ $(document).ready(function () {
       });
 
       // data-orderby 的 attribute datetime/name 開始
-      $('.orderby').on('click', function () {
-          table.data('sort', 'asc');
 
-        $('.upar').on('click', function() {
-          $(this).css("fill", "#FFF");
-          $('.downar').css("fill", "#78d989");
-          table.data('sort', 'asc');
+      $('.orderby').on('click',function(){
+        alert($(this))
+        if ($(this).children('svg').hasClass('fa-sort')){
+            $('.orderby:not(this)').children('svg').removeClass('fa-sort-down fa-sort-up sort-icon-active sort-icon').addClass('fa-sort sort-icon');
+            $(this).children('svg').removeClass('fa-sort sort-icon-active sort-icon').addClass('fa-sort-down sort-icon-active');
+            $(this).children('svg').data('sort','asc');
+        } else if ($(this).children('svg').hasClass('fa-sort-down')) {
+            $('.orderby:not(this)').children('svg').removeClass('fa-sort-down fa-sort-up sort-icon-active sort-icon').addClass('fa-sort sort-icon');
+            $(this).children('svg').removeClass('fa-sort sort-icon-active sort-icon').addClass('fa-sort-up sort-icon-active')
+            $(this).children('svg').data('sort','desc');
+        } else {
+            $('.orderby:not(this)').children('svg').removeClass('fa-sort-down fa-sort-up sort-icon-active sort-icon').addClass('fa-sort sort-icon');
+            $(this).children('svg').removeClass('fa-sort sort-icon-active sort-icon').addClass('fa-sort-down sort-icon-active')
+            $(this).children('svg').data('sort','asc');
+        }
 
-        });
-        $('.downar').on('click', function() {
-          $(this).css("fill", "#FFF");
-          $('.upar').css("fill", "#78d989");
-          table.data('sort', 'desc')
-        });
+
+        // $('.upar').on('click', function() {
+        //   $(this).css("fill", "#FFF");
+        //   $('.downar').css("fill", "#78d989");
+        //   $(this).data('sort', 'asc');
+
+        //   $('.downar').on('click', function() {
+        //     $(this).css("fill", "#FFF");
+        //     $('.upar').css("fill", "#78d989");
+        //     // table.data('sort', 'desc')
+        //     $(this).data('sort', 'desc');
+
         
+
         table.draw();
       })
 
@@ -260,9 +277,9 @@ $(document).ready(function () {
           $('.d-button, .e-button').addClass('d-none')
         }
         // adjust columns after 1000 ms
-        // setTimeout(function () {
-        //   $.fn.dataTable.tables({ visible: false, api: true }).columns.adjust();
-        // }, 1000);
+        setTimeout(function () {
+          $.fn.dataTable.tables({ visible: false, api: true }).columns.adjust();
+        }, 1000);
       })
 
       // 編輯模式 結束
@@ -625,8 +642,8 @@ $(document).ready(function () {
           $("input[name='sa-filter'].all").prop('checked', true);
         }
       })
-
       // deployment: if other checkbox checked, uncheck 'all'
+
       $("input[type=checkbox][name=d-filter].filter:not(.all)").click(function () {
         let parent_radio = $(this).data('parent-radio')
         // uncheck other checkbox group
