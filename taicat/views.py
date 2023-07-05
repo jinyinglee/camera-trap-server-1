@@ -1800,7 +1800,7 @@ def generate_download_excel(request, pk):
         date_filter = "AND i.datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
 
     conditions = ''
-    deployment = requests.getlist('d-filter')
+    deployment = requests.getlist('d-filter[]')
     sa = requests.get('sa-filter')
     if sa:
         conditions += f' AND i.studyarea_id = {sa}'
