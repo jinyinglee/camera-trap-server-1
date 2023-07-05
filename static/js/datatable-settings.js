@@ -86,13 +86,21 @@ let language_settings = {
 
 			// Subtract the height of the header, footer and the elements
 			// surrounding the table
-			availableHeight -= offsetTop;
-			availableHeight -= settings.container.height() - (offsetTop + scrollBody.height());
+			// availableHeight -= offsetTop;
+			// availableHeight -= settings.container.height() - (offsetTop + scrollBody.height());
 
 			$('div.dataTables_scrollBody', t.container()).css({
-				maxHeight: availableHeight,
-				height: availableHeight
+				maxHeight: '100%',
+				height: '100%',
+				maxWidth: '100%',
+				width: '100%'
 			});
+
+			$('div.dataTables_scrollHead', t.container()).css({
+				maxWidth: '100%',
+				width: '100%'
+			});
+
 
 			if (dt.fixedColumns) {
 				dt.fixedColumns().relayout();
