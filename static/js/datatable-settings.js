@@ -90,7 +90,7 @@ let language_settings = {
 			// availableHeight -= settings.container.height() - (offsetTop + scrollBody.height());
 
 			$('div.dataTables_scrollBody', t.container()).css({
-				maxHeight: '100%',
+				maxHeight: '1266px',
 				height: '100%',
 				maxWidth: '100%',
 				width: '100%'
