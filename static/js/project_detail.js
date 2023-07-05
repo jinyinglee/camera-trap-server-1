@@ -586,6 +586,7 @@ $(document).ready(function () {
       });
 
       // 樣區
+      // 點選單一樣區（非全選）
       $("input[name=sa-filter]:not(.all)").parent().parent().on('click', function (event) {
         // $("#sa-list-all").removeClass('now');
         let radio_group = $(this).data('parent-radio');
@@ -593,20 +594,24 @@ $(document).ready(function () {
         // 樣區
         $(`#li_${radio_group}`).toggleClass('now')
         if ($(`#li_${radio_group}`).hasClass('now')){
+          // 選取單一樣區
+          // 取消全選樣區
           $("#sa-list-all").removeClass('now');
           $("input[name='sa-filter'].all").removeAttr('checked');
           
+          // 取消所有單一樣區的選取
           $("input[name='sa-filter']").removeAttr('checked');
           $("li[name='sa-filter']").removeClass('now');
           $(`input[name=d-filter]`).prop('checked', false);
           $(`.check2-layerbox`).css({ display: 'none'});
 
-
+          // 選取目標樣區
           $(`#li_${radio_group}`).addClass('now')
           $(`#collapse_${radio_group}`).css({ display: 'flex'});
           $(`input[name=sa-filter][id=${radio_group}]`).prop('checked', true);
           $(`input[name=d-filter][data-parent-radio=${radio_group}]`).prop('checked', true);
         }else{
+          // 取消單一樣區
           $("#sa-list-all").addClass('now');
           $("input[name='sa-filter'].all").prop('checked', true);
           $(`.check2-layerbox`).css({ display: 'none'});
@@ -615,7 +620,7 @@ $(document).ready(function () {
 
       // 相機位置
       // radio style for studyarea & cameralocation: checkbox toggle
-      
+      // 點選相機位置全選
       $("input[type=checkbox][name=d-filter].filter.all").on('click', function (event){
         let parent_radio = $(this).data('parent-radio')
 
@@ -625,14 +630,16 @@ $(document).ready(function () {
 
         if ($(this).is(':checked')) {
           $(`input[data-parent-radio=${parent_radio}][type=checkbox]`).prop('checked', true)
+          $(`#li_${parent_radio}`).addClass('now');
         } else {
+
           $(`input[data-parent-radio=${parent_radio}][type=checkbox]`).prop('checked', false)
           $(`#li_${parent_radio}`).children('input').removeAttr('checked');
-          $(`#collapse_${parent_radio}`).css({ display: 'none'});
+          // $(`#collapse_${parent_radio}`).css({ display: 'none'});
           $(`#li_${parent_radio}`).removeClass('now');
 
-          $("#sa-list-all").addClass('now');
-          $("input[name='sa-filter'].all").prop('checked', true);
+          // $("#sa-list-all").addClass('now');
+          // $("input[name='sa-filter'].all").prop('checked', true);
         }
       })
       // deployment: if other checkbox checked, uncheck 'all'
