@@ -209,7 +209,7 @@ def process_download_data_task(email, filter_dict, member_id, host, verbose):
 
 
 @shared_task
-def process_download_calculated_data_task(email, filter_dict, calc_dict, calc_type, out_format, calc_data, host):
+def process_download_calculated_data_task(email, filter_dict, calc_dict, calc_type, out_format, calc_data, host, member_id, verbose):
     #print(email, filter_dict, calc_dict, calc_type, out_format, calc_data, host)
     results = calculated_data(filter_dict, calc_data)
 
@@ -227,6 +227,17 @@ def process_download_calculated_data_task(email, filter_dict, calc_dict, calc_ty
         host,
         settings.MEDIA_URL,
         Path('download', filename))
+
+    user_role = ''
+    if contact := Contact.objects.get(id=member_id):
+        if role := ParameterCode.objects.filter(parametername=contact.identity).first():
+            user_role = role.name
+    download_log_sql = DownloadLog(
+        user_role=user_role,
+        condiction=verbose,
+        file_link=download_url)
+    download_log_sql.save()
+
     email_subject = '[臺灣自動相機資訊系統] 下載計算資料'
     email_body = render_to_string('project/download.html', {'download_url': download_url, })
     # print('email', email_subject, email_body, email, download_url)

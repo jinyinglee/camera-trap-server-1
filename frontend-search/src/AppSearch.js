@@ -303,7 +303,7 @@ const AppSearch = () => {
   }
 
   const handleCalc = () => {
-    const formDataCleaned = cleanFormData(state.filter, state.options.deploymentDict);
+    const formDataCleaned = cleanFormData(state.filter, state.options.deploymentDict, true);
     //console.log(formDataCleaned);
     if (!formDataCleaned.species) {
       dispatch({type: 'setAlert', text: '必須至少選一個物種', title:'注意'});
