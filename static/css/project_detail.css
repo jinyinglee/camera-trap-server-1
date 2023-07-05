@@ -88,6 +88,9 @@
     border-bottom-right-radius: 0px !important;
   }
 
+  .dataTables_scrollBody{
+    position:  static !important;
+  }
   .dataTables_scrollHeadInner{
     width: 100% !important;
   }
@@ -330,6 +333,11 @@
     z-index: 9999;
 }
   
+ #editModal{
+  top: 0px !important;
+  z-index: 9999;
+}
+
 .check2-layerbox {
   display: none;
 }
