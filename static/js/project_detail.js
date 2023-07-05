@@ -119,7 +119,6 @@ $(document).ready(function () {
             $($.fn.dataTable.tables(true)).DataTable()
                .columns.adjust();
          });
-        //  http://127.0.0.1:8000/project/details/141/
 
           $('.dataTables_processing').hide()
           // console.log($(this.api().table().header()));
@@ -959,6 +958,17 @@ $('#deleteButton').on('click', function() {
   $('#deleteModal').modal('show')
 })
 
+
+
+$('#edit-all').on('click', function () {
+  if ($('#edit-all').is(':checked')) {
+    $('.edit-checkbox').prop('checked', true)
+  } else {
+    $('.edit-checkbox').each(function () {
+      $('.edit-checkbox').prop('checked', false)
+    });
+  }
+})
 
 
 
