@@ -86,9 +86,9 @@
 								<img class="up-icon ms-1" src="{% static 'icon/upload-gray.png' %}" />
 							{% endif %}
 							</div>
-							{% if i.6 == 'unfinished' %}
-							<button class="whybox setModal" data-deployment_journal_id="{{ i.8 }}" data-species_error="{{ i.9 }}" data-upload_error="{{ i.10 }}">檢視錯誤</button>
-							{% endif %}
+                                                        {% if i.6 == 'unfinished' %}
+                                                        <button class="whybox setModal" data-deployment_journal_id="{{ i.8 }}" data-species_error="{{ i.9 }}" data-upload_error="{{ i.10 }}">檢視錯誤
+                                                        {% endif %}
 						</td>
 						<td>
 						  {% if i.2 != '' %}

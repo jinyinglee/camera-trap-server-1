@@ -50,6 +50,7 @@
   </head>
 
   <body>
+    {% block modal %}{% endblock %}
     {% if 'is_login' in request.session and request.COOKIES and request.session.id %}
       {% if "announcementread" in request.COOKIES %}
         {% if request.COOKIES.announcementread  != request.session.id|announcement_expire_time %}

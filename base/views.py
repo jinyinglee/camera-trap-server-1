@@ -259,7 +259,7 @@ def upload_history(request):
             q = request.GET.get('q', '')
             page_number = request.GET.get('page', 1)
 
-            query = UploadHistory.objects.filter(deployment_journal__project_id__in=my_project_list).values_list('created', 'last_updated', 'deployment_journal__folder_name', 'deployment_journal__project__name', 'deployment_journal__studyarea__name', 'deployment_journal__deployment__name', 'status', 'deployment_journal__project_id', 'deployment_journal__id').order_by('-created')
+            query = UploadHistory.objects.filter(deployment_journal__project_id__in=my_project_list).values_list('created', 'last_updated', 'deployment_journal__folder_name', 'deployment_journal__project__name', 'deployment_journal__studyarea__name', 'deployment_journal__deployment__name', 'status', 'deployment_journal__project_id', 'deployment_journal__id', 'species_error', 'upload_error').order_by('-created')
 
             if q:
                 query = query.filter(Q(deployment_journal__project__name__icontains=q) |

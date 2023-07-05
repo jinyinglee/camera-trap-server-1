@@ -914,4 +914,4 @@ def humen_readable_filter(filter_dict):
         detail = ' AND '.join(v)
         data.append(f'計畫名稱：{k}, {detail}')
 
-    return ','.join(data)
+    return ', '.join(data)

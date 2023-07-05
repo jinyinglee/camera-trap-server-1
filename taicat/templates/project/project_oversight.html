@@ -18,7 +18,7 @@
 
 {% endblock head %}
 
-{% block body %}
+{% block modal  %}
 <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -129,15 +129,15 @@
 	<table class="table-calendar" id="table-calendar" cellpadding="0" cellspacing="0" border="0">
 	</table>
       </div>
-      <div>
+      <div style="margin: 4px 20px 10px 20px;">
         行程紀錄
         <ul class="list-group" id="calendar-trip-list"></ul>
           </ul>
       </div>
-      <div>
+      <div style="margin-left: 20px">
         相機運作比例 <span id="calendar-working-ratio"></span> (相機有運作天數 <span id="calendar-working-days"></span> / 當月天數 <span id="calendar-num-days"></span>)
       </div>
-      <div class="btn-center">
+      <div class="btn-center" style="margin-top: 20px;margin-bottom: 20px">
 	<button class="btn-green" id="hide-calendar">
 	  確認
 	</button>
@@ -146,7 +146,9 @@
   </div>
 </div>
 </div>
+{% endblock %}
 
+{% block body %}
 <div class="innbox gray-bg" style="margin-top:-80px">{# CSSHACK #}
   <div class="main-box">
     <div class="main-title">
@@ -252,7 +254,7 @@
     {% endif %}
     <div class="btn-center">
       {% if request.GET.year %}
-      <a href="{% url 'download_project_oversight' pk=project.id %}?year={{ request.GET.year }}" class="btn-green"><p>管考表下載 ({{ request.GET.year }})</p></a>
+      <a href="{% url 'download_project_oversight' pk=project.id %}?year={{ request.GET.year }}&studyarea={{ request.GET.studyarea }}" class="btn-green"><p>管考表下載 ({{ request.GET.year }})</p></a>
       </a>
       {% endif %}
     </div>
