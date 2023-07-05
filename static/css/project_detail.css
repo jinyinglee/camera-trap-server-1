@@ -88,6 +88,14 @@
     border-bottom-right-radius: 0px !important;
   }
 
+  .dataTables_scrollHeadInner{
+    width: 100% !important;
+  }
+
+  .dataTables_scrollHeadInner > table{
+    width: 100% !important;
+  }
+
   #img-table tbody tr:hover {
     background: #f8f8f8;
     cursor: pointer;
