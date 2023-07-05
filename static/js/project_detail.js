@@ -1126,7 +1126,14 @@ $('#canceldownload').on('click', function (event) {
   $('.down-pop').fadeOut();
 });
 
+$('.photode-pop .xx').on('click', function (event) {
+  $('.photode-pop').fadeOut();
+});
 
+$('#canceledit').on('click', function (event) {
+  $('.photode-pop').fadeOut();
+  $('body').css("overflow", "initial");
+});
 
   // 收起物種或者樣區/相機位置 的 條件欄 然後 加入 add/remove class
 
