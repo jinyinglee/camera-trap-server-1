@@ -430,3 +430,8 @@
   padding-top: 0.85em;
   z-index: 5000;
 }
+
+
+.btn-greeno{
+  min-width: 120px;
+}
