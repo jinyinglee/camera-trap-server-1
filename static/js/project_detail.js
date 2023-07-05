@@ -72,6 +72,7 @@ $(document).ready(function () {
       let table = $('#img-table').DataTable({
         dom: "<'row' <'col-sm-11' > tr>" +
         "<'row p-3'<'col-sm-4'i><'col-sm-12 col-md-3'l><'col-sm-12 col-md-5'p>>",
+        autoWidth : false,
         language: language_settings,
         ordering: false,
         processing: true,
@@ -113,9 +114,16 @@ $(document).ready(function () {
           [10, 25, 50, -1],
           [10, 25, 50, 'All']],
         drawCallback: function () {
+
+          $('.dataTables_scrollHead').on('shown.bs.collapse', function () {
+            $($.fn.dataTable.tables(true)).DataTable()
+               .columns.adjust();
+         });
+        //  http://127.0.0.1:8000/project/details/141/
+
           $('.dataTables_processing').hide()
           // console.log($(this.api().table().header()));
-          // $(this.api().table().header()).hide();
+          // $(this.api().table().header()).hide();http://127.0.0.1:8000/project/details/141/
           // button style
           var btns = $('.dt-button');
           btns.removeClass('dt-button');
@@ -579,6 +587,7 @@ $(document).ready(function () {
 
       // 樣區
       $("input[name=sa-filter]:not(.all)").parent().parent().on('click', function (event) {
+        // $("#sa-list-all").removeClass('now');
         let radio_group = $(this).data('parent-radio');
         
         // 樣區
@@ -1182,9 +1191,16 @@ $('.show_end').on('click', function(){
 
 $(`#sa-list-all`).on('click', function (event) {
   if ($(`#sa-list-all`).hasClass("now")){
+
     $(`#sa-list-all`).removeClass("now");
+
     $("input[name='sa-filter'].all").removeAttr('checked');
+    // $('input[type=radio]').prop('checked', false);
+
   }else{
+    // $('input[name=sa-filter]').closest('li').addClass('now');
+    // $(`#sa-list-all`).addClass("now");
+
     $('input[type=radio]').prop('checked', false);
     $('input[type=radio].all').prop('checked', true);
     $('input[name=sa-filter]:not(.all)').closest('li').removeClass('now');
