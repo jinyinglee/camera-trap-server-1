@@ -416,10 +416,9 @@ const AppSearch = () => {
             window.location.replace(window.location.origin+ "/personal_info");
           }
         } else {
-          $('#downloadModal').modal('show')
+          $('.down-pop').fadeIn();
           const formDataCleaned = cleanFormData(state.filter, state.options.deploymentDict, true)
           const d = JSON.stringify(formDataCleaned)
-          // console.log($('.download'), 'eeee')
           const dl = document.getElementById('download-submit')
           dl.onclick = () => {
             //$('.download').on('click', function(){ // 這個會重複呼叫?
@@ -444,11 +443,13 @@ const AppSearch = () => {
               .catch( error => {
                 console.log('downloadData error:', error.message);
               })
-            $('#downloadModal').modal('hide')
-            }
+            //$('#downloadModal').modal('hide')
+            $('.down-pop').fadeOut();
+            alert('請求已送出');
+          }
         }
       }).catch((error)=>{
-        console.log('calc error:', error.message);
+        console.log('download error:', error.message);
       });
   }
 
@@ -602,7 +603,7 @@ const AppSearch = () => {
       <AppSearchImageViewer setImageViewerClose={() => dispatch({type: 'setImageDetail', path: ''})} imageDetail={state.imageDetail} />
       <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhTW}>
         <Grid container spacing={2} sx={BoxStyle}>
-          <Grid xs={12}>
+          <Grid item xs={12}>
             <Typography sx={{
               fontSize: '24px',
               color: '#59AE68',
