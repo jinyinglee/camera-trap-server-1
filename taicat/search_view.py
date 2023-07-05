@@ -227,7 +227,44 @@ def api_search(request):
             message = 'processing'
             if member_id := request.session.get('id', None):
                 host = request.META['HTTP_HOST']
-                process_download_data_task.delay(email, filter_dict, member_id, host)
+
+                # humen read filter condition
+                data = []
+                if species := filter_dict.get('species'):
+                    data.append(f'物種：{species}')
+                start = filter_dict.get('startDate', '')
+                end= filter_dict.get('endDate', '')
+                if start or end:
+                    data.append(f'時間：{start} ~ {end}')
+                if counties := filter_dict.get('counties'):
+                    a = [x['name'] for x in counties]
+                    data.append(f"縣市：{'|'.join(a)}")
+                if protectedareas := filter_dict.get('protectedareas'):
+                    a = [x['name'] for x in protectedareas]
+                    data.append(f"保護留區：{'|'.join(a)}")
+                if keyword := filter_dict.get('keyword'):
+                    data.append(f'計畫關鍵字：{keyword}')
+                if alt := filter_dict.get('altitude'):
+                    alt_map = {'eq': '等於', 'gt': '>', 'lt': '<'}
+                    data.append(f"海拔：{alt_map[filter_dict['altitudeOperator']]}{alt}")
+
+                project_dict = {}
+                if verbose := filter_dict.get('verbose'):
+                    if projects := verbose.get('projects'):
+                        for p in projects:
+                            project_dict[p['project']['name']] = []
+                            if studyareas := p.get('studyareas'):
+                                for sa in studyareas:
+                                    project_dict[p['project']['name']].append(f"樣區：{sa['name']}")
+                            if deployments := p.get('deployments'):
+                                for d in deployments:
+                                    project_dict[p['project']['name']].append(f"相機位置：{d['name']}")
+                for k, v in project_dict.items():
+                    detail = ' AND '.join(v)
+                    data.append(f'計畫名稱：{k}, {detail}')
+
+                data_str = ','.join(data)
+                process_download_data_task.delay(email, filter_dict, member_id, host, data_str)
             else:
                 message = 'no member_id'
 

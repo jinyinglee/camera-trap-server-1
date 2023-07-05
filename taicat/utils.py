@@ -807,7 +807,7 @@ def save_calculation(species_list, year, month, deployment):
 def apply_search_filter(filter_dict={}):
     query = Image.objects.filter()
     project_ids = []
-    # print(filter_dict)
+
     if value := filter_dict.get('keyword'):
         rows = Project.objects.values_list('id', flat=True).filter(keyword__icontains=value)
         project_ids = list(rows)
