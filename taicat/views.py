@@ -1876,7 +1876,7 @@ def generate_download_excel(request, pk):
     if settings.ENV == 'prod':
         download_url = download_url.replace('http', 'https')
     # download_log
-    condiction_log = f'''專案名稱:{project_name}, 日期：{date_filter}。樣區 / 相機位置：{conditions} 。海拔：{start_altitude}~{end_altitude}。物種：{spe_conditions} 。時間：{time_filter}。縣市：{county_name}。保護留區：{protectarea_name}。資料夾：{folder_filter} 。'''
+    condiction_log = f'''計畫名稱:{project_name}, 日期：{date_filter}。樣區 / 相機位置：{conditions} 。海拔：{start_altitude}~{end_altitude}。物種：{spe_conditions} 。時間：{time_filter}。縣市：{county_name}。保護留區：{protectarea_name}。資料夾：{folder_filter} 。'''
     download_log_sql = DownloadLog(user_role=user_role, condiction=condiction_log,file_link=download_url)#file_link=download_url
     download_log_sql.save()
     email_subject = '[臺灣自動相機資訊系統] 下載資料'

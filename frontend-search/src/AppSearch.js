@@ -417,7 +417,7 @@ const AppSearch = () => {
           }
         } else {
           $('#downloadModal').modal('show')
-          const formDataCleaned = cleanFormData(state.filter, state.options.deploymentDict)
+          const formDataCleaned = cleanFormData(state.filter, state.options.deploymentDict, true)
           const d = JSON.stringify(formDataCleaned)
           // console.log($('.download'), 'eeee')
           const dl = document.getElementById('download-submit')
