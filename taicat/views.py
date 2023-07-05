@@ -1898,8 +1898,15 @@ def download_project_oversight(request, pk):
     # start_year = datetime.datetime.fromtimestamp(proj_stats['working__range'][0]).year
     # end_year = datetime.datetime.fromtimestamp(proj_stats['working__range'][1]).year
     year = request.GET.get('year')
+    studyarea = ''
+    if sa_id := request.GET.get('studyarea'):
+        studyarea = StudyArea.objects.filter(id=sa_id).first()
+
     year_int = int(year)
-    stats = project.count_deployment_journal([year_int])
+    if studyarea:
+        stats = project.count_deployment_journal([year_int], [studyarea.id])
+    else:
+        stats = project.count_deployment_journal([year_int])
 
     wb = Workbook()
     ws1 = wb.active
@@ -1941,7 +1948,10 @@ def download_project_oversight(request, pk):
         tmp.seek(0)
         stream = tmp.read()
         #filename = quote(f'{project.name}_管考_{start_year}-{end_year}.xlsx')
-        filename = quote(f'{project.name}_管考_{year}.xlsx')
+        if studyarea:
+            filename = quote(f'{project.name}_管考_{year}_{studyarea.name}.xlsx')
+        else:
+            filename = quote(f'{project.name}_管考_{year}.xlsx')
 
         #return StreamingHttpResponse(
         #    stream,
@@ -2003,7 +2013,6 @@ def project_oversight(request, pk):
         })
     #else:
 
-    print(year, studyarea, 'xxxxxxxxxxxxx')
     return render(request, 'project/project_oversight.html', {
         'project': project,
         'year_list': year_list
