@@ -652,20 +652,30 @@ $(document).ready(function () {
       })
 
 
+      // 物種 - 單一選擇
       $("li[name='species-filter'].filter:not(.all)").on('click', function () {
         // 先移除自己本身的再判斷
-        $(this).toggleClass('now')
+        // $(this).toggleClass('now')
         if ($(this).hasClass("now")){
-          $(this).children('input').prop('checked',true);
+          // 取消選擇
+          $(this).removeClass('now')
+          $(this).children('input').removeAttr('checked');
+          $(this).children('input').prop('checked',false);
           // $('input[name="species-filter"]:checked').map(function () { alert($(this).val())}).get()
         }else{
-          $(this).children('input').removeAttr('checked')
+          // 選擇
+          $(this).addClass('now')
+          $(this).children('input').prop('checked',true);
         }
+        // 取消物種全選
         $("input[name='species-filter'].all").removeAttr('checked')
         $("#species-list-all").removeClass('now')
       })
 
-      // species: if 'all' checked, check all checkbox 06done
+
+
+      // 物種 - 全選功能
+      // species: if 'all' checked, check all checkbox 
       $("#species-list-all").on('click', function (event) {
         $("#species-list-all").toggleClass('now');
         if ($("#species-list-all").hasClass("now")){
@@ -769,6 +779,8 @@ $(document).ready(function () {
     
         start_altitude = $("input[name=start_altitude]").val();
         end_altitude = $("input[name=end_altitude]").val();
+
+        // console.log( $('input[name="species-filter"]:checked').map(function () { return $(this).val(); }).get());
 
         $.ajax({
           data: { 

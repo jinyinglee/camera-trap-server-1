@@ -1683,7 +1683,7 @@ def data(request):
             #     extension = filename.split('.')[-1].lower()
             #     file_url = df.image_uuid[i] + '.' + extension
             # else:
-            print(df.image_uuid[i], df.filename[i], 'xxx')
+            # print(df.image_uuid[i], df.filename[i], 'xxx')
             if df.memo[i] == '2022-pt-data':
                 file_url = f"{df.image_id[i]}-m.jpg"
             elif not file_url and not df.from_mongo[i]:
@@ -1812,7 +1812,7 @@ def generate_download_excel(request, pk):
         else:
             conditions = ' AND i.deployment_id IS NULL'
     spe_conditions = ''
-    species = requests.getlist('species-filter')
+    species = requests.getlist('species-filter[]')
     if species:
         if 'all' not in species:
             x = [i for i in species]
