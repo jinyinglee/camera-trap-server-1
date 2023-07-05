@@ -247,7 +247,7 @@ $(document).ready(function () {
       $('#edit_button').on('click', function () {
         if ($('#edit_button').data('edit') == 'off') {
           $('#edit_button').data('edit', 'on');
-          console.log($($.fn.dataTable.tables(true)).DataTable().column(0))
+          // console.log($($.fn.dataTable.tables(true)).DataTable().column(0))
           $($.fn.dataTable.tables(true)).DataTable().column(0).visible(true);
           $('#edit_button').html('<i class="fa fa-xs fa-pencil w-12"></i> 結束編輯')
           // show buttons
@@ -523,12 +523,17 @@ $(document).ready(function () {
               $('#species-list-all').nextAll('li').remove();
               for (let i = 0; i < data['species'].length; i++) {
                 $('#species-list').append(
-                  `<li>
-                    <div class="cir-checkbox">
-                      <img class="coricon" src="{% static 'image/correct.svg' %}"  alt="">
-                    </div>
-                      <p>${data['species'][i]['name']} (${data['species'][i]['count']})</p>
-                  </li>`)
+                  `
+                  <li class="now filter" name="species-filter">
+										<div class="cir-checkbox form-check-label w-100">
+											<img class="coricon" src="/static/image/correct.svg"  alt="">
+										</div>
+										<p>
+											<input class="filter" type="checkbox" name="species-filter" value="${data['species'][i]['name']}" checked />
+											${data['species'][i]['name']} (${data['species'][i]['count']})
+										</p>
+									</li>
+                  `)
               }
               if ($("input[name=species-filter].all").is(':checked')) {
                 $("#species-list li label").children('svg').remove()
@@ -691,9 +696,6 @@ $(document).ready(function () {
           $("li[name='species-filter']").removeClass('now');
           $("input[name='species-filter']").prop('checked',false);
         }
-        // BUG 按清除後，這邊沒有功用
-        // alert($('input[name="species-filter"]:checked').map(function () { return $(this).val();}).get())
-
       })
 
       $('#deleteData').on('click', function () {
@@ -721,48 +723,59 @@ $(document).ready(function () {
             $('#species-list-all').nextAll('li').remove();
             for (let i = 0; i < data['species'].length; i++) {
               $('#species-list').append(
-                `<li>
-                    <label class="form-check-label">
-                    <input class="filter" type="checkbox" name="species-filter" value="${data['species'][i]['name']}" checked>
-                        ${data['species'][i]['name']} (${data['species'][i]['count']})
-                    </label>
-                    </li>`)
+                `<li class="filter" name="species-filter">
+                  <input class="filter" type="checkbox" name="species-filter" value="${data['species'][i]['name']}" checked>
+                <div class="cir-checkbox form-check-label w-100">
+                  <img class="coricon" src="/static/image/correct.svg"  alt="">
+                </div>
+                <p>${data['species'][i]['name']} (${data['species'][i]['count']})</p>
+              </li>`)
             }
             if ($("input[name=species-filter].all").is(':checked')) {
-              $("#species-list li label").children('svg').remove()
-              $("#species-list li label").prepend('<i class="fas fa-check title-dark w-12"></i>')
-              $("input[name='species-filter']").prop('checked', true)
+
+              $("input[name='species-filter']").prop('checked',true);
+              $("li[name='species-filter']").addClass('now');
+              $('#species-list-all').addClass('now');
             } else {
-              $("#species-list li label").children('svg').remove()
+              
+              // $("#species-list li label").children('svg').remove()
               $(`input[name=species-filter]`).prop("checked", false);
               current_species.each(function () {
-                $('<i class="fas fa-check title-dark w-12"></i>').insertBefore($(`input[name=species-filter][value="${this.value}"]`));
+                $(`input[name=species-filter][value="${this.value}"]`).closest('li').addClass('now');
                 $(`input[name=species-filter][value="${this.value}"]`).prop("checked", true);
               })
             }
             // bind click function
             // species: if other checkbox checked, uncheck 'all'
-            $("input[name='species-filter'].filter:not(.all)").click(function () {
-              $("#species-list-all label").children('svg').remove()
+            $("li[name='species-filter'].filter:not(.all)").on('click', function () {
               // 先移除自己本身的再判斷
-              $(this).prev('svg').remove()
-              if ($(this).is(':checked')) {
-                $('<i class="fas fa-check title-dark w-12"></i>').insertBefore($(this));
+              if ($(this).hasClass("now")){
+                // 取消選擇
+                $(this).removeClass('now')
+                $(this).children('input').removeAttr('checked');
+                $(this).children('input').prop('checked',false);
+              }else{
+                // 選擇
+                $(this).addClass('now')
+                $(this).children('input').prop('checked',true);
               }
-              $("input[name='species-filter'].all").prop('checked', false)
+              // 取消物種全選
+              $("input[name='species-filter'].all").removeAttr('checked')
+              $("#species-list-all").removeClass('now')
             })
 
             // species: if 'all' checked, check all checkbox
-            $("input[name='species-filter'].all").onclick(function () {
-              // 先移除掉全部的再一次加上去
-              $("#species-list li label").children('svg').remove()
-              if ($(this).is(':checked')) {
-                $("#species-list li label").prepend('<i class="fas fa-check title-dark w-12"></i>')
-                $("input[name='species-filter']").prop('checked', true)
-              } else {
-                $("input[name='species-filter']").prop('checked', false)
+
+            $("#species-list-all").on('click', function (event) {
+              if ($("#species-list-all").hasClass("now")){
+                $("li[name='species-filter']").addClass('now');
+                $("input[name='species-filter']").prop('checked',true);
+              }else{
+                $("li[name='species-filter']").removeClass('now');
+                $("input[name='species-filter']").prop('checked',false);
               }
             })
+            
 
           },
           error: function () {
