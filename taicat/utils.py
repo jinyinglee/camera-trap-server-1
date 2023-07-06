@@ -903,13 +903,14 @@ def humen_readable_filter(filter_dict):
     if verbose := filter_dict.get('verbose'):
         if projects := verbose.get('projects'):
             for p in projects:
-                project_dict[p['project']['name']] = []
-                if studyareas := p.get('studyareas'):
-                    for sa in studyareas:
-                        project_dict[p['project']['name']].append(f"樣區：{sa['name']}")
-                if deployments := p.get('deployments'):
-                    for d in deployments:
-                        project_dict[p['project']['name']].append(f"相機位置：{d['name']}")
+                if proj := p.get('project'):
+                    project_dict[proj['name']] = []
+                    if studyareas := p.get('studyareas'):
+                        for sa in studyareas:
+                            project_dict[proj['name']].append(f"樣區：{sa['name']}")
+                    if deployments := p.get('deployments'):
+                        for d in deployments:
+                            project_dict[proj['name']].append(f"相機位置：{d['name']}")
     for k, v in project_dict.items():
         detail = ' AND '.join(v)
         data.append(f'計畫名稱：{k}, {detail}')
