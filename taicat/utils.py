@@ -217,7 +217,19 @@ def calculated_data(filter_args, calc_args):
     #dt = datetime.strptime(start_date, '%Y-%m-%d')
     results = {}
 
-    query = Deployment.objects.filter(id__in=deps)
+    query = Deployment.objects
+
+    # ref: utils.apply_search
+    if value := filter_args.get('keyword'):
+        rows = Project.objects.values_list('id', flat=True).filter(keyword__icontains=value)
+        project_ids = list(rows)
+        if len(project_ids) > 0:
+            query = query.filter(project_id__in=project_ids)
+        else:
+            query = query.filter(project_id__in=[9999]) # 關鍵字沒有就都不要搜到
+
+    if deps:
+        query = query.filter(id__in=deps)
 
     if value := filter_args.get('altitude'):
         if op := filter_args.get('altitudeOperator'):
