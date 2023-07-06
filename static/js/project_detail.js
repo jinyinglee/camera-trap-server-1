@@ -70,7 +70,8 @@ $(document).ready(function () {
       // 右邊Table內容 開始
       // initalize datatable & redraw table
       let table = $('#img-table').DataTable({
-        dom: "<'row' <'col-sm-11' > tr>" +
+        dom: "<'row'<'col-6'B>>"+
+        "<'row' <'col-sm-11' > tr>" +
         "<'row p-3'<'col-sm-4'i><'col-sm-12 col-md-3'l><'col-sm-12 col-md-5'p>>",
         autoWidth : false,
         language: language_settings,
@@ -83,118 +84,119 @@ $(document).ready(function () {
         scrollX: true,
         // scrollCollapse: true,
         filter: false,
-        // buttons: [
-        //   {
-        //     text: '編輯',
-        //     className: 'btn btn-outline-success btn-sm e-button d-none disabled',
-        //     action: function (e, dt, node, config) {
+        buttons: [
+          {
+            text: '編輯',
+            className: 'btn btn-outline-success btn-sm e-button d-none disabled editButton',
+            action: function (e, dt, node, config) {
 
-        //       let img_array = []
-        //       let imguuid_array = []
-        //       let sa_array = []
-        //       let dep_array = []
-        //       let species_array = []
-        //       let sex_array = []
-        //       let life_stage_array = []
-        //       let antler_array = []
-        //       let animal_id_array = []
-        //       let remarks_array = []
-        //       $("input.edit-checkbox:checked").not('#edit-all').each(function () {
-        //         if (!$(this).parent().hasClass("dataTables_sizing")) {
-        //           current_row = table.row($(this).parent()).data();
-        //           img_array.push(current_row['image_id'])
-        //           imguuid_array.push(current_row['image_uuid'])
-        //           sa_array.push(current_row['saname'])
-        //           dep_array.push(current_row['dname'])
-        //           species_array.push(current_row['species'])
-        //           sex_array.push(current_row['sex'])
-        //           life_stage_array.push(current_row['life_stage'])
-        //           antler_array.push(current_row['antler'])
-        //           animal_id_array.push(current_row['animal_id'])
-        //           remarks_array.push(current_row['remarks'])
+              let img_array = []
+              let imguuid_array = []
+              let sa_array = []
+              let dep_array = []
+              let species_array = []
+              let sex_array = []
+              let life_stage_array = []
+              let antler_array = []
+              let animal_id_array = []
+              let remarks_array = []
+              $("input.edit-checkbox:checked").not('#edit-all').each(function () {
+                if (!$(this).parent().hasClass("dataTables_sizing")) {
+                  current_row = table.row($(this).parent()).data();
+                  img_array.push(current_row['image_id'])
+                  imguuid_array.push(current_row['image_uuid'])
+                  sa_array.push(current_row['saname'])
+                  dep_array.push(current_row['dname'])
+                  species_array.push(current_row['species'])
+                  sex_array.push(current_row['sex'])
+                  life_stage_array.push(current_row['life_stage'])
+                  antler_array.push(current_row['antler'])
+                  animal_id_array.push(current_row['animal_id'])
+                  remarks_array.push(current_row['remarks'])
 
-        //           if (img_array.length > 1) { // TODO 或是直接按row
-        //             $('.edit-prev, .edit-next').addClass('d-none');
-        //             $('#editModal').off('keydown');
-        //           } else {
-        //             $('.edit-prev, .edit-next').removeClass('d-none');
-        //             // 切換上下張的功能
-        //             let c_row = $(this).parent()
-        //             let idx = table.column(c_row).index();
-        //             changeEditContent(c_row.parent(), idx);
-        //           }
-        //         }
-        //       });
+                  if (img_array.length > 1) { // TODO 或是直接按row
+                    $('.edit-prev, .edit-next').addClass('d-none');
+                    $('#editModal').off('keydown');
+                  } else {
+                    $('.edit-prev, .edit-next').removeClass('d-none');
+                    // 切換上下張的功能
+                    let c_row = $(this).parent()
+                    let idx = table.column(c_row).index();
+                    changeEditContent(c_row.parent(), idx);
+                  }
+                }
+              });
 
-        //       $('#edit-image_id').val(img_array)
-        //       // remove notice info
-        //       $('#edit-studyarea, #edit-deployment, #edit-project').removeClass('notice-border')
-        //       $('.notice').addClass('d-none');
-        //       // clean studyarea & deployment id
-        //       $('#edit-studyarea_id').val('')
-        //       $('#edit-deployment_id').val('')
+              $('#edit-image_id').val(img_array)
+              // remove notice info
+              $('#edit-studyarea, #edit-deployment, #edit-project').removeClass('notice-border')
+              $('.notice').addClass('d-none');
+              // clean studyarea & deployment id
+              $('#edit-studyarea_id').val('')
+              $('#edit-deployment_id').val('')
 
-        //       $('#edit-project').val($('input[name=project-name]').val());
-        //       $('#edit-project_id').val(pk);
-        //       $sa.autocomplete('option', 'source', response.sa_list);
+              $('#edit-project').val($('input[name=project-name]').val());
+              $('#edit-project_id').val(pk);
+              $sa.autocomplete('option', 'source', response.sa_list);
 
-        //       if (allEqual(sa_array)) {
-        //         $('#edit-studyarea').val(sa_array[0])
-        //         $dep.autocomplete('option', 'source', response.sa_d_list[current_row['saname']]);
-        //       } else {
-        //         $('#edit-studyarea').val('')
-        //         $dep.autocomplete('option', 'source', '');
-        //       }
-        //       allEqual(dep_array) ? $('#edit-deployment').val(dep_array[0]) : $('#edit-deployment').val('');
-        //       allEqual(species_array) ? $('#edit-species').val(species_array[0]) : $('#edit-species').val('');
-        //       allEqual(life_stage_array) ? $('#edit-life_stage').val(life_stage_array[0]) : $('#edit-life_stage').val('');
-        //       allEqual(sex_array) ? $('#edit-sex').val(sex_array[0]) : $('#edit-sex').val('');
-        //       allEqual(antler_array) ? $('#edit-antler').val(antler_array[0]) : $('#edit-antler').val('');
-        //       allEqual(animal_id_array) ? $('#edit-animal_id').val(animal_id_array[0]) : $('#edit-animal_id').val('');
-        //       allEqual(remarks_array) ? $('#edit-remarks').val(remarks_array[0]) : $('#edit-remarks').val('');
+              if (allEqual(sa_array)) {
+                $('#edit-studyarea').val(sa_array[0])
+                $dep.autocomplete('option', 'source', response.sa_d_list[current_row['saname']]);
+              } else {
+                $('#edit-studyarea').val('')
+                $dep.autocomplete('option', 'source', '');
+              }
+              allEqual(dep_array) ? $('#edit-deployment').val(dep_array[0]) : $('#edit-deployment').val('');
+              allEqual(species_array) ? $('#edit-species').val(species_array[0]) : $('#edit-species').val('');
+              allEqual(life_stage_array) ? $('#edit-life_stage').val(life_stage_array[0]) : $('#edit-life_stage').val('');
+              allEqual(sex_array) ? $('#edit-sex').val(sex_array[0]) : $('#edit-sex').val('');
+              allEqual(antler_array) ? $('#edit-antler').val(antler_array[0]) : $('#edit-antler').val('');
+              allEqual(animal_id_array) ? $('#edit-animal_id').val(animal_id_array[0]) : $('#edit-animal_id').val('');
+              allEqual(remarks_array) ? $('#edit-remarks').val(remarks_array[0]) : $('#edit-remarks').val('');
 
-        //       // image or videos
-        //       if (allEqual(imguuid_array)) {
-        //         $('#edit-filename').html(current_row['filename'])
-        //         $('#edit-datetime').html(current_row['datetime'])
-        //         $('#edit-image').html(current_row['file_url'])
-        //       } else {
-        //         $('#edit-filename').html('')
-        //         $('#edit-datetime').html('')
-        //         $('#edit-image').html('')
-        //       }
+              // image or videos
+              if (allEqual(imguuid_array)) {
+                $('#edit-filename').html(current_row['filename'])
+                $('#edit-datetime').html(current_row['datetime'])
+                $('#edit-image').html(current_row['file_url'])
+              } else {
+                $('#edit-filename').html('')
+                $('#edit-datetime').html('')
+                $('#edit-image').html('')
+              }
 
-        //       $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').addClass('h-auto');
-        //       $('#edit-image video').addClass('w-100');
-        //       $('#edit-image video').addClass('h-auto');
-        //       $('#edit-image video source').on('error', function (event) {
-        //         $(this).parent().parent().html('<p align="center" class="cannot-load">無法載入</p>')
-        //       })
-        //       $('#edit-image video source, #edit-image img').on('error', function (event) {
-        //         $(this).parent().html('<p align="center" class="cannot-load">無法載入</p>')
-        //       })
+              $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').addClass('h-auto');
+              $('#edit-image video').addClass('w-100');
+              $('#edit-image video').addClass('h-auto');
+              $('#edit-image video source').on('error', function (event) {
+                $(this).parent().parent().html('<p align="center" class="cannot-load">無法載入</p>')
+              })
+              $('#edit-image video source, #edit-image img').on('error', function (event) {
+                $(this).parent().html('<p align="center" class="cannot-load">無法載入</p>')
+              })
 
-        //       $('#editModal').modal('show');
+              // $('#editModal').modal('show');
+              $('.photode-pop').fadeIn();
 
-        //       // disable edit
-        //       let editable = response.editable;
-        //       if ((editable != true) || ($('#edit_button').data('edit') == 'off')) {
-        //         $('.edit-content input').attr('disabled', 'disabled')
-        //         $('.edit-footer').addClass('d-none')
-        //       } else {
-        //         $('.edit-content input').prop("disabled", false)
-        //         $('.edit-footer').removeClass('d-none')
-        //       }
-        //     }
-        //   },
-        //   {
-        //     text: '刪除',
-        //     className: 'btn btn-outline-secondary btn-sm d-button d-none disabled',
-        //     action: function (e, dt, node, config) {
-        //       $('#deleteModal').modal('show')
-        //     }
-        //   }
-        // ],
+              // disable edit
+              let editable = response.editable;
+              if ((editable != true) || ($('#edit_button').data('edit') == 'off')) {
+                $('.edit-content input').attr('disabled', 'disabled')
+                $('.edit-footer').addClass('d-none')
+              } else {
+                $('.edit-content input').prop("disabled", false)
+                $('.edit-footer').removeClass('d-none')
+              }
+            }
+          },
+          {
+            text: '刪除',
+            className: 'btn btn-outline-secondary btn-sm d-button d-none disabled deleteButton',
+            action: function (e, dt, node, config) {
+              $('#deleteModal').modal('show')
+            }
+          }
+        ],
         ajax: {
           type: "POST",
           dataType: 'json',
@@ -1051,23 +1053,23 @@ $(document).ready(function () {
 
 
 // 編輯模式按鈕動作
-$('#edit_button').on('click', function() {
-  if($('.delete-area').css("display") == "none"){
-    $('.del-check').css({
-      display: "table-cell"
-    });
-    $('.delete-area').css({
-      display: "flex"
-    });
-  }else{
-    $('.del-check').css({
-      display: "none"
-    });
-    $('.delete-area').css({
-      display: "none"
-    });
-  }
-});
+// $('#edit_button').on('click', function() {
+//   if($('.delete-area').css("display") == "none"){
+//     $('.del-check').css({
+//       display: "table-cell"
+//     });
+//     $('.delete-area').css({
+//       display: "flex"
+//     });
+//   }else{
+//     $('.del-check').css({
+//       display: "none"
+//     });
+//     $('.delete-area').css({
+//       display: "none"
+//     });
+//   }
+// });
 
 $('#deleteButton').on('click', function() {
   $('#deleteModal').modal('show')
