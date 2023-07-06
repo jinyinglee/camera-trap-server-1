@@ -87,7 +87,7 @@ $(document).ready(function () {
         buttons: [
           {
             text: '編輯',
-            className: 'btn btn-outline-success btn-sm e-button d-none disabled editButton',
+            className: 'btn btn-outline-success btn-sm e-button d-none editButton',
             action: function (e, dt, node, config) {
 
               let img_array = []
@@ -244,13 +244,14 @@ $(document).ready(function () {
           // uncheck select all button
           $('#edit-all').prop('checked', false)
 
-          $('.e-button, .d-button').addClass('disabled')
+          $('.d-button').addClass('disabled')
+          $('.d-button').addClass('disabled')
           // bind onclick event
           $('input[name="edit"]').on('click', function () {
             if ($("input[name='edit']").is(":checked")) {
-              $('.e-button, .d-button').removeClass('disabled')
+              $('.d-button').removeClass('disabled')
             } else {
-              $('.e-button, .d-button').addClass('disabled')
+              $('.d-button').addClass('disabled')
             }
           })
           // remove last page button
