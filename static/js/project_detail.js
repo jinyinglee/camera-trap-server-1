@@ -70,7 +70,8 @@ $(document).ready(function () {
       // 右邊Table內容 開始
       // initalize datatable & redraw table
       let table = $('#img-table').DataTable({
-        dom: "<'row' <'col-sm-11' > tr>" +
+        dom: "<'row'<'col-6'B>>"+
+        "<'row' <'col-sm-11' > tr>" +
         "<'row p-3'<'col-sm-4'i><'col-sm-12 col-md-3'l><'col-sm-12 col-md-5'p>>",
         autoWidth : false,
         language: language_settings,
@@ -83,6 +84,119 @@ $(document).ready(function () {
         scrollX: true,
         // scrollCollapse: true,
         filter: false,
+        buttons: [
+          {
+            text: '編輯',
+            className: 'btn btn-outline-success btn-sm e-button d-none disabled editButton',
+            action: function (e, dt, node, config) {
+
+              let img_array = []
+              let imguuid_array = []
+              let sa_array = []
+              let dep_array = []
+              let species_array = []
+              let sex_array = []
+              let life_stage_array = []
+              let antler_array = []
+              let animal_id_array = []
+              let remarks_array = []
+              $("input.edit-checkbox:checked").not('#edit-all').each(function () {
+                if (!$(this).parent().hasClass("dataTables_sizing")) {
+                  current_row = table.row($(this).parent()).data();
+                  img_array.push(current_row['image_id'])
+                  imguuid_array.push(current_row['image_uuid'])
+                  sa_array.push(current_row['saname'])
+                  dep_array.push(current_row['dname'])
+                  species_array.push(current_row['species'])
+                  sex_array.push(current_row['sex'])
+                  life_stage_array.push(current_row['life_stage'])
+                  antler_array.push(current_row['antler'])
+                  animal_id_array.push(current_row['animal_id'])
+                  remarks_array.push(current_row['remarks'])
+
+                  if (img_array.length > 1) { // TODO 或是直接按row
+                    $('.edit-prev, .edit-next').addClass('d-none');
+                    $('#editModal').off('keydown');
+                  } else {
+                    $('.edit-prev, .edit-next').removeClass('d-none');
+                    // 切換上下張的功能
+                    let c_row = $(this).parent()
+                    let idx = table.column(c_row).index();
+                    changeEditContent(c_row.parent(), idx);
+                  }
+                }
+              });
+
+              $('#edit-image_id').val(img_array)
+              // remove notice info
+              $('#edit-studyarea, #edit-deployment, #edit-project').removeClass('notice-border')
+              $('.notice').addClass('d-none');
+              // clean studyarea & deployment id
+              $('#edit-studyarea_id').val('')
+              $('#edit-deployment_id').val('')
+
+              $('#edit-project').val($('input[name=project-name]').val());
+              $('#edit-project_id').val(pk);
+              $sa.autocomplete('option', 'source', response.sa_list);
+
+              if (allEqual(sa_array)) {
+                $('#edit-studyarea').val(sa_array[0])
+                $dep.autocomplete('option', 'source', response.sa_d_list[current_row['saname']]);
+              } else {
+                $('#edit-studyarea').val('')
+                $dep.autocomplete('option', 'source', '');
+              }
+              allEqual(dep_array) ? $('#edit-deployment').val(dep_array[0]) : $('#edit-deployment').val('');
+              allEqual(species_array) ? $('#edit-species').val(species_array[0]) : $('#edit-species').val('');
+              allEqual(life_stage_array) ? $('#edit-life_stage').val(life_stage_array[0]) : $('#edit-life_stage').val('');
+              allEqual(sex_array) ? $('#edit-sex').val(sex_array[0]) : $('#edit-sex').val('');
+              allEqual(antler_array) ? $('#edit-antler').val(antler_array[0]) : $('#edit-antler').val('');
+              allEqual(animal_id_array) ? $('#edit-animal_id').val(animal_id_array[0]) : $('#edit-animal_id').val('');
+              allEqual(remarks_array) ? $('#edit-remarks').val(remarks_array[0]) : $('#edit-remarks').val('');
+
+              // image or videos
+              if (allEqual(imguuid_array)) {
+                $('#edit-filename').html(current_row['filename'])
+                $('#edit-datetime').html(current_row['datetime'])
+                $('#edit-image').html(current_row['file_url'])
+              } else {
+                $('#edit-filename').html('')
+                $('#edit-datetime').html('')
+                $('#edit-image').html('')
+              }
+
+              $('#edit-image .img').attr('src', $('#edit-image .img').data('src')).addClass('w-100').addClass('h-auto');
+              $('#edit-image video').addClass('w-100');
+              $('#edit-image video').addClass('h-auto');
+              $('#edit-image video source').on('error', function (event) {
+                $(this).parent().parent().html('<p align="center" class="cannot-load">無法載入</p>')
+              })
+              $('#edit-image video source, #edit-image img').on('error', function (event) {
+                $(this).parent().html('<p align="center" class="cannot-load">無法載入</p>')
+              })
+
+              // $('#editModal').modal('show');
+              $('.photode-pop').fadeIn();
+
+              // disable edit
+              let editable = response.editable;
+              if ((editable != true) || ($('#edit_button').data('edit') == 'off')) {
+                $('.edit-content input').attr('disabled', 'disabled')
+                $('.edit-footer').addClass('d-none')
+              } else {
+                $('.edit-content input').prop("disabled", false)
+                $('.edit-footer').removeClass('d-none')
+              }
+            }
+          },
+          {
+            text: '刪除',
+            className: 'btn btn-outline-secondary btn-sm d-button d-none disabled deleteButton',
+            action: function (e, dt, node, config) {
+              $('#deleteModal').modal('show')
+            }
+          }
+        ],
         ajax: {
           type: "POST",
           dataType: 'json',
@@ -119,7 +233,6 @@ $(document).ready(function () {
             $($.fn.dataTable.tables(true)).DataTable()
                .columns.adjust();
          });
-        //  http://127.0.0.1:8000/project/details/141/
 
           $('.dataTables_processing').hide()
           // console.log($(this.api().table().header()));
@@ -248,7 +361,7 @@ $(document).ready(function () {
       $('#edit_button').on('click', function () {
         if ($('#edit_button').data('edit') == 'off') {
           $('#edit_button').data('edit', 'on');
-          console.log($($.fn.dataTable.tables(true)).DataTable().column(0))
+          // console.log($($.fn.dataTable.tables(true)).DataTable().column(0))
           $($.fn.dataTable.tables(true)).DataTable().column(0).visible(true);
           $('#edit_button').html('<i class="fa fa-xs fa-pencil w-12"></i> 結束編輯')
           // show buttons
@@ -492,12 +605,11 @@ $(document).ready(function () {
           $('#edit-deployment').addClass('notice-border')
         }
         // datetime
-        /*
-        if (!$('input[name=datetime]').val()){
-          checked = false
-          $('input[name=datetime]').next('.notice').removeClass('d-none')
-          $('input[name=datetime]').addClass('notice-border')
-        }*/
+        // if (!$('input[name=datetime]').val()){
+        //   checked = false
+        //   $('input[name=datetime]').next('.notice').removeClass('d-none')
+        //   $('input[name=datetime]').addClass('notice-border')
+        // }
         if (checked) {
           $.ajax({
             data: $('#editForm').serialize(),
@@ -524,59 +636,56 @@ $(document).ready(function () {
               $('#species-list-all').nextAll('li').remove();
               for (let i = 0; i < data['species'].length; i++) {
                 $('#species-list').append(
-                  `<li>
-                    <div class="cir-checkbox">
-                      <img class="coricon" src="{% static 'image/correct.svg' %}"  alt="">
-                    </div>
-                      <p>${data['species'][i]['name']} (${data['species'][i]['count']})</p>
-                  </li>`)
+                  `<li class="filter" name="species-filter">
+                    <input class="filter" type="checkbox" name="species-filter" value="${data['species'][i]['name']}" checked>
+                  <div class="cir-checkbox form-check-label w-100">
+                    <img class="coricon" src="/static/image/correct.svg"  alt="">
+                  </div>
+                  <p>${data['species'][i]['name']} (${data['species'][i]['count']})</p>
+                </li>`)
               }
               if ($("input[name=species-filter].all").is(':checked')) {
-                $("#species-list li label").children('svg').remove()
-                // 勾勾 icon
-                $("#species-list li label").prepend('<i class="fas fa-check title-dark w-12"></i>')
-                $("input[name='species-filter']").prop('checked', true)
+                $("input[name='species-filter']").prop('checked',true);
+                $("li[name='species-filter']").addClass('now');
+                $('#species-list-all').addClass('now');
               } else {
-                $("#species-list li label").children('svg').remove()
+                // $("#species-list li label").children('svg').remove()
                 $(`input[name=species-filter]`).prop("checked", false);
                 current_species.each(function () {
-                  $('<i class="fas fa-check title-dark w-12"></i>').insertBefore($(`input[name=species-filter][value="${this.value}"]`));
+                  $(`input[name=species-filter][value="${this.value}"]`).closest('li').addClass('now');
                   $(`input[name=species-filter][value="${this.value}"]`).prop("checked", true);
                 })
               }
+
               // bind click function
               // species: if other checkbox checked, uncheck 'all'
-              $("input[name='species-filter'].filter:not(.all)").unbind('click');
-              $("#species-list-all").click(function (){
-              })
-              
-              $("input[name='species-filter'].filter:not(.all)").click(function () {
-                // $("#species-list-all label").children('svg').remove()
-                $("#species-list-all").toggleClass('now');
+              $("li[name='species-filter'].filter:not(.all)").on('click', function () {
                 // 先移除自己本身的再判斷
-                $(this).prev('svg').remove()
-                if ($(this).is(':checked')) {
-                  $(this).toggleClass('now');
-                  // $('<i class="fas fa-check title-dark w-12"></i>').insertBefore($(this));
+                if ($(this).hasClass("now")){
+                  // 取消選擇
+                  $(this).removeClass('now')
+                  $(this).children('input').removeAttr('checked');
+                  $(this).children('input').prop('checked',false);
+                }else{
+                  // 選擇
+                  $(this).addClass('now')
+                  $(this).children('input').prop('checked',true);
                 }
-                $("input[name='species-filter'].all").removeClass('now');
-                // $("input[name='species-filter'].all").prop('checked', false)
+                // 取消物種全選
+                $("input[name='species-filter'].all").removeAttr('checked')
+                $("#species-list-all").removeClass('now')
               })
 
               // species: if 'all' checked, check all checkbox
-              $("input[name='species-filter'].all").unbind('click');
-              $("input[name='species-filter'].all").click(function () {
-                // 先移除掉全部的再一次加上去
-                $("#species-list li label").children('svg').remove()
-                if ($(this).is(':checked')) {
-                  $("#species-list li label").prepend('<i class="fas fa-check title-dark w-12"></i>')
-                  $("input[name='species-filter']").prop('checked', true)
-                } else {
-                  $("input[name='species-filter']").prop('checked', false)
+              $("#species-list-all").on('click', function (event) {
+                if ($("#species-list-all").hasClass("now")){
+                  $("li[name='species-filter']").addClass('now');
+                  $("input[name='species-filter']").prop('checked',true);
+                }else{
+                  $("li[name='species-filter']").removeClass('now');
+                  $("input[name='species-filter']").prop('checked',false);
                 }
               })
-
-
             },
             error: function () {
               alert('未知錯誤，請聯繫管理員');
@@ -692,9 +801,6 @@ $(document).ready(function () {
           $("li[name='species-filter']").removeClass('now');
           $("input[name='species-filter']").prop('checked',false);
         }
-        // BUG 按清除後，這邊沒有功用
-        // alert($('input[name="species-filter"]:checked').map(function () { return $(this).val();}).get())
-
       })
 
       $('#deleteData').on('click', function () {
@@ -722,48 +828,58 @@ $(document).ready(function () {
             $('#species-list-all').nextAll('li').remove();
             for (let i = 0; i < data['species'].length; i++) {
               $('#species-list').append(
-                `<li>
-                    <label class="form-check-label">
-                    <input class="filter" type="checkbox" name="species-filter" value="${data['species'][i]['name']}" checked>
-                        ${data['species'][i]['name']} (${data['species'][i]['count']})
-                    </label>
-                    </li>`)
+                `<li class="filter" name="species-filter">
+                  <input class="filter" type="checkbox" name="species-filter" value="${data['species'][i]['name']}" checked>
+                <div class="cir-checkbox form-check-label w-100">
+                  <img class="coricon" src="/static/image/correct.svg"  alt="">
+                </div>
+                <p>${data['species'][i]['name']} (${data['species'][i]['count']})</p>
+              </li>`)
             }
             if ($("input[name=species-filter].all").is(':checked')) {
-              $("#species-list li label").children('svg').remove()
-              $("#species-list li label").prepend('<i class="fas fa-check title-dark w-12"></i>')
-              $("input[name='species-filter']").prop('checked', true)
+
+              $("input[name='species-filter']").prop('checked',true);
+              $("li[name='species-filter']").addClass('now');
+              $('#species-list-all').addClass('now');
             } else {
-              $("#species-list li label").children('svg').remove()
+              // $("#species-list li label").children('svg').remove()
               $(`input[name=species-filter]`).prop("checked", false);
               current_species.each(function () {
-                $('<i class="fas fa-check title-dark w-12"></i>').insertBefore($(`input[name=species-filter][value="${this.value}"]`));
+                $(`input[name=species-filter][value="${this.value}"]`).closest('li').addClass('now');
                 $(`input[name=species-filter][value="${this.value}"]`).prop("checked", true);
               })
             }
             // bind click function
             // species: if other checkbox checked, uncheck 'all'
-            $("input[name='species-filter'].filter:not(.all)").click(function () {
-              $("#species-list-all label").children('svg').remove()
+            $("li[name='species-filter'].filter:not(.all)").on('click', function () {
               // 先移除自己本身的再判斷
-              $(this).prev('svg').remove()
-              if ($(this).is(':checked')) {
-                $('<i class="fas fa-check title-dark w-12"></i>').insertBefore($(this));
+              if ($(this).hasClass("now")){
+                // 取消選擇
+                $(this).removeClass('now')
+                $(this).children('input').removeAttr('checked');
+                $(this).children('input').prop('checked',false);
+              }else{
+                // 選擇
+                $(this).addClass('now')
+                $(this).children('input').prop('checked',true);
               }
-              $("input[name='species-filter'].all").prop('checked', false)
+              // 取消物種全選
+              $("input[name='species-filter'].all").removeAttr('checked')
+              $("#species-list-all").removeClass('now')
             })
 
             // species: if 'all' checked, check all checkbox
-            $("input[name='species-filter'].all").onclick(function () {
-              // 先移除掉全部的再一次加上去
-              $("#species-list li label").children('svg').remove()
-              if ($(this).is(':checked')) {
-                $("#species-list li label").prepend('<i class="fas fa-check title-dark w-12"></i>')
-                $("input[name='species-filter']").prop('checked', true)
-              } else {
-                $("input[name='species-filter']").prop('checked', false)
+
+            $("#species-list-all").on('click', function (event) {
+              if ($("#species-list-all").hasClass("now")){
+                $("li[name='species-filter']").addClass('now');
+                $("input[name='species-filter']").prop('checked',true);
+              }else{
+                $("li[name='species-filter']").removeClass('now');
+                $("input[name='species-filter']").prop('checked',false);
               }
             })
+            
 
           },
           error: function () {
@@ -937,28 +1053,39 @@ $(document).ready(function () {
 
 
 // 編輯模式按鈕動作
-$('#edit_button').on('click', function() {
-  if($('.delete-area').css("display") == "none"){
-    $('.del-check').css({
-      display: "table-cell"
-    });
-    $('.delete-area').css({
-      display: "flex"
-    });
-  }else{
-    $('.del-check').css({
-      display: "none"
-    });
-    $('.delete-area').css({
-      display: "none"
-    });
-  }
-});
+// $('#edit_button').on('click', function() {
+//   if($('.delete-area').css("display") == "none"){
+//     $('.del-check').css({
+//       display: "table-cell"
+//     });
+//     $('.delete-area').css({
+//       display: "flex"
+//     });
+//   }else{
+//     $('.del-check').css({
+//       display: "none"
+//     });
+//     $('.delete-area').css({
+//       display: "none"
+//     });
+//   }
+// });
 
 $('#deleteButton').on('click', function() {
   $('#deleteModal').modal('show')
 })
 
+
+
+$('#edit-all').on('click', function () {
+  if ($('#edit-all').is(':checked')) {
+    $('.edit-checkbox').prop('checked', true)
+  } else {
+    $('.edit-checkbox').each(function () {
+      $('.edit-checkbox').prop('checked', false)
+    });
+  }
+})
 
 
 

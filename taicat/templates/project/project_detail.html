@@ -465,18 +465,17 @@
 						</div>
 					</div>
 				</div>
-				{% comment %} condiction search start  {% endcomment %}
 
 				<div class="right-tablecont">
-					<div class="delete-area">
+					{% comment %} <div class="delete-area">
 						<button id="deleteButton">刪除</button>
-						<p>*點擊列表即可編輯</p>
-					</div>
+						<button id="editButton">編輯</button>
+					</div> {% endcomment %}
 					<div class="table-area">
 						<table class="phototable" id="img-table">
 							<thead>
 								<tr>
-									<td class="first-check"><input class="inp-check" type="checkbox"></td>
+									<td class="first-check"><input class="inp-check edit-checkbox" id="edit-all" type="checkbox" name="edit"></td>
 									<td class="nth1">樣區</td>
 									<td class="nth2">
 										<div class="sortbox orderby pointer" data-orderby="d.name">

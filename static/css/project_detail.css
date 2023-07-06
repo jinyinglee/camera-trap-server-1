@@ -435,3 +435,38 @@
 .btn-greeno{
   min-width: 120px;
 }
+
+.deleteButton{
+  background: #CB5757 !important;
+  color: #FFF !important;
+  border-color: #FFF !important;
+  padding: 5px 10px !important;
+  border-radius: 30px !important;
+  font-size: 18px !important;
+  margin-right: 10px !important;
+  min-width: 80px !important;
+  transition: all .3s !important;
+  -moz-transition: all .3s !important;
+  -o-transition: all .3s !important;
+  -ms-transition: all .3s !important;
+  -webkit-transition: all .3s !important;
+}
+
+.editButton{
+  background: #257455 !important;
+  color: #FFF !important;
+  border-color: #FFF !important;
+  padding: 5px 10px !important;
+  border-radius: 30px !important;
+  font-size: 18px !important;
+  margin-right: 10px !important;
+  min-width: 80px !important;
+  transition: all .3s !important;
+  -moz-transition: all .3s !important;
+  -o-transition: all .3s !important;
+  -ms-transition: all .3s !important;
+  -webkit-transition: all .3s !important;
+}
+div.dt-buttons{
+  padding-bottom: 10px !important;
+}
