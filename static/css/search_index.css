@@ -126,3 +126,21 @@
       -webkit-transition: all .3s;
       stroke: #FFF;
     }
+
+
+
+
+      /* TODO tmp css wait 2.0 0704  start*/
+      body{
+        font-size: 1rem !important;
+        font-family: var(--bs-font-sans-serif) !important;
+        line-height: normal !important;
+        letter-spacing: 0.05em !important;
+        /* TODO tmp css wait 2.0 0704  end*/
+        }
+    /* TODO tmp css wait 2.0 0704  start*/
+    #alert-content > a{
+        color: #0d6efd !important;
+        text-decoration: underline !important;
+    }
+    /* TODO tmp css wait 2.0 0704  end*/
