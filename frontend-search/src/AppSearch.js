@@ -361,10 +361,10 @@ const AppSearch = () => {
               window.location.replace(window.location.origin+ "/personal_info");
             }
           } else {
-            //console.log(document.getElementById('downloadModal'))
-            $('#downloadModal').modal('show')
-              const dl = document.getElementById('download-submit')
-              dl.onclick = () => {
+            //$('#downloadModal').modal('show')
+            $('.down-pop').fadeIn();
+            const dl = document.getElementById('download-submit')
+            dl.onclick = () => {
                 //$('.download').on('click', function(){ // 這個會重複呼叫?
                 // console.log('download!!')
                 const emailInput = document.getElementById('download-email')
@@ -386,7 +386,9 @@ const AppSearch = () => {
                   .catch( error => {
                     console.log('downloadData error:', error.message);
                   })
-                $('#downloadModal').modal('hide')
+                //$('#downloadModal').modal('hide')
+                $('.down-pop').fadeOut();
+                alert('請求已送出');
               }
           }
         }).catch((error)=>{
@@ -769,7 +771,7 @@ const AppSearch = () => {
              <AppSearchDataGrid result={state.result} handleChangePage={handleChangePage} handleChangeRowsPerPage={handleChangeRowsPerPage} pagination={state.pagination} setImageDetail={(path) => dispatch({type: 'setImageDetail', path: path})} />
              <Button variant="contained" onClick={handleDownload} sx={{ borderRadius: '25px', background: '#59AE68', color: '#FFFFFF', width: '180px', marginTop: '20px' }} size="large">下載搜尋結果</Button>
              <AppSearchCalculation calcData={state.calculation} setCalcData={dispatch} />
-             <Button variant="outlined" onClick={handleCalc} sx={{ borderRadius: '25px', width: '180px', marginTop: '20px', marginRight: '8px' }} size="large" data-bs-toggle="modal" data-bs-target="#exampleModal">計算項目說明</Button>
+             <Button variant="outlined" sx={{ borderRadius: '25px', width: '180px', marginTop: '20px', marginRight: '8px' }} size="large" data-bs-toggle="modal" data-bs-target="#exampleModal">計算項目說明</Button>
              <Button variant="contained" onClick={handleCalc} sx={{ borderRadius: '25px', width: '180px', background: '#59AE68', color: '#FFFFFF', marginTop: '20px', marginLeft: '8px' }} size="large">下載計算</Button>
              {(state.alertText) ? <Alert severity="error" onClose={()=>{ dispatch({type: 'setAlert', value: ''})}}><AlertTitle>{state.alertTitle}</AlertTitle>{state.alertText}</Alert> : null}
            </>
