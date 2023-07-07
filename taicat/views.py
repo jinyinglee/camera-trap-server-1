@@ -1876,8 +1876,7 @@ def generate_download_excel(request, pk):
     with connection.cursor() as cursor:
         with open(os.path.join(download_dir, n), 'w+') as fp:
             cursor.copy_expert(sql, fp)
-    # download_url = request.scheme+"://" + \
-    download_url = "https://" + \
+    download_url = request.scheme+"://" + \
         request.META['HTTP_HOST']+settings.MEDIA_URL + \
         os.path.join('download', n)
     if settings.ENV == 'prod':
