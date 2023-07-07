@@ -41,6 +41,7 @@ from .utils import (
     calculated_data,
     get_my_project_list,
     apply_search_filter,
+    humen_readable_filter,
 )
 
 from .views import (
@@ -213,7 +214,8 @@ def api_search(request):
             '''
             if member_id := request.session.get('id', None):
                 host = request.META['HTTP_HOST']
-                process_download_calculated_data_task.delay(email, filter_dict, calc_dict, calc_type, out_format, calc_data, host)
+                verbose_log = humen_readable_filter(filter_dict)
+                process_download_calculated_data_task.delay(email, filter_dict, calc_dict, calc_type, out_format, calc_data, host, member_id, verbose_log)
                 #results = calculated_data(filter_dict, calc_data)
                 #print(results)
             else:
@@ -227,7 +229,9 @@ def api_search(request):
             message = 'processing'
             if member_id := request.session.get('id', None):
                 host = request.META['HTTP_HOST']
-                process_download_data_task.delay(email, filter_dict, member_id, host)
+
+                verbose_log = humen_readable_filter(filter_dict)
+                process_download_data_task.delay(email, filter_dict, member_id, host, verbose_log)
             else:
                 message = 'no member_id'
 

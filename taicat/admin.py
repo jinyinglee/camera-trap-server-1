@@ -1,4 +1,6 @@
+import csv
 from django.contrib import admin
+from django.http import HttpResponse
 
 from .models import (
     Project,
@@ -12,6 +14,24 @@ from .models import (
     DownloadLog,
 )
 
+class ExportCsvMixin:
+    def export_as_csv(self, request, queryset):
+
+        meta = self.model._meta
+        field_names = [field.name for field in meta.fields]
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename={}.csv'.format(meta)
+        writer = csv.writer(response)
+
+        writer.writerow(field_names)
+        for obj in queryset:
+            row = writer.writerow([getattr(obj, field) for field in field_names])
+
+        return response
+
+    export_as_csv.short_description = "Export Selected"
+    
 @admin.register(ProjectMember)
 class ProjectAdmin(admin.ModelAdmin):
     model = ProjectMember
@@ -57,6 +77,7 @@ class ParameterCodeAdmin(admin.ModelAdmin):
     
 
 @admin.register(DownloadLog)
-class DownloadLogAdmin(admin.ModelAdmin):
+class DownloadLogAdmin(admin.ModelAdmin,ExportCsvMixin):
     model = DownloadLog
     list_display = ('user_role', 'condiction','file_link')
+    actions = ["export_as_csv"]

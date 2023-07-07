@@ -60,6 +60,8 @@ from openpyxl import Workbook
 from bson.objectid import ObjectId
 import geopandas as gpd
 from shapely.geometry import Point
+from django.views.decorators.http import require_GET
+
 
 
 def get_project_info_web(request):
@@ -424,7 +426,7 @@ def update_species_pie(request):
         date_filter = " AND datetime > '{}'".format(start_date)
     elif end_date:
         end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
-        date_filter = " AND datetime < '{}'".format(start_date)
+        date_filter = " AND datetime < '{}'".format(end_date)
 
     # print(date_filter)
 
@@ -967,7 +969,6 @@ def edit_project_members(request, pk):
         for i in organization_id:
             temp = list(Contact.objects.filter(organization=i['id'], is_organization_admin=True).all().values('name', 'email'))
             organization_admin.extend(temp)
-
         study_area = StudyArea.objects.filter(project_id=pk)
         # other members
         members = ProjectMember.objects.filter(project_id=pk).all()
@@ -1004,6 +1005,14 @@ def edit_project_members(request, pk):
                             if item not in data[i]:
                                 ProjectMember.objects.get(member_id=m.group(1), project_id=pk).pmstudyarea.remove(StudyArea.objects.get(id=item))
                     else:
+                        # 判斷是否有studyarea，有則移除，沒有照舊
+                        tmp = str(i)+'_studyareas_id'
+                        if tmp not in data.keys():
+                            list_id = [str(x['id']) for x in list(ProjectMember.objects.get(member_id=i, project_id=pk).pmstudyarea.all().values('id'))] 
+                            if len(list_id) > 0 :
+                                for item in list_id:
+                                    ProjectMember.objects.get(member_id=i, project_id=pk).pmstudyarea.remove(StudyArea.objects.get(id=item))
+                            
                         ProjectMember.objects.filter(member_id=i, project_id=pk).update(role=data[i][0])
                 messages.success(request, '儲存成功')
             # Remove member
@@ -1540,8 +1549,14 @@ def data(request):
     end_date = requests.get('end_date')
     date_filter = ''
     if ((start_date and start_date != ProjectStat.objects.filter(project_id=pk).first().earliest_date.strftime("%Y-%m-%d")) or (end_date and end_date != ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d"))):
-        start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
-        end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
+        if start_date:
+            start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+        else:
+            start_date = datetime.datetime.strptime(ProjectStat.objects.filter(project_id=pk).first().earliest_date.strftime("%Y-%m-%d"), "%Y-%m-%d")
+        if end_date:
+            end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
+        else:
+            end_date = datetime.datetime.strptime(ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d"), "%Y-%m-%d") + datetime.timedelta(days=1)
         date_filter = "AND datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
     conditions = ''
     deployment = requests.getlist('deployment[]')
@@ -1668,6 +1683,7 @@ def data(request):
             #     extension = filename.split('.')[-1].lower()
             #     file_url = df.image_uuid[i] + '.' + extension
             # else:
+            # print(df.image_uuid[i], df.filename[i], 'xxx')
             if df.memo[i] == '2022-pt-data':
                 file_url = f"{df.image_id[i]}-m.jpg"
             elif not file_url and not df.from_mongo[i]:
@@ -1773,24 +1789,36 @@ def generate_download_excel(request, pk):
     user_role = ParameterCode.objects.get(parametername=Contact.objects.get(id=member_id).identity).name
     date_filter = ''
     if ((start_date and start_date != ProjectStat.objects.filter(project_id=pk).first().earliest_date.strftime("%Y-%m-%d")) or (end_date and end_date != ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d"))):
-        start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
-        end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
+        if start_date:
+          start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+        else:
+            start_date = datetime.datetime.strptime(ProjectStat.objects.filter(project_id=pk).first().earliest_date.strftime("%Y-%m-%d"), "%Y-%m-%d")
+        if end_date:
+            end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
+        else:
+            end_date = datetime.datetime.strptime(ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d"), "%Y-%m-%d") + datetime.timedelta(days=1)
         date_filter = "AND i.datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
 
     conditions = ''
-    deployment = requests.getlist('d-filter')
+    deployment = requests.getlist('d-filter[]')
     sa = requests.get('sa-filter')
+    sa_download_log = []
+    dep_download_log = []
     if sa:
         conditions += f' AND i.studyarea_id = {sa}'
+        sa_modal = StudyArea.objects.get(id=sa)
+        sa_download_log.append(sa_modal.name)
         if deployment:
             if 'all' not in deployment:
                 x = [int(i) for i in deployment]
                 x = str(x).replace('[', '(').replace(']', ')')
                 conditions += f' AND i.deployment_id IN {x}'
+                for i in deployment:
+                    dep_download_log.append(Deployment.objects.get(id=i).name)
         else:
             conditions = ' AND i.deployment_id IS NULL'
     spe_conditions = ''
-    species = requests.getlist('species-filter')
+    species = requests.getlist('species-filter[]')
     if species:
         if 'all' not in species:
             x = [i for i in species]
@@ -1848,13 +1876,14 @@ def generate_download_excel(request, pk):
     with connection.cursor() as cursor:
         with open(os.path.join(download_dir, n), 'w+') as fp:
             cursor.copy_expert(sql, fp)
-    download_url = request.scheme+"://" + \
+    # download_url = request.scheme+"://" + \
+    download_url = "https://" + \
         request.META['HTTP_HOST']+settings.MEDIA_URL + \
         os.path.join('download', n)
     if settings.ENV == 'prod':
         download_url = download_url.replace('http', 'https')
     # download_log
-    condiction_log = f'''專案名稱:{project_name}, 日期：{date_filter}。樣區 / 相機位置：{conditions} 。海拔：{start_altitude}~{end_altitude}。物種：{spe_conditions} 。時間：{time_filter}。縣市：{county_name}。保護留區：{protectarea_name}。資料夾：{folder_filter} 。'''
+    condiction_log = f'''計畫名稱:{project_name}, 日期：{date_filter}。樣區：{sa_download_log}。相機位置：{dep_download_log}。海拔：{start_altitude}~{end_altitude}。物種：{spe_conditions} 。時間：{time_filter}。縣市：{county_name}。保護留區：{protectarea_name}。資料夾：{folder_filter} 。'''
     download_log_sql = DownloadLog(user_role=user_role, condiction=condiction_log,file_link=download_url)#file_link=download_url
     download_log_sql.save()
     email_subject = '[臺灣自動相機資訊系統] 下載資料'
@@ -1869,8 +1898,15 @@ def download_project_oversight(request, pk):
     # start_year = datetime.datetime.fromtimestamp(proj_stats['working__range'][0]).year
     # end_year = datetime.datetime.fromtimestamp(proj_stats['working__range'][1]).year
     year = request.GET.get('year')
+    studyarea = ''
+    if sa_id := request.GET.get('studyarea'):
+        studyarea = StudyArea.objects.filter(id=sa_id).first()
+
     year_int = int(year)
-    stats = project.count_deployment_journal([year_int])
+    if studyarea:
+        stats = project.count_deployment_journal([year_int], [studyarea.id])
+    else:
+        stats = project.count_deployment_journal([year_int])
 
     wb = Workbook()
     ws1 = wb.active
@@ -1912,7 +1948,10 @@ def download_project_oversight(request, pk):
         tmp.seek(0)
         stream = tmp.read()
         #filename = quote(f'{project.name}_管考_{start_year}-{end_year}.xlsx')
-        filename = quote(f'{project.name}_管考_{year}.xlsx')
+        if studyarea:
+            filename = quote(f'{project.name}_管考_{year}_{studyarea.name}.xlsx')
+        else:
+            filename = quote(f'{project.name}_管考_{year}.xlsx')
 
         #return StreamingHttpResponse(
         #    stream,
@@ -1929,44 +1968,56 @@ def project_oversight(request, pk):
     '''
     相機有運作天數 / 當月天數
     '''
+
+    is_authorized = check_if_authorized(request, pk)
+    public_ids = Project.published_objects.values_list('id', flat=True).all()
+    pk = int(pk)
+    if (pk in list(public_ids)) or is_authorized:
+        project = Project.objects.get(pk=pk)
+    else:
+        return HttpResponse('no auth')
+
     if request.method == 'GET':
         year = request.GET.get('year')
-        is_authorized = check_if_authorized(request, pk)
-        public_ids = Project.published_objects.values_list(
-            'id', flat=True).all()
-        pk = int(pk)
-        if (pk in list(public_ids)) or is_authorized:
-            project = Project.objects.get(pk=pk)
+        studyarea = request.GET.get('studyarea')
 
-            mn = DeploymentJournal.objects.filter(project_id=project.id).aggregate(Max('working_end'), Min('working_start'))
-            year_list = []
-            if mn['working_end__max'] and mn['working_start__min']:
-                year_list = list(range(mn['working_start__min'].year, mn['working_end__max'].year+1))
+    elif request.method == 'POST':
+        year = request.POST.get('year', 0)
+        studyarea = request.POST.get('studyarea')
 
-            # if proj_stats := project.get_or_count_stats():
-            if year:
-                year_int = int(year)
-                # deps = project.get_deployment_list(as_object=True)
-                data = project.count_deployment_journal([year_int])
-                #for sa in data[year]:
-                #    for d in sa['items']:
-                        # print (sa['name'], d['id'], d['name'])
-                #        dep_obj = Deployment.objects.get(pk=d['id'])
-                #        d['gaps'] = dep_obj.find_deployment_journal_gaps(year_int)
-                return render(request, 'project/project_oversight.html', {
-                    'project': project,
-                    'gap_caused_choices': DeploymentJournal.GAP_CHOICES,
-                    'month_label_list': [f'{x} 月'for x in range(1, 13)],
-                    'result': data[year] if year else [],
-                    'year_list': year_list,
-                })
-            else:
-                return render(request, 'project/project_oversight.html', {
-                    'project': project,
-                    'year_list': year_list
-                })
-        else:
-            return HttpResponse('no auth')
+    mn = DeploymentJournal.objects.filter(project_id=project.id).aggregate(Max('working_end'), Min('working_start'))
+    year_list = []
+    if mn['working_end__max'] and mn['working_start__min']:
+        year_list = list(range(mn['working_start__min'].year, mn['working_end__max'].year+1))
+
+    data = {}
+    if year or studyarea:
+        # deps = project.get_deployment_list(as_object=True)
+        if year and studyarea:
+            data = project.count_deployment_journal(year_list=[int(year)], studyarea_ids=[int(studyarea)])
+        elif year and not studyarea:
+            data = project.count_deployment_journal(year_list=[int(year)])
+        elif not year and studyarea:
+            data = project.count_deployment_journal(year_list=year_list, studyarea_ids=[int(studyarea)])
+        #for sa in data[year]:
+        #    for d in sa['items']:
+        # print (sa['name'], d['id'], d['name'])
+        #        dep_obj = Deployment.objects.get(pk=d['id'])
+        #        d['gaps'] = dep_obj.find_deployment_journal_gaps(year_int)
+        return render(request, 'project/project_oversight.html', {
+            'project': project,
+            'gap_caused_choices': DeploymentJournal.GAP_CHOICES,
+            'month_label_list': [f'{x}月'for x in range(1, 13)],
+            'result': data, #data[year] if year else [],
+            'year_list': year_list,
+        })
+    #else:
+
+    return render(request, 'project/project_oversight.html', {
+        'project': project,
+        'year_list': year_list
+    })
+
 
 @csrf_exempt
 def api_create_or_list_deployment_journals(request):
@@ -2080,3 +2131,22 @@ def check_login(request):
         response['redirect'] = False
         response['messages'] = '尚未登入'
     return HttpResponse(json.dumps(response), content_type='application/json')
+
+@require_GET
+def robots_txt(request):
+
+    if settings.ENV =='prod':
+        lines = [
+            "User-Agent: *",
+            "Disallow: /admin/",
+        ]
+
+        return HttpResponse("\n".join(lines), content_type="text/plain")
+
+    else:
+        lines = [
+            "User-Agent: *",
+            "Disallow: /",
+        ]
+
+        return HttpResponse("\n".join(lines), content_type="text/plain")

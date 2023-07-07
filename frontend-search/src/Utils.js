@@ -1,7 +1,11 @@
 import { format } from 'date-fns'
 
-const cleanFormData = (formData, depOptions) => {
+const cleanFormData = (formData, depOptions, isVerbose) => {
   let cleaned = {};
+  if (isVerbose === true) {
+    cleaned['verbose'] = formData;
+  }
+
   for (const v in formData) {
     if (v === 'species') {
       if (formData[v].length > 0) {

@@ -217,7 +217,19 @@ def calculated_data(filter_args, calc_args):
     #dt = datetime.strptime(start_date, '%Y-%m-%d')
     results = {}
 
-    query = Deployment.objects.filter(id__in=deps)
+    query = Deployment.objects
+
+    # ref: utils.apply_search
+    if value := filter_args.get('keyword'):
+        rows = Project.objects.values_list('id', flat=True).filter(keyword__icontains=value)
+        project_ids = list(rows)
+        if len(project_ids) > 0:
+            query = query.filter(project_id__in=project_ids)
+        else:
+            query = query.filter(project_id__in=[9999]) # 關鍵字沒有就都不要搜到
+
+    if deps:
+        query = query.filter(id__in=deps)
 
     if value := filter_args.get('altitude'):
         if op := filter_args.get('altitudeOperator'):
@@ -807,7 +819,7 @@ def save_calculation(species_list, year, month, deployment):
 def apply_search_filter(filter_dict={}):
     query = Image.objects.filter()
     project_ids = []
-    # print(filter_dict)
+
     if value := filter_dict.get('keyword'):
         rows = Project.objects.values_list('id', flat=True).filter(keyword__icontains=value)
         project_ids = list(rows)
@@ -878,3 +890,41 @@ def apply_search_filter(filter_dict={}):
         query = query.filter(species__in=sp_values)
 
     return query
+
+def humen_readable_filter(filter_dict):
+    data = []
+    if species := filter_dict.get('species'):
+        data.append(f"物種：{species}")
+    start = filter_dict.get('startDate', '')
+    end= filter_dict.get('endDate', '')
+    if start or end:
+        data.append(f'時間：{start} ~ {end}')
+    if counties := filter_dict.get('counties'):
+        a = [x['name'] for x in counties]
+        data.append(f"縣市：{'|'.join(a)}")
+    if protectedareas := filter_dict.get('protectedareas'):
+        a = [x['name'] for x in protectedareas]
+        data.append(f"保護留區：{'|'.join(a)}")
+    if keyword := filter_dict.get('keyword'):
+        data.append(f'計畫關鍵字：{keyword}')
+    if alt := filter_dict.get('altitude'):
+        alt_map = {'eq': '等於', 'gt': '>', 'lt': '<'}
+        data.append(f"海拔：{alt_map[filter_dict['altitudeOperator']]}{alt}")
+
+    project_dict = {}
+    if verbose := filter_dict.get('verbose'):
+        if projects := verbose.get('projects'):
+            for p in projects:
+                if proj := p.get('project'):
+                    project_dict[proj['name']] = []
+                    if studyareas := p.get('studyareas'):
+                        for sa in studyareas:
+                            project_dict[proj['name']].append(f"樣區：{sa['name']}")
+                    if deployments := p.get('deployments'):
+                        for d in deployments:
+                            project_dict[proj['name']].append(f"相機位置：{d['name']}")
+    for k, v in project_dict.items():
+        detail = ' AND '.join(v)
+        data.append(f'計畫名稱：{k}, {detail}')
+
+    return ', '.join(data)
