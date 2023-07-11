@@ -14,7 +14,7 @@ if [ "$WEB_ENV" == "prod" ]; then
     python manage.py migrate --no-input
     python manage.py collectstatic --no-input
     pip install gunicorn
-    /usr/local/bin/gunicorn --bind 0.0.0.0:8001 --timeout 300 conf.wsgi #--chdir=/code
+    /usr/local/bin/gunicorn --bind 0.0.0.0:8001 --timeout 300 conf.wsgi --limit-request-line 8190 #--chdir=/code
 else
     python manage.py migrate
     python manage.py collectstatic --no-input
