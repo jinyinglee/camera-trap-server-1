@@ -71,7 +71,7 @@
 							<td>{{ i.2 }}</td>
 							<td>{{ i.3 }}</td>
 							<td>{{ i.4 }}</td>
-							<td>{{ i.5 }}</td>
+							<td>{% if i.5 != None %} {{ i.5 }}{% else %}已刪除{% endif%}</td>
 
 						<td>
 							<div class="infbox">

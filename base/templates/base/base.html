@@ -88,9 +88,9 @@
             <li class="nav-item">
               <a class="nav-link" href="{% url 'search' %}">資料篩選與計算</a>
             </li>
-            {% if 'is_login' in request.session %}
+            {% if request.session and request.session.is_login %}
             <li class="nav-item">
-                <a class="nav-link" href="{% url 'upload-history' %}">上傳紀錄</a>
+              <a class="nav-link" href="{% url 'upload-history' %}">上傳紀錄</a>
             </li>
             {% endif %}
             <li class="nav-item dropdown">
