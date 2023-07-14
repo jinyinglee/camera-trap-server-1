@@ -94,16 +94,20 @@ def get_notif(contact_id):
         if n.category == 'upload': 
             created_8 = n.created + timedelta(hours=8)
             dj = n.upload_history.deployment_journal
-            results += f"""
-            <div class="notification-item">
-            <div class="notification-item-content">
-                <div class='notification-item-date'>{created_8.strftime('%Y-%m-%d %H:%M:%S')}</div>
-                <div class="notification-item-message"> 
-                    「{dj.project.name} > {dj.studyarea.name} > {dj.deployment.name} > {dj.folder_name}」上傳狀態為：<strong>{status_map[n.upload_history.status]}</strong>
+            try:
+                results += f"""
+                <div class="notification-item">
+                <div class="notification-item-content">
+                    <div class='notification-item-date'>{created_8.strftime('%Y-%m-%d %H:%M:%S')}</div>
+                    <div class="notification-item-message"> 
+                        「{dj.project.name} > {dj.studyarea.name} > {dj.deployment.name} > {dj.folder_name}」上傳狀態為：<strong>{status_map[n.upload_history.status]}</strong>
+                    </div>
                 </div>
-            </div>
-            </div>
-            """
+                </div>
+                """
+            except Exception as e:
+                print("notifications bug == ",e)
+                continue
         # 資料缺失通知
         elif n.category == 'gap': 
             created_8 = n.created + timedelta(hours=8)
