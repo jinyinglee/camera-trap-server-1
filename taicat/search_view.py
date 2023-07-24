@@ -107,7 +107,7 @@ def api_get_projects(request):
         # q = "SELECT taicat_project.id FROM taicat_project \
         #     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
         q = "SELECT taicat_project.id FROM taicat_project \
-            WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't';"
+             WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't';"
         cursor.execute(q)
         public_project_list = [l[0] for l in cursor.fetchall()]
 
@@ -160,11 +160,19 @@ def api_search(request):
         query_start = datetime(2014, 1, 1)
         query_end = datetime.now()
         query = Image.objects.filter()
-        # TODO: 考慮 auth
+
+        # project auth
+        available_project_ids = Project.objects.filter(mode='official', is_public=True).values_list('id', flat=True)
+
+        if member_id := request.session.get('id', None):
+            if my_project_list := get_my_project_list(member_id,[]):
+                available_project_ids.extend(my_project_list)
 
         if request.GET.get('filter'):
             filter_dict = json.loads(request.GET['filter'])
             query = apply_search_filter(filter_dict)
+
+        query = query.filter(id__in=available_project_ids)
 
         if request.GET.get('pagination'):
             pagination = json.loads(request.GET['pagination'])
