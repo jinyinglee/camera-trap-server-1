@@ -51,7 +51,7 @@
 
   <body>
     {% block modal %}{% endblock %}
-    {% if 'is_login' in request.session and request.COOKIES and request.session.id %}
+    {% if request.session|check_is_login and request.COOKIES and request.session.id %}
       {% if "announcementread" in request.COOKIES %}
         {% if request.COOKIES.announcementread  != request.session.id|announcement_expire_time %}
           {% if request.session.id|announcement_content != None %}
@@ -88,7 +88,7 @@
             <li class="nav-item">
               <a class="nav-link" href="{% url 'search' %}">資料篩選與計算</a>
             </li>
-            {% if request.session and request.session.is_login %}
+            {% if request.session|check_is_login %}
             <li class="nav-item">
               <a class="nav-link" href="{% url 'upload-history' %}">上傳紀錄</a>
             </li>
@@ -105,7 +105,7 @@
             </li>
           </ul>
           <div class="d-flex">
-            {% if 'is_login' not in request.session or not request.session.is_login %}{# HACK session storage warning #}
+            {% if not request.session|check_is_login %}{# HACK session storage warning #}
             <a class="btn btn-orange " data-bs-toggle="modal" data-bs-target="#loginModal">登入</a>
             {% else %}
             <ul class="navbar-nav">
