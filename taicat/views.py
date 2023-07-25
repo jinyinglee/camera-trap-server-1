@@ -76,7 +76,7 @@ def get_project_info_web(request):
         is_project_authorized = True
     else:
         is_project_authorized = False
-        
+
     response = {}
     project = Project.objects.get(id=pk)
     sa = StudyArea.objects.filter(project_id=pk, parent_id__isnull=True)
@@ -173,6 +173,16 @@ def get_edit_info(request):
 
 def get_project_detail(request):
     pk = request.GET.get('pk')
+    # 系統管理員
+    member_id = request.session.get('id', None)
+    is_authorized = Contact.objects.filter(id=member_id, is_system_admin=True).exists()
+    # 團隊成員名單
+    pm_list = get_project_member(pk)
+    if (member_id in pm_list) or is_authorized:
+        is_project_authorized = True
+    else:
+        is_project_authorized = False
+
     response = {}
     if ProjectStat.objects.filter(project_id=pk).first().latest_date and ProjectStat.objects.filter(project_id=pk).first().earliest_date:
         latest_date = ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d")
@@ -180,7 +190,6 @@ def get_project_detail(request):
     else:
         latest_date, earliest_date = None, None
 
-    
     results = []
     with connection.cursor() as cursor:
         query = f"""SELECT folder_name,
@@ -1319,17 +1328,19 @@ def project_detail(request, pk):
     # 使用者是否有系統管理者/project_admin/總管理人的權限
     is_authorized = check_if_authorized(request, pk)
     is_project_authorized = False
-    is_public_project = False    
+    is_project_public = False
+
     member_id = request.session.get('id', None)
-    
+
     # 團隊成員
     member_list = get_project_member(pk)
     if is_authorized or (member_id in member_list):
         is_project_authorized = True
     # 公開
     if Project.objects.filter(id=pk, is_public=True).exists():
-        is_public_project = True
-    
+        is_project_public = True
+
+    print(is_project_authorized, is_project_public)
     with connection.cursor() as cursor:
         query = "SELECT name, funding_agency, code, " \
                 "principal_investigator, " \
@@ -1508,15 +1519,16 @@ def project_detail(request, pk):
     altitude__min = altitude_range['altitude__min'] if altitude_range['altitude__min'] != None else 0
 
 
-    return render(request, 'project/project_detail.html',
-                  {'project_name_len': len(project_info[0]), 'project_info': project_info, 'species': species, 'pk': pk,
-                   'study_area': study_area, 'deployment': deployment, 'folder': folder,
-                   'earliest_date': earliest_date, 'latest_date': latest_date,
-                   'editable': editable, 'is_authorized': is_authorized,
-                   'folder_list': results, 'sa_list': list(sa_list), 'sa_d_list': sa_d_list, 
-                   'projects': project_list, 'is_project_authorized': is_project_authorized,'is_public_project':is_public_project,
-                   'county_list':county_list,'protectedarea_list':protectedarea_list,
-                   'altitude__min':altitude__min,'altitude__max':altitude__max})
+    return render(request, 'project/project_detail.html', {
+        'project_name_len': len(project_info[0]), 'project_info': project_info, 'species': species, 'pk': pk,
+        'study_area': study_area, 'deployment': deployment, 'folder': folder,
+        'earliest_date': earliest_date, 'latest_date': latest_date,
+        'editable': editable, 'is_authorized': is_authorized,
+        'folder_list': results, 'sa_list': list(sa_list), 'sa_d_list': sa_d_list, 
+        'projects': project_list, 'is_project_authorized': is_project_authorized,'is_project_public':is_project_public,
+        'county_list':county_list,'protectedarea_list':protectedarea_list,
+        'altitude__min':altitude__min,'altitude__max':altitude__max,
+    })
 
 
 def update_edit_autocomplete(request):
@@ -2149,3 +2161,184 @@ def robots_txt(request):
         ]
 
         return HttpResponse("\n".join(lines), content_type="text/plain")
+
+def foo(request):
+    import geopandas as gpd
+    from conf.settings import BASE_DIR
+    import os
+    import pygeos
+    gpd.options.use_pygeos = True
+    now = timezone.now()
+    print('start HOMEPAGE MAP', now)
+
+    species_list = ['水鹿', '山羌', '獼猴', '山羊', '野豬', '鼬獾', '白鼻心', '食蟹獴', '松鼠', '飛鼠', '黃喉貂', '黃鼠狼', '小黃鼠狼', '麝香貓', '黑熊', '石虎', '穿山甲', '梅花鹿', '野兔', '蝙蝠']
+
+    now = timezone.now()
+
+    gpd.options.use_pygeos = True
+
+    geo_df = gpd.read_file(os.path.join(os.path.join(BASE_DIR, "static"),'map/COUNTY_MOI_1090820.shp'))
+
+    # 只選擇正式的資料
+
+    query = """
+    SELECT d.longitude, d.latitude, d.id, d.geodetic_datum FROM taicat_deployment d
+    JOIN taicat_project p ON d.project_id = p.id
+    WHERE p.mode = 'official';
+    """
+
+    with connection.cursor() as cursor:
+        cursor.execute(query)
+        d_df = cursor.fetchall()
+        d_df = pd.DataFrame(d_df, columns=['longitude', 'latitude', 'did', 'geodetic_datum'])
+
+
+    # TODO 這邊會分成TWD97 & WGS84
+    d_df_wgs84 = d_df[d_df.geodetic_datum=='WGS84'].reset_index()
+    d_df_twd97 = d_df[d_df.geodetic_datum=='TWD97'].reset_index()
+
+
+    # d_df = pd.DataFrame(Deployment.objects.all().values('longitude','latitude','id', 'geodetic_datum'))
+
+    d_df_wgs84 = gpd.GeoDataFrame(d_df_wgs84,geometry=gpd.points_from_xy(d_df_wgs84.longitude,d_df_wgs84.latitude))
+    d_df_twd97 = gpd.GeoDataFrame(d_df_twd97,geometry=gpd.points_from_xy(d_df_twd97.longitude,d_df_twd97.latitude))
+
+    d_df_twd97 = d_df_twd97.set_crs(epsg=3826, inplace=True)
+    d_df_twd97 = d_df_twd97.to_crs(epsg=4326)
+
+
+    d_gdf = d_df_twd97.append(d_df_wgs84)
+
+    join = gpd.sjoin(geo_df, d_gdf)
+
+    # TWD97經緯度=WGS84 ?
+
+    county = geo_df.COUNTYNAME.unique()
+
+    for c in county:
+        # print(c)
+        d_list = join[join['COUNTYNAME']==c].did.unique()
+        d_list_str = ",".join([str(x) for x in d_list])
+        num_project = 0
+        num_deployment = 0
+        num_image = 0
+        num_working_hour = 0
+        identified = 0
+        species_str = ''
+        sa_str = ''
+        if len(d_list):
+            query = f"SELECT DISTINCT(studyarea_id) FROM taicat_image WHERE deployment_id IN ({d_list_str})"
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                sa = cursor.fetchall()
+                sa = [str(s[0]) for s in sa]
+                sa_str = ','.join(sa)
+                query = f"""SELECT COUNT(DISTINCT(image_uuid)) FROM taicat_image WHERE species IS NOT NULL and species != '' and deployment_id IN ({d_list_str}) ;"""
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                identified = cursor.fetchall()
+            query = f"""
+            SELECT COUNT(DISTINCT(d.project_id)), SUM(ds.count_working_hour)
+            FROM taicat_deployment d 
+            LEFT JOIN taicat_deploymentstat ds ON d.id = ds.deployment_id
+            WHERE d.id IN ({d_list_str});
+        """
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                stat = cursor.fetchall()
+                query = f"""
+                SELECT COUNT(DISTINCT(image_uuid)) 
+                FROM taicat_image 
+                WHERE deployment_id IN ({d_list_str});
+                """
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                num_image = cursor.fetchall()
+            query = f"""SELECT DISTINCT(species) FROM taicat_image WHERE deployment_id IN ({d_list_str})"""
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                species = cursor.fetchall()
+                species = [s[0] for s in species if s[0] in species_list]
+                species_str = ','.join(species)        
+                num_project = stat[0][0]
+                num_deployment = len(d_list)
+                num_image = num_image[0][0]
+                num_working_hour = stat[0][1] if stat[0][1] else 0
+            if num_image == 0:
+                identified = 0
+            else:
+                identified = round((identified[0][0] / num_image) * 100, 2)
+        # else:
+        #     # 沒有該縣市的資料，填0
+        #     num_project = 0
+        #     num_deployment = 0
+        #     num_image = 0
+        #     num_working_hour = 0
+        #     identified = 0
+        #     species_str = ''
+        # 沒有的話新增
+        # 有的話更新
+        if GeoStat.objects.filter(county=c).exists():
+            GeoStat.objects.filter(county=c).update(
+                num_project = num_project,
+                num_deployment = num_deployment,
+                num_image = num_image,
+                num_working_hour = num_working_hour,
+                identified = identified,
+                species = species_str,
+                studyarea = sa_str,
+                last_updated = now
+            )
+        else:
+            GeoStat.objects.create(
+                county = c,
+                num_project = num_project,
+                num_deployment = num_deployment,
+                num_image = num_image,
+                num_working_hour = num_working_hour,
+                identified = identified,
+                species = species_str,
+                studyarea = sa_str
+            )
+
+
+    # center of studyarea
+    # 
+    query = f"""
+    SELECT d.longitude, d.latitude, d.id, d.study_area_id, d.geodetic_datum FROM taicat_deployment d;"""
+    with connection.cursor() as cursor:
+        cursor.execute(query)
+        sa_df = cursor.fetchall()
+        sa_df = pd.DataFrame(sa_df, columns=['longitude', 'latitude', 'did', 'said','geodetic_datum'])
+        # d_df = pd.DataFrame(Deployment.objects.all().values('longitude','latitude','id', 'geodetic_datum'))
+        sa_gdf = gpd.GeoDataFrame(sa_df,geometry=gpd.points_from_xy(sa_df.longitude,sa_df.latitude))
+        print(saa_gdf)
+    # for i in sa_gdf.index():
+    #     s = sa_gdf.iloc[i]
+    #     if s.geodetic_datum == 'TWD97':
+    sa_list = sa_df.said.unique()
+    print(sa_list)
+    for i in sa_list:
+        # print(i)
+        # print(i, sa_gdf[sa_gdf['said']==i].dissolve().centroid)
+        tmp = sa_gdf[sa_gdf['said']==i]
+        if len(tmp.geodetic_datum.values) > 0:
+            if tmp.geodetic_datum.values[0] == 'TWD97':
+                tmp = tmp.set_crs(epsg=3826, inplace=True)
+                tmp = tmp.to_crs(epsg=4326)
+            long = tmp[tmp['said']==i].dissolve().centroid.x[0]
+            lat = tmp[tmp['said']==i].dissolve().centroid.y[0]
+            if StudyAreaStat.objects.filter(studyarea_id=i).exists():
+                StudyAreaStat.objects.filter(studyarea_id=i).update(
+                    longitude = long,
+                    latitude = lat,
+                    last_updated = timezone.now()
+                )
+            else:
+                StudyAreaStat.objects.create(
+                    studyarea_id = i,
+                    longitude = long,
+                    latitude = lat,
+                )
+
+    return HttpResponse('foo')
