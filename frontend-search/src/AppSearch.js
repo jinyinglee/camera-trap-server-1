@@ -86,7 +86,6 @@ const theme = createTheme({
 });
 
 function reducer(state, action) {
-  //console.log(state,action);
   switch (action.type) {
   case 'startLoading':
     return {
@@ -307,6 +306,9 @@ const AppSearch = () => {
     //console.log(formDataCleaned);
     if (!formDataCleaned.species) {
       dispatch({type: 'setAlert', text: '必須至少選一個物種', title:'注意'});
+      setTimeout(()=> {
+        dispatch({type: 'setAlert', text: '', title:''});
+      }, 3000)
     } else {
       const calc = JSON.stringify(state.calculation);
       const d = JSON.stringify(formDataCleaned);
@@ -516,6 +518,7 @@ const AppSearch = () => {
                     dispatch({type: 'setFilter', name: 'projects', value: newArr});
                   } else {
                     newArr[index].project = v;
+                    newArr[index].studyareas = [];
                     fetchDeploymentList(v.id, newArr);
                   }
                 }}

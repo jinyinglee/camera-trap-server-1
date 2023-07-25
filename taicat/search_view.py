@@ -163,6 +163,7 @@ def api_search(request):
 
         # project auth
         available_project_ids = Project.objects.filter(mode='official', is_public=True).values_list('id', flat=True)
+        available_project_ids = list(available_project_ids)
 
         if member_id := request.session.get('id', None):
             if my_project_list := get_my_project_list(member_id,[]):
@@ -172,7 +173,7 @@ def api_search(request):
             filter_dict = json.loads(request.GET['filter'])
             query = apply_search_filter(filter_dict)
 
-        query = query.filter(id__in=available_project_ids)
+        query = query.filter(project_id__in=available_project_ids)
 
         if request.GET.get('pagination'):
             pagination = json.loads(request.GET['pagination'])

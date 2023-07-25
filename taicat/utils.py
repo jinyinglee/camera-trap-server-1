@@ -819,7 +819,7 @@ def save_calculation(species_list, year, month, deployment):
 def apply_search_filter(filter_dict={}):
     query = Image.objects.filter()
     project_ids = []
-
+    #print(filter_dict)
     if value := filter_dict.get('keyword'):
         rows = Project.objects.values_list('id', flat=True).filter(keyword__icontains=value)
         project_ids = list(rows)
@@ -844,14 +844,28 @@ def apply_search_filter(filter_dict={}):
         dt = make_aware(datetime.strptime(value, '%Y-%m-%d'))
         query_end = timezone_utc_to_tw(dt)
         query = query.filter(datetime__lte=dt)
-    if values := filter_dict.get('deployments'):
-        query = query.filter(deployment_id__in=values)
+    #if values := filter_dict.get('deployments'):
+    #    query = query.filter(deployment_id__in=values)
         #if len(project_ids):
         #    query = query.filter(Q(deployment_id__in=values) | Q(project_id__in=project_ids))
         # else:
         #    query = query.filter(deployment_id__in=values)
-    elif values := filter_dict.get('studyareas'):
-        query = query.filter(studyarea_id__in=values)
+    #elif values := filter_dict.get('studyareas'):
+    #    query = query.filter(studyarea_id__in=values)
+    if projects := filter_dict.get('projects'):
+        qlist = []
+        for proj in projects:
+            if deps := proj.get('deployments'):
+                deployment_ids = [x['id'] for x in deps]
+                qlist.append(Q(deployment_id__in=deployment_ids))
+            elif sa_s := proj.get('studyareas'):
+                studyarea_ids = [x['id'] for x in sa_s]
+                qlist.append(Q(studyarea_id__in=studyarea_ids))
+            elif p := proj.get('project'):
+                qlist.append(Q(project_id=p['id']))
+
+        if len(qlist) > 0:
+            query = query.filter(reduce(operator.or_, qlist))
 
     if value := filter_dict.get('altitude'):
         if op := filter_dict.get('altitudeOperator'):
@@ -912,19 +926,42 @@ def humen_readable_filter(filter_dict):
         data.append(f"海拔：{alt_map[filter_dict['altitudeOperator']]}{alt}")
 
     project_dict = {}
-    if verbose := filter_dict.get('verbose'):
-        if projects := verbose.get('projects'):
-            for p in projects:
-                if proj := p.get('project'):
-                    project_dict[proj['name']] = []
-                    if studyareas := p.get('studyareas'):
-                        for sa in studyareas:
-                            project_dict[proj['name']].append(f"樣區：{sa['name']}")
-                    if deployments := p.get('deployments'):
-                        for d in deployments:
-                            project_dict[proj['name']].append(f"相機位置：{d['name']}")
-    for k, v in project_dict.items():
-        detail = ' AND '.join(v)
-        data.append(f'計畫名稱：{k}, {detail}')
+    if projects := filter_dict.get('projects'):
+        for p in projects:
+            if deployments := p.get('deployments'):
+                for d in deployments:
+                    if proj_name := p['project']['name']:
+                        if proj_name not in project_dict:
+                            project_dict[proj_name] = []
+                        project_dict[proj_name].append(f"相機位置：{d['name']}")
+            if studyareas := p.get('studyareas'):
+                for sa in studyareas:
+                    if proj_name := p['project']['name']:
+                        if proj_name not in project_dict:
+                            project_dict[proj_name] = []
+                        project_dict[proj_name].append(f"樣區：{sa['name']}")
+            if project := p.get('project'):
+                if proj_name := p['project']['name']:
+                    if proj_name not in project_dict:
+                        project_dict[proj_name] = ''
+
+    # if verbose := filter_dict.get('verbose'):
+    #     if projects := verbose.get('projects'):
+    #         for p in projects:
+    #             if proj := p.get('project'):
+    #                 project_dict[proj['name']] = []
+    #                 if studyareas := p.get('studyareas'):
+    #                     for sa in studyareas:
+    #                         project_dict[proj['name']].append(f"樣區：{sa['name']}")
+    #                 if deployments := p.get('deployments'):
+    #                     for d in deployments:
+    #                         project_dict[proj['name']].append(f"相機位置：{d['name']}")
+
+    for proj_name, detail in project_dict.items():
+        if detail:
+            rules = ' | '.join(detail)
+            data.append(f'計畫名稱：{proj_name} ({rules})')
+        else:
+            data.append(f'計畫名稱：{proj_name}')
 
     return ', '.join(data)
