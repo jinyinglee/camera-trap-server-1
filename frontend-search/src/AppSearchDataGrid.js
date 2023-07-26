@@ -64,7 +64,7 @@ const CellContent = (value) => {
 }
 
 const CustomTablePagination = ({count, rowsPerPage, rowsPerPageOptions, page, onPageChange, onRowsPerPageChange}) => {
-  console.log(count, rowsPerPage, page, rowsPerPageOptions);
+  //console.log(count, rowsPerPage, page, rowsPerPageOptions);
   const start = (page) * rowsPerPage + 1;
   let end = start + rowsPerPage - 1;
   if (count <= end) {

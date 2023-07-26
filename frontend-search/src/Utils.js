@@ -2,9 +2,10 @@ import { format } from 'date-fns'
 
 const cleanFormData = (formData, depOptions, isVerbose) => {
   let cleaned = {};
-  if (isVerbose === true) {
+  /*if (isVerbose === true) {
     cleaned['verbose'] = formData;
   }
+  */
 
   for (const v in formData) {
     if (v === 'species') {
@@ -18,31 +19,40 @@ const cleanFormData = (formData, depOptions, isVerbose) => {
     } else if (['startDate', 'endDate'].indexOf(v) >= 0 && formData[v] != null) {
       cleaned[v] = format(formData[v], 'yyyy-MM-dd');
     } else if ( v === 'projects') {
-      let deploymentIds = [];
+      let projects = [];
       for (const i in formData['projects']) {
         if (formData['projects'][i].hasOwnProperty('project') && formData['projects'][i].project !== null) {
-          const projectId = formData['projects'][i].project.id;
           if (formData['projects'][i].hasOwnProperty('deployments') && formData['projects'][i].deployments.length > 0) {
-            deploymentIds = deploymentIds.concat(formData['projects'][i].deployments.map(x => x.deployment_id));
+            const deployments = formData['projects'][i].deployments.map(x => ({
+              id: x.deployment_id,
+              name: x.name
+            }))
+            projects.push({
+              deployments: deployments,
+              project: formData['projects'][i].project,
+            })
           } else if (formData['projects'][i].hasOwnProperty('studyareas') && formData['projects'][i].studyareas.length > 0) {
-            for (const j in formData['projects'][i].studyareas) {
-              const foundIndex = depOptions[projectId].findIndex( x => x.studyarea_id === formData['projects'][i].studyareas[j].studyarea_id);
-              if (foundIndex >= 0) {
-                const values = depOptions[projectId][foundIndex].deployments.map(x => x.deployment_id);
-                deploymentIds = deploymentIds.concat(values);
+            const studyareas = formData['projects'][i].studyareas.map(x => ({
+              id: x.studyarea_id,
+              name: x.name,
+            }))
+            projects.push({
+              studyareas: studyareas,
+              project: formData['projects'][i].project,
+            })
+          }
+          else if (formData['projects'][i].hasOwnProperty('project')) {
+            projects.push({
+              project: {
+                id: formData['projects'][i].project.id,
+                name: formData['projects'][i].project.name,
               }
-            }
-          } else if (formData['projects'][i].hasOwnProperty('project')) {
-            for (const sa in depOptions[projectId]) {
-              const values = depOptions[projectId][sa].deployments.map(x => x.deployment_id);
-              deploymentIds = deploymentIds.concat(values);
-            }
+            })
           }
         }
       }
-      cleaned['deployments'] = deploymentIds;
-      if (cleaned['deployments'].length <= 0) {
-        delete cleaned.deployments
+      if (projects.length >= 0) {
+        cleaned['projects'] = projects
       }
     } else if (formData[v]) {
       // other

@@ -76,7 +76,7 @@ def get_project_info_web(request):
         is_project_authorized = True
     else:
         is_project_authorized = False
-        
+
     response = {}
     project = Project.objects.get(id=pk)
     sa = StudyArea.objects.filter(project_id=pk, parent_id__isnull=True)
@@ -173,6 +173,16 @@ def get_edit_info(request):
 
 def get_project_detail(request):
     pk = request.GET.get('pk')
+    # 系統管理員
+    member_id = request.session.get('id', None)
+    is_authorized = Contact.objects.filter(id=member_id, is_system_admin=True).exists()
+    # 團隊成員名單
+    pm_list = get_project_member(pk)
+    if (member_id in pm_list) or is_authorized:
+        is_project_authorized = True
+    else:
+        is_project_authorized = False
+
     response = {}
     if ProjectStat.objects.filter(project_id=pk).first().latest_date and ProjectStat.objects.filter(project_id=pk).first().earliest_date:
         latest_date = ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d")
@@ -180,7 +190,6 @@ def get_project_detail(request):
     else:
         latest_date, earliest_date = None, None
 
-    
     results = []
     with connection.cursor() as cursor:
         query = f"""SELECT folder_name,
@@ -1319,17 +1328,18 @@ def project_detail(request, pk):
     # 使用者是否有系統管理者/project_admin/總管理人的權限
     is_authorized = check_if_authorized(request, pk)
     is_project_authorized = False
-    is_public_project = False    
+    is_project_public = False
+
     member_id = request.session.get('id', None)
-    
+
     # 團隊成員
     member_list = get_project_member(pk)
     if is_authorized or (member_id in member_list):
         is_project_authorized = True
     # 公開
     if Project.objects.filter(id=pk, is_public=True).exists():
-        is_public_project = True
-    
+        is_project_public = True
+
     with connection.cursor() as cursor:
         query = "SELECT name, funding_agency, code, " \
                 "principal_investigator, " \
@@ -1508,15 +1518,16 @@ def project_detail(request, pk):
     altitude__min = altitude_range['altitude__min'] if altitude_range['altitude__min'] != None else 0
 
 
-    return render(request, 'project/project_detail.html',
-                  {'project_name_len': len(project_info[0]), 'project_info': project_info, 'species': species, 'pk': pk,
-                   'study_area': study_area, 'deployment': deployment, 'folder': folder,
-                   'earliest_date': earliest_date, 'latest_date': latest_date,
-                   'editable': editable, 'is_authorized': is_authorized,
-                   'folder_list': results, 'sa_list': list(sa_list), 'sa_d_list': sa_d_list, 
-                   'projects': project_list, 'is_project_authorized': is_project_authorized,'is_public_project':is_public_project,
-                   'county_list':county_list,'protectedarea_list':protectedarea_list,
-                   'altitude__min':altitude__min,'altitude__max':altitude__max})
+    return render(request, 'project/project_detail.html', {
+        'project_name_len': len(project_info[0]), 'project_info': project_info, 'species': species, 'pk': pk,
+        'study_area': study_area, 'deployment': deployment, 'folder': folder,
+        'earliest_date': earliest_date, 'latest_date': latest_date,
+        'editable': editable, 'is_authorized': is_authorized,
+        'folder_list': results, 'sa_list': list(sa_list), 'sa_d_list': sa_d_list, 
+        'projects': project_list, 'is_project_authorized': is_project_authorized,'is_project_public':is_project_public,
+        'county_list':county_list,'protectedarea_list':protectedarea_list,
+        'altitude__min':altitude__min,'altitude__max':altitude__max,
+    })
 
 
 def update_edit_autocomplete(request):

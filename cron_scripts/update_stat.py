@@ -203,7 +203,9 @@ d_df_wgs84 = gpd.GeoDataFrame(d_df_wgs84,geometry=gpd.points_from_xy(d_df_wgs84.
 d_df_twd97 = gpd.GeoDataFrame(d_df_twd97,geometry=gpd.points_from_xy(d_df_twd97.longitude,d_df_twd97.latitude))
 
 d_df_twd97 = d_df_twd97.set_crs(epsg=3826, inplace=True)
-d_df_twd97 = d_df_twd97.to_crs(epsg=4326)
+# moogoo: crs mismatch, 230726
+#d_df_twd97 = d_df_twd97.to_crs(epsg=4326)
+d_df_twd97 = d_df_twd97.to_crs(epsg=3824)
 
 
 d_gdf = d_df_twd97.append(d_df_wgs84)
@@ -319,6 +321,10 @@ for i in sa_list:
     # print(i)
     # print(i, sa_gdf[sa_gdf['said']==i].dissolve().centroid)
     tmp = sa_gdf[sa_gdf['said']==i]
+
+    if tmp.empty: # moogoo: no said?, 230726
+        continue
+
     if tmp.geodetic_datum.values[0] == 'TWD97':
         tmp = tmp.set_crs(epsg=3826, inplace=True)
         tmp = tmp.to_crs(epsg=4326)

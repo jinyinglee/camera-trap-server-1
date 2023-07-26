@@ -179,3 +179,12 @@ def announcement_expire_time (contact_id):
         pass
 
     return expire_time
+
+@register.filter(name='check_is_login')
+def check_is_login(session_list):
+    '''for hide template session.is_login
+    '''
+    for k, v in session_list.items():
+        if k == 'is_login' and v == True:
+            return True
+    return False
