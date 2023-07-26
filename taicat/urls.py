@@ -51,5 +51,4 @@ urlpatterns = [
     path('update_edit_autocomplete', views.update_edit_autocomplete, name='update_edit_autocomplete'),
     
     path("robots.txt", robots_txt),
-    path('foo', views.foo),
 ]
