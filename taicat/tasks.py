@@ -209,9 +209,9 @@ def process_download_data_task(email, filter_dict, member_id, host, verbose):
 
 
 @shared_task
-def process_download_calculated_data_task(email, filter_dict, calc_dict, calc_type, out_format, calc_data, host, member_id, verbose):
+def process_download_calculated_data_task(email, filter_dict, calc_dict, calc_type, out_format, calc_data, host, member_id, verbose, available_project_ids):
     #print(email, filter_dict, calc_dict, calc_type, out_format, calc_data, host)
-    results = calculated_data(filter_dict, calc_data)
+    results = calculated_data(filter_dict, calc_data, available_project_ids)
 
     download_dir = Path(settings.MEDIA_ROOT, 'download')
     ext = 'csv' if out_format == 'csv' else 'xlsx'

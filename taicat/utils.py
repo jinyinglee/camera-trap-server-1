@@ -195,7 +195,7 @@ def calc_from_cache(filter_args, calc_args):
 
     return results
 
-def calculated_data(filter_args, calc_args):
+def calculated_data(filter_args, calc_args, available_project_ids):
     # print (filter_args, calc_args)
     deps = filter_args.get('deployments')
     species = filter_args.get('species')
@@ -217,56 +217,28 @@ def calculated_data(filter_args, calc_args):
     #dt = datetime.strptime(start_date, '%Y-%m-%d')
     results = {}
 
-    query = Deployment.objects
 
-    # ref: utils.apply_search
-    if value := filter_args.get('keyword'):
-        rows = Project.objects.values_list('id', flat=True).filter(keyword__icontains=value)
-        project_ids = list(rows)
-        if len(project_ids) > 0:
-            query = query.filter(project_id__in=project_ids)
-        else:
-            query = query.filter(project_id__in=[9999]) # 關鍵字沒有就都不要搜到
+    query = apply_search_filter(filter_args)
+    query = query.filter(project_id__in=available_project_ids)
 
-    if deps:
-        query = query.filter(id__in=deps)
+    deployment_query = Deployment.objects
 
-    if value := filter_args.get('altitude'):
-        if op := filter_args.get('altitudeOperator'):
-            val_list = value.split('-')
-            v1 = int(val_list[0])
-            v2 = None
-            if len(val_list) >= 2:
-                v2 = int(val_list[1])
-            if v1:
-                if op == 'eq':
-                    query = query.filter(altitude=v1)
-                elif op == 'gt':
-                    query = query.filter(altitude__gte=v1)
-                elif op == 'lt':
-                    query = query.filter(altitude__lte=v1)
-            if v2 and op == 'range':
-                query = query.filter(altitude__gte=v1, altitude__lte=v2)
+    if projects := filter_args.get('projects'):
+        qlist = []
+        for proj in projects:
+            if deps := proj.get('deployments'):
+                deployment_ids = [x['id'] for x in deps]
+                qlist.append(Q(id__in=deployment_ids))
+            elif sa_s := proj.get('studyareas'):
+                studyarea_ids = [x['id'] for x in sa_s]
+                qlist.append(Q(study_area_id__in=studyarea_ids))
+            elif p := proj.get('project'):
+                qlist.append(Q(project_id=p['id']))
 
-    if values := filter_args.get('counties'):
-        q_list = []
-        for x in values:
-            q_list.append(Q(county__icontains=x['parametername']))
+        if len(qlist) > 0:
+            deployment_query = deployment_query.filter(reduce(operator.or_, qlist))
+    deployment_list = deployment_query.values('id', 'name', 'project__name', 'study_area__name').all()
 
-        query = query.filter(reduce(operator.or_, q_list))
-
-    if values := filter_args.get('protectedareas'):
-        q_list = []
-        for x in values:
-            # 只有一筆就用 eq, 多筆就加上前後 ","
-            q_list.append(Q(protectedarea__icontains=x['parametername']+','))
-            q_list.append(Q(protectedarea__icontains=','+x['parametername']))
-            q_list.append(Q(protectedarea=x['parametername']))
-
-        query = query.filter(reduce(operator.or_, q_list))
-
-    deployment_list = query.values('id', 'name', 'project__name', 'study_area__name').all()
-    #print(deployment_list)
     for sp in species:
         results[sp] = []
         cal_query = Calculation.objects.filter(
@@ -285,15 +257,15 @@ def calculated_data(filter_args, calc_args):
             for cal in res:
                 # print (cal.datetime_from, cal.datetime_to, cal.id)
                 #results[sp].append(cal.data)
-                dep = cal.deployment
-                results[sp].append({
-                    'project': dep.project.name,
-                    'studyarea': dep.study_area.name,
-                    'name': dep.name,
-                    'year': cal.datetime_to.year,
-                    'month': cal.datetime_to.month,
-                    'calc': cal.data
-                })
+                if dep := cal.deployment:  # prevent deleted deployment
+                    results[sp].append({
+                        'project': dep.project.name,
+                        'studyarea': dep.study_area.name,
+                        'name': dep.name,
+                        'year': cal.datetime_to.year,
+                        'month': cal.datetime_to.month,
+                        'calc': cal.data
+                    })
 
     return results
 
@@ -463,12 +435,12 @@ def calc_output_file(results, file_format, filter_str, calc_str, target_file='')
 
             sheet_index += 1
 
-            if target_file:
-                wb.save(target_file)
-            #wb.save(tmp.name)
-            #tmp.seek(0)
-            #return tmp.read()
-            return target_file
+        if target_file:
+            wb.save(target_file)
+        #wb.save(tmp.name)
+        #tmp.seek(0)
+        #return tmp.read()
+        return target_file
 
 def calc_output2(results, file_format, filter_str, calc_str):
     '''
