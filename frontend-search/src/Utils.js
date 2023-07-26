@@ -23,10 +23,13 @@ const cleanFormData = (formData, depOptions, isVerbose) => {
       for (const i in formData['projects']) {
         if (formData['projects'][i].hasOwnProperty('project') && formData['projects'][i].project !== null) {
           if (formData['projects'][i].hasOwnProperty('deployments') && formData['projects'][i].deployments.length > 0) {
-            const deployments = formData['projects'][i].deployments.map(x => ({
-              id: x.deployment_id,
-              name: x.name
-            }))
+            const deployments = formData['projects'][i].deployments.map(x => {
+              return ({
+                id: x.deployment_id,
+                name: x.name,
+                studyarea_name: x.groupBy,
+              })
+            })
             projects.push({
               deployments: deployments,
               project: formData['projects'][i].project,

@@ -1,2 +1,2 @@
-const VERSION = 'v0.1.14 (230724)'
+const VERSION = 'v0.1.15 (230726)'
 export {VERSION}
