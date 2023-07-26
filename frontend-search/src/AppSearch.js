@@ -234,9 +234,9 @@ const AppSearch = () => {
       pagination = state.pagination;
     }
     searchApiUrl = `${searchApiUrl}&pagination=${JSON.stringify(pagination)}`;
+    console.log('fetch:', searchApiUrl);
 
     dispatch({type: 'startLoading'});
-    console.log('fetch:', searchApiUrl);
 
     fetch(encodeURI(searchApiUrl), {
       //body: JSON.stringify({filter: formData}),
