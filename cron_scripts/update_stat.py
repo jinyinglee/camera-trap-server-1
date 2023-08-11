@@ -165,7 +165,7 @@ import geopandas as gpd
 from conf.settings import BASE_DIR
 import os
 import pygeos
-gpd.options.use_pygeos = True
+#gpd.options.use_pygeos = True
 
 print('start HOMEPAGE MAP', now)
 
@@ -174,7 +174,7 @@ species_list = ['水鹿', '山羌', '獼猴', '山羊', '野豬', '鼬獾', '白
 
 now = timezone.now()
 
-gpd.options.use_pygeos = True
+#gpd.options.use_pygeos = True
 
 geo_df = gpd.read_file(os.path.join(os.path.join(BASE_DIR, "static"),'map/COUNTY_MOI_1090820.shp'))
 

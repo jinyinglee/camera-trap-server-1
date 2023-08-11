@@ -171,8 +171,9 @@
           <div class="modal-body">
             <p>請使用您的 ORCID 帳號登入：</p>
             <div class="my-3">
-              <a class="btn btn-light w-100" id="getAuth"> 使用 ORCID 帳號登入 </a>
-              {% if env == "dev" %}
+              <a class="btn btn-light w-100" id="getAuth"> 使用 ORCID 帳號登入</a>
+              {% get_env as current_env %}
+              {% if current_env == "dev" %}
               ＊測試用登入＊<br />
             <a class="btn btn-light" href="{% url 'login_for_test' %}?role=計畫總管理人&next={{ request.path }}"> 計畫總管理人 </a>
             <a class="btn btn-light" href="{% url 'login_for_test' %}?role=個別計畫承辦人&next={{ request.path }}"> 計畫承辦人 </a>
@@ -263,17 +264,17 @@
             <small class="text-center d-block">
               <span class="text-gray">主辦機關：</span>
               <span class="gov-item">
-                <img class="gov-logo" src="{% static 'icon/logo-forest@2x.png' %}" />
+                <img class="gov-logo" src="{% static 'icon/logo-forest23@2x.png' %}" />
                 <span class="text">
-                  <small>行政院農委會</small>
-                  林 務 局
+                  <small>行政院農業部</small>
+                  林業及自然保育署
                 </span>
               </span>
               <span class="gov-item">
-                <img class="gov-logo" src="{% static 'icon/logo-tesri@2x.png' %}" />
+                <img class="gov-logo" src="{% static 'icon/logo-tbri@2x.png' %}" />
                 <span class="text">
-                  <small>行政院農委會</small>
-                  特有生物研究保育中心
+                  <small>行政院農業部</small>
+                  生物多樣性研究所
                 </span>
               </span>
               <span class="gov-item">
