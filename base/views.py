@@ -4,7 +4,7 @@ from django.shortcuts import render, HttpResponse, redirect
 import json
 from django.db import connection
 from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Organization, Project, Species, StudyAreaStat, ProjectMember,ParameterCode
-from django.db.models import Count, Window, F, Sum, Min, Q, Max
+from django.db.models import Count, Window, F, Sum, Min, Q, Max, DateTimeField, ExpressionWrapper
 from django.db.models.functions import ExtractYear
 from django.template import loader
 from django.core.paginator import Paginator
@@ -233,9 +233,9 @@ def get_error_file_list(request, deployment_journal_id):
         JOIN taicat_project p ON i.project_id = p.id
         JOIN taicat_deployment d ON i.deployment_id = d.id
         JOIN taicat_studyarea s ON i.studyarea_id = s.id
-        WHERE i.deployment_journal_id = {} and (has_storage = 'N' or species is NULL or species = '' )"""
+        WHERE i.deployment_journal_id = %s and (has_storage = 'N' OR species IS NULL OR species = '' )"""
     with connection.cursor() as cursor:
-        cursor.execute(query.format(deployment_journal_id))
+        cursor.execute(query, (deployment_journal_id,))
         data = cursor.fetchall()
         data = pd.DataFrame(data, columns=['所屬計畫', '樣區', '相機位置', '資料夾名稱', '檔名', 'species', 'has_storage'])
         data['錯誤類型'] = ''
@@ -253,13 +253,20 @@ def upload_history(request):
 
     if request.method == 'GET':
 
-        rows = []
         if member_id := request.session.get('id', None):
             my_project_list = get_my_project_list(member_id,[])
             q = request.GET.get('q', '')
             page_number = request.GET.get('page', 1)
 
-            query = UploadHistory.objects.filter(deployment_journal__project_id__in=my_project_list).values_list('created', 'last_updated', 'deployment_journal__folder_name', 'deployment_journal__project__name', 'deployment_journal__studyarea__name', 'deployment_journal__deployment__name', 'status', 'deployment_journal__project_id', 'deployment_journal__id', 'species_error', 'upload_error').order_by('-created')
+            query = UploadHistory.objects.filter(deployment_journal__project_id__in=my_project_list).annotate(
+                created_8=ExpressionWrapper(
+                    F('created') + timedelta(hours=8),
+                    output_field=DateTimeField()
+                ),                
+                last_updated_8=ExpressionWrapper(
+                    F('last_updated') + timedelta(hours=8),
+                    output_field=DateTimeField()
+                )).values_list('created_8', 'last_updated_8', 'deployment_journal__folder_name', 'deployment_journal__project__name', 'deployment_journal__studyarea__name', 'deployment_journal__deployment__name', 'status', 'deployment_journal__project_id', 'deployment_journal__id', 'species_error', 'upload_error').order_by('-created')
 
             if q:
                 query = query.filter(Q(deployment_journal__project__name__icontains=q) |
@@ -278,22 +285,6 @@ def upload_history(request):
             return redirect(f'/upload-history?q={x}')
         else:
             return redirect(f'/upload-history')
-
-        '''
-        query = """SELECT to_char(up.created AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS'),
-                    to_char(up.last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS'),
-                    dj.folder_name, p.name, s.name, d.name, up.status, dj.project_id, up.deployment_journal_id,
-                    up.species_error, up.upload_error
-                    FROM base_uploadhistory up
-                    JOIN taicat_deploymentjournal dj ON up.deployment_journal_id = dj.id
-                    JOIN taicat_project p ON dj.project_id = p.id
-                    JOIN taicat_deployment d ON dj.deployment_id = d.id
-                    JOIN taicat_studyarea s ON dj.studyarea_id = s.id
-                    WHERE dj.project_id IN {}"""
-        with connection.cursor() as cursor:
-            cursor.execute(query.format(str(my_project_list).replace('[','(').replace(']',')')))
-            rows = cursor.fetchall()
-        '''
 
 
 def faq(request):
