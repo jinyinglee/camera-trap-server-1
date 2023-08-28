@@ -14,6 +14,18 @@ folder: `frontend-search`
 $ cd frontend-search
 ```
 
+Setting Environment
+
+`.env` for local development
+
+`.env.prod` for production build
+
+local development setting:
+```
+MY_ENV=dev
+API_URL=http://127.0.0.1:8000/api/
+```
+
 Install packages
 
 ```bash
@@ -46,3 +58,8 @@ NOTES:
 2. Link nginx to django in docker config otherwise nginx cannot find correct upstream
 3. Make sure to check if data path & docker-compose yml filename in `init-letsencrypt.sh` are correct
 4. When developinglocally by docker, https (provided by nginx) will not be available, so login through ORCID will fail.
+
+## Deployment
+
+gunicorn should add `--limit-request-line 8190`, otherwise the search page download api may cause verbose querystring too long error
+ 

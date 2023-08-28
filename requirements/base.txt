@@ -17,7 +17,9 @@ pandas==1.4.2
 requests==2.27.1
 boto3==1.22.0
 geopandas==0.10.2
-pygeos==0.12.0
+pygeos==0.14
+shapely==2.0.1
 
 # celery
 celery==5.2.7
+flower==1.2.0

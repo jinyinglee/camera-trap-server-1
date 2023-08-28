@@ -25,6 +25,18 @@ from django.contrib.postgres.indexes import GinIndex
 from django.conf import settings
 from django.core.cache import cache, caches
 
+# put this function in utils will cause circular import
+def timezone_utc_to_tw(ts):
+    '''apply +8 time delta
+    '''
+    if ts:
+        return ts + timedelta(hours=8)
+    return 0
+
+def timezone_tw_to_utc(ts):
+    if ts:
+        return ts + timedelta(hours=-8)
+    return 0
 
 def find_the_gap(year, array):
     # print (year, array,'----')
@@ -78,22 +90,11 @@ class Contact(models.Model):
     is_organization_admin = models.BooleanField('是否為計畫總管理人', default=False)
     # is_forestry_bureau = models.BooleanField('是否能進入林務局管考系統', default=False)
     is_system_admin = models.BooleanField('是否為系統管理員', default=False)
+    identity = models.CharField(max_length=1000, blank=True, null=True)
 
     def __str__(self):
         return '<Contact {}> {}'.format(self.id, self.name)
 
-
-class ProjectMember(models.Model):
-    ROLE_CHOICES = (
-        #('system_admin', '系統管理員'),
-        #('organization_admin', '計畫總管理人'),
-        ('project_admin', '個別計畫承辦人'),
-        ('uploader', '資料上傳者'),
-        #('general', '一般使用者'),
-    )
-    project = models.ForeignKey('Project', on_delete=models.SET_NULL, null=True, blank=True, related_name='members')
-    member = models.ForeignKey('Contact', on_delete=models.SET_NULL, null=True, blank=True)
-    role = models.CharField(max_length=1000, choices=ROLE_CHOICES, null=True, blank=True)
 
 
 class Organization(models.Model):
@@ -162,9 +163,13 @@ class Project(models.Model):
             'name': self.name,
         }
 
-    def get_deployment_list(self, as_object=False):
+    def get_deployment_list(self, as_object=False, studyarea_ids=[]):
         res = []
-        sa = self.studyareas.filter(parent__isnull=True).all()
+        if len(studyarea_ids) > 0:
+            sa = self.studyareas.filter(parent__isnull=True, id__in=studyarea_ids).all()
+        else:
+            sa = self.studyareas.filter(parent__isnull=True).all()
+
         for i in sa:
             children = []
             for j in StudyArea.objects.filter(parent_id=i.id).all():
@@ -265,7 +270,7 @@ class Project(models.Model):
                         results.append(dj)
         return results
 
-    def count_deployment_journal(self, year_list=[]):
+    def count_deployment_journal(self, year_list=[], studyarea_ids=[]):
         years = {}
         if len(year_list) == 0:
             mnx = DeploymentJournal.objects.filter(project_id=self.id, is_effective=True).aggregate(Max('working_end'), Min('working_start'))
@@ -276,7 +281,7 @@ class Project(models.Model):
         for year in year_list:
             year_idx = str(year)
             years[year_idx] = []
-            deps = self.get_deployment_list(as_object=True)
+            deps = self.get_deployment_list(as_object=True, studyarea_ids=studyarea_ids)
             for sa_idx, sa in enumerate(deps):
                 items_d = []
                 for d_idx, d in enumerate(sa['deployments']):
@@ -437,7 +442,7 @@ class Deployment(models.Model):
     # cameraDeploymentEndDateTime
     longitude = models.DecimalField(decimal_places=8, max_digits=20, null=True, blank=True)
     latitude = models.DecimalField(decimal_places=8, max_digits=20, null=True, blank=True)
-    altitude = models.SmallIntegerField(null=True, blank=True)
+    altitude = models.SmallIntegerField(null=True, blank=True, db_index=True)
     # deploymentLocationID
     name = models.CharField(max_length=1000)
     # cameraStatus
@@ -448,11 +453,14 @@ class Deployment(models.Model):
     source_data = models.JSONField(default=dict, blank=True)
 
     geodetic_datum = models.CharField(max_length=10, default='WGS84', choices=GEODETIC_DATUM_CHOICES)
+    county = models.CharField('縣市', max_length=1000, blank=True, null=True, db_index=True)
+    protectedarea = models.CharField('國家公園/保護留區', max_length=1000, blank=True, null=True, db_index=True)
     landcover = models.CharField('土地覆蓋類型', max_length=1000, blank=True, null=True)
     vegetation = models.CharField('植被類型', max_length=1000, blank=True, null=True)
     verbatim_locality = models.CharField(max_length=1000, blank=True, null=True)
     # 是否已棄用
     deprecated = models.BooleanField(default=False, blank=True)
+    calculation_data = models.JSONField(default=dict, blank=True, null=True)
 
     def __str__(self):
         return f'<Deployment {self.name}>'
@@ -471,6 +479,9 @@ class Deployment(models.Model):
         根據 DeploymentJournal 記錄
         '''
         num_month = monthrange(year, month)[1]
+        #month_start = make_aware(timezone_tw_to_utc(datetime(year, month, 1)))
+        #month_end = make_aware(timezone_tw_to_utc(datetime(year, month, num_month)))
+        ## deployment_journal 的 working_start, working_end timezone +8 的時間 (台灣時間)，不是 shift 過的，所以不用特別處理timezone
         month_start = make_aware(datetime(year, month, 1))
         month_end = make_aware(datetime(year, month, num_month))
         month_stat = [0] * num_month
@@ -491,13 +502,14 @@ class Deployment(models.Model):
             overlap_range = [max(i.working_start, month_start), min(i.working_end, month_end)]
             gap_days = (overlap_range[0]-month_start).days
             duration_days = (overlap_range[1]-overlap_range[0]).days+1
+            #print(overlap_range, gap_days, duration_days)
             for index, stat in enumerate(month_stat):
                 if index >= gap_days and index < gap_days + duration_days:
                     month_stat[index] = 1
                     month_stat_part[index] = 1
 
             ret.append([i.working_start.strftime('%Y-%m-%d'), i.working_end.strftime('%Y-%m-%d')])
-
+            #print(month_stat, ret)
         return month_stat, ret
 
     # cache moved to cache-files
@@ -611,28 +623,32 @@ class Deployment(models.Model):
                 })
         return gaps
 
-    def calculate(self, year, month, species, image_interval, event_interval):
+    def calculate(self, year, month, species, image_interval, event_interval, to_save=False):
         '''default
         POD: occasion (回合): 1 天, session (期間): 1 月
         APOA: occation: 1 小時
         '''
         working_days = self.count_working_day(year, month)[0]
-        #print(self.id, year, month, working_days)
+        #print(self.id, year, month, species, working_days)
         sum_working_hours = sum(working_days) * 24
         image_interval_seconds = image_interval * 60
         event_interval_seconds = event_interval * 60
         days_in_month = monthrange(year, month)[1]
 
-        # print(year, month, working_days, sum_working_hours)
-
         # count image num
+        day_start = timezone_tw_to_utc(datetime(year, month, 1))
+        day_start = make_aware(day_start)
+        day_end = day_start + timedelta(days=days_in_month) # ex: 12/1 - 12/31 => 11/30 16:00 => 12/31 16:00
+        day_end = day_end
+        #print(day_start, day_end)
         query_ym_sp = Image.objects.filter(
             deployment_id=self.id,
-            datetime__year=year,
-            datetime__month=month,
+            #datetime__year=year,
+            #datetime__month=month,
+            datetime__range=[day_start, day_end],
             species=species
-        )
-
+        ).order_by('datetime')
+        # print(day_start, day_end)
         # by_species = query_ym.values('species').annotate(count=Count('species'))
         last_datetime = None
         image_count = 0 # OI3
@@ -645,8 +661,10 @@ class Deployment(models.Model):
         rows = list(query_ym_sp.values('id', 'datetime', 'animal_id').all())
         # OI1, OI3, event count
         for image in rows:
+            image_dt = timezone_utc_to_tw(image['datetime'])
+            # print(image['id'], image_dt)
             if last_datetime:
-                delta = image['datetime'] - last_datetime
+                delta = image_dt - last_datetime
                 delta_seconds = (delta.days * 86400) + delta.seconds
                 delta_count += delta_seconds # 累加
                 delta_count_oi1 += delta_seconds # 累加
@@ -666,7 +684,9 @@ class Deployment(models.Model):
                         image_count_oi1 += 1
                 else:
                     # OI3
+                    #print(image, image['id'], image_interval_seconds, delta_count)
                     if delta_count >= image_interval_seconds:
+                        #print ('ocunt!!')
                         image_count += 1
                         delta_count = 0
 
@@ -682,7 +702,7 @@ class Deployment(models.Model):
                 if image['animal_id']:
                     image_count_oi1 += 1
 
-            last_datetime = image['datetime']
+            last_datetime = image_dt
 
         # OI2
         last_datetime = None
@@ -690,7 +710,7 @@ class Deployment(models.Model):
         for image in query_ym_sp.values('deployment', 'datetime', 'species').order_by().annotate(Count('id')):
             #print (year, month, rows)
             if last_datetime:
-                delta = image['datetime'] - last_datetime
+                delta = image_dt - last_datetime
                 delta_seconds = (delta.days * 86400) + delta.seconds
                 delta_count += delta_seconds # 累加
                 # print (image.id, image.datetime, delta_seconds, delta_count)
@@ -703,7 +723,7 @@ class Deployment(models.Model):
                 # 第一張照片, 直接加 1
                 image_count_oi2 = 1
 
-            last_datetime = image['datetime']
+            last_datetime = image_dt
 
         by_day = query_ym_sp.values('datetime__day').annotate(count=Count('datetime__day')).order_by('datetime__day')
         by_hour = query_ym_sp.values('datetime__day', 'datetime__hour').annotate(count=Count('*')).order_by('datetime__day', 'datetime__hour')
@@ -713,15 +733,45 @@ class Deployment(models.Model):
         pod = by_day.count() * 1.0 / sum(working_days) if sum(working_days) > 0 else 'N/A'
         # month, day, hour
         # note: [[0, [0]*24]] * days_in_month => call by reference error (一個改全部變)
+        #print (by_day, by_hour)
         mdh = [[0, [0 for h in range(24)]] for x in range(days_in_month)]
         for day in by_day:
-            mdh[day['datetime__day']-1][0] = 1
+            # print(day, mdh, day['datetime__day']-1, len(mdh))
+            if len(mdh) > day['datetime__day'] - 1:
+                mdh[day['datetime__day']-1][0] = 1
         for hour in by_hour:
-            mdh[hour['datetime__day']-1][1][hour['datetime__hour']] = 1
+            if len(mdh) > hour['datetime__day']-1:
+                mdh[hour['datetime__day']-1][1][hour['datetime__hour']] = 1
 
         #print (i['species'], image_count, event_count, oi3, pod, by_day.count(), mdh)
         # print(year, month, species, working_days)
-        return [working_days, image_count, event_count, oi1, oi2, oi3, pod, mdh]
+        result = [working_days, image_count, event_count, oi1, oi2, oi3, pod, mdh]
+        if to_save:
+            if c := Calculation.objects.filter(
+                    deployment=self,
+                    datetime_from=day_start,
+                    datetime_to=day_end,
+                    image_interval=image_interval,
+                    event_interval=event_interval,
+                    species=species).first():
+                c.data = result
+                c.save()
+            else:
+                c = Calculation(
+                    deployment=self,
+                    studyarea=self.study_area,
+                    project=self.project,
+                    datetime_from=day_start,
+                    datetime_to=day_end,
+                    species=species,
+                    image_interval=image_interval,
+                    event_interval=event_interval,
+                    data=result
+                )
+                #print('createu')
+                c.save()
+
+        return result
 
     def get_calc_cache(self):
         if rows := caches['file'].get(f'calc-dep-{self.id}'):
@@ -795,15 +845,38 @@ class Image(models.Model):
     def species_list(self):
         return [x['species'] for x in self.annotation if isinstance(x, dict) and x.get('species', '')]
 
+    # Image.to_dict
     def to_dict(self):
+        county_name = ''
+        protectedarea_name_list = []
+        protectedarea_name = ''
+        if x := self.deployment.county:
+            if obj := ParameterCode.objects.filter(parametername=x).first():
+                county_name = obj.name
+
+        if x := self.deployment.protectedarea:
+            if ',' in x:
+                name_list = x.split(',')
+            else:
+                name_list = [x]
+
+            for i in name_list:
+                if obj := ParameterCode.objects.filter(parametername=i).first():
+                    protectedarea_name_list.append(obj.name)
+
+            protectedarea_name = ', '.join(protectedarea_name_list)
+
         return {
             'id': self.id,
             'species': self.species,
             'filename': self.filename,
-            'datetime': self.datetime.strftime('%Y-%m-%d %H:%M:%S') if self.datetime else '',
+            'datetime': timezone_utc_to_tw(self.datetime).strftime('%Y-%m-%d %H:%M:%S') if self.datetime else '',
             'project__name': self.project.name if self.project else None,
             'studyarea__name': self.studyarea.name if self.studyarea_id else None,
             'deployment__name': self.deployment.name if self.deployment_id else None,
+            'deployment__altitude': self.deployment.altitude or '',
+            'deployment__county': county_name,
+            'deployment__protectedarea': protectedarea_name,
             'media': self.get_associated_media(),
         }
 
@@ -989,3 +1062,53 @@ class StudyAreaStat(models.Model):
 # 總相片數
 # 相機總工時
 # 出現物種
+
+
+class ProjectMember(models.Model):
+    ROLE_CHOICES = (
+        #('system_admin', '系統管理員'),
+        #('organization_admin', '計畫總管理人'),
+        ('project_admin', '個別計畫承辦人'),
+        ('uploader', '資料上傳者'),
+        #('general', '一般使用者'),
+    )
+    project = models.ForeignKey('Project', on_delete=models.SET_NULL, null=True, blank=True, related_name='members')
+    member = models.ForeignKey('Contact', on_delete=models.SET_NULL, null=True, blank=True)
+    role = models.CharField(max_length=1000, choices=ROLE_CHOICES, null=True, blank=True)
+    pmstudyarea =  models.ManyToManyField('StudyArea')
+
+
+class ParameterCode(models.Model):
+    TYPE_CHOICES = (
+        ('study_area', '樣區'),
+        ('county', '縣市'),
+        ('protectedarea', '保護留區'),
+        ('vegetation', '植被類型'),
+        ('identity', '使用者身份'),
+    )
+    name = models.CharField('參數中文名稱',max_length=1000 ,null=True, blank=True)
+    parametername = models.CharField('參數名稱',max_length=1000 ,null=True, blank=True)
+    type = models.CharField('參數範圍',max_length=1000 ,choices=TYPE_CHOICES, null=True, blank=True)
+    pmajor = models.CharField('上階層名稱',max_length=1000 ,null=True, blank=True)
+    description = models.CharField('參數描述',max_length=1000, null=True, blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+
+class Calculation(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
+    studyarea = models.ForeignKey(StudyArea, on_delete=models.SET_NULL, null=True)
+    deployment = models.ForeignKey(Deployment, on_delete=models.SET_NULL, null=True)
+    #year = models.PositiveSmallIntegerField('year')
+    #month = models.PositiveSmallIntegerField('month')
+    datetime_from = models.DateTimeField(null=True, db_index=True)
+    datetime_to = models.DateTimeField(null=True, db_index=True)
+    species = models.CharField('species', max_length=1000, null=True, default='', blank=True, db_index=True)
+    image_interval = models.PositiveSmallIntegerField('image interval')
+    event_interval = models.PositiveSmallIntegerField('event interval')
+    data = models.JSONField(default=dict, blank=True, null=True)
+
+class DownloadLog(models.Model):
+    
+    user_role = models.CharField('使用者角色', max_length=1000, null=True, default='', blank=True)
+    condiction = models.CharField('篩選條件', max_length=1000, null=True, default='', blank=True)
+    file_link = models.CharField('下載連結', max_length=1000, null=True, default='', blank=True)

@@ -1,9 +1,10 @@
 import json
 import math
-import logging
 import time
 from datetime import datetime
 import re
+import operator
+from functools import reduce
 
 from django.shortcuts import render, redirect
 from django.http import (
@@ -29,21 +30,28 @@ from taicat.models import (
     Deployment,
     StudyArea,
     Species,
+    ParameterCode,
 )
 from .utils import (
     get_species_list,
     calc,
-    calc_output,
+    calc_output_file,
     calc_output2,
     calc_from_cache,
+    calculated_data,
     get_my_project_list,
+    apply_search_filter,
+    humen_readable_filter,
 )
 
 from .views import (
     check_if_authorized,
     check_if_authorized_create,
 )
-
+from taicat.tasks import (
+    process_download_data_task,
+    process_download_calculated_data_task,
+)
 
 def index(request):
     context = {
@@ -52,10 +60,37 @@ def index(request):
     }
     return render(request, 'search/search_index.html', context)
 
+def api_named_areas(request):
+    data = {
+        'county': [],
+        'protectedarea': [],
+    }
+
+    county_list = ParameterCode.objects.filter(type='county').all()
+    protectedarea_list = ParameterCode.objects.filter(type='protectedarea').all()
+    for i in county_list:
+        data['county'].append({
+            'id': i.id,
+            'parametername': i.parametername,
+            'name': i.name,
+        })
+    for i in protectedarea_list:
+        data['protectedarea'].append({
+            'id': i.id,
+            'parametername': i.parametername,
+            'name': i.name,
+            'category': i.pmajor,
+        })
+    return JsonResponse({
+        'category': 'named_areas',
+        'data': data
+    })
+
 
 def api_get_species(request):
     species_list = [x.to_dict() for x in Species.objects.filter(status='I').all()]
     return JsonResponse({
+        'category': 'species',
         'data': species_list,
         'total': len(species_list)
     })
@@ -72,7 +107,7 @@ def api_get_projects(request):
         # q = "SELECT taicat_project.id FROM taicat_project \
         #     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
         q = "SELECT taicat_project.id FROM taicat_project \
-            WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't';"
+             WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't';"
         cursor.execute(q)
         public_project_list = [l[0] for l in cursor.fetchall()]
 
@@ -98,6 +133,7 @@ def api_get_projects(request):
 
     projects = public_projects + my_projects
     return JsonResponse({
+        'category': 'projects',
         'data': projects,
         'total': len(projects)
     })
@@ -124,45 +160,20 @@ def api_search(request):
         query_start = datetime(2014, 1, 1)
         query_end = datetime.now()
         query = Image.objects.filter()
-        # TODO: 考慮 auth
+
+        # project auth
+        available_project_ids = Project.objects.filter(mode='official', is_public=True).values_list('id', flat=True)
+        available_project_ids = list(available_project_ids)
+
+        if member_id := request.session.get('id', None):
+            if my_project_list := get_my_project_list(member_id,[]):
+                available_project_ids.extend(my_project_list)
+
         if request.GET.get('filter'):
             filter_dict = json.loads(request.GET['filter'])
-            #print(filter_dict, flush=True)
-            project_ids = []
-            if value := filter_dict.get('keyword'):
-                rows = Project.objects.values_list('id', flat=True).filter(keyword__icontains=value)
-                project_ids = list(rows)
-                if len(project_ids) > 0:
-                    query = query.filter(project_id__in=project_ids)
-                else:
-                    query = query.filter(project_id__in=[9999]) # 關鍵字沒有就都不要搜到
-            #if values := filter_dict.get('projects'):
-            #        project_ids = values
+            query = apply_search_filter(filter_dict)
 
-            sp_values = []
-            if values := filter_dict.get('species'):
-                sp_values += values
-            if value := filter_dict.get('speciesText'):
-                sp_values += [value]
-
-            if value := filter_dict.get('startDate'):
-                dt = make_aware(datetime.strptime(value, '%Y-%m-%d'))
-                query_start = dt
-                query = query.filter(datetime__gte=dt)
-            if value := filter_dict.get('endDate'):
-                dt = make_aware(datetime.strptime(value, '%Y-%m-%d'))
-                query_end = dt
-                query = query.filter(datetime__lte=dt)
-            if values := filter_dict.get('deployments'):
-                query = query.filter(deployment_id__in=values)
-                #if len(project_ids):
-                #    query = query.filter(Q(deployment_id__in=values) | Q(project_id__in=project_ids))
-                # else:
-                #    query = query.filter(deployment_id__in=values)
-            elif values := filter_dict.get('studyareas'):
-                query = query.filter(studyarea_id__in=values)
-            if len(sp_values) > 0:
-                query = query.filter(species__in=sp_values)
+        query = query.filter(project_id__in=available_project_ids)
 
         if request.GET.get('pagination'):
             pagination = json.loads(request.GET['pagination'])
@@ -171,6 +182,8 @@ def api_search(request):
 
         download = request.GET.get('download', '')
         calc_data = request.GET.get('calc', '')
+        downloadData = request.GET.get('downloadData', '')
+
         if calc_data:
             calc_data = json.loads(calc_data)
 
@@ -179,7 +192,9 @@ def api_search(request):
             out_format = calc_dict['fileFormat']
             calc_type = calc_dict['calcType']
 
-            results = calc(query, calc_data, query_start, query_end)
+            ''' direct download
+            # results = calc(query, calc_data, query_start, query_end)
+            results = calculated_data(filter_dict, calc_data)
             # print(results, out_format, calc_type)
             #results = calc_from_cache(filter_dict, calc_dict)
             #content = calc_output2(results, out_format, request.GET.get('filter'), request.GET.get('calc'))
@@ -190,17 +205,56 @@ def api_search(request):
             response['Content-Disposition'] = 'attachment; filename=camera-trap-calculation-{}.{}'.format(
                 calc_type,
                 'csv' if out_format == 'csv' else 'xlsx')
-            #print ('--------------', flush=True)
-            return response
 
+            return response
+            '''
+            email = request.GET.get('email', '')
+            message = 'processing'
+
+            ''' save to media
+            results = calculated_data(filter_dict, calc_data)
+            from pathlib import Path
+            content = calc_output(results, out_format, json.dumps(filter_dict), json.dumps(calc_data))
+            download_dir = Path(settings.MEDIA_ROOT, 'download')
+
+            with open(Path(download_dir, 'foo.xlsx'), 'wb') as outfile:
+                outfile.write(content)
+                #print('===============')
+            '''
+            if member_id := request.session.get('id', None):
+                host = request.META['HTTP_HOST']
+                verbose_log = humen_readable_filter(filter_dict)
+                process_download_calculated_data_task.delay(email, filter_dict, calc_dict, calc_type, out_format, calc_data, host, member_id, verbose_log, available_project_ids)
+                #results = calculated_data(filter_dict, calc_data, available_project_ids)
+                #print(results)
+            else:
+                message = 'no member_id'
+
+            return JsonResponse({
+                'message': message
+            })
+        elif downloadData:
+            email = request.GET.get('email', '')
+            message = 'processing'
+            if member_id := request.session.get('id', None):
+                host = request.META['HTTP_HOST']
+
+                verbose_log = humen_readable_filter(filter_dict)
+                process_download_data_task.delay(email, filter_dict, member_id, host, verbose_log)
+            else:
+                message = 'no member_id'
+
+            return JsonResponse({
+                'message': message
+            })
         else:
             total = query.values('id').order_by('id').count()
             rows = query.all()[start:end]
-            # print(query.query, start, end)
+            #print(query.query, start, end)
             end_time = time.time() - start_time
             return JsonResponse({
                 'data': [x.to_dict() for x in rows],
                 'total': total,
-                'query': str(query.query) if query.query else '',
+                'query': str(query.query) if query and query.query else '',
                 'elapsed': end_time,
             })

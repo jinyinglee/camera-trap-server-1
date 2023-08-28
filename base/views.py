@@ -3,17 +3,22 @@ from django.http import response
 from django.shortcuts import render, HttpResponse, redirect
 import json
 from django.db import connection
-from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Organization, Project, Species, StudyAreaStat, ProjectMember
+from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Organization, Project, Species, StudyAreaStat, ProjectMember,ParameterCode
 from django.db.models import Count, Window, F, Sum, Min, Q, Max
 from django.db.models.functions import ExtractYear
 from django.template import loader
-import requests
+from django.core.paginator import Paginator
 from django.contrib import messages
+from django.core.files.storage import FileSystemStorage
+from django.utils import timezone
+
+import requests
+
 import time
 import pandas as pd
-from django.utils import timezone
+
 from datetime import datetime, timedelta
-from django.core.files.storage import FileSystemStorage
+
 import os
 from django.conf import settings
 # from django.core.mail import send_mail
@@ -22,7 +27,7 @@ from django.core.mail import EmailMessage
 import threading
 from django.http import response, JsonResponse
 from .models import *
-from taicat.utils import get_my_project_list, get_project_member
+from taicat.utils import get_my_project_list, get_project_member, get_studyarea_member,get_none_studyarea_project_member
 from django.db.models.functions import Trunc, TruncDate
 from .utils import (
     DecimalEncoder,
@@ -34,11 +39,16 @@ import geopandas as gpd
 from shapely.geometry import Point
 
 def desktop(request):
-    file = ''
-    annoucement = Announcement.objects.latest('created')
-    title = annoucement.title
-    version = annoucement.version
-    description = annoucement.description
+    title = ''
+    version = 'v1'
+    description = '無'
+    try:
+        annoucement = Announcement.objects.latest('created')
+        title = annoucement.title
+        version = annoucement.version
+        description = annoucement.description
+    except :
+        pass
     context = {
         'title':title,
         'version':version,
@@ -59,7 +69,7 @@ def send_upload_notification(upload_history_id, member_list, request):
 
     try:
         email_list = []
-        email = Contact.objects.filter(id__in=member_list).values('email')
+        email = Contact.objects.filter(id__in=member_list).values('email').exclude(email__isnull=True).exclude(email__exact='')
         for e in email:
             email_list += [e['email']]
         uh = UploadHistory.objects.filter(id=upload_history_id)
@@ -161,12 +171,18 @@ def update_upload_history(request):
                 upload_history_id = uh.id
             if DeploymentJournal.objects.filter(id=deployment_journal_id).exists():
                 project_id = DeploymentJournal.objects.filter(id=deployment_journal_id).values('project_id')[0]['project_id']
+                studyarea_id = DeploymentJournal.objects.filter(id=deployment_journal_id).values('studyarea_id')[0]['studyarea_id']
             else:
                 response = {'messages': 'failed due to no associated record in DeploymentJournal table'}
                 return JsonResponse(response)
-            members = get_project_member(project_id) # 所有計劃下的成員
+            project_members = get_project_member(project_id) # 所有計劃下的成員
+            studyarea_members = get_studyarea_member(project_id,studyarea_id) # 樣區成員，含總管理人
+            studyarea_none_member = get_none_studyarea_project_member(project_id,['uploader','project_admin'])# 未選擇樣區的資料上傳者/個別計畫管理人
+            studyarea_members.extend(studyarea_none_member)
+            email_list = list(set(studyarea_members)) 
+
             final_members = []
-            for m in members:
+            for m in project_members:
                 # 每次都建立新的通知
                 try:
                     un = UploadNotification(
@@ -175,10 +191,10 @@ def update_upload_history(request):
                     )
                     un.save()
                     final_members += [m]
-                except:
+                except Exception as e:
                     pass # contact已經不在則移除
             # 每次都寄信
-            res = send_upload_notification(upload_history_id, final_members, request)
+            res = send_upload_notification(upload_history_id, email_list, request)
             if res.get('status') == 'fail':
                 response = {'messages': 'failed during sending email'}
                 return JsonResponse(response)
@@ -234,9 +250,36 @@ def get_error_file_list(request, deployment_journal_id):
 
 
 def upload_history(request):
-    rows = []
-    if member_id := request.session.get('id', None):
-        my_project_list = get_my_project_list(member_id,[])
+
+    if request.method == 'GET':
+
+        rows = []
+        if member_id := request.session.get('id', None):
+            my_project_list = get_my_project_list(member_id,[])
+            q = request.GET.get('q', '')
+            page_number = request.GET.get('page', 1)
+
+            query = UploadHistory.objects.filter(deployment_journal__project_id__in=my_project_list).values_list('created', 'last_updated', 'deployment_journal__folder_name', 'deployment_journal__project__name', 'deployment_journal__studyarea__name', 'deployment_journal__deployment__name', 'status', 'deployment_journal__project_id', 'deployment_journal__id', 'species_error', 'upload_error').order_by('-created')
+
+            if q:
+                query = query.filter(Q(deployment_journal__project__name__icontains=q) |
+                                     Q(deployment_journal__folder_name__icontains=q) |
+                                     Q(deployment_journal__studyarea__name__icontains=q) |
+                                     Q(deployment_journal__deployment__name__icontains=q))
+
+            paginator = Paginator(query.all(), 20)
+            page_obj = paginator.get_page(page_number)
+            page_range = paginator.get_elided_page_range(number=page_number)
+
+            return render(request, 'base/upload_history.html', {'page_obj': page_obj, 'page_range': page_range, 'q': q})
+
+    elif request.method == 'POST':
+        if x := request.POST.get('q-text'):
+            return redirect(f'/upload-history?q={x}')
+        else:
+            return redirect(f'/upload-history')
+
+        '''
         query = """SELECT to_char(up.created AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS'),
                     to_char(up.last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS'),
                     dj.folder_name, p.name, s.name, d.name, up.status, dj.project_id, up.deployment_journal_id,
@@ -250,7 +293,7 @@ def upload_history(request):
         with connection.cursor() as cursor:
             cursor.execute(query.format(str(my_project_list).replace('[','(').replace(']',')')))
             rows = cursor.fetchall()
-    return render(request, 'base/upload_history.html', {'rows': rows})
+        '''
 
 
 def faq(request):
@@ -333,12 +376,12 @@ def announcement(request):
 
     # 所有人 
     all_ppl = []
-    for x in Contact.objects.exclude(email__isnull=True).values('name','email'):
+    for x in Contact.objects.exclude(email__isnull=True).exclude(email__exact='').values('name','email'):
         all_ppl.append(x['email'])
         
     # 計畫總管理人 select * from taicat_contact where  is_organization_admin = true;
     organization_admin = []
-    for x in Contact.objects.exclude(email__isnull=True).filter(is_organization_admin=True).values('name','email'):
+    for x in Contact.objects.exclude(email__isnull=True).exclude(email__exact='').filter(is_organization_admin=True).values('name','email'):
         organization_admin.append(x['email'])
         
     # 計畫承辦人 select * from taicat_projectmember where role = 'project_admin';
@@ -349,7 +392,7 @@ def announcement(request):
     # 資料上傳者 select * from taicat_projectmember where role = 'uploader';
     uploader = []
     
-    for x in Contact.objects.exclude(email__isnull=True).filter(id__in=ProjectMember.objects.filter(role='uploader').values('member_id')).values('name','email'):
+    for x in Contact.objects.exclude(email__isnull=True).exclude(email__exact='').filter(id__in=ProjectMember.objects.filter(role='uploader').values('member_id')).values('name','email'):
         uploader.append(x['email'])
     
     # other = []
@@ -376,30 +419,38 @@ def announcement_request(request):
         announcement_title = request.POST.get('announcement-title')
         description = request.POST.get('description').replace('\r\n','<br>')
         email_to = request.POST.get('email').split(',')
-        
-        # send email
-        html_content = f"""
-        您好：
-        <br>
-        <br>
-        {description}
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        臺灣自動相機資訊系統 團隊敬上
-        """
+       
+        chunk_size = 50
+        i = 0 
+        while email_to:
+            chunk, email_to = email_to[:chunk_size], email_to[chunk_size:]
+            # print(chunk)
 
-        subject = f'[臺灣自動相機資訊系統]公告 {announcement_title}'
-        # ('Subject here','Here is the message.','from@example.com',['to@example.com'],fail_silently=False,)
-        msg = EmailMessage(subject, html_content, settings.CT_SERVICE_EMAIL, bcc=email_to)
-        msg.content_subtype = "html"  # Main content is now text/html
+            # send email
+            html_content = f"""
+            您好：
+            <br>
+            <br>
+            {description}
+            <br>
+            <br>
+            <br>
+            <br>
+            <br>
+            臺灣自動相機資訊系統 團隊敬上
+            """
 
-        # 改成背景執行
-        task = threading.Thread(target=send_msg, args=(msg,))
-        # task.daemon = True
-        task.start()
+            subject = f'[臺灣自動相機資訊系統]公告 {announcement_title}'
+            # ('Subject here','Here is the message.','from@example.com',['to@example.com'],fail_silently=False,)
+            msg = EmailMessage(subject, html_content, settings.CT_SERVICE_EMAIL, bcc=chunk)
+            msg.content_subtype = "html"  # Main content is now text/html
+
+            # 改成背景執行
+            task = threading.Thread(target=send_msg, args=(msg,))
+            # task.daemon = True
+            task.start()
+            i = i+1
+            print("email no. ",i , len(chunk))
 
         return JsonResponse({"status": 'success'}, safe=False)
     except Exception as e:
@@ -420,10 +471,10 @@ def add_org_admin(request):
 def login_for_test(request):
     next = request.GET.get('next')
     role = request.GET.get('role')
-    info = Contact.objects.filter(name=role).values('name', 'id').first()
+    info = Contact.objects.filter(name=role).values('name', 'id','orcid').first()
     request.session["is_login"] = True
     request.session["name"] = role
-    request.session["orcid"] = ''
+    request.session["orcid"] = info["orcid"]
     request.session["id"] = info['id']
     request.session["first_login"] = False
 
@@ -538,26 +589,29 @@ def personal_info(request):
     # login required
     is_login = request.session.get('is_login', False)
     first_login = request.session.get('first_login', False)
-
+    identities = ParameterCode.objects.filter(type='identity').values("name","pmajor","type","parametername")
     if request.method == 'POST':
         first_login = False
         orcid = request.session.get('orcid')
         name = request.POST.get('name')
         email = request.POST.get('email')
-        Contact.objects.filter(orcid=orcid).update(name=name, email=email)
+        identity = request.POST.get('identity')
+        Contact.objects.filter(orcid=orcid).update(name=name, email=email,identity=identity)
         request.session["name"] = name
-
+        
     if is_login:
         info = Contact.objects.filter(
             orcid=request.session["orcid"]).values().first()
-        return render(request, 'base/personal_info.html', {'info': info, 'first_login': first_login})
+        return render(request, 'base/personal_info.html', {'info': info, 'first_login': first_login,'identities':identities})
     else:
         messages.error(request, '請先登入')
         return render(request, 'base/personal_info.html')
 
 
 def home(request):
-    return render(request, 'base/home.html')
+    context = {'env': settings.ENV}
+
+    return render(request, 'base/home.html',context)
 
 
 def get_species_data(request):

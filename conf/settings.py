@@ -37,6 +37,7 @@ environ.Env.read_env(os.path.join(config_dir, '.env'))
 
 # current mode (development/production)
 ENV = env('ENV', default='dev')
+assert ENV in ['dev', 'test', 'prod', 'stag']
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
@@ -151,7 +152,8 @@ USE_TZ = True
 default_static_dir = os.path.join(BASE_DIR, 'static')
 STATIC_URL = '/static/'
 STATIC_ROOT = env('STATIC_ROOT', default=default_static_dir)
-STATICFILES_DIRS = [default_static_dir, ]
+# STATICFILES_DIRS = [default_static_dir, ]
+STATICFILES_DIRS = [default_static_dir, '/build'] # for nodejs build static
 
 CACHES = {
     "default": {
@@ -203,12 +205,13 @@ ORCID_CLIENT_SECRET = env('ORCID_CLIENT_SECRET')
 
 # Content Security Policy 
 CSP_DEFAULT_SRC = ("'self'", "https://www.google.com/recpatcha/", "https://www.google.com/") 
-CSP_STYLE_SRC = ["'self'","https://cdn.datatables.net","https://*.fontawesome.com","https://*.highcharts.com","https://unpkg.com/","http://www.w3.org","https://cdnjs.cloudflare.com", "'unsafe-inline'"]
+CSP_STYLE_SRC = ["'self'","https://cdn.datatables.net","https://*.fontawesome.com","https://*.highcharts.com","https://unpkg.com/","https://fonts.googleapis.com","http://www.w3.org","https://cdnjs.cloudflare.com", "'unsafe-inline'"]
 CSP_IMG_SRC = ("'self'","https://*.highcharts.com", "https://*.fontawesome.com", "data: http://www.w3.org", 'https://*.tile.osm.org/',"https://*.s3.ap-northeast-1.amazonaws.com/","https://d3gg2vsgjlos1e.cloudfront.net/annotation-images/") 
 CSP_MEDIA_SRC = ("'self'","https://*.s3.ap-northeast-1.amazonaws.com/","https://d3gg2vsgjlos1e.cloudfront.net/") 
-CSP_FONT_SRC = ("'self'", "https://*.fontawesome.com" ) 
+CSP_FONT_SRC = ("'self'", "https://*.fontawesome.com","https://fonts.googleapis.com","https://fonts.gstatic.com" ) 
 
 CSP_SCRIPT_SRC = ["'self'", "https://cdnjs.cloudflare.com",
+    "https://fonts.googleapis.com",
     "https://code.jquery.com",
     "https://cdn.datatables.net",
     "https://*.highcharts.com",
@@ -312,4 +315,4 @@ LOGGING = {
     }
 }
 
-CSRF_TRUSTED_ORIGINS = ['https://dbtest.camera-trap.tw', ]
+CSRF_TRUSTED_ORIGINS = ['https://dbtest.camera-trap.tw', 'https://camera-trap.tw']

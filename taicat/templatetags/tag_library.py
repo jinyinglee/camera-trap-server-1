@@ -5,10 +5,12 @@ from datetime import timedelta,datetime
 import re
 
 from django import template
-from base.models import UploadNotification,Announcement
 from django.utils.safestring import mark_safe
-from taicat.models import Organization, ProjectMember, Contact
 from django.db.models import Q
+from taicat.models import Organization, ProjectMember, Contact
+from base.models import UploadNotification,Announcement
+from django.conf import settings
+
 
 register = template.Library()
 
@@ -19,51 +21,8 @@ def to_int(value):
 
 
 @register.simple_tag()
-def find_event_num(data, year, month):
-    '''
-    for i in data['round_list']:
-        if int(i['year']) == int(year) and \
-           int(i['month']) == int(month):
-            return i['event_num']
-    '''
-    return 0
-
-
-# for calculation
-@register.simple_tag()
-def find_oi_3(data, year, month):
-    '''
-    for i in data['round_list']:
-        if int(i['year']) == int(year) and \
-           int(i['month']) == int(month):
-            if wh := i['working_hour'][0]:
-                return i['image_num'] * 1.0 / wh * 1000
-    '''
-    return 0
-
-
-@register.simple_tag()
-def find_pod(data, year, month):
-    '''for i in data['round_list']:
-        if int(i['year']) == int(year) and \
-           int(i['month']) == int(month):
-            if pod := i['pod'][0]:
-                return pod
-    '''
-    return 0
-
-
-@register.simple_tag()
-def find_presence_absence(data, year, month):
-    '''
-    for i in data['round_list']:
-        if int(i['year']) == int(year) and \
-           int(i['month']) == int(month):
-            if pod := i['pod'][0]:
-                return 1
-    '''
-    return 0
-
+def get_env():
+    return settings.ENV
 
 @register.filter
 def get_value_in_qs(queryset, key):
@@ -94,16 +53,20 @@ def get_notif(contact_id):
         if n.category == 'upload': 
             created_8 = n.created + timedelta(hours=8)
             dj = n.upload_history.deployment_journal
-            results += f"""
-            <div class="notification-item">
-            <div class="notification-item-content">
-                <div class='notification-item-date'>{created_8.strftime('%Y-%m-%d %H:%M:%S')}</div>
-                <div class="notification-item-message"> 
-                    「{dj.project.name} > {dj.studyarea.name} > {dj.deployment.name} > {dj.folder_name}」上傳狀態為：<strong>{status_map[n.upload_history.status]}</strong>
+            try:
+                results += f"""
+                <div class="notification-item">
+                <div class="notification-item-content">
+                    <div class='notification-item-date'>{created_8.strftime('%Y-%m-%d %H:%M:%S')}</div>
+                    <div class="notification-item-message"> 
+                        「{dj.project.name} > {dj.studyarea.name} > {dj.deployment.name} > {dj.folder_name}」上傳狀態為：<strong>{status_map[n.upload_history.status]}</strong>
+                    </div>
                 </div>
-            </div>
-            </div>
-            """
+                </div>
+                """
+            except Exception as e:
+                print("notifications bug == ",e)
+                continue
         # 資料缺失通知
         elif n.category == 'gap': 
             created_8 = n.created + timedelta(hours=8)
@@ -175,3 +138,12 @@ def announcement_expire_time (contact_id):
         pass
 
     return expire_time
+
+@register.filter(name='check_is_login')
+def check_is_login(session_list):
+    '''for hide template session.is_login
+    '''
+    for k, v in session_list.items():
+        if k == 'is_login' and v == True:
+            return True
+    return False

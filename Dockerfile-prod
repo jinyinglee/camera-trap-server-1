@@ -4,7 +4,6 @@
 FROM node:14-alpine as static
 WORKDIR /build
 COPY ./frontend-search /build
-
 RUN yarn install
 RUN yarn build
 
@@ -38,9 +37,9 @@ ENV TZ=Asia/Taipei
 WORKDIR /code
 
 # Package
-ENV VIRTUAL_ENV=/opt/venv
-RUN python3 -m venv $VIRTUAL_ENV
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+#ENV VIRTUAL_ENV=/opt/venv
+#RUN python3 -m venv $VIRTUAL_ENV
+#ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 COPY requirements requirements
 RUN pip install --upgrade pip
@@ -54,6 +53,6 @@ COPY ./scripts/start /srv/start
 RUN sed -i 's/\r$//g' /srv/start
 RUN chmod +x /srv/start
 
-COPY --from=0 /build/dist /asset/asset/js
+COPY --from=static /build/dist /build/js
 
 ENTRYPOINT ["/srv/entrypoint"]
