@@ -225,8 +225,8 @@ $(document).ready(function () {
         },
         order: [[0, "asc"]],
         lengthMenu: [
-          [10, 25, 50, -1],
-          [10, 25, 50, 'All']],
+          [10, 25, 50, 100],
+          [10, 25, 50, 100]],
         drawCallback: function () {
 
           $('.dataTables_scrollHead').on('shown.bs.collapse', function () {
@@ -244,14 +244,14 @@ $(document).ready(function () {
           // uncheck select all button
           $('#edit-all').prop('checked', false)
 
-          $('.d-button').addClass('disabled')
-          $('.d-button').addClass('disabled')
+          //$('.d-button').addClass('disabled')
+          $('.e-button, .d-button').addClass('disabled')
           // bind onclick event
           $('input[name="edit"]').on('click', function () {
             if ($("input[name='edit']").is(":checked")) {
-              $('.d-button').removeClass('disabled')
+              $('.e-button, .d-button').removeClass('disabled')
             } else {
-              $('.d-button').addClass('disabled')
+              $('.e-button, .d-button').addClass('disabled')
             }
           })
           // remove last page button
@@ -364,7 +364,11 @@ $(document).ready(function () {
           $('#edit_button').data('edit', 'on');
           // console.log($($.fn.dataTable.tables(true)).DataTable().column(0))
           $($.fn.dataTable.tables(true)).DataTable().column(0).visible(true);
-          $('#edit_button').html('<i class="fa fa-xs fa-pencil w-12"></i> 結束編輯')
+          $('#edit_button').html(`<svg id="Group_749" data-name="Group 749" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="20" height="19.999" viewBox="0 0 20 19.999">
+          <g id="Group_748" data-name="Group 748" clip-path="url(#clip-path)">
+            <path id="Path_10217" data-name="Path 10217" d="M20,4.238a2.818,2.818,0,0,1-.855,2q-3.8,3.8-7.6,7.6-1.8,1.8-3.613,3.6a1.215,1.215,0,0,1-.45.279q-3.29,1.11-6.586,2.2a1.082,1.082,0,0,1-.4.078.546.546,0,0,1-.446-.786Q.775,17,1.512,14.792c.256-.769.509-1.54.774-2.306a1.037,1.037,0,0,1,.231-.384Q8.133,6.477,13.756.861A2.744,2.744,0,0,1,17.741.853q.734.724,1.46,1.457A2.747,2.747,0,0,1,20,4.238M7.447,16.318,17,6.767,13.233,3,3.678,12.549l3.768,3.769M17.837,5.967c.2-.192.414-.38.607-.587a1.622,1.622,0,0,0,.03-2.23c-.523-.565-1.071-1.108-1.634-1.633a1.578,1.578,0,0,0-2-.128,9.64,9.64,0,0,0-.828.753l3.824,3.825M6.4,16.925,3.073,13.6,1.406,18.587,6.4,16.925" transform="translate(0 0)" fill="#257455"/>
+          </g>
+        </svg>結束編輯`)
           // show buttons
           $('.d-button, .e-button').removeClass('d-none')
           // bind onclick event
@@ -379,7 +383,13 @@ $(document).ready(function () {
           $('#edit_button').data('edit', 'off');
           // uncheck all
           $($.fn.dataTable.tables(true)).DataTable().column(0).visible(false);
-          $('#edit_button').html('<i class="fa fa-xs fa-pencil w-12"></i> 編輯模式')
+          $('#edit_button').html(`
+            <svg id="Group_749" data-name="Group 749" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="20" height="19.999" viewBox="0 0 20 19.999">
+            <g id="Group_748" data-name="Group 748" clip-path="url(#clip-path)">
+              <path id="Path_10217" data-name="Path 10217" d="M20,4.238a2.818,2.818,0,0,1-.855,2q-3.8,3.8-7.6,7.6-1.8,1.8-3.613,3.6a1.215,1.215,0,0,1-.45.279q-3.29,1.11-6.586,2.2a1.082,1.082,0,0,1-.4.078.546.546,0,0,1-.446-.786Q.775,17,1.512,14.792c.256-.769.509-1.54.774-2.306a1.037,1.037,0,0,1,.231-.384Q8.133,6.477,13.756.861A2.744,2.744,0,0,1,17.741.853q.734.724,1.46,1.457A2.747,2.747,0,0,1,20,4.238M7.447,16.318,17,6.767,13.233,3,3.678,12.549l3.768,3.769M17.837,5.967c.2-.192.414-.38.607-.587a1.622,1.622,0,0,0,.03-2.23c-.523-.565-1.071-1.108-1.634-1.633a1.578,1.578,0,0,0-2-.128,9.64,9.64,0,0,0-.828.753l3.824,3.825M6.4,16.925,3.073,13.6,1.406,18.587,6.4,16.925" transform="translate(0 0)" fill="#257455"/>
+            </g>
+          </svg>
+          編輯模式`)
           $('.d-button, .e-button').addClass('d-none')
         }
         // adjust columns after 1000 ms
@@ -807,21 +817,26 @@ $(document).ready(function () {
       $('#deleteData').on('click', function () {
 
         checkedvalue = [];
+        checkeduuid = [];
         $("input[name=edit]").not('#edit-all').each(function () {
           if ($(this).is(":checked")) {
             if (!isNaN($(this).val())) {
-              checkedvalue.push($(this).val());
+              checkedvalue.push($(this).val())
+              checkeduuid.push($(this).data('uuid'));
             }
           }
         });
         $('#deleteModal').modal('hide')
         // ajax to delete data
         $.ajax({
-          data: { 'image_id': checkedvalue },
+          data: { 'image_id': checkedvalue, 'image_uuid':  checkeduuid},
           headers: { 'X-CSRFToken': $csrf_token },
           type: "POST",
           url: "/delete/" + pk + '/',
           success: function (data) {
+            if (data.return_mesg){
+              alert('欲刪除的資料含有原始照片，故未完全刪除。如需刪除原始照片，請聯絡系統管理員或計畫總管理人')
+            }
 
             table.draw(false); // stay in same page
             // update filter //

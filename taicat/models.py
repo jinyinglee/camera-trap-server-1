@@ -72,7 +72,8 @@ class Species(models.Model):
     name = models.CharField(max_length=1000, db_index=True)
     count = models.IntegerField(null=True, blank=True)
     last_updated = models.DateTimeField(null=True, db_index=True)
-    status = models.CharField(max_length=4, default='', null=True, blank=True, db_index=True)  # I: initial
+    # is_default = models.CharField(max_length=4, default='', null=True, blank=True, db_index=True)
+    is_default = models.BooleanField(default=False, blank=True)
 
     def to_dict(self):
         return {
@@ -390,6 +391,7 @@ class Project(models.Model):
         f = open(f'cache-files/{key}.json', 'w')
         f.write(json.dumps(data))
         f.close()
+
 
 class StudyArea(models.Model):
     name = models.CharField(max_length=1000)
@@ -955,7 +957,7 @@ class HomePageStat(models.Model):
     count = models.IntegerField(null=True, blank=True)
     year = models.IntegerField(null=True, blank=True)
     last_updated = models.DateTimeField(null=True, db_index=True)
-    type = models.CharField(max_length=10, null=True, blank=True)
+    # type = models.CharField(max_length=10, null=True, blank=True)
 
 
 class ProjectStat(models.Model):
@@ -1088,7 +1090,7 @@ class ParameterCode(models.Model):
     )
     name = models.CharField('參數中文名稱',max_length=1000 ,null=True, blank=True)
     parametername = models.CharField('參數名稱',max_length=1000 ,null=True, blank=True)
-    type = models.CharField('參數範圍',max_length=1000 ,choices=TYPE_CHOICES, null=True, blank=True)
+    type = models.CharField('參數類型',max_length=1000 ,choices=TYPE_CHOICES, null=True, blank=True)
     pmajor = models.CharField('上階層名稱',max_length=1000 ,null=True, blank=True)
     description = models.CharField('參數描述',max_length=1000, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
@@ -1110,5 +1112,5 @@ class Calculation(models.Model):
 class DownloadLog(models.Model):
     
     user_role = models.CharField('使用者角色', max_length=1000, null=True, default='', blank=True)
-    condiction = models.CharField('篩選條件', max_length=1000, null=True, default='', blank=True)
+    condition = models.CharField('篩選條件', max_length=1000, null=True, default='', blank=True)
     file_link = models.CharField('下載連結', max_length=1000, null=True, default='', blank=True)

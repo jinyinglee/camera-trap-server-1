@@ -4,7 +4,7 @@ from django.shortcuts import render, HttpResponse, redirect
 import json
 from django.db import connection
 from taicat.models import Deployment, GeoStat, HomePageStat, Image, Contact, Organization, Project, Species, StudyAreaStat, ProjectMember,ParameterCode
-from django.db.models import Count, Window, F, Sum, Min, Q, Max
+from django.db.models import Count, Window, F, Sum, Min, Q, Max, DateTimeField, ExpressionWrapper
 from django.db.models.functions import ExtractYear
 from django.template import loader
 from django.core.paginator import Paginator
@@ -233,9 +233,9 @@ def get_error_file_list(request, deployment_journal_id):
         JOIN taicat_project p ON i.project_id = p.id
         JOIN taicat_deployment d ON i.deployment_id = d.id
         JOIN taicat_studyarea s ON i.studyarea_id = s.id
-        WHERE i.deployment_journal_id = {} and (has_storage = 'N' or species is NULL or species = '' )"""
+        WHERE i.deployment_journal_id = %s and (has_storage = 'N' OR species IS NULL OR species = '' )"""
     with connection.cursor() as cursor:
-        cursor.execute(query.format(deployment_journal_id))
+        cursor.execute(query, (deployment_journal_id,))
         data = cursor.fetchall()
         data = pd.DataFrame(data, columns=['所屬計畫', '樣區', '相機位置', '資料夾名稱', '檔名', 'species', 'has_storage'])
         data['錯誤類型'] = ''
@@ -253,13 +253,15 @@ def upload_history(request):
 
     if request.method == 'GET':
 
-        rows = []
         if member_id := request.session.get('id', None):
             my_project_list = get_my_project_list(member_id,[])
             q = request.GET.get('q', '')
             page_number = request.GET.get('page', 1)
 
-            query = UploadHistory.objects.filter(deployment_journal__project_id__in=my_project_list).values_list('created', 'last_updated', 'deployment_journal__folder_name', 'deployment_journal__project__name', 'deployment_journal__studyarea__name', 'deployment_journal__deployment__name', 'status', 'deployment_journal__project_id', 'deployment_journal__id', 'species_error', 'upload_error').order_by('-created')
+            query = UploadHistory.objects.filter(deployment_journal__project_id__in=my_project_list).annotate(
+                created_8=ExpressionWrapper(F('created') + timedelta(hours=8),output_field=DateTimeField()),                
+                last_updated_8=ExpressionWrapper(F('last_updated') + timedelta(hours=8),output_field=DateTimeField()
+                )).values_list('created_8', 'last_updated_8', 'deployment_journal__folder_name', 'deployment_journal__project__name', 'deployment_journal__studyarea__name', 'deployment_journal__deployment__name', 'status', 'deployment_journal__project_id', 'deployment_journal__id', 'species_error', 'upload_error').order_by('-created')
 
             if q:
                 query = query.filter(Q(deployment_journal__project__name__icontains=q) |
@@ -278,22 +280,6 @@ def upload_history(request):
             return redirect(f'/upload-history?q={x}')
         else:
             return redirect(f'/upload-history')
-
-        '''
-        query = """SELECT to_char(up.created AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS'),
-                    to_char(up.last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS'),
-                    dj.folder_name, p.name, s.name, d.name, up.status, dj.project_id, up.deployment_journal_id,
-                    up.species_error, up.upload_error
-                    FROM base_uploadhistory up
-                    JOIN taicat_deploymentjournal dj ON up.deployment_journal_id = dj.id
-                    JOIN taicat_project p ON dj.project_id = p.id
-                    JOIN taicat_deployment d ON dj.deployment_id = d.id
-                    JOIN taicat_studyarea s ON dj.studyarea_id = s.id
-                    WHERE dj.project_id IN {}"""
-        with connection.cursor() as cursor:
-            cursor.execute(query.format(str(my_project_list).replace('[','(').replace(']',')')))
-            rows = cursor.fetchall()
-        '''
 
 
 def faq(request):
@@ -617,19 +603,19 @@ def home(request):
 def get_species_data(request):
     now = timezone.now()
     update = False
-    last_updated = Species.objects.filter(status='I').aggregate(Min('last_updated'))['last_updated__min']
-    if last_updated := Species.objects.filter(status='I').aggregate(Min('last_updated'))['last_updated__min']:
+    last_updated = Species.objects.filter(is_default=True).aggregate(Min('last_updated'))['last_updated__min']
+    if last_updated := Species.objects.filter(is_default=True).aggregate(Min('last_updated'))['last_updated__min']:
         if Image.objects.filter(last_updated__gte=last_updated, project__mode='official').exists():
             update = True
     else:
         update = True
     if update:
-        Species.objects.filter(status='I').update(last_updated=now)
+        Species.objects.filter(is_default=True).update(last_updated=now)
         for i in Species.DEFAULT_LIST:
             c = Image.objects.filter(species=i, project__mode='official').count()
-            if Species.objects.filter(status='I', name=i).exists():
+            if Species.objects.filter(is_default=True, name=i).exists():
                 # if exist, update
-                s = Species.objects.get(status='I', name=i)
+                s = Species.objects.get(is_default=True, name=i)
                 s.count = c
                 s.last_updated = now
                 s.save()
@@ -639,13 +625,13 @@ def get_species_data(request):
                         name=i,
                         count=c,
                         last_updated=now,
-                        status='I'
+                        is_default=True
                     )
                     new_s.save()
     # get data
     species_data = []
     with connection.cursor() as cursor:
-        query = "SELECT count, name FROM taicat_species WHERE status = 'I' ORDER BY count DESC"
+        query = "SELECT count, name FROM taicat_species WHERE is_default = TRUE ORDER BY count DESC"
         cursor.execute(query)
         species_data = cursor.fetchall()
     response = {'species_data': species_data}
@@ -692,19 +678,18 @@ def get_growth_data(request):
         data_growth_image = data_growth_image.drop(columns=['num_image'])
         for i in data_growth_image.index:
             row = data_growth_image.loc[i]
-            if HomePageStat.objects.filter(year=row.year, type='image').exists():
-                h = HomePageStat.objects.get(year=row.year, type='image')
+            if HomePageStat.objects.filter(year=row.year).exists():
+                h = HomePageStat.objects.get(year=row.year)
                 h.count += row['cumsum']
                 h.last_updated = now
                 h.save()
             else:
                 new_h = HomePageStat(
-                    type='image',
                     count=row['cumsum'],
                     last_updated=now,
                     year=row.year)
                 new_h.save()
-    data_growth_image = list(HomePageStat.objects.filter(type="image", year__gte=2008).order_by('year').values_list('year', 'count'))
+    data_growth_image = list(HomePageStat.objects.filter(year__gte=2008).order_by('year').values_list('year', 'count'))
 
     # --------- deployment --------- #
     year_gap = pd.DataFrame([i for i in range(2008, data_growth_image[-1][0]+1)], columns=['year'])
@@ -744,23 +729,22 @@ def stat_county(request):
         if len(response):
             response = response[0]
             response.update({'species':response.get('species').replace(',','、')})
-            print(response)
             sa_points = []
             if response['studyarea']:
-                # print(response['studyarea'])
                 sa_list = response['studyarea'].split(',')
+                sa_list = [int(s) for s in sa_list]
                 if last_updated := StudyAreaStat.objects.filter(studyarea_id__in=sa_list).aggregate(Min('last_updated'))['last_updated__min']:
                     if Deployment.objects.filter(last_updated__gte=last_updated, study_area_id__in=sa_list).exists():
                         update_studyareastat(response['studyarea'])
                 else:
                     update_studyareastat(response['studyarea'])
                 with connection.cursor() as cursor:
-                    query = f"""SELECT sas.longitude, sas.latitude, p.name, sa.name, sa.id  
+                    query = """SELECT sas.longitude, sas.latitude, p.name, sa.name, sa.id  
                                 FROM taicat_studyareastat sas  
                                 JOIN taicat_studyarea sa ON sas.studyarea_id = sa.id
                                 JOIN taicat_project p ON p.id = sa.project_id
-                                WHERE sas.studyarea_id IN ({response['studyarea']});"""
-                    cursor.execute(query)
+                                WHERE sas.studyarea_id = ANY(%s);"""
+                    cursor.execute(query,(sa_list,))
                     sa_points = cursor.fetchall()
             response.update({'studyarea': sa_points})
         else:
@@ -772,9 +756,9 @@ def stat_studyarea(request):
     if request.method == 'GET':
         sa = []
         said = request.GET.get('said')
-        query = f"""SELECT id, longitude, latitude, name, geodetic_datum FROM taicat_deployment WHERE study_area_id = {said}"""
+        query = """SELECT id, longitude, latitude, name, geodetic_datum FROM taicat_deployment WHERE study_area_id = %s"""
         with connection.cursor() as cursor:
-            cursor.execute(query)
+            cursor.execute(query, (said, ))
             sa = cursor.fetchall()
         name = []
         count = []
@@ -792,16 +776,16 @@ def stat_studyarea(request):
             else:
                 new_sa.append(s)
 
-            query = f"""
+            query = """
                     SELECT d.name, COUNT(DISTINCT(i.image_uuid))
                     FROM taicat_image i
                     JOIN taicat_deployment d ON i.deployment_id = d.id
-                    WHERE i.deployment_id = {s[0]}
+                    WHERE i.deployment_id = %s
                     GROUP BY d.name
                     ORDER BY d.name
                     """
             with connection.cursor() as cursor:
-                cursor.execute(query)
+                cursor.execute(query,(s[0],))
                 data = cursor.fetchall()
                 if len(data):
                     name += [data[0][0]]
@@ -814,9 +798,9 @@ def stat_studyarea(request):
                 update_studyareastat(said)
             query = f"""SELECT sas.longitude, sas.latitude  
                         FROM taicat_studyareastat sas  
-                        WHERE sas.studyarea_id = ({said});"""
-            cursor.execute(query)
-            sa_center = cursor.fetchall()        
+                        WHERE sas.studyarea_id = (%s);"""
+            cursor.execute(query, (said,))
+            sa_center = cursor.fetchall()
         response = {'name': name, 'count': count, 'deployment_points': new_sa, 'center': sa_center[0]}
         
         return HttpResponse(json.dumps(response, cls=DecimalEncoder), content_type='application/json')

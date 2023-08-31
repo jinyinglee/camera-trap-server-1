@@ -12,4 +12,4 @@ class UploadHistoryAdmin(admin.ModelAdmin):
 @admin.register(Announcement)
 class AnnouncementAdmin(admin.ModelAdmin):
     model = Announcement
-    list_display = ('title', 'created','mod_date', 'version')
+    list_display = ('title', 'created','last_updated', 'version')

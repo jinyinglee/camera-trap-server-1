@@ -39,25 +39,25 @@ def index(request):
     project_list = Project.objects.filter(mode='test').all()
     return render(request, 'index.html', {'project_list': project_list})
 
-def project_detail(request, pk):
-    dep_id = request.GET.get('deployment', '')
+# def project_detail(request, pk):
+#     dep_id = request.GET.get('deployment', '')
 
-    project = Project.objects.get(pk=pk)
-    d = project.get_deployment_list()
-    #id_list = []
-    #for i in d:
-    #    for j in i['deployments']:
-    #        id_list.append(j['deployment_id'])
+#     project = Project.objects.get(pk=pk)
+#     d = project.get_deployment_list()
+#     #id_list = []
+#     #for i in d:
+#     #    for j in i['deployments']:
+#     #        id_list.append(j['deployment_id'])
 
-    image_list = []
-    if dep_id:
-        image_list = Image.objects.filter(deployment_id=dep_id).all()
+#     image_list = []
+#     if dep_id:
+#         image_list = Image.objects.filter(deployment_id=dep_id).all()
 
-    return render(request, 'project_detail.html',{
-        'project':project,
-        'deployment': d,
-        'image_list': image_list,
-    })
+#     return render(request, 'project_detail.html',{
+#         'project':project,
+#         'deployment': d,
+#         'image_list': image_list,
+#     })
 
 def get_project_list(request):
     projects = Project.objects.all()

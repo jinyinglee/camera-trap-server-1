@@ -13,7 +13,7 @@ for i in ret['all']:
     else:
         sp = Species(name=i[0], last_updated=now, count=i[1])
         if i[0] in Species.DEFAULT_LIST:
-            sp.status = 'I'
+            sp.is_default = True
         sp.save()
 
 
@@ -31,5 +31,5 @@ for i in query:
     else:
         sp = Species(name=i['species'], last_updated=now, count=i['total'])
         if i['species'] in Species.DEFAULT_LIST:
-            sp.status = 'I'
+            sp.is_default = True
         sp.save()

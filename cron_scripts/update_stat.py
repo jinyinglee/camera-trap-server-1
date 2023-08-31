@@ -25,7 +25,7 @@ with connection.cursor() as cursor:
 
 # if exists, update; if not, create
 for i in data_growth_image.index:
-    if hps := HomePageStat.objects.filter(year=data_growth_image.loc[i, 'year'], type='image').first():
+    if hps := HomePageStat.objects.filter(year=data_growth_image.loc[i, 'year']).first():
         # print('here')
         hps.count = data_growth_image.loc[i, 'cumsum']
         hps.last_updated = now
@@ -34,7 +34,6 @@ for i in data_growth_image.index:
         new = HomePageStat(
             count=data_growth_image.loc[i, 'cumsum'],
             year=data_growth_image.loc[i, 'year'],
-            type='image',
             last_updated=now
         )
         new.save()
@@ -108,7 +107,7 @@ for i in query:
     else:
         sp = Species(name=i['species'], last_updated=now, count=i['total'])
         if i['species'] in Species.DEFAULT_LIST:
-            sp.status = 'I'
+            sp.is_default = True
         sp.save()
 
 # delete count = 0

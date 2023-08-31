@@ -22,7 +22,6 @@ for i in data_growth_image.index:
     new = HomePageStat(
         count=data_growth_image.loc[i, 'cumsum'],
         year=data_growth_image.loc[i, 'year'],
-        type='image',
         last_updated=now
     )
     new.save()

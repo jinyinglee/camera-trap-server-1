@@ -79,5 +79,5 @@ class ParameterCodeAdmin(admin.ModelAdmin):
 @admin.register(DownloadLog)
 class DownloadLogAdmin(admin.ModelAdmin,ExportCsvMixin):
     model = DownloadLog
-    list_display = ('user_role', 'condiction','file_link')
+    list_display = ('user_role', 'condition','file_link')
     actions = ["export_as_csv"]
