@@ -44,10 +44,11 @@ from .utils import (
     humen_readable_filter,
 )
 
-from .views import (
-    check_if_authorized,
-    check_if_authorized_create,
-)
+# from .views import (
+#     check_if_authorized,
+#     check_if_authorized_create,
+# )
+
 from taicat.tasks import (
     process_download_data_task,
     process_download_calculated_data_task,
@@ -88,7 +89,7 @@ def api_named_areas(request):
 
 
 def api_get_species(request):
-    species_list = [x.to_dict() for x in Species.objects.filter(status='I').all()]
+    species_list = [x.to_dict() for x in Species.objects.filter(is_default=True).all()]
     return JsonResponse({
         'category': 'species',
         'data': species_list,
@@ -100,8 +101,8 @@ def api_get_projects(request):
     my_projects = []
 
     # code from views.project_overview
-    is_authorized_create = check_if_authorized_create(request)
-    public_species_data = []
+    # is_authorized_create = check_if_authorized(request)
+    # public_species_data = []
     # 公開計畫 depend on publish_date date
     with connection.cursor() as cursor:
         # q = "SELECT taicat_project.id FROM taicat_project \
@@ -113,7 +114,7 @@ def api_get_projects(request):
 
 
     if public_project_list:
-        #public_project, public_species_data = get_project_info(str(public_project_list).replace('[', '(').replace(']', ')'))
+        #public_project, public_species_data = get_project_info(public_project_list)
         for p in Project.objects.filter(id__in=public_project_list).all():
             x = p.to_dict()
             x['group_by'] = '公開計畫'
@@ -125,7 +126,7 @@ def api_get_projects(request):
     # my_species_data = []
     if member_id := request.session.get('id', None):
         if my_project_list := get_my_project_list(member_id,[]):
-            # my_project, my_species_data = get_project_info(str(my_project_list).replace('[', '(').replace(']', ')'))
+            # my_project, my_species_data = get_project_info(my_project_list)
             for p in Project.objects.filter(id__in=my_project_list).all():
                 x = p.to_dict()
                 x['group_by'] = '我的計畫'

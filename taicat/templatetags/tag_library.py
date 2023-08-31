@@ -122,7 +122,7 @@ def announcement_content (contact_id):
     title = None
     try:
         title = Announcement.objects.latest('created').title
-        expire_time = int(notifications.mod_date.strftime('%s')) + 7776000
+        # expire_time = int(notifications.mod_date.strftime('%s')) + 7776000
     except:
         pass
     return title
@@ -133,7 +133,7 @@ def announcement_expire_time (contact_id):
     expire_time = None
     try:
         notifications = Announcement.objects.latest('created')
-        expire_time = str(int(notifications.mod_date.strftime('%s')) + 7776000)
+        expire_time = str(int(notifications.last_updated.strftime('%s')) + 7776000)
     except:
         pass
 

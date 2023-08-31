@@ -513,8 +513,8 @@ def get_my_project_list(member_id, project_list=[]):
     else:
         # 1. select from project_member table
         with connection.cursor() as cursor:
-            query = "SELECT project_id FROM taicat_projectmember where member_id ={}"
-            cursor.execute(query.format(member_id))
+            query = "SELECT project_id FROM taicat_projectmember where member_id = %s"
+            cursor.execute(query, (member_id, ))
             temp = cursor.fetchall()
             for i in temp:
                 if i[0]:
@@ -937,3 +937,93 @@ def humen_readable_filter(filter_dict):
             data.append(f'計畫名稱：{proj_name}')
 
     return ', '.join(data)
+
+
+
+# 使用者是否有 system_admin系統管理者 / project_admin個別計畫承辦人 / organization_admin 計畫總管理人的權限
+# 權限範圍: 計畫管理, 編輯資料, 刪除複製出來的資料
+def check_if_authorized(request, pk):
+    is_authorized = False
+    member_id = request.session.get('id', None)
+    if member_id:
+        # system_admin 系統管理員 
+        if Contact.objects.filter(id=member_id, is_system_admin=True):
+            is_authorized = True
+        # project_admin 個別計畫承辦人
+        elif ProjectMember.objects.filter(member_id=member_id, role="project_admin", project_id=pk):
+            is_authorized = True
+        else:
+            # organization_admin 計畫總管理人
+            if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
+            if if_organization_admin:
+                organization_id = if_organization_admin.values('organization').first()['organization']
+                if Organization.objects.filter(id=organization_id, projects=pk):
+                    is_authorized = True
+    return is_authorized
+
+
+# 使用者是否有 system_admin系統管理者 / organization_admin 計畫總管理人的權限
+# 權限範圍: 刪除原始資料
+def check_if_authorized_delete(request, pk):
+    is_authorized = False
+    member_id = request.session.get('id', None)
+    if member_id:
+        # system_admin 系統管理員 
+        if Contact.objects.filter(id=member_id, is_system_admin=True):
+            is_authorized = True
+        else:
+            # organization_admin 計畫總管理人
+            if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
+            if if_organization_admin:
+                organization_id = if_organization_admin.values('organization').first()['organization']
+                if Organization.objects.filter(id=organization_id, projects=pk):
+                    is_authorized = True
+    return is_authorized
+
+
+# 是否可以看到計畫資訊/詳細內容(使用者是 系統管理者/團隊成員/總管理人，或公開資料)
+def check_if_authorized_project(request, pk):
+    is_authorized = False
+    member_id = request.session.get('id', None)
+    if member_id:
+        # check system_admin
+        if Contact.objects.filter(id=member_id, is_system_admin=True):
+            is_authorized = True
+        # check project_member 
+        elif ProjectMember.objects.filter(member_id=member_id, project_id=pk).exists():
+            is_authorized = True
+        else:
+            # check organization_admin
+            if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
+            if if_organization_admin:
+                organization_id = if_organization_admin.values('organization').first()['organization']
+                if Organization.objects.filter(id=organization_id, projects=pk):
+                    is_authorized = True
+    # 計畫是否已公開
+    elif Project.objects.filter(id=pk, is_public=True).exists():
+        is_authorized = True
+    return is_authorized
+
+
+# 不用project_id的情況
+def check_if_authorized_create(request):
+    is_authorized = False
+    member_id = request.session.get('id', None)
+    if member_id:
+        # 系統管理員
+        if Contact.objects.filter(id=member_id, is_system_admin=True):
+            is_authorized = True
+        # 個別計畫承辦人
+        elif ProjectMember.objects.filter(member_id=member_id, role="project_admin"):
+            is_authorized = True
+        # 計畫總管理人
+        elif Contact.objects.filter(id=member_id, is_organization_admin=True):
+            is_authorized = True
+    return is_authorized
+
+
+
+
+# def sortFunction(value):
+#     return value["id"]
+

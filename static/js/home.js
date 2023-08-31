@@ -449,7 +449,7 @@
           </div>
           <div class="row desp">
             <div class="col-3 text-left">
-              總相片數
+              總影像數
             </div>
             <div class="col-9 text-left">
               ${response.num_image}

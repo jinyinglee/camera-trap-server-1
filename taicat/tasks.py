@@ -195,11 +195,11 @@ def process_download_data_task(email, filter_dict, member_id, host, verbose):
         if role := ParameterCode.objects.filter(parametername=contact.identity).first():
             user_role = role.name
 
-    #condiction_log = f'''專案名稱:{project_name}, 日期：{date_filter}。樣區 / 相機位置：{conditions} 。物種：{spe_conditions} 。時間：{time_filter}。縣市：{county_filter}。保護留區：{protectarea_filter}。資料夾：{folder_filter} 。'''
+    #condition_log = f'''專案名稱:{project_name}, 日期：{date_filter}。樣區 / 相機位置：{conditions} 。物種：{spe_conditions} 。時間：{time_filter}。縣市：{county_filter}。保護留區：{protectarea_filter}。資料夾：{folder_filter} 。'''
 
     download_log_sql = DownloadLog(
         user_role=user_role,
-        condiction=verbose,
+        condition=verbose,
         file_link=download_url)
     download_log_sql.save()
 
@@ -234,7 +234,7 @@ def process_download_calculated_data_task(email, filter_dict, calc_dict, calc_ty
             user_role = role.name
     download_log_sql = DownloadLog(
         user_role=user_role,
-        condiction=verbose,
+        condition=verbose,
         file_link=download_url)
     download_log_sql.save()
 

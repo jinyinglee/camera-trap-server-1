@@ -54,13 +54,22 @@ from operator import itemgetter
 from dateutil import parser
 from django.test.utils import CaptureQueriesContext
 from base.utils import DecimalEncoder
-from taicat.utils import half_year_ago, get_project_member, delete_image_by_ids
+from taicat.utils import half_year_ago, get_project_member, delete_image_by_ids, check_if_authorized, check_if_authorized_create, check_if_authorized_project, check_if_authorized_delete
 
 from openpyxl import Workbook
 from bson.objectid import ObjectId
 import geopandas as gpd
 from shapely.geometry import Point
 from django.views.decorators.http import require_GET
+
+
+city_list = ['基隆市', '嘉義市', '台北市', '嘉義縣', '新北市', '台南市',
+             '桃園縣', '高雄市', '新竹市', '屏東縣', '新竹縣', '台東縣',
+             '苗栗縣', '花蓮縣', '台中市', '宜蘭縣', '彰化縣', '澎湖縣',
+             '南投縣', '金門縣', '雲林縣',	'連江縣']
+
+species_list = ['水鹿', '山羌', '獼猴', '山羊', '野豬', '鼬獾', '白鼻心', '食蟹獴', '松鼠',
+                '飛鼠', '黃喉貂', '黃鼠狼', '小黃鼠狼', '麝香貓', '黑熊', '石虎', '穿山甲', '梅花鹿', '野兔', '蝙蝠']
 
 
 
@@ -78,7 +87,7 @@ def get_project_info_web(request):
         is_project_authorized = False
 
     response = {}
-    project = Project.objects.get(id=pk)
+    # project = Project.objects.get(id=pk)
     sa = StudyArea.objects.filter(project_id=pk, parent_id__isnull=True)
     sa_list = [str(s.id) for s in sa]
     response['sa_list'] = sa_list
@@ -105,9 +114,9 @@ def get_project_info_web(request):
     species_count = 0
     species_last_updated = None
 
-    query = f"select sum(count) from taicat_projectspecies where project_id={pk};"
+    query = "select sum(count) from taicat_projectspecies where project_id= %s;"
     with connection.cursor() as cursor:
-        cursor.execute(query)
+        cursor.execute(query, (pk, ))
         species_total_count = cursor.fetchall()
         species_total_count = species_total_count[0][0]
 
@@ -174,30 +183,29 @@ def get_edit_info(request):
 def get_project_detail(request):
     pk = request.GET.get('pk')
     # 系統管理員
-    member_id = request.session.get('id', None)
-    is_authorized = Contact.objects.filter(id=member_id, is_system_admin=True).exists()
+    # member_id = request.session.get('id', None)
+    # is_authorized = Contact.objects.filter(id=member_id, is_system_admin=True).exists()
     # 團隊成員名單
-    pm_list = get_project_member(pk)
-    if (member_id in pm_list) or is_authorized:
-        is_project_authorized = True
-    else:
-        is_project_authorized = False
+    # pm_list = get_project_member(pk)
+    # if (member_id in pm_list) or is_authorized:
+    #     is_project_authorized = True
+    # else:
+    #     is_project_authorized = False
 
     response = {}
+    latest_date, earliest_date = None, None
     if ProjectStat.objects.filter(project_id=pk).first().latest_date and ProjectStat.objects.filter(project_id=pk).first().earliest_date:
         latest_date = ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d")
         earliest_date = ProjectStat.objects.filter(project_id=pk).first().earliest_date.strftime("%Y-%m-%d")
-    else:
-        latest_date, earliest_date = None, None
 
     results = []
     with connection.cursor() as cursor:
         query = f"""SELECT folder_name,
                         to_char(folder_last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS folder_last_updated
                         FROM taicat_imagefolder
-                        WHERE project_id = {pk}
+                        WHERE project_id = %s
                         ORDER BY folder_last_updated desc"""
-        cursor.execute(query)
+        cursor.execute(query, (pk, ))
         folder_list = cursor.fetchall()
         columns = list(cursor.description)
         for row in folder_list:
@@ -235,18 +243,17 @@ def get_project_detail(request):
             organization_id = Contact.objects.filter(id=user_id, is_organization_admin=True).values('organization').first()['organization']
             if Organization.objects.filter(id=organization_id, projects=pk):
                 editable = True
+    
+    project_list = []
     if editable:
         pid_list = get_my_project_list(user_id,[])
         projects = Project.objects.filter(pk__in=pid_list)
-        project_list = []
         for p in projects:
             project_list += [{'label': p.name, 'value': p.id}]
-    else:
-        project_list = []
-    response['projects'] = project_list
 
-    
+    response['projects'] = project_list
     response['editable'] = editable
+
     return HttpResponse(json.dumps(response), content_type='application/json')
 
 
@@ -279,45 +286,63 @@ def update_species_map(request):
         type = '相機位置'
         # 確定有沒有子樣區
         subsa = StudyArea.objects.filter(parent_id=sa)
-        sa_list = [str(s.id) for s in subsa]
-        if sa_list:
-            query = f"""
-                    SELECT COUNT(*), d.longitude, d.latitude, d.name, d.geodetic_datum FROM taicat_image i 
-                    JOIN taicat_deployment d ON i.deployment_id = d.id
-                    WHERE i.species='{species}' AND i.studyarea_id IN ({','.join(sa_list)})"""
+        if subsa:
+            sa_list = [int(s.id) for s in subsa]
         else:
-            query = f"""
-                    SELECT COUNT(*), d.longitude, d.latitude, d.name, d.geodetic_datum FROM taicat_image i 
-                    JOIN taicat_deployment d ON i.deployment_id = d.id
-                    WHERE i.species='{species}' AND i.studyarea_id={sa}"""
+            sa_list = [int(sa)]
+        # if sa_list:
+        #     query = f"""
+        #             SELECT COUNT(*), d.longitude, d.latitude, d.name, d.geodetic_datum FROM taicat_image i 
+        #             JOIN taicat_deployment d ON i.deployment_id = d.id
+        #             WHERE i.species = %s AND i.studyarea_id IN ({','.join(sa_list)})"""
+        # else:
+        #     query = f"""
+        #             SELECT COUNT(*), d.longitude, d.latitude, d.name, d.geodetic_datum FROM taicat_image i 
+        #             JOIN taicat_deployment d ON i.deployment_id = d.id
+        #             WHERE i.species = %s AND i.studyarea_id={sa}"""
+        # if sa_list:
+        query = f"""
+                SELECT COUNT(*), d.longitude, d.latitude, d.name, d.geodetic_datum FROM taicat_image i 
+                JOIN taicat_deployment d ON i.deployment_id = d.id
+                WHERE i.species = %s AND i.studyarea_id = ANY (%s)"""
+        # else:
+        #     query = f"""
+        #             SELECT COUNT(*), d.longitude, d.latitude, d.name, d.geodetic_datum FROM taicat_image i 
+        #             JOIN taicat_deployment d ON i.deployment_id = d.id
+        #             WHERE i.species = %s AND i.studyarea_id={sa}"""
     elif pk := request.GET.get('said[project]'):
         type = '樣區'
         # 抓樣區中心點 group by 樣區
         sas = StudyArea.objects.filter(project_id=pk)
-        sa_list = [str(s.id) for s in sas]
+        sa_list = [int(s.id) for s in sas]
         # sa = StudyAreaStat.objects.filter(studyarea_id__in=sa_list)
         if sa_list:
             if last_updated := StudyAreaStat.objects.filter(studyarea_id__in=sa_list).aggregate(Min('last_updated'))['last_updated__min']:
             # has_new = Deployment.objects.filter(last_updated__gte=last_updated, study_area_id__in=sa_list).exists()
                 if Deployment.objects.filter(last_updated__gte=last_updated, study_area_id__in=sa_list).exists():
-                    update_studyareastat(','.join(sa_list))
+                    update_studyareastat(sa_list)
             else:
-                update_studyareastat(','.join(sa_list))
+                update_studyareastat(sa_list)
+            # query = f"""
+            #         SELECT COUNT(*), sas.longitude, sas.latitude, sa.name, '' FROM taicat_image i 
+            #         JOIN taicat_studyareastat sas ON i.studyarea_id = sas.studyarea_id
+            #         JOIN taicat_studyarea sa ON i.studyarea_id = sa.id
+            #         WHERE i.species = %s AND i.studyarea_id IN ({','.join(sa_list)})"""
             query = f"""
                     SELECT COUNT(*), sas.longitude, sas.latitude, sa.name, '' FROM taicat_image i 
                     JOIN taicat_studyareastat sas ON i.studyarea_id = sas.studyarea_id
                     JOIN taicat_studyarea sa ON i.studyarea_id = sa.id
-                    WHERE i.species='{species}' AND i.studyarea_id IN ({','.join(sa_list)})"""
+                    WHERE i.species = %s AND i.studyarea_id  = ANY (%s)"""
     if query:
         if date_filter:
             query += date_filter
 
         with connection.cursor() as cursor:
             if sa:
-                query += ' group by i.deployment_id, d.longitude, d.latitude, d.name, d.geodetic_datum'
+                query += ' GROUP BY i.deployment_id, d.longitude, d.latitude, d.name, d.geodetic_datum'
             elif pk:
-                query += ' group by i.studyarea_id, sas.longitude, sas.latitude, sa.name'
-            cursor.execute(query)
+                query += ' GROUP BY i.studyarea_id, sas.longitude, sas.latitude, sa.name'
+            cursor.execute(query, (species, sa_list, ))
             data = cursor.fetchall()
             for d in data:
                 if d[4] == 'TWD97':
@@ -385,20 +410,21 @@ def delete_dep_sa(request):
 
 def get_sa_points(request):
     sa_list = request.GET.getlist('sa[]')
+    sa_list = [int(s) for s in sa_list]
     sa_points = []
     if sa_list:
         if last_updated := StudyAreaStat.objects.filter(studyarea_id__in=sa_list).aggregate(Min('last_updated'))['last_updated__min']:
             if Deployment.objects.filter(last_updated__gte=last_updated, study_area_id__in=sa_list).exists():
-                update_studyareastat(','.join(sa_list))
+                update_studyareastat(sa_list)
         else:
-            update_studyareastat(','.join(sa_list))
+            update_studyareastat(sa_list)
 
         with connection.cursor() as cursor:
-            query = f"""SELECT sas.longitude, sas.latitude, sa.name, sa.id  
+            query = """SELECT sas.longitude, sas.latitude, sa.name, sa.id  
                         FROM taicat_studyareastat sas  
                         JOIN taicat_studyarea sa ON sas.studyarea_id = sa.id
-                        WHERE sas.studyarea_id IN ({','.join(sa_list)});"""
-            cursor.execute(query)
+                        WHERE sas.studyarea_id = ANY (%s);"""
+            cursor.execute(query, (sa_list, ))
             sa_points = cursor.fetchall()
         
     response = {'sa_points': sa_points}
@@ -413,8 +439,8 @@ def get_subsa(request):
         with connection.cursor() as cursor:
             query = f"""SELECT id, name
                         FROM taicat_studyarea   
-                        WHERE parent_id = {said};"""
-            cursor.execute(query)
+                        WHERE parent_id = %s;"""
+            cursor.execute(query, (said, ))
             subsas = cursor.fetchall()
         
     response = {'subsas': subsas}
@@ -437,8 +463,6 @@ def update_species_pie(request):
         end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d") + datetime.timedelta(days=1)
         date_filter = " AND datetime < '{}'".format(end_date)
 
-    # print(date_filter)
-
     species_count = 0
     species_last_updated = None
     species_total_count = 0
@@ -449,16 +473,16 @@ def update_species_pie(request):
     if sa := request.GET.get('said'):
         # 確定有沒有子樣區
         subsa = StudyArea.objects.filter(parent_id=sa)
-        sa_list = [str(s.id) for s in subsa]
-        # pie data
-        if sa_list:
-            query = f"select count(*) from taicat_image where studyarea_id IN ({','.join(sa_list)})"
+        if subsa:
+            sa_list = [int(s.id) for s in subsa]
         else:
-            query = f"select count(*) from taicat_image where studyarea_id={sa}"
+            sa_list = [int(sa)]
+        # pie data
+        query = f"SELECT COUNT(*) FROM taicat_image WHERE studyarea_id = ANY (%s)"
         if date_filter:
             query += date_filter
         with connection.cursor() as cursor:
-            cursor.execute(query)
+            cursor.execute(query, (sa_list,))
             species_total_count = cursor.fetchall()
             species_total_count = species_total_count[0][0]
 
@@ -468,10 +492,10 @@ def update_species_pie(request):
             species_last_updated = timezone.now() + timedelta(hours=8)
             species_last_updated = datetime.datetime.strftime(species_last_updated,'%Y-%m-%d') 
             pre_q = Image.objects
-            if sa_list:
-                pre_q = pre_q.filter(studyarea_id__in=sa_list)
-            else:
-                pre_q = pre_q.filter(studyarea_id=sa)
+            # if sa_list:
+            pre_q = pre_q.filter(studyarea_id__in=sa_list)
+            # else:
+            #     pre_q = pre_q.filter(studyarea_id=sa)
             if start_date:
                 pre_q = pre_q.filter(datetime__gte=start_date)
             if end_date:
@@ -496,21 +520,31 @@ def update_species_pie(request):
                 pie_data += [others]
 
         # deployments
-        if sa_list:
+        if subsa:
             # 抓子樣區 & 該樣區底下的相機位置
             # SAS裡面已經都是WGS84
-            query = f"""SELECT sas.longitude, sas.latitude, sa.name, TRUE as sub, sa.id, 'WGS84' FROM taicat_studyareastat sas
+            query = f"""SELECT sas.longitude, sas.latitude, sa.name, TRUE AS sub, sa.id, 'WGS84' 
+                        FROM taicat_studyareastat sas
                         JOIN taicat_studyarea sa ON sas.studyarea_id = sa.id
-                        WHERE sas.studyarea_id IN ({','.join(sa_list)}) 
+                        WHERE sas.studyarea_id = ANY (%s) 
                         UNION 
-                        SELECT longitude, latitude, name, FALSE as sub, study_area_id, geodetic_datum FROM taicat_deployment WHERE study_area_id = {sa} 
-                        ORDER BY longitude DESC;"""
-        else:
-            query = f"""SELECT longitude, latitude, name, FALSE as sub, study_area_id, geodetic_datum FROM taicat_deployment WHERE study_area_id = {sa} ORDER BY longitude DESC;"""
+                        SELECT longitude, latitude, name, FALSE as sub, study_area_id, geodetic_datum 
+                        FROM taicat_deployment WHERE study_area_id = %s
+                        ORDER BY longitude DESC;
+                        """ 
+            with connection.cursor() as cursor:
+                cursor.execute(query, (sa_list, sa))
+                deployment_points = cursor.fetchall()
 
-        with connection.cursor() as cursor:
-            cursor.execute(query)
-            deployment_points = cursor.fetchall()
+        else:
+            query = f"""SELECT longitude, latitude, name, FALSE as sub, study_area_id, geodetic_datum 
+                            FROM taicat_deployment WHERE study_area_id = %s
+                            ORDER BY longitude DESC;"""
+
+
+            with connection.cursor() as cursor:
+                cursor.execute(query, (sa, ))
+                deployment_points = cursor.fetchall()
             
             for d in deployment_points:
                 if d[5] == 'TWD97':
@@ -524,14 +558,14 @@ def update_species_pie(request):
                     new_deployment_points.append((gdf.geometry.x[0], gdf.geometry.y[0], d[2], d[3], d[4], d[5]))
                 else:
                     new_deployment_points.append(d)
-            
+    
     elif pk := request.GET.get('said[project]'):
         deployment_points = []
-        query = f"select count(*) from taicat_image where project_id={pk}"
+        query = f"SELECT COUNT(*) FROM taicat_image WHERE project_id= %s"
         if date_filter:
             query += date_filter
         with connection.cursor() as cursor:
-            cursor.execute(query)
+            cursor.execute(query, (pk, ))
             species_total_count = cursor.fetchall()
             species_total_count = species_total_count[0][0]
         
@@ -580,7 +614,7 @@ def project_info(request, pk):
     
     # 系統管理員
     member_id = request.session.get('id', None)
-    system_admin = Contact.objects.filter(id=member_id, is_system_admin=True).exists()
+    # system_admin = Contact.objects.filter(id=member_id, is_system_admin=True).exists()
     
     # 團隊成員名單
     pm_list = get_project_member(pk)
@@ -618,9 +652,9 @@ def project_info(request, pk):
     species_count = 0
     species_last_updated = None
 
-    query = f"select sum(count) from taicat_projectspecies where project_id={pk};"
+    query = f"SELECT SUM(count) FROM taicat_projectspecies WHERE project_id = %s;"
     with connection.cursor() as cursor:
-        cursor.execute(query)
+        cursor.execute(query, (pk, ))
         species_total_count = cursor.fetchall()
         species_total_count = species_total_count[0][0]
 
@@ -659,16 +693,52 @@ def project_info(request, pk):
     return render(request, 'project/project_info.html', {'pk': pk, 'project': project, 'is_authorized': is_authorized,
                                                         'sa_point': sa_center, 'species_count': species_count, 'sa': sa,
                                                         'species_last_updated': species_last_updated, 'pie_data': pie_data,
-                                                        'other_data': other_data, 'sa_list': sa_list, 'zoom':zoom, 'is_project_authorized': is_project_authorized,'is_project_public':is_project_public})
+                                                        'other_data': other_data, 'sa_list': sa_list, 'zoom':zoom, 
+                                                        'is_project_authorized': is_project_authorized,'is_project_public':is_project_public})
 
 
 def delete_data(request, pk):
     species_list = []
+    image_list = []
+    delete_list = []
+    return_mesg = False # 若沒有權限 但刪除到原始資料 回傳訊息
     if request.method == "POST":
-        image_list = request.POST.getlist('image_id[]')
-        species_list = delete_image_by_ids(image_list, pk)
 
-    response = {'species': species_list}
+        # 確認是否有刪除權限
+        if check_if_authorized(request, pk):
+            image_list = request.POST.getlist('image_id[]')
+            image_uuid_list = request.POST.getlist('image_uuid[]')
+            image_df = pd.DataFrame({'image_id': image_list, 'image_uuid': image_uuid_list})
+            # 用id排序 後面選擇要刪除的照片 就可以留著最舊的那筆
+            image_df = image_df.sort_values('image_id',ascending=False)
+            # 確認是否有刪除原始照片的權限 若沒有的話 確認沒有刪到原始照片
+            if not check_if_authorized_delete(request, pk):
+                deleting_data = image_df.groupby('image_uuid', as_index=False).count()
+                data = pd.DataFrame(Image.objects.filter(image_uuid__in=image_uuid_list).values('image_uuid').annotate(total=Count('id')).order_by('total'))
+                data = data.merge(deleting_data)
+                data['delete_count'] = data.total.apply(lambda x: x-1)
+                if len(data[data.delete_count==0]):
+                    return_mesg = True
+                # total 代表資料庫有的筆數 image_id 代表欲刪除的筆數
+                # 要至少留一筆
+                # data = data[data.able_to_delete>0].to_dict(orient='records')
+                for i in data[data.delete_count>0].to_dict(orient='records'):
+                    current_uuid = i.get('image_uuid')
+                    delete_count = i.get('delete_count')
+                    delete_list += image_df[image_df.image_uuid==current_uuid].image_id.to_list()[:delete_count]
+                    if delete_count < i.get('total'):
+                        return_mesg = True
+                # data = data[data.image_id < data.total]
+            
+            else:
+                delete_list = image_list
+
+            # 回傳需要更新的側邊物種統計
+            if len(delete_list):
+                species_list = delete_image_by_ids(delete_list, pk)
+
+
+    response = {'species': species_list, 'return_mesg': return_mesg}
     return JsonResponse(response, safe=False)  # or JsonResponse({'data': data})
 
 
@@ -731,7 +801,7 @@ def edit_image(request, pk):
             else:
                 sp = Species(name=species, last_updated=now, count=c)
                 if species in Species.DEFAULT_LIST:
-                    sp.status = 'I'
+                    sp.is_default = True
                 sp.save()
 
         # taicat_projectspecies
@@ -769,9 +839,9 @@ def edit_image(request, pk):
                 p_stat.num_data -= c
                 p_stat.last_updated = now
                 if latest_date == p_stat.latest_date or earliest_date == p_stat.earliest_date: # 重新計算
-                    query = f"select min(datetime), max(datetime) from taicat_image where project_id={pk};"
+                    query = f"SELECT MIN(datetime), MAX(datetime) FROM taicat_image WHERE project_id = %s;"
                     with connection.cursor() as cursor:
-                        cursor.execute(query)
+                        cursor.execute(query, (pk, ))
                         dates = cursor.fetchall()
                     p_latest_date = dates[0][1]
                     p_earliest_date = dates[0][0]
@@ -817,8 +887,8 @@ def edit_image(request, pk):
         with connection.cursor() as cursor:
             query = f"""SELECT folder_name,
                         to_char(folder_last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS folder_last_updated
-                        FROM taicat_imagefolder WHERE project_id = {pk}"""
-            cursor.execute(query)
+                        FROM taicat_imagefolder WHERE project_id = %s"""
+            cursor.execute(query, (pk, ))
             folder_list = cursor.fetchall()
             columns = list(cursor.description)
             results = []
@@ -830,76 +900,6 @@ def edit_image(request, pk):
 
         response = {'species': list(species), 'folder_list': results}
         return JsonResponse(response, safe=False)  # or JsonResponse({'data': data})
-
-
-city_list = ['基隆市', '嘉義市', '台北市', '嘉義縣', '新北市', '台南市',
-             '桃園縣', '高雄市', '新竹市', '屏東縣', '新竹縣', '台東縣',
-             '苗栗縣', '花蓮縣', '台中市', '宜蘭縣', '彰化縣', '澎湖縣',
-             '南投縣', '金門縣', '雲林縣',	'連江縣']
-
-species_list = ['水鹿', '山羌', '獼猴', '山羊', '野豬', '鼬獾', '白鼻心', '食蟹獴', '松鼠',
-                '飛鼠', '黃喉貂', '黃鼠狼', '小黃鼠狼', '麝香貓', '黑熊', '石虎', '穿山甲', '梅花鹿', '野兔', '蝙蝠']
-
-
-def sortFunction(value):
-    return value["id"]
-
-# 使用者是否有系統管理者/project_admin/總管理人的權限
-def check_if_authorized(request, pk):
-    is_authorized = False
-    member_id = request.session.get('id', None)
-    if member_id:
-        # check system_admin
-        if Contact.objects.filter(id=member_id, is_system_admin=True):
-            is_authorized = True
-        # check project_member (project_admin)
-        elif ProjectMember.objects.filter(member_id=member_id, role="project_admin", project_id=pk):
-            is_authorized = True
-        else:
-            # check organization_admin
-            if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
-            if if_organization_admin:
-                organization_id = if_organization_admin.values('organization').first()['organization']
-                if Organization.objects.filter(id=organization_id, projects=pk):
-                    is_authorized = True
-    return is_authorized
-
-
-# 是否可以看到計畫資訊/詳細內容(使用者是 系統管理者/團隊成員/總管理人，或公開資料)
-def check_if_authorized_project(request, pk):
-    is_authorized = False
-    member_id = request.session.get('id', None)
-    if member_id:
-        # check system_admin
-        if Contact.objects.filter(id=member_id, is_system_admin=True):
-            is_authorized = True
-        # check project_member 
-        elif ProjectMember.objects.filter(member_id=member_id, project_id=pk).exists():
-            is_authorized = True
-        else:
-            # check organization_admin
-            if_organization_admin = Contact.objects.filter(id=member_id, is_organization_admin=True)
-            if if_organization_admin:
-                organization_id = if_organization_admin.values('organization').first()['organization']
-                if Organization.objects.filter(id=organization_id, projects=pk):
-                    is_authorized = True
-    # 計畫是否已公開
-    elif Project.objects.filter(id=pk, is_public=True).exists():
-        is_authorized = True
-    return is_authorized
-
-def check_if_authorized_create(request):
-    is_authorized = False
-    member_id = request.session.get('id', None)
-    if member_id:
-        if Contact.objects.filter(id=member_id, is_system_admin=True):
-            is_authorized = True
-        # 如果是任何計畫的承辦人
-        elif ProjectMember.objects.filter(member_id=member_id, role="project_admin"):
-            is_authorized = True
-        elif Contact.objects.filter(id=member_id, is_organization_admin=True):
-            is_authorized = True
-    return is_authorized
 
 
 def create_project(request):
@@ -1059,8 +1059,8 @@ def get_deployment(request):
         with connection.cursor() as cursor:
             query = """SELECT id, name, longitude, latitude, altitude, county, protectedarea, vegetation,landcover, verbatim_locality, 
                         geodetic_datum, deprecated FROM taicat_deployment 
-                        WHERE study_area_id = {} ORDER BY id ASC;"""
-            cursor.execute(query.format(id))
+                        WHERE study_area_id = %s ORDER BY id ASC;"""
+            cursor.execute(query, (id, ))
             data = cursor.fetchall()
         return HttpResponse(json.dumps(data, cls=DecimalEncoder), content_type='application/json')
 
@@ -1117,10 +1117,13 @@ def add_deployment(request):
         
         if ids:
             with connection.cursor() as cursor:
+                # query = f"""SELECT id, name, longitude, latitude, altitude, county, protectedarea, vegetation, landcover, verbatim_locality, 
+                #             geodetic_datum, deprecated FROM taicat_deployment 
+                #             WHERE id in ({str(ids).replace('[','').replace(']','')}) ORDER BY id ASC;"""
                 query = f"""SELECT id, name, longitude, latitude, altitude, county, protectedarea, vegetation, landcover, verbatim_locality, 
                             geodetic_datum, deprecated FROM taicat_deployment 
-                            WHERE id in ({str(ids).replace('[','').replace(']','')}) ORDER BY id ASC;"""
-                cursor.execute(query.format(study_area_id))
+                            WHERE id = ANY(%s) ORDER BY id ASC;"""
+                cursor.execute(query, (ids,))
                 data = cursor.fetchall()
 
 
@@ -1147,14 +1150,14 @@ def add_studyarea(request):
 
 def get_project_info(project_list):
     with connection.cursor() as cursor:
-        q = f"SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, \
-                    EXTRACT (year from taicat_project.start_date)::int, \
-                    taicat_project.funding_agency \
-                    FROM taicat_project \
-                    WHERE taicat_project.id IN {project_list} \
-                    GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id \
-                    ORDER BY taicat_project.start_date DESC;"
-        cursor.execute(q)
+        q = f"""SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, 
+                    EXTRACT (year from taicat_project.start_date)::int, 
+                    taicat_project.funding_agency 
+                    FROM taicat_project 
+                    WHERE taicat_project.id = ANY (%s)
+                    GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id 
+                    ORDER BY taicat_project.start_date DESC;"""
+        cursor.execute(q, (project_list, ))
         project_info = cursor.fetchall()
         project_info = pd.DataFrame(project_info, columns=['id', 'name', 'keyword', 'start_year', 'funding_agency'])
     # count data
@@ -1276,23 +1279,22 @@ def project_overview(request):
     with connection.cursor() as cursor:
         # q = "SELECT taicat_project.id FROM taicat_project \
         #     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
-        q = "SELECT taicat_project.id FROM taicat_project \
-            WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't';"
+        q = "SELECT taicat_project.id FROM taicat_project WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't';"
         cursor.execute(q)
         public_project_list = [l[0] for l in cursor.fetchall()]
     if public_project_list:
-        public_project, public_species_data = get_project_info(str(public_project_list).replace('[', '(').replace(']', ')'))
+        public_project, public_species_data = get_project_info(public_project_list)
     # ---------------我的計畫
     # my project
     my_project = []
     my_species_data = []
     if member_id := request.session.get('id', None):
         if my_project_list := get_my_project_list(member_id,[]):
-            my_project, my_species_data = get_project_info(str(my_project_list).replace('[', '(').replace(']', ')'))
+            my_project, my_species_data = get_project_info(my_project_list)
     return render(request, 'project/project_overview.html', {'public_project': public_project, 'my_project': my_project, 'is_authorized_create': is_authorized_create,
                                                              'public_species_data': public_species_data, 'my_species_data': my_species_data})
 
-
+# project overview datatable
 def update_datatable(request):
     # base on species filter
     if request.method == 'POST':
@@ -1303,8 +1305,7 @@ def update_datatable(request):
             with connection.cursor() as cursor:
                 # q = "SELECT taicat_project.id FROM taicat_project \
                 #     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
-                q = "SELECT taicat_project.id FROM taicat_project \
-                    WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't';"
+                q = "SELECT taicat_project.id FROM taicat_project WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't';"
                 cursor.execute(q)
                 public_project_list = [l[0] for l in cursor.fetchall()]
             project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=public_project_list).order_by('project_id').distinct('project_id')
@@ -1318,7 +1319,7 @@ def update_datatable(request):
                         project_list = list(project_list.values_list('project_id', flat=True))
         project = []
         if project_list:
-            project_list = str(project_list).replace('[', '(').replace(']', ')')
+            # project_list = str(project_list).replace('[', '(').replace(']', ')')
             project, _ = get_project_info(project_list)
     return HttpResponse(json.dumps(project), content_type='application/json')
 
@@ -1341,11 +1342,10 @@ def project_detail(request, pk):
         is_project_public = True
 
     with connection.cursor() as cursor:
-        query = "SELECT name, funding_agency, code, " \
-                "principal_investigator, " \
-                "to_char(start_date, 'YYYY-MM-DD'), " \
-                "to_char(end_date, 'YYYY-MM-DD') FROM taicat_project WHERE id={}"
-        cursor.execute(query.format(pk))
+        query = """SELECT name, funding_agency, code, principal_investigator, 
+                        to_char(start_date, 'YYYY-MM-DD'), to_char(end_date, 'YYYY-MM-DD') 
+                        FROM taicat_project WHERE id= %s"""
+        cursor.execute(query, (pk, ))
         project_info = cursor.fetchone()
     project_info = list(project_info)
     deployment = Deployment.objects.filter(project_id=pk).order_by('name')
@@ -1459,12 +1459,12 @@ def project_detail(request, pk):
         latest_date, earliest_date = None, None
 
     with connection.cursor() as cursor:
-        query = f"""SELECT folder_name,
-                        to_char(folder_last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS folder_last_updated
-                        FROM taicat_imagefolder
-                        WHERE project_id = {pk} 
-                        ORDER BY folder_last_updated desc"""
-        cursor.execute(query)
+        query = """SELECT folder_name,
+                    to_char(folder_last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS folder_last_updated
+                    FROM taicat_imagefolder
+                    WHERE project_id = %s
+                    ORDER BY folder_last_updated desc"""
+        cursor.execute(query, (pk, ))
         folder_list = cursor.fetchall()
         columns = list(cursor.description)
         results = []
@@ -1538,6 +1538,7 @@ def update_edit_autocomplete(request):
             return JsonResponse({"sa_d_list": sa_d_list, "sa_list": sa_list}, safe=False)
 
 
+# TODO 這邊要改成django query嗎？
 def data(request):
     # t = time.time()
     requests = request.POST
@@ -1634,11 +1635,12 @@ def data(request):
                             to_char(i.datetime AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS datetime, i.memo, i.specific_bucket
                             FROM taicat_image i
                             JOIN ({}) d ON d.id = i.deployment_id
-                            WHERE i.species not in ('人','人（有槍）','人＋狗','狗＋人','獵人','砍草工人','研究人員','研究人員自己','除草工人') and i.project_id = {} {} {} {} {} {}
+                            WHERE i.species not in ('人','人（有槍）','人＋狗','狗＋人','獵人','砍草工人','研究人員','研究人員自己','除草工人') 
+                            and i.project_id = {} {} {} {} {} {}
                             ORDER BY {} {}, i.id ASC
                             LIMIT {} OFFSET {}"""
         # set limit = 1000 to avoid bad psql query plan
-        cursor.execute(query.format(deployment_sql,pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, orderby, sort, 1000, _start))
+        cursor.execute(query.format(deployment_sql, pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, orderby, sort, 1000, _start))
         image_info = cursor.fetchall()
         # print(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, 1000, _start))
     if image_info:
@@ -1747,7 +1749,8 @@ def data(request):
             ### videos: https://developer.mozilla.org/zh-CN/docs/Web/HTML/Element/video ##
         # print('e', time.time()-t)
 
-        df['edit'] = df.image_id.apply(lambda x: f"<input type='checkbox' class='edit-checkbox' name='edit' value='{x}'>")
+        # df['edit'] = df.image_id.apply(lambda x: f"<input type='checkbox' class='edit-checkbox' name='edit' value='{x}' data-uuid='{}'>")
+        df['edit'] = df.apply(lambda x: f"<input type='checkbox' class='edit-checkbox' name='edit' value='{x.image_id}' data-uuid='{x.image_uuid}'>", axis=1)
 
         cols = ['edit', 'saname', 'dname', 'filename', 'datetime', 'species', 'life_stage',
                 'sex', 'antler', 'animal_id', 'remarks', 'file_url', 'image_uuid', 'image_id']
@@ -1893,13 +1896,14 @@ def generate_download_excel(request, pk):
     if settings.ENV == 'prod':
         download_url = download_url.replace('http', 'https')
     # download_log
-    condiction_log = f'''計畫名稱:{project_name}, 日期：{date_filter}。樣區：{sa_download_log}。相機位置：{dep_download_log}。海拔：{start_altitude}~{end_altitude}。物種：{spe_conditions} 。時間：{time_filter}。縣市：{county_name}。保護留區：{protectarea_name}。資料夾：{folder_filter} 。'''
-    download_log_sql = DownloadLog(user_role=user_role, condiction=condiction_log,file_link=download_url)#file_link=download_url
+    condition_log = f'''計畫名稱:{project_name}, 日期：{date_filter}。樣區：{sa_download_log}。相機位置：{dep_download_log}。海拔：{start_altitude}~{end_altitude}。物種：{spe_conditions} 。時間：{time_filter}。縣市：{county_name}。保護留區：{protectarea_name}。資料夾：{folder_filter} 。'''
+    download_log_sql = DownloadLog(user_role=user_role, condition=condition_log,file_link=download_url)#file_link=download_url
     download_log_sql.save()
     email_subject = '[臺灣自動相機資訊系統] 下載資料'
     email_body = render_to_string('project/download.html', {'download_url': download_url, })
     send_mail(email_subject, email_body, settings.CT_SERVICE_EMAIL, [email])
     # return response
+
 
 def download_project_oversight(request, pk):
     # TODO auth
@@ -2060,7 +2064,7 @@ def api_create_or_list_deployment_journals(request):
         return JsonResponse(ret)
 
     if request.method == 'GET':
-        return HtmlResponse('list deployment journals')
+        return HttpResponse('list deployment journals')
 
 
 @csrf_exempt
@@ -2107,12 +2111,9 @@ def get_gap_choice(request):
 def get_parameter_name(request):
     if request.method == "GET":
         pn_type = request.GET.get('type')
+        parameter_name = ''
         if ParameterCode.objects.filter(type=pn_type).exists():
             parameter_name =ParameterCode.objects.filter(type=pn_type).values("name","pmajor","type","parametername")
-        else:
-            parameter_name = ''
-            
-            
         code = [{
             'name':x['name'],
             'pmajor': x['pmajor'],
