@@ -32,7 +32,7 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile-postgres
-    image: ct-postgres-image
+    # image: ct-postgres-image
     container_name: ct21-postgres-container
     restart: always
     volumes:
