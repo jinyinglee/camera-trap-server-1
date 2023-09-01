@@ -462,7 +462,7 @@ class Deployment(models.Model):
     verbatim_locality = models.CharField(max_length=1000, blank=True, null=True)
     # 是否已棄用
     deprecated = models.BooleanField(default=False, blank=True)
-    calculation_data = models.JSONField(default=dict, blank=True, null=True)
+    # calculation_data = models.JSONField(default=dict, blank=True, null=True)
 
     def __str__(self):
         return f'<Deployment {self.name}>'
@@ -803,13 +803,13 @@ class Image(models.Model):
     # dateTimeCaptured
     datetime = models.DateTimeField(null=True, db_index=True)
     # photoType
-    photo_type = models.CharField(max_length=100, null=True, choices=PHOTO_TYPE_CHOICES)
+    # photo_type = models.CharField(max_length=100, null=True, choices=PHOTO_TYPE_CHOICES)
     # photoTypeIdentifiedBy
-    count = models.PositiveSmallIntegerField(default=1, db_index=True)
+    # count = models.PositiveSmallIntegerField(default=1, db_index=True)
     species = models.CharField(max_length=1000, null=True, default='', blank=True, db_index=True)
     #taxon = models
-    sequence = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)  # imageid
-    sequence_definition = models.CharField(max_length=1000, default='', null=True, blank=True)
+    # sequence = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)  # imageid
+    # sequence_definition = models.CharField(max_length=1000, default='', null=True, blank=True)
     annotation_seq = models.PositiveSmallIntegerField(default=0, null=True)
     life_stage = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
     sex = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
@@ -828,7 +828,7 @@ class Image(models.Model):
     image_uuid = models.CharField(max_length=1000, default='', blank=True, null=True, db_index=True)
     has_storage = models.CharField('實體檔案(有無上傳)', max_length=2, default='Y', blank=True) # Y/N or 如果之後有其他種狀況, 如: 存在別的圖台?
     source_data = models.JSONField(default=dict, blank=True)
-    exif = models.JSONField(default=dict, blank=True)
+    # exif = models.JSONField(default=dict, blank=True)
     folder_name = models.CharField(max_length=1000, default='', blank=True, db_index=True)
     specific_bucket = models.CharField(max_length=1000, default='', blank=True) # 跟預設不同的 bucket
     deployment_journal = models.ForeignKey('DeploymentJournal', on_delete=models.SET_NULL, null=True, blank=True) # 知道是那次上傳的
@@ -907,11 +907,11 @@ class DeletedImage(models.Model):
     file_url = models.CharField(max_length=1000, null=True)
     filename = models.CharField(max_length=1000)  # first file if is_sequence
     datetime = models.DateTimeField(null=True, db_index=True)
-    photo_type = models.CharField(max_length=100, null=True, choices=PHOTO_TYPE_CHOICES)
-    count = models.PositiveSmallIntegerField(default=1, db_index=True)
+    # photo_type = models.CharField(max_length=100, null=True, choices=PHOTO_TYPE_CHOICES)
+    # count = models.PositiveSmallIntegerField(default=1, db_index=True)
     species = models.CharField(max_length=1000, null=True, default='', blank=True, db_index=True)
-    sequence = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)  # imageid
-    sequence_definition = models.CharField(max_length=1000, default='', blank=True)
+    # sequence = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)  # imageid
+    # sequence_definition = models.CharField(max_length=1000, default='', blank=True)
     annotation_seq = models.PositiveSmallIntegerField(default=0, null=True)
     life_stage = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
     sex = models.CharField(max_length=1000, default='', null=True, blank=True, db_index=True)
@@ -927,7 +927,7 @@ class DeletedImage(models.Model):
     from_mongo = models.BooleanField(default=False, blank=True)
     image_uuid = models.CharField(max_length=1000, default='', blank=True, null=True, db_index=True)
     source_data = models.JSONField(default=dict, blank=True)
-    exif = models.JSONField(default=dict, blank=True)
+    # exif = models.JSONField(default=dict, blank=True)
     folder_name = models.CharField(max_length=1000, default='', blank=True, db_index=True)
     has_storage = models.CharField('實體檔案(有無上傳)', max_length=2, default='Y', blank=True) # Y/N or 如果之後有其他種狀況, 如: 存在別的圖台?
     specific_bucket = models.CharField(max_length=1000, default='', blank=True) # 跟預設不同的 bucket
