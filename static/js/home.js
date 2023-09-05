@@ -347,7 +347,7 @@
                     </div>
                     <div class="mapiconbox">
                       <button class="resetMapExplore" data-county="${county}">< 返回</button>
-                      <img src="static/image/marker-icon.png" alt="">
+                      <img src="/static/image/marker-icon.png" alt="">
                       <p>相機位置</p>
                     </div>
                       `);                                        
@@ -475,7 +475,7 @@
           </li>
           </ul>
           <div class="mapiconbox">
-            <img src="static/image/marker-icon-error.png" alt="">
+            <img src="/static/image/marker-icon-error.png" alt="">
             <p>樣區</p>
           </div>
           `
