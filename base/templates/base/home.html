@@ -12,7 +12,159 @@
 
 <link href="{% static 'css/home.css' %}" rel="stylesheet">
 
-{% endblock head %} {% block body %}
+{% endblock head %} 
+
+
+{% block body %}
+
+<section class="kv-area">
+  <div class="main-box">
+    <div class="title-areabox">
+      <h2>
+        臺灣自動相機資訊系統
+      </h2>
+      <h3>Taiwan Camera Trap Information System</h3>
+      <a href="{% url 'project_overview' %}" class="start-btn">
+        開始使用
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="map-section">
+  <div class="main-box">
+    <div class="left-map">
+      <div class="map-area">
+        <div class="mapbox">
+          <!--<img src="static/image/mapp.png" alt="">-->
+          <div id="map"></div>
+
+        </div>
+      </div>
+    </div>
+    <div class="map-content">
+
+      <!--進場還沒點地圖時候顯示-->
+      <div class="inf-box d-block">
+        <div class="top">
+          <h2>自動相機資料庫</h2>
+          <h3>共享的資料平台</h3>
+          <p class="short">Camera Trap提供研究人員自動相機影像統一倉儲、管理、 查詢及分析的便利性，透過公開資源的共享，與其他專業人士交流、探索生態與開創更多研究可能性。</p>
+        </div>
+        <div class="note">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14.207" height="9.414" viewBox="0 0 14.207 9.414">
+            <g id="Group_874" data-name="Group 874" transform="translate(-989.793 -1177.793)">
+              <line id="Line_41" data-name="Line 41" x2="13" transform="translate(990.5 1182.5)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="1"/>
+              <line id="Line_42" data-name="Line 42" x1="4" y2="4" transform="translate(990.5 1178.5)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="1"/>
+              <line id="Line_43" data-name="Line 43" x1="4" y1="4" transform="translate(990.5 1182.5)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="1"/>
+            </g>
+          </svg>
+          <p>點擊地圖區塊進行資料探索</p>
+        </div>
+      </div>
+
+
+      <!--點擊縣市出現資料-->
+      <div class="city-box d-none">
+      </div>
+
+      <!--點擊pin出現長條圖-->
+      <div class="pin-chartbox d-none">
+
+
+        
+        <h2>花蓮處</h2>
+        <h3>自動相機動物監測整合計畫</h3>
+        <div class="mbscro">
+          <div class="chart-box">
+
+            <img src="static/image/examplepic3.png" alt="">
+          </div>
+        </div>
+        <div class="mapiconbox">
+          <button>< 返回</button>
+          <img src="static/image/marker-icon.png" alt="">
+          <p>相機位置</p>
+        </div>
+
+
+
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+<section class="chart-section">
+  <div class="main-box">
+    <div class="left-box">
+      <div class="chart-title">
+        <h3>
+          資料成長數
+          <span class="line"></span>
+        </h3>
+      </div>
+      <div class="mbscro">
+        <div class="chart-area">
+          <div id="data_growth" class="mx-auto"></div>
+        </div>
+      </div>
+    </div>
+    <div class="right-box">
+      <div class="chart-title">
+        <h3>
+          物種數
+          <span class="line"></span>
+        </h3>
+      </div>
+      <div class="mbscro">
+        <div class="chart-area">
+          <div id="species_data" class="mx-auto"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="three-iconbox">
+  <div class="main-box">
+    <div class="title-center">
+      減少相機資料處理時間，提升工作效率
+    </div>
+    <ul class="icon-li">
+      <li>
+        <div class="icon">
+          <img class="coricon" src="static/image/service-1.png" alt="">
+        </div>
+        <h3>資料彙整</h3>
+        <p>資料雲端留存，統一管理</p>
+      </li>
+      <li>
+        <div class="icon">
+          <img class="coricon" src="static/image/service-2.png" alt="">
+        </div>
+        <h3>資料處理</h3>
+        <p>辨識物種、標註及分析</p>
+      </li>
+      <li>
+        <div class="icon">
+          <img class="coricon" src="static/image/service-3.png" alt="">
+        </div>
+        <h3>資料共享</h3>
+        <p>開放科學，資源共享共用</p>
+      </li>
+    </ul>
+    <a href="{% url 'project_overview' %}" class="start-btn">
+      立即開始使用
+    </a>
+  </div>
+</section>
+
+
+<!--  以上為新切版 -->
+
+<!--
 <div class="container-fluid">
   <div class="row banner">
     <div class="banner-div">
@@ -25,7 +177,6 @@
 </div>
 <div class="container content">
   <div class="row">
-    <!-- MAP -->
     <div class="col-xs-12 col-sm-12 col-md-6">
       <h6 class="title-light map-explore">點擊地圖區塊進行資料探索</h6>
       <div id="map"></div>
@@ -86,6 +237,10 @@
     <a class="btn btn-orange mx-auto start-btn" href="{% url 'project_overview' %}">立即開始使用</a>
   </div>
 </div>
+-->
+
+
+
 <script src="{% static 'js/home.js' %}"></script>
 
 {% endblock body %} 

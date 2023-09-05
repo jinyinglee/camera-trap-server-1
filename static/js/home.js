@@ -290,10 +290,10 @@
                 });
             },
             click: e => {
-              $('#map-info').removeClass('d-none');
-              $('#default-info').addClass('d-none');
+              $('.city-box').removeClass('d-none');
+              $('.pin-chartbox').addClass('d-none')
+              $('.inf-box').removeClass('d-block').addClass('d-none');
                 let county = e.target.feature.properties.COUNTYNAME;
-                $('#click-county').html(county);
                 countyOnClick(county);
             },
             
@@ -325,21 +325,37 @@
                 e.target.setIcon(StudyAreaIcon);                                   
               })
               .on("click", function (e) {
-                $('#map-info').html('<div class="loader"></div>');
+                $('.loading-pop').removeClass('d-none')
                 $.ajax({
                   url: '/api/stat_studyarea',
                   data: {"said": i[4]},
                   dataType: "json",
                   success: function(response) {
+                    $('.loading-pop').addClass('d-none')
+                    $('.city-box').addClass('d-none')
+                    $('.pin-chartbox').removeClass('d-none')
                     // 返回鍵
-                    $('.map-explore').html(`<a class="link" onClick="resetMapExplore('${county}')">返回</a>`)
+                    //$('.map-explore').html(`<a class="link" onClick="resetMapExplore('${county}')">返回</a>`)
                     // 更換右側統計圖
-                    $('#map-info').html(`
-                      <h1 id="click-county" class="title-light mb-3">${i[3]}</h1>
-                      <h4 class="mb-3 county-title" >${i[2]}</h4>
-                      <div id="deployment_data" class="mx-auto"></div>
-                      <img class="d-sa-icon " src='/static/icon/marker-icon.png'> 相機位置
-                    `);
+                    $('.pin-chartbox').html(`
+
+                    <h2>${i[3]}</h2>
+                    <div class="mbscro">
+                      <div class="chart-box">
+                        <div id="deployment_data" class="mx-auto"></div>
+                      </div>
+                    </div>
+                    <div class="mapiconbox">
+                      <button class="resetMapExplore" data-county="${county}">< 返回</button>
+                      <img src="static/image/marker-icon.png" alt="">
+                      <p>相機位置</p>
+                    </div>
+                      `);                                        
+                    $('.resetMapExplore').off('click')
+                    $('.resetMapExplore').on('click', function(){
+                      resetMapExplore($(this).data('county'))
+                    })
+
                     Highcharts.chart("deployment_data", {
                       chart: {
                         type: "column",
@@ -416,62 +432,52 @@
                           })                        
                           .bindTooltip(r[3], { permanent: true, direction: 'top' })
                           .addTo(map)));
-                  }})
+                  },
+                  error: function () {
+                    $('.loading-pop').addClass('d-none')
+                  }
+                })
               })
               .addTo(map))
         );
 
-        $('#map-info').html(
-          `<h1 id="click-county" class="title-light mb-3">${county}</h1>
-          <div class="row desp">
-            <div class="col-3 text-left">
-              計畫總數
-            </div>
-            <div class="col-9 text-left">
-              ${response.num_project}
-            </div>
+        $('.city-box').html(
+          `<h2>${county}</h2>
+          <ul class="inflist">
+          <li>
+            <div class="left-title">計畫總數</div>
+            <div class="right-cont">${response.num_project}</div>
+          </li>
+          <ul class="inflist">
+          <li>
+            <div class="left-title">計畫總數</div>
+            <div class="right-cont">${response.num_deployment}</div>
+          </li>
+          <li>
+            <div class="left-title">相機位置</div>
+            <div class="right-cont">${response.num_deployment}</div>
+          </li>
+          <li>
+            <div class="left-title">總辨識進度</div>
+            <div class="right-cont">${response.identified} %</div>
+          </li>
+          <li>
+            <div class="left-title">總影像數</div>
+            <div class="right-cont">${response.num_image}</div>
+          </li>
+          <li>
+            <div class="left-title">相機總工時</div>
+            <div class="right-cont">${response.num_working_hour}</div>
+          </li>
+          <li>
+            <div class="left-title">出現物種</div>
+            <div class="right-cont">${response.species}</div>
+          </li>
+          </ul>
+          <div class="mapiconbox">
+            <img src="static/image/marker-icon-error.png" alt="">
+            <p>樣區</p>
           </div>
-          <div class="row desp">
-            <div class="col-3 text-left">
-              相機位置
-            </div>
-            <div class="col-9 text-left">
-              ${response.num_deployment}
-            </div>
-          </div>
-          <div class="row desp">
-            <div class="col-3 text-left">
-              總辨識進度
-            </div>
-            <div class="col-9 text-left">
-              ${response.identified} %
-            </div>
-          </div>
-          <div class="row desp">
-            <div class="col-3 text-left">
-              總影像數
-            </div>
-            <div class="col-9 text-left">
-              ${response.num_image}
-            </div>
-          </div>
-          <div class="row desp">
-            <div class="col-3 text-left">
-              相機總工時
-            </div>
-            <div class="col-9 text-left">
-              ${response.num_working_hour}
-            </div>
-          </div>
-          <div class="row desp">
-            <div class="col-3 text-left">
-              出現物種
-            </div>
-            <div class="col-9 text-left">
-              ${response.species}
-            </div>
-          </div>
-          <img class="d-sa-icon" src='/static/icon/marker-icon-error.png'> 樣區
           `
         )
       }
@@ -498,6 +504,8 @@
       map.setView([23.5, 121.2], 7);
       $('.countyPoly').removeClass('d-none');
       // trigger event
+      $('.city-box').removeClass('d-none');
+      $('.pin-chartbox').addClass('d-none')
       countyOnClick(county);
     
     }

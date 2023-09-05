@@ -8,9 +8,10 @@ footer {
     width: 70%;
 }
 
+/*
 .icon {
     background-size: cover;
-}
+}*/
 
 
 .mt-30 {
@@ -69,7 +70,7 @@ footer {
         /*accent-color: #7c9c2d;*/
         filter: hue-rotate(215deg);
       }
-      /* loader */
+      /* loader
 
       .loader {
         content: "";
@@ -130,7 +131,7 @@ footer {
         z-index: 1199;
         text-align: center;
       }
-
+ */
       html,
       body {
         height: 100%;
@@ -295,6 +296,7 @@ footer {
         text-decoration: none;
       }
 
+      /*
       .icon {
         display: inline-block;
         vertical-align: middle;
@@ -379,7 +381,7 @@ footer {
         }
       }
 
-
+*/
 
 /*
 
@@ -477,6 +479,7 @@ footer {
   }
 
 
+  /*
   @media (max-width: 992px) { 
 
     .has-unread {
@@ -492,7 +495,7 @@ footer {
     }
   
   
-   }
+   }*/
 
 
    .mb-10 {
@@ -588,5 +591,10 @@ footer {
 }
 
 .d-none {
-  display: none;
+  display: none !important;
+}
+
+
+.d-block {
+  display: block !important;
 }
