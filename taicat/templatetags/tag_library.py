@@ -55,15 +55,23 @@ def get_notif(contact_id):
             dj = n.upload_history.deployment_journal
             try:
                 results += f"""
-                <div class="notification-item">
-                <div class="notification-item-content">
-                    <div class='notification-item-date'>{created_8.strftime('%Y-%m-%d %H:%M:%S')}</div>
-                    <div class="notification-item-message"> 
-                        「{dj.project.name} > {dj.studyarea.name} > {dj.deployment.name} > {dj.folder_name}」上傳狀態為：<strong>{status_map[n.upload_history.status]}</strong>
-                    </div>
-                </div>
-                </div>
+                    <li>
+                    <div class="date">{created_8.strftime('%Y-%m-%d %H:%M:%S')}</div>
+                    <p>「{dj.project.name} > {dj.studyarea.name} > {dj.deployment.name} > {dj.folder_name}」上傳狀態為：<strong>{status_map[n.upload_history.status]}</strong></p>
+                    </li>
                 """
+                # f"""
+                # <div class="notification-item">
+                # <div class="notification-item-content">
+                #     <div class='notification-item-date'>{created_8.strftime('%Y-%m-%d %H:%M:%S')}</div>
+                #     <div class="notification-item-message"> 
+                #         「{dj.project.name} > {dj.studyarea.name} > {dj.deployment.name} > {dj.folder_name}」上傳狀態為：<strong>{status_map[n.upload_history.status]}</strong>
+                #     </div>
+                # </div>
+                # </div>
+                # """
+
+
             except Exception as e:
                 print("notifications bug == ",e)
                 continue
@@ -71,25 +79,37 @@ def get_notif(contact_id):
         elif n.category == 'gap': 
             created_8 = n.created + timedelta(hours=8)
             results += f"""
-            <div class="notification-item">
-            <div class="notification-item-content">
-                <div class='notification-item-date'>{created_8.strftime('%Y-%m-%d %H:%M:%S')}</div>
-                <div class="notification-item-message"> 
-                    「{n.project.name}」有缺失資料，請至管考介面填寫缺失原因
-                </div>
-            </div>
-            </div>
-            """
+                    <li>
+                    <div class="date">{created_8.strftime('%Y-%m-%d %H:%M:%S')}</div>
+                    <p>「{n.project.name}」有缺失資料，請至管考介面填寫缺失原因</p>
+                    </li>
+                    """
+            # f"""
+            # <div class="notification-item">
+            # <div class="notification-item-content">
+            #     <div class='notification-item-date'>{created_8.strftime('%Y-%m-%d %H:%M:%S')}</div>
+            #     <div class="notification-item-message"> 
+            #         「{n.project.name}」有缺失資料，請至管考介面填寫缺失原因
+            #     </div>
+            # </div>
+            # </div>
+            # """
     if not results:
-        results = """
-        <div class="notification-item">
-        <div class="notification-item-content">
-            <div class="notification-item-message"> 
-            暫無通知
-            </div>
-        </div>
-        </div>
-        """
+        results = f"""
+                    <li>
+                    <div class="date"></div>
+                    <p>暫無通知</p>
+                    </li>
+                    """
+        # results = """
+        # <div class="notification-item">
+        # <div class="notification-item-content">
+        #     <div class="notification-item-message"> 
+        #     暫無通知
+        #     </div>
+        # </div>
+        # </div>
+        # """
     return mark_safe(results)
 
 
