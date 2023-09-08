@@ -21,7 +21,7 @@ urlpatterns = [
     path('api/deployment_journals/', views.api_create_or_list_deployment_journals, name='create-deployment-journals'),
     # path('api/check_data_gap/', views.api_check_data_gap, name='check-data-gap'),
     path('api/data', views.data, name='data'),
-    path('api/update_datatable', views.update_datatable, name='update_datatable'),
+    # path('api/update_datatable', views.update_datatable, name='update_datatable'),
     path('api/deployment/', views.get_deployment, name='deployment'),
     path('api/add_studyarea', views.add_studyarea, name='add_studyarea'),
     path('api/add_deployment', views.add_deployment, name='add_deployment'),
@@ -32,6 +32,7 @@ urlpatterns = [
     path('api/get_gap_choice/', views.get_gap_choice, name='get_gap_choice'),
     path('api/get_parameter_name/', views.get_parameter_name, name='get_parameter_name'),
     path('api/check_login/', views.check_login, name='check_login'),
+    path('api/project/overview', views.get_project_overview, name='get_project_overview'),
     path('download/<pk>', views.download_request, name='download'),
     
     #    path('download/data/<uidb64>/<token>', views.download_data, name='download_data'),

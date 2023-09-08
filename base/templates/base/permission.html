@@ -6,8 +6,15 @@
 {% endblock head %}
 {% block style %}
 {% endblock %}
+
+{% block title %}權限管理 | {% endblock title %}
+
+
 {% block body %}
+
 {% if is_authorized %}
+<input type="hidden" name="return_message" value="{{ return_message }}"></input>
+
 <div class="container content">
     <div class="row mb-10">
         <h4 class="title-dark">權限管理</h4>     
@@ -158,8 +165,12 @@
 
 
 {% else %}
-<div class="container">
-<a class="btn btn-outline-success" id="goBack" >回上一頁</a></div>
+<div class="main-box">
+	<div class="main-title">
+		您的權限不足      
+	</div>		
+	<a class="return-btn" href="javascript:;" id="goBack"> < 返回 </a>
+</div>
 {% endif %}
 {% endblock body %}
 

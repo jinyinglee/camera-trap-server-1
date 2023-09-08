@@ -1,9 +1,121 @@
+$("body").click(function(){
+    $('.message-box').hide();
+});
+
+
+
+$(".message-box").click(function(e){
+    e.stopPropagation();
+});
+
+$(".message-btn").click(function(e){
+    e.stopPropagation();
+    $(".message-box").fadeIn();
+});
+
+$(".ringarea").click(function(e){
+    e.stopPropagation();
+    $(".message-box").toggleClass('openalpha');
+});
+
+
+$('.ham4').on('click', function() {
+    if($(window).width()<999){
+        $('.ham4').toggleClass('active');
+        $('.header-cont').slideToggle();
+    }else{
+        $('.ham4').removeClass('active');
+        $('.header-cont').css("display", "flex");
+    }
+});
+
+$(window).resize(function() {
+    var windowWidth = $(window).width();
+
+    if (windowWidth > 991) {
+        $('.header-cont').css("display", "flex");
+    }else{
+        $('.header-cont').css("display", "none");
+    }
+});
+
+$('.mbbtn-1').on('click',function (event) {
+    if($(window).width()<999){
+        $(this).next('.menu-2').slideToggle();
+        $(this).toggleClass('now');
+    }
+});
+$('.mbbtn-2').on('click',function (event) {
+    if($(window).width()<999) {
+        $(this).next('.menu-2').slideToggle();
+        $(this).toggleClass('now');
+    }
+});
+
+
+
+$(function(){
+
+	$('.xx').on('click',function (event) {
+		$('.pop-box').addClass('d-none');
+		$('body').css("overflow", "initial");
+	});
+
+
+    $(function (){
+
+        gsap.registerPlugin(ScrollTrigger);
+
+        ScrollTrigger.create({
+            trigger: ".map-section",
+            start: "top-=90% top",
+            // markers: true,
+            onEnter:function () {
+                $('.map-section').addClass('vivi')
+            }
+        });
+        ScrollTrigger.create({
+            trigger: ".chart-section",
+            start: "top-=80% top",
+            // markers: true,
+            onEnter:function () {
+                $('.chart-section').addClass('vivi')
+            }
+        });
+        ScrollTrigger.create({
+            trigger: ".three-iconbox",
+            start: "top-=75% top",
+            // markers: true,
+            onEnter:function () {
+                $('.three-iconbox').addClass('vivi')
+            }
+        });
+
+    })
+
+});
+
+
+// 以上為2023-09新切版
+
+
+
 $(document).ready(function () {
+
+    if (!document.cookie.includes("announcementread")) {
+        $('#alert-content').removeClass('d-none');
+    }
+
+
+    $('.login-item').on('click', function(){
+        $('.login-pop').removeClass('d-none')
+    })    
+
+    
     $("li.active").removeClass("active");
     $('a[href="' + location.pathname + '"]')
     .closest(".nav-link")
     .addClass("active");
-});
 
 
 $('#updateIsRead').on('click',function(){
@@ -40,3 +152,7 @@ $('#alert-box').on('click',function(){
         }
         });
 })
+
+
+
+});

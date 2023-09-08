@@ -146,11 +146,17 @@
     cursor: pointer;
   }
 
-  /* window size */
+  /* window size 
 
   .header {
     height: 70px;
+  } 
+  
+  footer {
+    display: none;
   }
+  
+  */
 
   .remain.col-2 {
     /*overflow-y: scroll;*/
@@ -168,9 +174,7 @@
     height: calc(100vh - 126px);
   }
 
-  footer {
-    display: none;
-  }
+ 
 
   /* studyarea */
   /* .studyarea-list-area ul {
@@ -278,15 +282,19 @@
     margin-left: 5px;
   }
 
+  /*
   body{
     background: #f7f7f7 !important;
-    /* TODO tmp css wait 2.0 0704 */
     font-size: 1rem !important;
     font-family: var(--bs-font-sans-serif) !important;
     line-height: normal !important;
     letter-spacing: 0.05em !important;
-    /* TODO tmp css wait 2.0 0704  end*/
   }
+
+  */
+
+
+
   /* TODO tmp css wait 2.0 0704  start*/
   #alert-content > a{
     color: #0d6efd !important;
@@ -295,10 +303,10 @@
   /* TODO tmp css wait 2.0 0704  end*/
   
 
-
+/*
   .innbox {
     padding-top: 0px;
-    }
+    }*/
   
   #img-table thead tr td{
     background: #257455 !important;
@@ -469,4 +477,10 @@
 }
 div.dt-buttons{
   padding-bottom: 10px !important;
+}
+
+
+/* 以下因應新切版 */
+input[name=start_altitude], input[name=end_altitude] {
+  margin: 10px 0;
 }

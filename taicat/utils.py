@@ -1027,3 +1027,21 @@ def check_if_authorized_create(request):
 # def sortFunction(value):
 #     return value["id"]
 
+
+
+# 固定window = 3
+def get_page_list(current_page, total_page):
+  page_range = range(1, total_page+1)
+
+  # 在中間
+  if current_page + 1 <= total_page and current_page - 1 > 0:
+     page_list = [current_page - 1, current_page, current_page + 1]
+  # 在最後
+  elif current_page == total_page:
+     page_list = [pp for pp in page_range[-3:]]
+  # 在最前面
+  elif current_page == 1:
+     page_list = [pp for pp in page_range[:3]]
+    # page_list = [pp for pp in p.page_range[current_index:current_index+window]]
+  return page_list
+

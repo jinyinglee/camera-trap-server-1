@@ -3,7 +3,13 @@
 {% block style %}
 <link rel="stylesheet" href="{% static 'css/personal_info.css' %}">
 {% endblock %}
+
+{% block title %}帳號設定 | {% endblock title %}
+
+
 {% block body %}
+<input type="hidden" name="return_message" value="{{ return_message }}"></input>
+
 {% if first_login == True %}
     <div class="container mt-30">
     <div class="alert alert-info alert-dismissible fade show" role="alert">
@@ -79,7 +85,14 @@
         </div>
     </div>
     </form>
-    {% endif %}
+{% else %}
+<div class="main-box">
+	<div class="main-title">
+		請先登入
+	</div>		
+</div>
+
+{% endif %}
 
 </div>
 {% block script %}

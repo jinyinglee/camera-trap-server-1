@@ -2,6 +2,22 @@ var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr('value');
 
 $(document).ready(function () {
 
+  // 以下新切版 
+
+	$('.opitem-btn').on('click', function() {
+		if($('.left-selectlist').css("left") == "0px"){
+			$('.left-selectlist').animate({
+				left: "-300"
+			});
+		}else{
+			$('.left-selectlist').animate({
+				left: "0"
+			});
+		}
+	});
+
+
+  // 以上新切版
 
   let pk = $('input[name=pk]').val();
 
@@ -70,8 +86,7 @@ $(document).ready(function () {
       // 右邊Table內容 開始
       // initalize datatable & redraw table
       let table = $('#img-table').DataTable({
-        dom: "<'row'<'col-6'B>>"+
-        "<'row' <'col-sm-11' > tr>" +
+        dom: "<'row'<'col-6'B>><'row' <'col-sm-11'> tr>" +
         "<'row p-3'<'col-sm-4'i><'col-sm-12 col-md-3'l><'col-sm-12 col-md-5'p>>",
         autoWidth : false,
         language: language_settings,
@@ -943,12 +958,12 @@ $(document).ready(function () {
           success: function () {
             alert('請求已送出');
             // $('#downloadModal').modal('hide')
-            $('.down-pop').fadeOut();
+            $('.down-pop').addClass('d-none')
           },
           error: function () {
             alert('未知錯誤，請聯繫管理員');
             // $('#downloadModal').modal('hide')
-            $('.down-pop').fadeOut();
+            $('.down-pop').addClass('d-none')
           }
         })
       })
@@ -1246,16 +1261,16 @@ $('#downloadButton').on('click', function () {
           window.location.replace(window.location.origin + "/personal_info");
         } else {
           // $('#downloadModal').modal('show')
-          $('.down-pop').fadeIn();
+          $('.down-pop').removeClass('d-none');
         }
       } else {
         if (response.messages) {
           alert(response.messages);
-          $('#loginModal').modal('show')
+          $('.login-pop').removeClass('d-none')
         }
         else {
           // $('#downloadModal').modal('show')
-          $('.down-pop').fadeIn();
+          $('.down-pop').removeClass('d-none');
         }
       }
     },
@@ -1282,18 +1297,18 @@ $('#downloadButton').on('click', function () {
 //   $('.down-pop').fadeIn();
 // });
 $('.down-pop .xx').on('click', function (event) {
-  $('.down-pop').fadeOut();
+  $('.down-pop').addClass('d-none')
 });
 $('#canceldownload').on('click', function (event) {
-  $('.down-pop').fadeOut();
+  $('.down-pop').addClass('d-none')
 });
 
 $('.photode-pop .xx').on('click', function (event) {
-  $('.photode-pop').fadeOut();
+  $('.photode-pop').addClass('d-none')
 });
 
 $('#canceledit').on('click', function (event) {
-  $('.photode-pop').fadeOut();
+  $('.photode-pop').addClass('d-none')
   $('body').css("overflow", "initial");
 });
 

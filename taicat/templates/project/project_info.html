@@ -15,13 +15,17 @@
 <script src="https://code.highcharts.com/modules/accessibility.js"></script>
 
 {% endblock head %}
+
+{% block title %}{{ project.name }} | {% endblock title %} 
+
+
 {% block body %} {% csrf_token %}
 <input type="hidden" name="pk" value="{{ pk }}"></input>
 
 
 {% csrf_token %}
 	<!--下載跳匡-->
-	<div class="pop-box down-pop" id="downloadModal" style="display: none;">
+	<div class="pop-box down-pop d-none" id="downloadModal">
 		<div class="center-box">
 			<div class="wbox">
 				<div class="xx">
@@ -45,8 +49,8 @@
 					<p class="marb_20">
 						檔案為離線產生，處理完成後，系統會寄下載資訊到您輸入的電子郵件信箱。如未收到信件，請檢查您的郵件設定，如仍未收到信件，請聯絡我們。
 					</p>
-					<div class="input-item d-flex justify-content-start">
-						<input class="form-control w-80" type="text" id="download-email" placeholder="請輸入您的電子郵件"/>
+					<div class="input-item d-flex jc-start-ai-center">
+						<input class="w-80" type="text" id="download-email" placeholder="請輸入您的電子郵件"/>
 						<svg id="email-check" xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="lightgrey" class="bi bi-check my-auto" viewBox="0 0 16 16">
 							<path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
 						</svg>
@@ -55,7 +59,7 @@
 						<button class="btn-green" id="canceldownload">
 							取消
 						</button>
-						<button class="btn-green btn btn-outline-success download"   disabled>
+						<button class="btn-green download" disabled>
 							確認送出
 						</button>
 					</div>
@@ -65,9 +69,7 @@
 	</div>
 	
 {% comment %} <div class="container content"> {% endcomment %}
-<div class="content">
 		{% if is_project_authorized or is_project_public %}
-	<div class="innbox gray-bg">
 		<div class="main-box">
 			<div class="main-title">
 				<h2>{{ project.name }}</h2>
@@ -229,7 +231,7 @@
 				<ul class="charbg-box">
 					<li>
 						<div class="map-area">
-							<div id="map" class=" mx-3 mapbox">
+							<div id="map" class="mapbox">
 							</div>
 						</div>
 						<div class="cheitem">
@@ -262,13 +264,15 @@
 
 							<h2 class="species-pie">全部樣區已辨識物種<span id="species-count-title" class="title-dark">{{ species_count }}</span>種</h2>
 							<p class="date species-pie">最後更新時間：<span id="species_last_updated">{{ species_last_updated|date:'o-m-d' }}</span></p>
+
 							<h2 class="m-0 species-map d-none">
                                 <span id="species-map-title"></span>共有<span id="species-map-count-title" class="title-dark"></span>筆辨識紀錄
                             </h2>
 							<p class="date species-map d-none">最後更新時間：<span id="species_last_updated">{{ species_last_updated|date:'o-m-d' }}</span></p>
 
-                            <p class="text-gray link text-decoration-none species-map d-none my-2" id="updateSpeciesPie"><i class="fa fa-chevron-left w-12"></i> 返回</p>
-
+                            <button class="species-map d-none return-btn" id="updateSpeciesPie">
+								< 返回
+							</button>
 						</div>
 						<div class="chart-are">
 							<div id="species-pie"></div>
@@ -285,27 +289,20 @@
 						<div class="chart-are">
 						</div>
 						<div class="dottarea">
-							
 						</div>
 					</li>
 				</ul>
 			</div>
 		</div>
-	</div>
-</div>
-
-
-	
-
-
 
 {% else %}
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        您的權限不足
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-      </div>
-      <a class="btn btn-outline-success" href="{% url 'project_overview' %}">回上一頁</a>
-    {% endif %}
+<div class="main-box">
+	<div class="main-title">
+		您的權限不足      
+	</div>		
+	<a class="return-btn" href="{% url 'project_overview' %}"> < 返回 </a>
+</div>
+{% endif %}
 
 
 {% endblock body %} {% block script %}

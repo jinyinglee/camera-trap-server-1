@@ -1,25 +1,16 @@
+$(".select-sa").select2({placeholder: "請選擇"});
+
+
 $( function() {
-    // preselect role
 
-    let pk = $('input[name=pk]').val();
-    $.ajax({
-      type: 'GET',
-      url: `/api/get_edit_info/?pk=${pk}&type=members`,
-      success: function (response) {
-        let i;
-        for (i = 0; i < response.members.length; i++) {
-            $(`#${ response.members[i].member_id }`).selectpicker('val', response.members[i].role); 
-        }
-
-      },
+    $('.management-box .left-menu-area li:not(.now)').on('click', function(){
+      location.href = $(this).data('href')
     })
-
 
     $('#goBack').on('click',function(){
         window.history.back();
       })
   
-
       $('#submitAddForm').on('click', function(){
         $('#addProjectMember').submit()
       })
@@ -32,11 +23,20 @@ $( function() {
         $('#removeProjectMember').submit()
       })
 
+      $('.remove').on('click', function(){
+        var memberid = $(this).data('id');
+        $(".remove-pop #memberid").val( memberid );
+        $(".remove-pop #remove_mame").html( $(this).data('name') );
+        $('.remove-pop').removeClass('d-none')   
+      })
+
+
+      $('.calcel-remove').on('click', function(){
+        $('.remove-pop').addClass('d-none')   
+      })
+
+      if ($('input[name=return_message]').val()!=''){
+        alert($('input[name=return_message]').val())
+      }
+
 })
-
-
-// pass variable to modal
-$(document).on("click", ".remove", function () {
-     var memberid = $(this).data('id');
-     $(".modal-body #memberid").val( memberid );
-});

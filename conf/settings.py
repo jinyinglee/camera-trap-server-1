@@ -13,17 +13,20 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 from pathlib import Path
 import environ
 import os
-from django.contrib.messages import constants as messages
 
 
-# for bootstrap alert
-MESSAGE_TAGS = {
-    messages.DEBUG: 'alert-secondary',
-    messages.INFO: 'alert-info',
-    messages.SUCCESS: 'alert-success',
-    messages.WARNING: 'alert-warning',
-    messages.ERROR: 'alert-danger',
-}
+# from django.contrib.messages import constants as messages
+
+
+# # for bootstrap alert
+
+# MESSAGE_TAGS = {
+#     messages.DEBUG: 'alert-secondary',
+#     messages.INFO: 'alert-info',
+#     messages.SUCCESS: 'alert-success',
+#     messages.WARNING: 'alert-warning',
+#     messages.ERROR: 'alert-danger',
+# }
 
 
 # Build paths inside the taicat like this: BASE_DIR / 'subdir'.
