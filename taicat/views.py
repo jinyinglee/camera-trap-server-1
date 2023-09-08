@@ -54,7 +54,7 @@ from operator import itemgetter
 from dateutil import parser
 from django.test.utils import CaptureQueriesContext
 from base.utils import DecimalEncoder
-from taicat.utils import half_year_ago, get_project_member, delete_image_by_ids, check_if_authorized, check_if_authorized_create, check_if_authorized_project, check_if_authorized_delete
+from taicat.utils import half_year_ago, get_project_member, delete_image_by_ids, check_if_authorized, check_if_authorized_create, check_if_authorized_project, check_if_authorized_delete, get_page_list
 
 from openpyxl import Workbook
 from bson.objectid import ObjectId
@@ -926,6 +926,8 @@ def create_project(request):
 
 def edit_project_basic(request, pk):
     is_authorized = check_if_authorized(request, pk)
+    project = []
+    city_list = []
 
     if is_authorized:
         if request.method == "POST":
@@ -945,14 +947,13 @@ def edit_project_basic(request, pk):
         if project['region'] not in ['', None, []]:
             region = {'region': project['region'].split(',')}
             project.update(region)
-        return render(request, 'project/edit_project_basic.html', {'project': project, 'pk': pk,  'city_list': city_list, 'is_authorized': is_authorized})
-    else:
-        messages.error(request, '您的權限不足')
-        return render(request, 'project/edit_project_basic.html', {'pk': pk, 'is_authorized': is_authorized})
+    return render(request, 'project/edit_project_basic.html', {'project': project, 'pk': pk,  'city_list': city_list, 'is_authorized': is_authorized})
 
 
 def edit_project_license(request, pk):
     is_authorized = check_if_authorized(request, pk)
+
+    project = []
 
     if is_authorized:
         if request.method == "POST":
@@ -961,19 +962,20 @@ def edit_project_license(request, pk):
             project = Project.objects.filter(id=pk).update(**data)
 
         project = Project.objects.filter(id=pk).values("publish_date", "interpretive_data_license", "identification_information_license", "video_material_license").first()
-        return render(request, 'project/edit_project_license.html', {'project': project, 'pk': pk, 'is_authorized': is_authorized})
-    else:
-        messages.error(request, '您的權限不足')
-        return render(request, 'project/edit_project_basic.html', {'pk': pk, 'is_authorized': is_authorized})
+    return render(request, 'project/edit_project_license.html', {'project': project, 'pk': pk, 'is_authorized': is_authorized})
 
 
 def edit_project_members(request, pk):
     is_authorized = check_if_authorized(request, pk)
+    organization_admin = []
+    study_area = []
+    members = []
+    return_message = ''
 
     if is_authorized:
         # organization_admin
         # if project in organization
-        organization_admin = []  # incase there is no one
+          # incase there is no one
         organization_id = Organization.objects.filter(projects=pk).values('id')
         for i in organization_id:
             temp = list(Contact.objects.filter(organization=i['id'], is_organization_admin=True).all().values('name', 'email'))
@@ -983,9 +985,10 @@ def edit_project_members(request, pk):
         members = ProjectMember.objects.filter(project_id=pk).all()
 
         if request.method == "POST":
-            data = dict(request.POST.items())
+            data = dict(request.POST.items())     
             # Add member
-            if data['action'] == 'add':
+            if data.get('action') == 'add':
+                           
                 member = Contact.objects.filter(Q(email=data['contact_query']) | Q(orcid=data['contact_query'])).first()
                 if member:
                     # check: if not exists, create
@@ -994,12 +997,14 @@ def edit_project_members(request, pk):
                     # check: if exists, update
                     else:
                         ProjectMember.objects.filter(member_id=member.id, project_id=pk).update(role=data['role'])
-                    messages.success(request, '新增成功')
+                    # messages.success(request, '新增成功')
+                    return_message = '新增成功'
                 else:
-                    messages.error(request, '查無使用者')
+                    return_message = '查無使用者'
+                    # messages.error(request, '查無使用者')
 
             # Edit member
-            elif data['action'] == 'edit':
+            elif data.get('action') == 'edit':
                 data = dict(request.POST)
                 data.pop('action')
                 data.pop('csrfmiddlewaretoken')
@@ -1021,35 +1026,34 @@ def edit_project_members(request, pk):
                             if len(list_id) > 0 :
                                 for item in list_id:
                                     ProjectMember.objects.get(member_id=i, project_id=pk).pmstudyarea.remove(StudyArea.objects.get(id=item))
-                            
                         ProjectMember.objects.filter(member_id=i, project_id=pk).update(role=data[i][0])
-                messages.success(request, '儲存成功')
+                            
+                        
+                # messages.success(request, '儲存成功')
+                return_message = '儲存成功'
             # Remove member
             else:
                 ProjectMember.objects.filter(member_id=data['memberid'], project_id=pk).delete()
-                messages.success(request, '移除成功')
+                # messages.success(request, '移除成功')
+                return_message = '移除成功'
 
-        return render(request, 'project/edit_project_members.html', {'members': members, 'pk': pk,
-                                                                     'organization_admin': organization_admin,
-                                                                     'study_area': study_area, 
-                                                                     'is_authorized': is_authorized})
-    else:
-        messages.error(request, '您的權限不足')
-        return render(request, 'project/edit_project_basic.html', {'pk': pk, 'is_authorized': is_authorized})
+    return render(request, 'project/edit_project_members.html', {'members': members, 'pk': pk,
+                                                                    'organization_admin': organization_admin,
+                                                                    'study_area': study_area, 
+                                                                    'is_authorized': is_authorized, 'return_message': return_message})
 
 
 def edit_project_deployment(request, pk):
     is_authorized = check_if_authorized(request, pk)
+    study_area = []
+    project = []
 
     if is_authorized:
         project = Project.objects.filter(id=pk)
-        study_area = StudyArea.objects.filter(project_id=pk)
+        study_area = StudyArea.objects.filter(project_id=pk).order_by('name')
 
-        return render(request, 'project/edit_project_deployment.html', {'project': project, 'pk': pk, 
-                                                                        'study_area': study_area, 'is_authorized': is_authorized})
-    else:
-        messages.error(request, '您的權限不足')
-        return render(request, 'project/edit_project_basic.html', {'pk': pk, 'is_authorized': is_authorized})
+    return render(request, 'project/edit_project_deployment.html', {'project': project, 'pk': pk, 
+                                                                    'study_area': study_area, 'is_authorized': is_authorized})
 
 
 def get_deployment(request):
@@ -1085,6 +1089,8 @@ def add_deployment(request):
         deprecated = res.getlist('deprecated[]')
         data = []
         ids = []
+
+        # vegetation 和 county可能會有none
         for i in range(len(names)):
             if str(i) in deprecated:
                 dep = True
@@ -1279,49 +1285,62 @@ def project_overview(request):
     with connection.cursor() as cursor:
         # q = "SELECT taicat_project.id FROM taicat_project \
         #     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
-        q = "SELECT taicat_project.id FROM taicat_project WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't';"
+        q = "SELECT taicat_project.id FROM taicat_project WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't' LIMIT 10;"
         cursor.execute(q)
         public_project_list = [l[0] for l in cursor.fetchall()]
     if public_project_list:
-        public_project, public_species_data = get_project_info(public_project_list)
+        current_page = 1
+        public_total = len(public_project_list)
+        public_total_page = math.ceil(public_total / 10)
+        public_page_list = get_page_list(current_page, public_total_page)
+        public_project, public_species_data = get_project_info(public_project_list[:10])
     # ---------------我的計畫
     # my project
     my_project = []
     my_species_data = []
     if member_id := request.session.get('id', None):
         if my_project_list := get_my_project_list(member_id,[]):
-            my_project, my_species_data = get_project_info(my_project_list)
-    return render(request, 'project/project_overview.html', {'public_project': public_project, 'my_project': my_project, 'is_authorized_create': is_authorized_create,
-                                                             'public_species_data': public_species_data, 'my_species_data': my_species_data})
+            current_page = 1
+            my_total = len(my_project_list)
+            my_total_page = math.ceil(my_total / 10)
+            my_page_list = get_page_list(current_page, my_total_page)
+            my_project, my_species_data = get_project_info(my_project_list[:10])
+    return render(request, 'project/project_overview.html', {'public_project': public_project, 'my_project': my_project, 
+                                                             'is_authorized_create': is_authorized_create,
+                                                             'public_species_data': public_species_data, 'my_species_data': my_species_data,
+                                                             'public_page_list': public_page_list, 'my_page_list': my_page_list,
+                                                             'public_total_page': public_total_page, 'my_total_page': my_total_page,
+                                                             'public_total': public_total, 'my_total': my_total,
+                                                             })
 
 # project overview datatable
-def update_datatable(request):
-    # base on species filter
-    if request.method == 'POST':
-        table_id = request.POST.get('table_id')
-        species = request.POST.getlist('species[]')
-        # print(species)
-        if table_id == 'publicproject':
-            with connection.cursor() as cursor:
-                # q = "SELECT taicat_project.id FROM taicat_project \
-                #     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
-                q = "SELECT taicat_project.id FROM taicat_project WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't';"
-                cursor.execute(q)
-                public_project_list = [l[0] for l in cursor.fetchall()]
-            project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=public_project_list).order_by('project_id').distinct('project_id')
-            project_list = list(project_list.values_list('project_id', flat=True))
-        else:
-            member_id = request.session.get('id', None)
-            if member_id := request.session.get('id', None):
-                if my_project_list := get_my_project_list(member_id,[]): 
-                    with connection.cursor() as cursor:
-                        project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=my_project_list).order_by('project_id').distinct('project_id')
-                        project_list = list(project_list.values_list('project_id', flat=True))
-        project = []
-        if project_list:
-            # project_list = str(project_list).replace('[', '(').replace(']', ')')
-            project, _ = get_project_info(project_list)
-    return HttpResponse(json.dumps(project), content_type='application/json')
+# def update_datatable(request):
+#     # base on species filter
+#     if request.method == 'POST':
+#         table_id = request.POST.get('table_id')
+#         species = request.POST.getlist('species[]')
+#         # print(species)
+#         if table_id == 'publicproject':
+#             with connection.cursor() as cursor:
+#                 # q = "SELECT taicat_project.id FROM taicat_project \
+#                 #     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
+#                 q = "SELECT taicat_project.id FROM taicat_project WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't';"
+#                 cursor.execute(q)
+#                 public_project_list = [l[0] for l in cursor.fetchall()]
+#             project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=public_project_list).order_by('project_id').distinct('project_id')
+#             project_list = list(project_list.values_list('project_id', flat=True))
+#         else:
+#             member_id = request.session.get('id', None)
+#             if member_id := request.session.get('id', None):
+#                 if my_project_list := get_my_project_list(member_id,[]): 
+#                     with connection.cursor() as cursor:
+#                         project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=my_project_list).order_by('project_id').distinct('project_id')
+#                         project_list = list(project_list.values_list('project_id', flat=True))
+#         project = []
+#         if project_list:
+#             # project_list = str(project_list).replace('[', '(').replace(']', ')')
+#             project, _ = get_project_info(project_list)
+#     return HttpResponse(json.dumps(project), content_type='application/json')
 
 
 def project_detail(request, pk):
@@ -1341,13 +1360,14 @@ def project_detail(request, pk):
     if Project.objects.filter(id=pk, is_public=True).exists():
         is_project_public = True
 
-    with connection.cursor() as cursor:
-        query = """SELECT name, funding_agency, code, principal_investigator, 
-                        to_char(start_date, 'YYYY-MM-DD'), to_char(end_date, 'YYYY-MM-DD') 
-                        FROM taicat_project WHERE id= %s"""
-        cursor.execute(query, (pk, ))
-        project_info = cursor.fetchone()
-    project_info = list(project_info)
+    # with connection.cursor() as cursor:
+    #     query = """SELECT name, funding_agency, code, principal_investigator, 
+    #                     to_char(start_date, 'YYYY-MM-DD'), to_char(end_date, 'YYYY-MM-DD') 
+    #                     FROM taicat_project WHERE id= %s"""
+    #     cursor.execute(query, (pk, ))
+    #     project_info = cursor.fetchone()
+    # project_info = list(project_info)
+    project_info = Project.objects.get(id=pk)
     deployment = Deployment.objects.filter(project_id=pk).order_by('name')
     # folder name takes long time
     # folder_list = Image.objects.filter(project_id=pk).order_by('folder_name').distinct('folder_name')
@@ -1519,7 +1539,7 @@ def project_detail(request, pk):
 
 
     return render(request, 'project/project_detail.html', {
-        'project_name_len': len(project_info[0]), 'project_info': project_info, 'species': species, 'pk': pk,
+        'project_info': project_info, 'species': species, 'pk': pk,
         'study_area': study_area, 'deployment': deployment, 'folder': folder,
         'earliest_date': earliest_date, 'latest_date': latest_date,
         'editable': editable, 'is_authorized': is_authorized,
@@ -2161,3 +2181,38 @@ def robots_txt(request):
         ]
 
         return HttpResponse("\n".join(lines), content_type="text/plain")
+    
+
+def get_project_overview(request):
+
+
+    if request.method == 'POST':
+        table_id = request.POST.get('table_id')
+        keyword = request.POST.get('keyword')
+        limit = request.POST.get('limit', 10)
+        page = request.POST.get('page', 1)
+        offset = (page-1)*limit 
+        orderby = request.POST.get('orderby', 'project_id')
+        sort = request.POST.get('sort', 'asc')
+
+        species = request.POST.getlist('species[]')
+
+
+        if table_id == 'publicproject':
+            # project_filter = Project.objects.filter(mode='official',is_public=True)
+            project_list = ProjectSpecies.objects.filter(name__in=species, project__mode='official', project__is_public=True).order_by('project_id').distinct('project_id')[offset:offset+limit]
+            project_list = list(project_list.values_list('project_id', flat=True))
+        else:
+            member_id = request.session.get('id', None)
+            if member_id := request.session.get('id', None):
+                if my_project_list := get_my_project_list(member_id,[]): 
+                    with connection.cursor() as cursor:
+                        project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=my_project_list).order_by('project_id').distinct('project_id')
+                        project_list = list(project_list.values_list('project_id', flat=True))
+        project = []
+        if project_list:
+            project, _ = get_project_info(project_list)
+
+
+
+    return HttpResponse(json.dumps(response), content_type='application/json')

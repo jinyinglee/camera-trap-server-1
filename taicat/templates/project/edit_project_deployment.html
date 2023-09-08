@@ -1,198 +1,316 @@
 {% extends 'base/base.html' %}
 {% load static %}
 {% block style %}
-<link rel="stylesheet" href="{% static 'css/bootstrap-select.min.css' %}">
+<!--
+<link rel="stylesheet" href="{% static 'css/bootstrap-select.min.css' %}">-->
 <link rel="stylesheet" href="{% static 'css/edit_project_deployment.css' %}">
+
+<link rel=stylesheet type="text/css" href="/static/css/select2.min.css">
+<script src="/static/js/select2.min.js"></script>
+
 {% endblock style %}
+
+{% block title %}計畫管理 | {% endblock title %}
+
+{% block pop %}
+	<!--新增樣區跳匡-->
+	<div class="pop-box addare-pop d-none">
+		<div class="center-box">
+			<div class="wbox">
+				<div class="xx">
+					<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+						<g id="Group_789" data-name="Group 789" transform="translate(-1679 -599)">
+							<g id="Ellipse_4" data-name="Ellipse 4" transform="translate(1679 599)" fill="none" stroke="#257455" stroke-width="2">
+								<circle cx="20" cy="20" r="20" stroke="none"/>
+								<circle cx="20" cy="20" r="19" fill="none"/>
+							</g>
+							<g id="Group_712" data-name="Group 712" transform="translate(-133.5 164.5)">
+								<line id="Line_1" data-name="Line 1" x1="16" y2="16" transform="translate(1824.5 446.5)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+								<line id="Line_2" data-name="Line 2" x2="16" y2="16" transform="translate(1824.5 446.5)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+							</g>
+						</g>
+					</svg>
+				</div>
+				<div class="titlebox">
+					新增樣區
+				</div>
+				<div class="contentbox">
+					<div class="input-item">
+						<p>樣區名稱</p>
+						<input id="addStudyArea" type="text" placeholder="請輸入樣區名稱">
+                        <div class="invalid-feedback" id="addStudyArea-feedback"></div>
+					</div>
+					<div class="btn-center">
+						<button class="btn-green" id="addSa">
+							新增
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!--編輯樣區跳匡-->
+	<div class="pop-box editare-pop d-none">
+		<div class="center-box">
+			<div class="wbox">
+				<div class="xx">
+					<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+						<g id="Group_789" data-name="Group 789" transform="translate(-1679 -599)">
+							<g id="Ellipse_4" data-name="Ellipse 4" transform="translate(1679 599)" fill="none" stroke="#257455" stroke-width="2">
+								<circle cx="20" cy="20" r="20" stroke="none"/>
+								<circle cx="20" cy="20" r="19" fill="none"/>
+							</g>
+							<g id="Group_712" data-name="Group 712" transform="translate(-133.5 164.5)">
+								<line id="Line_1" data-name="Line 1" x1="16" y2="16" transform="translate(1824.5 446.5)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+								<line id="Line_2" data-name="Line 2" x2="16" y2="16" transform="translate(1824.5 446.5)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+							</g>
+						</g>
+					</svg>
+				</div>
+				<div class="titlebox">
+					編輯樣區
+				</div>
+				<div class="contentbox">
+					<div class="input-item">
+						<p>樣區名稱</p>
+						<input id="editStudyArea" type="text" value="" placeholder="請輸入樣區名稱">
+                        <input id="editStudyArea-id" type="hidden" value="">
+                        <div class="invalid-feedback" id="editStudyArea-feedback"></div>
+					</div>
+					<div class="btn-center">
+						<button class="btn-red" id="editSa_delete">
+							刪除
+						</button>
+						<button class="btn-green" id="editSa_edit">
+							儲存
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+
+{% endblock pop %}
+
+
+
 {% block body %}
 {% if is_authorized %}
 <input type="hidden" name="pk" value="{{ pk }}"></input>
-<div class="container content">
-    <div class="row mb-10">
-        <div class="col-2 list">
-            <div class="row mb-3">
-                <a class="text-gray back text-decoration-none" href="{% url 'project_info' pk %}"><i class="fa fa-chevron-left w-12"></i> 返回計畫資訊</a>
-            </div>
-            <h4 class="title-dark">計畫管理</h4>
-            <nav class="py-2 mb-3">
-                <ul class="nav flex-column">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'edit_project_basic' pk %}">
-                            <i class="fa-solid fa-circle w-12"></i> 基本資訊 
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active check-mark" href="{% url 'edit_project_deployment' pk %}">
-                            <i class="fa-solid fa-pencil w-12"></i> 相機位置管理 
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'edit_project_members' pk %}">
-                            <i class="fa-solid fa-circle w-12"></i> 計畫成員 </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'edit_project_license' pk %}">
-                            <i class="fa-solid fa-circle w-12"></i> 
-                            <span>創用CC授權</span>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-        </div>         
-        <div class="col-10">
-            <div class="bg-white shadow px-0 mx-2">
-                <p class="backgroud-dark text-white fw-bold px-3 py-2 mb-0">相機位置管理</p>
-                <div class="row px-3">
-                <div class="col-2 me-0 studyarea-list-area">
-                    <form novalidate>
-                    {% csrf_token %}
-                        <ul id="studyarea-list">
+{% csrf_token %}
+
+<div class="main-box">
+    <div class="main-title">
+        <div class="flex-boxleft">
+            <a href="{% url 'project_info' pk %}" class="back-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="9.377" height="15.927" viewBox="0 0 9.377 15.927">
+                    <g id="Group_736" data-name="Group 736" transform="translate(1.414 1.414)">
+                        <line id="Line_6" data-name="Line 6" x1="6.549" y2="6.549" transform="translate(0)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+                        <line id="Line_7" data-name="Line 7" x1="6.549" y1="6.549" transform="translate(0 6.549)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+                    </g>
+                </svg>
+                <p>返回</p>
+            </a>
+            <h2>計畫管理</h2>
+        </div>
+    </div>
+
+    <div class="management-box">
+        <div class="left-menu-area">
+            <ul>
+                <li data-href="{% url 'edit_project_basic' pk %}">- 基本資訊</li>
+                <li class="now">- 相機位置管理</li>
+                <li data-href="{% url 'edit_project_members' pk %}">- 計畫成員</li>
+                <li data-href="{% url 'edit_project_license' pk %}">- 創用CC授權</li>
+            </ul>
+        </div>
+        <div class="right-cont">
+            <div class="wbg-box marb_50">
+                <div class="flex-spb">
+                    <h3 class="light-green marb_10">相機位置管理</h3>
+                    <a href="#" class="add-newbtn">
+                        + 新增樣區
+                    </a>
+                </div>
+                <!--樣區下拉選單可套成雙層，選了樣區才出現表格區塊-->
+                <div class="area-select-box">
+                    <select name="sa-select">
+                        <option value="">請先選擇樣區</option>
                         {% for i in study_area %}
-                            {% if i.parent_id == None %}
-                            <li>
-                                <div class="studyarea-click"  id="{{ i.id }}"
-                                    data-said="{{ i.id }}" data-saname="{{ i.name }}"
-                                    data-bs-toggle="collapse" href="#collapse_{{ i.id }}" role="button" 
-                                    aria-expanded="false" aria-controls="collapse_{{ i.id }}">
-                                    <div class="studyarea-name d-inline-block">{{ i.name }}</div>
-                                </div>
-                            </li>
-                            <div class="collapse d-none" id="collapse_{{ i.id }}">
-                            <!-- 新增子樣區 -->
-                            <!-- <li><input id="collapse_{{ i.id }}_add" data-parent="{{ i.id }}" class="addSubStudyArea border-0 shadow-none form-control bg-light" style="width: 90%;" type="text" placeholder=" + 新增子樣區"> 
-                                    <div class="invalid-feedback addSubStudyArea-feedback" id="addSubStudyArea-feedback">
-                                    </div></li>-->
-                            </div>
+                            {% if not i.parent_id %}
+                                <option value="{{ i.id }}" id="{{ i.id }}" data-said="{{ i.id }}" data-saname="{{ i.name }}">{{ i.name }}</option>
+                            {% else %}
+                                <option value="{{ i.id }}" id="{{ i.id }}" data-said="{{ i.id }}" data-saname="{{ i.name }}">{{ i.parent.name }}_{{ i.name }}</option>
                             {% endif %}
                         {% endfor %}
-                            <li id="addStudyArea-li">
-                                <a class="link text-decoration-none" data-bs-toggle="modal" data-bs-target="#addSaModal">
-                                    + 新增樣區
-                                </a>
-                            </li>
-                        </ul>
-                    </form>
+                    </select>
+                    
                 </div>
-                <div class="col-10">
-                    <div id="deployment-list" class="d-none">
 
-                        <!-- 相機位置 -->
-                        <form id="deploymentForm">
-                            <div class="d-flex flex-row align-items-center justify-content-between my-3">
-                                <div>
-                                    <div class="d-flex align-items-center"><span class="fs-4 sa-name"></span> 
-                                    <i class="icon fa-solid fa-pencil px-2 link pointer h-18" data-bs-toggle="modal" data-bs-target="#editSaModal"></i></div>
-                                </div>
-                                <div class="w-50 text-end">
-                                    <span class="required">*</span>座標大地基準：
-                                    <select class="selectpicker form-control" id="geodetic_datum" data-width="40%" data-style="btn-new">
-                                        <option>WGS84</option>
-                                        <option>TWD97</option>
-                                    </select>
-                                    <img class="text-green ms-2 h-18" src="{% static 'icon/info.png' %}" data-bs-toggle="tooltip" data-bs-placement="right" title="為準確呈現圖籍，請指明相機位置座標的大地基準。單一樣區內所有相機位置必須一致，因此更改設定會全部覆寫喔。">
+                <div class="area-table d-none">
+                    <div class="top-function">
+                        <div class="titlebox">
+                            <h2 id="selected-sa-name"></h2>
+                            <button class="edit-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="17.099" height="17.215" viewBox="0 0 17.099 17.215">
+                                    <g data-name="Group 749" transform="translate(0.152 0.27)">
+                                        <g data-name="Group 772" transform="translate(0 0)">
+                                            <path data-name="Path 10217" d="M16.8,3.559a2.367,2.367,0,0,1-.718,1.677q-3.195,3.189-6.385,6.382-1.516,1.515-3.035,3.028a1.021,1.021,0,0,1-.378.234q-2.763.932-5.531,1.848a.908.908,0,0,1-.339.065.458.458,0,0,1-.375-.66q.615-1.856,1.234-3.711c.215-.646.427-1.293.65-1.937a.871.871,0,0,1,.194-.322Q6.83,5.44,11.553.723A2.3,2.3,0,0,1,14.9.716q.617.608,1.226,1.223a2.307,2.307,0,0,1,.671,1.62M6.254,13.7l8.023-8.021L11.114,2.517,3.089,10.539,6.254,13.7M14.98,5.011c.168-.161.347-.319.51-.493a1.362,1.362,0,0,0,.025-1.872c-.439-.474-.9-.931-1.372-1.372a1.325,1.325,0,0,0-1.678-.108,8.1,8.1,0,0,0-.7.633L14.98,5.011m-9.609,9.2-2.791-2.79-1.4,4.186,4.191-1.4" transform="translate(0 0)" fill="#257455" stroke="#257455" stroke-width="0.3"/>
+                                        </g>
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="right-box">
+                            <div class="title"><span class="red">*</span>座標大地基準：</div>
+                            <div class="input-item" >
+                                <select name="" id="geodetic_datum" >
+                                    <option>WGS84</option>
+                                    <option>TWD97</option>
+                            </select>
+                            </div>
+                            <div class="inf-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="2" height="12" viewBox="0 0 2 12">
+                                    <g data-name="Group 821" transform="translate(-1059 -266)">
+                                        <circle data-name="Ellipse 2972" cx="1" cy="1" r="1" transform="translate(1059 266)" fill="#fff"></circle>
+                                        <rect data-name="Rectangle 253" width="2" height="8" rx="1" transform="translate(1059 270)" fill="#fff"></rect>
+                                    </g>
+                                </svg>
+                                <div class="pop-bubble">
+                                    為準確呈現圖籍，請指明相機位置座標的大地基準。單一樣區內所有相機位置必須一致，因此更改設定會全部覆寫喔。
+                                    <svg class="bubble-ar" xmlns="http://www.w3.org/2000/svg" width="7" height="9" viewBox="0 0 7 9">
+                                        <path id="Polygon_54" data-name="Polygon 54" d="M4.5,0,9,7H0Z" transform="translate(0 9) rotate(-90)" fill="#257455" opacity="0.8"></path>
+                                    </svg>
                                 </div>
                             </div>
-                            <div class="row">
-                                <div class="table-responsive">
-                                    <table class="table mx-auto w-100 mb-5 align-middle" id="deployment-table">
-                                        <thead class="table-light text-black text-truncate">
-                                            <tr>
-                                                <th><span class="required">*</span>相機位置名稱</th>
-                                                <th><span class="required">*</span>經度(X)</th>
-                                                <th><span class="required">*</span>緯度(Y)</th>
-                                                <th>海拔(公尺)</th>
-                                                <th>縣市</th>
-                                                <th>保護留區</th>
-                                                <th>植被類型</th>
-                                                <th>土地覆蓋類型</th>
-                                                <th>棄用</th>
-                                                <th>刪除</th>
-                                            </tr>                            
-                                        </thead>
-                                        <tbody id="deployment">
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div class="mb-5 text-end">
-                                    <a class="btn btn-light text-gray d-inline-block" id="addDeployment">+ 新增相機位置</a>
-                                    <a class="btn btn-orange d-inline-block" id="addDepolymentSubmit">儲存設定</a>
-                                </div>
-                            </div>
-                        </form>
-                        <!-- end of 相機位置 -->
+                        </div>
                     </div>
-                    <div id="initial-content" class="text-center">
-                            <img class="empty-site"
-                            src="{% static 'image/empty-site.png' %}"
-                            height='450px'
-                            srcset="{% static 'image/empty-site@2x.png' %}"
-                            />
-                            <h5 class="text-gray pb-10">請選擇樣區</h5>
+                    <div class="ov-scroll">
+                        <table class="area-table-style" cellspacing="0" cellpadding="0" border="0">
+                            
+                            <thead>
+                            <tr>
+                                <td class="td15"><span class="red">*</span>相機位置名稱</td>
+                                <td class="w120"><span class="red">*</span>經度(X)</td>
+                                <td class="w120"><span class="red">*</span>緯度(Y)</td>
+                                <td class="w120">海拔(公尺)</td>
+                                <td class="td10">縣市</td>
+                                <td class="td20">保護留區</td>
+                                <td class="td20">植被類型</td>
+                                <td class="td10">土地覆蓋類型</td>
+                                <td>棄用</td>
+                                <td>刪除</td>
+                            </tr>
+                            </thead>
+                            <tbody id="deployment">
+                            <tr>
+                                <td>
+                                    <div class="input-item">
+                                        <input type="text">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-item">
+                                        <input type="text">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-item">
+                                        <input type="text">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-item">
+                                        <input type="text">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-item">
+                                        <select name="" id="">
+                                            <option value="">請選擇</option>
+                                        </select>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-item">
+                                        <select name="" id="">
+                                            <option value="">請選擇</option>
+                                        </select>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-item">
+                                        <select name="" id="">
+                                            <option value="">請選擇</option>
+                                        </select>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-item">
+                                        <input type="text">
+                                    </div>
+                                </td>
+                                <td><input class="checkbox" type="checkbox"></td>
+                                <td>
+                                    <button>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20.828" height="20.828" viewBox="0 0 20.828 20.828">
+                                            <g data-name="Group 689" transform="translate(-1823.086 -445.086)">
+                                                <line data-name="Line 1" x1="18" y2="18" transform="translate(1824.5 446.5)" fill="none" stroke="#cb5757" stroke-linecap="round" stroke-width="2"/>
+                                                <line data-name="Line 2" x2="18" y2="18" transform="translate(1824.5 446.5)" fill="none" stroke="#cb5757" stroke-linecap="round" stroke-width="2"/>
+                                            </g>
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                        </table>
+                    </div>
+
+                    <div class="btn2-area">
+                        <button class="btn-greeno" id="addDeployment">
+                            新增相機位置
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+                                <g  data-name="Group 838" transform="translate(-1006 -836)">
+                                    <g class="cir"  data-name="Ellipse 3" transform="translate(1006 836)" fill="none" stroke="#257455" stroke-width="2">
+                                        <circle cx="11" cy="11" r="11" stroke="none"/>
+                                        <circle cx="11" cy="11" r="10" fill="none"/>
+                                    </g>
+                                    <g  data-name="Group 709" transform="translate(74.5 -16.5)">
+                                        <line id="Line_3" data-name="Line 3" x2="8" transform="translate(938.5 863.5)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+                                        <line id="Line_4" data-name="Line 4" y2="8" transform="translate(942.5 859.5)" fill="none" stroke="#257455" stroke-linecap="round" stroke-width="2"/>
+                                    </g>
+                                </g>
+                            </svg>
+
+                        </button>
+                        <button class="btn-green" id="addDepolymentSubmit">
+                            儲存設定
+                        </button>
                     </div>
                 </div>
-                </div>
             </div>
-            {% comment %} <div class="row mt-3 px-4">
-                <div class="text-end px-0">
-                    <a class="btn btn-outline-success" href="{% url 'project_detail' pk %}">取消</a>
-                    <a class="btn btn-orange" onClick="addDepolymentSubmit()">儲存設定</a>
-                </div>
-            </div> {% endcomment %}
-            </div>
-        </div>     
-    </div>
-</div>
 
-<!-- Add StudyArea Modal -->
-<div class="modal fade" id="addSaModal" tabindex="-1" aria-labelledby="addSaModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title title-dark">新增樣區</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <input id="addStudyArea" class="form-control" type="text" placeholder="請輸入樣區名稱">
-                <div class="ms-1 invalid-feedback" id="addStudyArea-feedback"></div>
-            </div>
-            <div class="modal-footer">
-                <a class="btn btn-orange d-inline-block" id="addSa">送出</a>
-            </div>
         </div>
-    </div>
-</div>
 
-<!-- Edit StudyArea Modal -->
-<div class="modal fade" id="editSaModal" tabindex="-1" aria-labelledby="editSaModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title title-dark">編輯樣區</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <input id="editStudyArea" class="form-control" type="text" value="" placeholder="請輸入樣區名稱">
-                <input id="editStudyArea-id" type="hidden" value="">
-                <div class="ms-1 invalid-feedback" id="editStudyArea-feedback"></div>
-            </div>
-            <div class="modal-footer">
-                <a class="btn btn-outline-danger d-inline-block" id="editSa_delete">刪除</a>
-                <a class="btn btn-orange d-inline-block" id="editSa_edit">儲存</a>
-            </div>
-        </div>
     </div>
-</div>
-    
 
+</div>
 
 
 {% else %}
-<div class="container content">
-<a class="btn btn-outline-success" id="goBack">回上一頁</a></div>
+<div class="main-box">
+	<div class="main-title">
+		您的權限不足      
+	</div>		
+	<a class="return-btn" href="javascript:;" id="goBack"> < 返回 </a>
+</div>
 {% endif %}
 {% endblock body %}
 {% block script %}
-<script src="{% static 'js/bootstrap-select.min.js' %}"></script>
+<!--
+<script src="{% static 'js/bootstrap-select.min.js' %}"></script>-->
 <script src="{% static 'js/edit_project_deployment.js' %}"></script>
 {% endblock script %}
 

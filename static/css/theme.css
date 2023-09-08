@@ -504,7 +504,7 @@ body {
 
 .header {
     position: fixed;
-    z-index: 60;
+    z-index: 1200;
     background: #006a58;
     background: -moz-linear-gradient(left, #006a58 0%, #9ccc65 100%);
     background: -webkit-linear-gradient(left, #006a58 0%, #9ccc65 100%);
@@ -584,7 +584,31 @@ body {
     top: 50px;
     border-radius: 15px;
     overflow: hidden;
-    display: none
+    visibility: hidden;
+    opacity: 0;
+    -moz-opacity: 0;
+    filter: alpha(opacity=100)
+}
+
+.header .message-btn .message-box.openalpha {
+    visibility: visible;
+    transition: all .3s;
+    -moz-transition: all .3s;
+    -o-transition: all .3s;
+    -ms-transition: all .3s;
+    -webkit-transition: all .3s;
+    opacity: 1;
+    -moz-opacity: 1;
+    filter: alpha(opacity=100)
+}
+
+@media only screen and (max-width: 767px) {
+    .header .message-btn .message-box {
+        position: fixed;
+        right: 0;
+        width: 100%;
+        z-index: 100
+    }
 }
 
 .header .message-btn .message-box .titlearea {
@@ -735,7 +759,26 @@ body {
 @media only screen and (max-width: 999px) {
     .header .left-box {
         margin-left: 0;
-        width: 100%
+        width: 100%;
+        display: block
+    }
+}
+
+.header .left-box .mb_namebox {
+    display: none
+}
+
+@media only screen and (max-width: 999px) {
+    .header .left-box .mb_namebox {
+        display: block;
+        width: 100%;
+        padding: 15px 20px;
+        border-bottom: 1px solid #e9f5ec
+    }
+
+    .header .left-box .mb_namebox p {
+        color: #59AE68;
+        font-weight: bold
     }
 }
 
@@ -1485,6 +1528,10 @@ body {
     background: none
 }
 
+.map-section .map-content .pin-chartbox .mapiconbox button:hover {
+    color: #3E9171;
+}
+
 .map-section .map-content .pin-chartbox .mapiconbox img {
     width: 16px;
     display: block;
@@ -1997,26 +2044,6 @@ body {
     }
 }
 
-.main-title.pad-pj {
-    flex-wrap: initial;
-    justify-content: space-between
-}
-
-.main-title.pad-pj .flex-boxleft {
-    width: initial
-}
-
-@media only screen and (max-width: 767px) {
-    .main-title.pad-pj .right-btnaera {
-        flex: 0 0 130px
-    }
-
-    .main-title.pad-pj .right-btnaera button {
-        height: 40px;
-        width: 100%
-    }
-}
-
 .main-title .flex-boxleft {
     width: 100%;
     display: flex
@@ -2181,6 +2208,26 @@ body {
 @media only screen and (max-width: 767px) {
     .main-title h2 {
         font-size: 26px
+    }
+}
+
+.main-title.pad-pj {
+    flex-wrap: initial;
+    justify-content: space-between
+}
+
+.main-title.pad-pj .flex-boxleft {
+    width: initial
+}
+
+@media only screen and (max-width: 767px) {
+    .main-title.pad-pj .right-btnaera {
+        flex: 0 0 130px
+    }
+
+    .main-title.pad-pj .right-btnaera a.add-btn {
+        height: 40px;
+        width: 100%
     }
 }
 
@@ -3255,7 +3302,9 @@ body {
 
 .chart-box2 ul li .chart-area .right-data .species-percentage .species-percentage-list .w-12 {
     width: 12px;
-    height: 12px
+    height: 12px;
+    margin-right: 5px;
+    margin-left: 5px;
 }
 
 .chart-box2 ul li .chart-area .right-data .species-percentage-list-o {
@@ -3890,17 +3939,18 @@ h3.light-green {
 
 .pop-box {
     position: fixed;
-    z-index: 180;
+    z-index: 1300;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.8)
+    background: rgba(0, 0, 0, 0.8);
+    animation: fadeIn 0.5s; 
 }
 
-.pop-box.dow-pop .inp-flex {
+.pop-box.down-pop .inp-flex {
     display: flex
 }
 
-.pop-box.dow-pop .inp-flex .right-correct {
+.pop-box.down-pop .inp-flex .right-correct {
     flex: 0 0 50px;
     width: 50px;
     height: 50px;
@@ -3913,7 +3963,7 @@ h3.light-green {
 }
 
 @media only screen and (max-width: 999px) {
-    .pop-box.dow-pop .inp-flex .right-correct {
+    .pop-box.down-pop .inp-flex .right-correct {
         width: 40px;
         flex: 0 0 40px;
         height: 40px
@@ -4016,11 +4066,23 @@ h3.light-green {
     }
 }
 
+@keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+@keyframes fadeOut {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+
 .pop-box .wbox {
     width: 600px;
     background: #FFF;
     border-radius: 15px;
-    position: relative
+    position: relative;
+    animation: fadeIn 0.3s; 
 }
 
 @media only screen and (max-width: 767px) {
@@ -4899,7 +4961,10 @@ h3.light-green {
 
 .prjchart-area .charbg-box li .dottarea .species-percentage .species-percentage-list .w-12 {
     width: 12px;
-    height: 12px
+    height: 12px;
+    margin-right: 5px;
+    margin-left: 5px;
+
 }
 
 .prjchart-area .charbg-box li .dottarea .species-percentage-list-o {
@@ -6527,9 +6592,10 @@ h3.light-green {
 }
 
 .management-box .right-cont .area-table .area-table-style td .input-item input, .management-box .right-cont .area-table .area-table-style td .input-item select, .faq-box .right-cont .area-table .area-table-style td .input-item input, .faq-box .right-cont .area-table .area-table-style td .input-item select {
-    height: 40px;
+    height: 50px;
     padding: 0px 10px
 }
+
 
 .management-box .right-cont .area-table .area-table-style td .checkbox, .faq-box .right-cont .area-table .area-table-style td .checkbox {
     width: 20px;
@@ -6537,7 +6603,7 @@ h3.light-green {
     border: 1px solid #ddd
 }
 
-.management-box .right-cont .area-table .area-table-style td button, .faq-box .right-cont .area-table .area-table-style td button {
+.management-box .right-cont .area-table .area-table-style td button:not(.select2-selection__choice__remove), .faq-box .right-cont .area-table .area-table-style td button:not(.select2-selection__choice__remove) {
     background: none;
     display: block;
     margin: 0 auto
@@ -6570,7 +6636,7 @@ h3.light-green {
     background: #f7f7f7
 }
 
-.management-box .right-cont .area-table .area-table-style tr:first-child td, .faq-box .right-cont .area-table .area-table-style tr:first-child td {
+.management-box .right-cont .area-table .area-table-style thead tr td, .faq-box .right-cont .area-table .area-table-style thead tr td {
     background: #FFF;
     color: #333;
     font-weight: bold;
@@ -7457,7 +7523,7 @@ span.gray {
     position: fixed;
     width: 100%;
     height: 100%;
-    z-index: 100;
+    z-index: 9999;
     background: rgba(255, 255, 255, 0.5);
     display: flex;
     align-items: center;

@@ -2,7 +2,15 @@
 <link rel="stylesheet" href="{% static 'css/bootstrap-select.min.css' %}" />
 <link rel="stylesheet" href="{% static 'css/edit_project_basic.css' %}" />
 
-{% endblock head %}  {% block body %} {% if is_authorized %}
+{% endblock head %}  
+
+{% block title %}計畫管理 | {% endblock title %}
+
+
+{% block body %} 
+
+
+{% if is_authorized %}
 <input type="hidden" name="pk" value="{{ pk }}"></input>
 <form id="editProjectBasic" novalidate action="{% url 'edit_project_basic' pk %}" method="post">
   {% csrf_token %}
@@ -113,10 +121,14 @@
   </div>
 </form>
 {% else %}
-<div class="container content">
-  <a class="btn btn-outline-success" id="goBack">回上一頁</a>
+<div class="main-box">
+	<div class="main-title">
+		您的權限不足      
+	</div>		
+	<a class="return-btn" href="javascript:;" id="goBack"> < 返回 </a>
 </div>
-{% endif %} {% endblock body %} {% block script %}
+{% endif %} 
+{% endblock body %} {% block script %}
 <script src="{% static 'js/bootstrap-select.min.js' %}"></script>
 <script src="{% static 'js/edit_project_basic.js' %}"></script>
 {% endblock script %}

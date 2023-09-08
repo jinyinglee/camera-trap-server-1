@@ -1,7 +1,12 @@
 {% extends 'base/base.html' %} {% block head %} {% load static %} {% endblock head %} {% block style %}
 <link rel="stylesheet" href="{% static 'css/edit_project_license.css' %}" />
 
-{% endblock style %} {% block body %} {% if is_authorized %}
+{% endblock style %} 
+
+{% block title %}計畫管理 | {% endblock title %}
+
+{% block body %} 
+{% if is_authorized %}
 <input type="hidden" name="pk" value="{{ pk }}"></input>
 <form id="editProjectLicense" novalidate action="{% url 'edit_project_license' pk %}" method="post">
   {% csrf_token %}
@@ -113,12 +118,16 @@
       </div>
     </div>
   </div>
-  {% else %}
-  <div class="container content">
-    <a class="btn btn-outline-success" id="goBack">回上一頁</a>
-  </div>
-  {% endif %} {% endblock body %} {% block script %}
-  <script src="{% static 'js/edit_project_license.js' %}"></script>
+{% else %}
+<div class="main-box">
+  <div class="main-title">
+    您的權限不足      
+  </div>		
+  <a class="return-btn" href="javascript:;" id="goBack"> < 返回 </a>
+</div>
+  {% endif %} 
+{% endblock body %} {% block script %}
+<script src="{% static 'js/edit_project_license.js' %}"></script>
 
   {% endblock script %}
 </form>

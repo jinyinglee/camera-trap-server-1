@@ -1,7 +1,7 @@
 
     $(document).on("submit", "form", function(event)
     {
-        $('.loader').removeClass('d-none');
+        $('.loading-pop').removeClass('d-none');
         event.preventDefault();
         
         let otherFormData = new FormData($("#submitForm")[0]);
@@ -18,14 +18,14 @@
             contentType: false,
             success: function (data, status)
             {
-              $('.loader').addClass('d-none');
+              $('.loading-pop').addClass('d-none');
               alert('請求已送出');
               window.f_data = new FormData();
 
             },
             error: function (xhr, desc, err)
             {
-              $('.loader').addClass('d-none');
+              $('.loading-pop').addClass('d-none');
               alert('未知錯誤，請聯繫管理員');
               window.f_data = new FormData();
             }

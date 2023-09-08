@@ -25,3 +25,8 @@ $('#addOrgProjectClick').on('click', function(){
     $('#addOrgProject').submit()
 })
 
+if ($('input[name=return_message]').val()!=''){
+  alert($('input[name=return_message]').val())
+}
+
+

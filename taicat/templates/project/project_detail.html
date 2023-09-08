@@ -1,5 +1,8 @@
 {% extends 'base/base.html' %} {% load tag_library %}
-{% block title %} {{ project_info.0 }} | {{ block.super }} {% endblock title %} {% block head %} {% load static %}
+
+
+
+{% block head %} {% load static %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/standalone/selectize.js" integrity="sha512-pF+DNRwavWMukUv/LyzDyDMn8U2uvqYQdJN0Zvilr6DDo/56xPDZdDoyPDYZRSL4aOKO/FGKXTpzDyQJ8je8Qw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.bootstrap4.min.css" integrity="sha512-MMojOrCQrqLg4Iarid2YMYyZ7pzjPeXKRvhW9nZqLo6kPBBTuvNET9DBVWptAo/Q20Fy11EIHM5ig4WlIrJfQw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
@@ -14,17 +17,13 @@
 <link rel="stylesheet" href="{% static 'css/project_detail.css' %}" />
 <link rel="stylesheet" href="{% static 'css/air-datepicker.css' %}">
 
-
-
-
 {% endblock head %} 
-{% block body %}
-<input type="hidden" name="pk" value="{{ pk }}"></input>
-<input type="hidden" name="get-folder" value="{{ folder }}"></input>
-<input type="hidden" name="project-name" value="{{ project_info.0 }}"></input>
-	
+
+{% block title %}{{ project_info.name }} | {% endblock title %} 
+
+{% block pop %}
 	<!--下載跳匡-->
-	<div class="pop-box down-pop" id="downloadModal" style="display: none;">
+	<div class="pop-box down-pop d-none" id="downloadModal">
 		{% csrf_token %}
 		<div class="center-box">
 			<div class="wbox">
@@ -42,7 +41,7 @@
 						</g>
 					</svg>
 				</div>
-				<div class="titlebox" id="downloadModal">
+				<div class="titlebox">
 					下載篩選資料
 				</div>
 				<div class="contentbox">
@@ -222,10 +221,17 @@
 			</div>
 		</div>
 	</div>
-	<div class="box">
+{% endblock pop %}
+
+
+{% block body %}
+<input type="hidden" name="pk" value="{{ pk }}"></input>
+<input type="hidden" name="get-folder" value="{{ folder }}"></input>
+<input type="hidden" name="project-name" value="{{ project_info.name }}"></input>
+	
+
 	  {% comment %} <div class="container box"> {% endcomment %}
-          {% if is_project_authorized or is_project_public %}
-	<div class="innbox gray-bg">
+    {% if is_project_authorized or is_project_public %}
 		<div class="main-box">
 			<div class="main-title flex-spb">
 				<div class="flex-boxleft">
@@ -238,7 +244,7 @@
 						</svg>
 						<p>返回</p>
 					</a>
-					<h2>{{ project_info.0 }}</h2>
+					<h2>{{ project_info.name }}</h2>
 				</div>
 
 				{% comment %} this could be part of datatable {% endcomment %}
@@ -384,10 +390,10 @@
 								<div class="input-item right30">
 									{% comment %} <input type="text">
 									<span class="m">m</span> {% endcomment %}
-									<p id="altitude-content" class="font-sm"></p>
-									起：<input type="text" class="datepicker form-control w-10" placeholder="{{altitude__min}}" name="start_altitude"/>公尺
-									<span class="my-auto">～</span>
-									訖：<input type="text" class="datepicker form-control w-10" type="text" placeholder="{{altitude__max}}" name="end_altitude"/>公尺
+									{% comment %} <p id="altitude-content" class="font-sm"></p> {% endcomment %}
+									起（公尺）<input type="text" class="" placeholder="{{altitude__min}}" name="start_altitude"/>
+									{% comment %} <span class="my-auto">～</span> {% endcomment %}
+									訖（公尺）<input type="text" class="" type="text" placeholder="{{altitude__max}}" name="end_altitude"/>
 									<input type="text" class="d-none" id="altitude"/>
 								</div>
 							</div>
@@ -513,16 +519,19 @@
 				{% comment %} data table QQ end  {% endcomment %}
 			</div>
 
-		</div>
-	        </div>
+{% else %}
+<div class="main-box">
+	<div class="main-title">
+		您的權限不足      
+	</div>		
+	<a class="return-btn" href="{% url 'project_overview' %}"> < 返回 </a>
+</div>
+{% endif %}
 
-          {% else %}
-          <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            您的權限不足
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-          <a class="btn btn-outline-success" href="{% url 'project_overview' %}">回上一頁</a>
-          {% endif %}
+
+
+
+		  
 	  <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
 		<div class="modal-dialog">
 		  <div class="modal-content">

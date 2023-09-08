@@ -197,7 +197,7 @@ $(function () {
     $('.calendar-pop').fadeOut();
   });
   $('#submit-button').on('click', (e) => {
-    $('.loader').show()
+    $('.loading-pop').removeClass('d-none')
     $('#filter-form').submit()
   })
 })

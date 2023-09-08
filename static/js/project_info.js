@@ -8,11 +8,6 @@ L.tileLayer("https://{s}.tile.osm.org/{z}/{x}/{y}.png", {
 
 
 $( document ).ready(function() {
-
-    // set active tab
-    $('#identified-species').trigger('click');
-
-
     let pk = $('input[name=pk]').val();
 
     $.ajax({
@@ -27,9 +22,7 @@ $( document ).ready(function() {
         window.pie_data = response.pie_data;
         window.species_count = response.species_count;
         window.species_last_updated = response.species_last_updated;
-
         map.setView(response.sa_point, response.zoom);
-        
 
     }})
 
@@ -44,7 +37,7 @@ $( document ).ready(function() {
             if ($('.forestPoly').length){
                 $('.forestPoly').removeClass('d-none')
             } else {
-                $('#p-loader').removeClass('d-none');
+                $('.loading-pop').removeClass('d-none')
                 
                 $.getJSON("/static/map/forest_map.json", function(data, status){
                     $(data.features).each(function(key, data) {
@@ -58,8 +51,7 @@ $( document ).ready(function() {
                         })
                         .addTo(map);
                     });
-                
-                    $('#p-loader').addClass('d-none');
+                    $('.loading-pop').addClass('d-none')
                   });
             }
         } else {
@@ -67,7 +59,145 @@ $( document ).ready(function() {
         }        
     });
 
+    $('.filter').on('change', function(){
+        updateSpeciesPie();
+    })
+        
+    
+    let date_locale = { days: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
+                    daysShort: ['日', '一', '二', '三', '四', '五', '六'],
+                    daysMin: ['日', '一', '二', '三', '四', '五', '六'],
+                    months: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'],
+                    monthsShort: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'],
+                    today: '今天',
+                    clear: '清除',
+                    dateFormat: 'yyyy-MM-dd',   
+                    timeFormat: 'HH:mm',
+                    firstDay: 1}
+    
+    let start_date_picker = new AirDatepicker('#start_date',
+        { locale: date_locale,
+            onSelect: function onSelect(fd, date, inst) {
+                updateSpeciesPie();
+            }
+        });
+    
+    
+    let end_date_picker = new AirDatepicker('#end_date',
+        { locale: date_locale,
+            onSelect: function onSelect(fd, date, inst) {
+                updateSpeciesPie();
+            } });
+    
+    
+    $('.show_start').on('click', function(){
+        if (start_date_picker.visible) {
+            start_date_picker.hide();
+        } else {
+            start_date_picker.show();
+        }
+    })
+    
+    $('.show_end').on('click', function(){
+        if (end_date_picker.visible) {
+            end_date_picker.hide();
+        } else {
+            end_date_picker.show();
+        }
+    })
+    
 
+    $('.sa-select').on('change', function(){
+        $('.subsa-select').html('<option value="all">全部</option>');
+        let said = $(this).val();
+        if (said != 'all'){
+            $.ajax({
+                data: {'said': said},            
+                url: "/get_subsa",
+                success: function(response){
+                    response.subsas.forEach(
+                        (i) =>
+                          ($('.subsa-select').append(
+                              `<option value='${i[0]}'>${i[1]}</option>`
+                          ))
+                      );
+                },
+            })
+        } 
+    })
+    
+    // download 
+    $('#downloadButton').on('click', function () {
+        $.ajax({
+          type: "POST",
+          url: "/api/check_login/",
+          headers: { 'X-CSRFToken': $csrf_token },
+          success: function (response) {
+      
+            if (response.redirect) {
+              if (response.messages) {
+                alert(response.messages);
+                window.location.replace(window.location.origin + "/personal_info");
+              } else {
+                $('.down-pop').removeClass('d-none')
+                //$('#downloadModal').fadeIn();
+              }
+            } else {
+              if (response.messages) {
+                alert(response.messages);
+                $('#loginModal').modal('show')
+              }
+              else {
+                // $('.down-pop').fadeIn();
+                //$('#downloadModal').fadeIn();
+                $('.down-pop').removeClass('d-none')
+              }
+            }
+          },
+          error: function () {
+            alert('未知錯誤，請聯繫管理員');
+          }
+        })
+      })
+    
+    
+    $('.download').on('click', function(){
+        // $("input[name=email]").val($("#download-email").val())
+    
+        $.ajax({
+            data: {'email': $("#download-email").val()},            
+            type: "POST",
+            url: "/download/" + $('input[name=pk]').val(),
+            headers:{'X-CSRFToken': $csrf_token},
+            success: function(){
+                alert('請求已送出');
+                //$('#downloadModal').modal('hide')
+                $('.down-pop').addClass('d-none')
+
+                //$('.down-pop').fadeOut();
+            },
+            error:function(){
+                alert('未知錯誤，請聯繫管理員');
+                //$('#downloadModal').modal('hide')
+                //$('.down-pop').fadeOut();
+                $('.down-pop').addClass('d-none')
+
+            }
+        })
+    })
+    
+    $('.down-pop .xx').on('click', function (event) {
+        $('.down-pop').fadeOut();
+    });
+
+    $('#canceldownload').on('click', function (event) {
+        $('.down-pop').fadeOut();
+    });
+
+    $("#download-email").keyup(function () {
+        ValidateEmail($(this).val())
+    });
+    
 });
 
 
@@ -113,113 +243,21 @@ function ValidateEmail(inputText){
 }
 
 
-$('.sa-select').on('change', function(){
-    $('.subsa-select').html('<option value="all">全部</option>');
-    let said = $(this).val();
-    if (said != 'all'){
-        $.ajax({
-            data: {'said': said},            
-            url: "/get_subsa",
-            success: function(response){
-                response.subsas.forEach(
-                    (i) =>
-                      ($('.subsa-select').append(
-                          `<option value='${i[0]}'>${i[1]}</option>`
-                      ))
-                  );
-            },
-        })
-    } 
-})
-
-// download 
-$('#downloadButton').on('click', function () {
-    $.ajax({
-      type: "POST",
-      url: "/api/check_login/",
-      headers: { 'X-CSRFToken': $csrf_token },
-      success: function (response) {
-  
-        if (response.redirect) {
-          if (response.messages) {
-            alert(response.messages);
-            window.location.replace(window.location.origin + "/personal_info");
-          } else {
-            $('#downloadModal').fadeIn();
-          }
-        } else {
-          if (response.messages) {
-            alert(response.messages);
-            $('#loginModal').modal('show')
-          }
-          else {
-            // $('.down-pop').fadeIn();
-            $('#downloadModal').fadeIn();
-          }
-        }
-      },
-      error: function () {
-        alert('未知錯誤，請聯繫管理員');
-      }
-    })
-  })
-
-
-$('.download').on('click', function(){
-    // $("input[name=email]").val($("#download-email").val())
-
-    $.ajax({
-        data: {'email': $("#download-email").val()},            
-        type: "POST",
-        url: "/download/" + $('input[name=pk]').val(),
-        headers:{'X-CSRFToken': $csrf_token},
-        success: function(){
-            alert('請求已送出');
-            $('#downloadModal').modal('hide')
-            $('.down-pop').fadeOut();
-        },
-        error:function(){
-            alert('未知錯誤，請聯繫管理員');
-            $('#downloadModal').modal('hide')
-            $('.down-pop').fadeOut();
-        }
-        })
-    })
-
-    $('.down-pop .xx').on('click', function (event) {
-        $('.down-pop').fadeOut();
-      });
-      $('#canceldownload').on('click', function (event) {
-        $('.down-pop').fadeOut();
-      });
-
-      $("#download-email").keyup(function () {
-        ValidateEmail($(this).val())
-      });
     
-
-$('ul.nav-tab li').on('click', function(){
-    $('ul.nav-tab li').removeClass('active');
-    $(this).addClass('active');
-
-    // default species percentage
-
-})
-
 
 // map
   
-  function polystyle(feature) {
-    return {
-      fillColor: "#7C9C2D",
-      weight: 0.8,
-      color: "white",
-      className: "forestPoly",
-    };
-  }
+function polystyle(feature) {
+return {
+    fillColor: "#7C9C2D",
+    weight: 0.8,
+    color: "white",
+    className: "forestPoly",
+};
+}
 
 
-  function onEachFeature(feature, layer) {
+function onEachFeature(feature, layer) {
     layer.on({
         mouseover: e => {
             e.target.setStyle({
@@ -233,10 +271,6 @@ $('ul.nav-tab li').on('click', function(){
         },        
     })
 }
-
-
-
-
 
 
 const StudyAreaIcon = L.icon({
@@ -363,35 +397,32 @@ function setSpeciesPie(pie_data, other_data, deployment_points){
     // species percentage
     $('#species-percentage').html('');
     for (i = 0; i < pie_data.length; i++) {
-        if (pie_data[i]['name'] != '其他物種'){
+        $('#species-percentage').append(
+            ` <span class="species-percentage-list" data-species="${pie_data[i]['name']}"><i class="fa fa-circle chart-color-${i} w-12"></i> 
+            ${pie_data[i]['name']} ${pie_data[i]['y']} % </span> <br>`
+        )
+        if (pie_data[i]['name'] == '其他物種'){
             $('#species-percentage').append(
-                ` <span class="species-percentage-list" data-species="${pie_data[i]['name']}"><i class="fa fa-circle chart-color-${i} w-12"></i> 
-                ${pie_data[i]['name']} ${pie_data[i]['y']} % </span> <br>`
+                `<div class="collapse multi-collapse d-none" id="multiCollapseSpecies">
+                </div>`
             )
-        } else {
-            $('#species-percentage').append(
-                ` <span><i class="fa fa-circle chart-color-${i} w-12"></i> 
-                </span> 
-                <span class="fs-14" data-bs-toggle="collapse" href="#multiCollapseExample1" role="button" aria-expanded="false" aria-controls="multiCollapseExample1">${pie_data[i]['name']} <i class="arrow fas fa-angle-down w-12"></i>
-                </span>        
-                <div class="collapse multi-collapse" id="multiCollapseExample1">
-                    <div class="card card-body px-3 pt-1 pb-3" id="other-card">
-                    </div>
-                </div>`)
         }
     }
-    $('#other-card').html('');
+    $('#multiCollapseSpecies').html('');
     for (i = 0; i < other_data.length; i++) {
-        $('#other-card').append(`
-        <span class="species-percentage-list species-percentage-list-o" data-species="${other_data[i]['name']}">
-            ${other_data[i]['name']} ${other_data[i]['y']} % </span>
+        $('#multiCollapseSpecies').append(`
+       <span class="species-percentage-list species-percentage-list-o" data-species="${other_data[i]['name']}">
+            ${other_data[i]['name']} ${other_data[i]['y']} % </span><br>
         `)
     }
 
     $('.species-percentage-list').on('click', function(){
-        updateSpeciesMap($(this).data('species'))
+        if ($(this).data('species')=='其他物種'){
+            $('#multiCollapseSpecies').toggleClass('d-none')
+        } else {
+            updateSpeciesMap($(this).data('species'))
+        }
     })
-
 
     // deployment
     $('.myDeploymentIcon').remove();
@@ -466,11 +497,12 @@ function updateSpeciesPie(){
         $('#species-count-title').html(window.species_count);
         $('#species_last_updated').html(window.species_last_updated);
     } else {
-        $('#species-pie').append('<div class="loader"></div>');
+        $('.loading-pop').removeClass('d-none')
         $.ajax({
             data: {'said': said, 'start_date': start_date, 'end_date': end_date},            
             url: "/update_species_pie",
             success: function(response){
+                $('.loading-pop').addClass('d-none')
                 $('#sa-title').html(title);
                 $('#species-count-title').html(response.species_count);
                 $('#species_last_updated').html(response.species_last_updated);
@@ -481,7 +513,7 @@ function updateSpeciesPie(){
             },
             error: function(){
                 alert('未知錯誤，請聯繫管理員');
-                $('.loader').remove();
+                $('.loading-pop').addClass('d-none')
 
             }
         })
@@ -509,7 +541,7 @@ function updateSpeciesMap(species){
     let start_date = $('input[name="start_date"]').val()
     let end_date = $('input[name="end_date"]').val()
 
-        $('#species-pie').append('<div class="loader"></div>');
+        $('.loading-pop').removeClass('d-none')
         $.ajax({
             data: {'said': said, 'start_date': start_date, 'end_date': end_date, 'species': species},            
             url: "/update_species_map",
@@ -545,23 +577,16 @@ function updateSpeciesMap(species){
                 $('#species-map-title').html(species)
                 $('#species-map-count-title').html(response.total_count)
 
-
-                $('.loader').remove();
+                $('.loading-pop').addClass('d-none')
             },
             error: function(){
                 alert('未知錯誤，請聯繫管理員');
-                $('.loader').remove();
+                $('.loading-pop').addClass('d-none')
             }
         })
     //}
 
 }
-
-
-$('.filter').on('change', function(){
-    updateSpeciesPie();
-})
-
 
 // species point color 
     /* marker style */
@@ -592,49 +617,4 @@ function pointToLayer(count, latlng) {
         fillOpacity: 0.75,
         className: 'speciesMapIcon',
         }) // Change marker to circle
-    } 
-
-
-
-
-    let date_locale = { days: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
-                    daysShort: ['日', '一', '二', '三', '四', '五', '六'],
-                    daysMin: ['日', '一', '二', '三', '四', '五', '六'],
-                    months: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'],
-                    monthsShort: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'],
-                    today: '今天',
-                    clear: '清除',
-                    dateFormat: 'yyyy-MM-dd',   
-                    timeFormat: 'HH:mm',
-                    firstDay: 1}
-
-    let start_date_picker = new AirDatepicker('#start_date',
-        { locale: date_locale,
-            onSelect: function onSelect(fd, date, inst) {
-                updateSpeciesPie();
-            }
-        });
-
-
-    let end_date_picker = new AirDatepicker('#end_date',
-        { locale: date_locale,
-            onSelect: function onSelect(fd, date, inst) {
-                updateSpeciesPie();
-            } });
-
-
-    $('.show_start').on('click', function(){
-        if (start_date_picker.visible) {
-            start_date_picker.hide();
-        } else {
-            start_date_picker.show();
-        }
-    })
-
-    $('.show_end').on('click', function(){
-        if (end_date_picker.visible) {
-            end_date_picker.hide();
-        } else {
-            end_date_picker.show();
-        }
-    })
+}

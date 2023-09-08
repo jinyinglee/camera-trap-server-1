@@ -351,8 +351,8 @@ def announcement_is_read(request):
     expired_time = 0
     response = {}
     if request.method == 'GET':
-        expired_time =  int(Announcement.objects.latest("created").mod_date.strftime('%s')) + 7776000
-        response = {'expired_time':expired_time}
+        expired_time =  int(Announcement.objects.latest("created").last_updated.strftime('%s')) + 7776000
+        response = {'expired_time': expired_time}
 
     return JsonResponse(response,  safe=False) 
 
@@ -396,6 +396,7 @@ def announcement(request):
     context = {
         'email' : email_list,
     }
+
     return render(request, 'base/announcement.html',context)
 
 
@@ -470,6 +471,13 @@ def login_for_test(request):
 def set_permission(request):
     is_authorized = False
     user_id = request.session.get('id', None)
+    member_list = []
+    org_project_list = []
+    org_list = []
+    project_list = []
+    org_admin_list = []
+    return_message = ''
+
     # check permission
     # if Contact.objects.filter(id=user_id).filter(Q(is_organization_admin=True) | Q(is_system_admin=True)):
     if Contact.objects.filter(id=user_id).filter(is_system_admin=True):
@@ -482,30 +490,33 @@ def set_permission(request):
                 org_id = request.POST.get('organization', None)
                 if user_id and org_id:
                     Contact.objects.filter(id=user_id).update(is_organization_admin=True, organization_id=org_id)
-                    messages.success(request, '新增成功')
+                    # messages.success(request, '新增成功')
+                    return_message = '新增成功'
             elif type == 'remove_admin':
                 user_id = request.POST.get('id', None)
                 if user_id:
                     Contact.objects.filter(id=user_id).update(is_organization_admin=False)
-                    messages.success(request, '移除成功')
+                    # messages.success(request, '移除成功')
+                    return_message = '移除成功'
             elif type == 'remove_project':
                 relation_id = request.POST.get('id', None)
                 if relation_id:
                     Organization.projects.through.objects.filter(id=relation_id).delete()
-                    messages.success(request, '移除成功')
-            else:
+                    # messages.success(request, '移除成功')
+                    return_message = '移除成功'
                 project_id = request.POST.get('project', None)
                 org_id = request.POST.get('organization', None)
                 try:
                     Organization.objects.get(id=org_id).projects.add(Project.objects.get(id=project_id))
-                    messages.success(request, '新增成功')
+                    # messages.success(request, '新增成功')
+                    return_message = '新增成功'
                 except:
-                    messages.error(request, '新增失敗')
+                    # messages.error(request, '新增失敗')
+                    return_message = '新增失敗'
         member_list = Contact.objects.all().values('name', 'email', 'id')
         org_list = Organization.objects.all()
         project_list = Project.objects.all().values('name', 'id')
 
-        org_project_list = []
         org_project_set = Organization.projects.through.objects.all()
         for i in org_project_set:
             tmp = {'organization_name': i.organization.name, 'relation_id': i.id,
@@ -514,11 +525,8 @@ def set_permission(request):
 
         org_admin_list = Contact.objects.filter(is_organization_admin=True).values('organization__name', 'id', 'name', 'email')
 
-        return render(request, 'base/permission.html', {'member_list': member_list, 'org_project_list': org_project_list,
-                      'is_authorized': is_authorized, 'org_list': org_list, 'project_list': project_list, 'org_admin_list': org_admin_list})
-    else:
-        messages.error(request, '您的權限不足')
-        return render(request, 'base/permission.html', {'is_authorized': is_authorized})
+    return render(request, 'base/permission.html', {'member_list': member_list, 'org_project_list': org_project_list, 'return_message': return_message,
+                    'is_authorized': is_authorized, 'org_list': org_list, 'project_list': project_list, 'org_admin_list': org_admin_list})
 
 
 def get_auth_callback(request):
@@ -575,6 +583,7 @@ def personal_info(request):
     # login required
     is_login = request.session.get('is_login', False)
     first_login = request.session.get('first_login', False)
+    info = []
     identities = ParameterCode.objects.filter(type='identity').values("name","pmajor","type","parametername")
     if request.method == 'POST':
         first_login = False
@@ -588,10 +597,8 @@ def personal_info(request):
     if is_login:
         info = Contact.objects.filter(
             orcid=request.session["orcid"]).values().first()
-        return render(request, 'base/personal_info.html', {'info': info, 'first_login': first_login,'identities':identities})
-    else:
-        messages.error(request, '請先登入')
-        return render(request, 'base/personal_info.html')
+        
+    return render(request, 'base/personal_info.html', {'info': info, 'first_login': first_login, 'identities': identities})
 
 
 def home(request):
