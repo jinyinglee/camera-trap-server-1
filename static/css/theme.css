@@ -2323,12 +2323,14 @@ body {
     }
 }
 
-.page-num a {
+
+
+.page-num a:not(.next,.back) {
     margin: 0px 5px
 }
 
 @media only screen and (max-width: 767px) {
-    .page-num a {
+    .page-num a:not(.next,.back) {
         margin: 0px 3px;
         margin-bottom: 10px
     }

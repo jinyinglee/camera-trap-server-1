@@ -1154,7 +1154,7 @@ def add_studyarea(request):
         return HttpResponse(json.dumps(data), content_type='application/json')
 
 
-def get_project_info(project_list):
+def get_project_info(project_list, limit=10, offset=0, order=None, sort=None):
     with connection.cursor() as cursor:
         q = f"""SELECT taicat_project.id, taicat_project.name, taicat_project.keyword, 
                     EXTRACT (year from taicat_project.start_date)::int, 
@@ -1162,7 +1162,7 @@ def get_project_info(project_list):
                     FROM taicat_project 
                     WHERE taicat_project.id = ANY (%s)
                     GROUP BY taicat_project.name, taicat_project.funding_agency, taicat_project.start_date, taicat_project.id 
-                    ORDER BY taicat_project.start_date DESC;"""
+                    ORDER BY taicat_project.start_date DESC"""
         cursor.execute(q, (project_list, ))
         project_info = cursor.fetchall()
         project_info = pd.DataFrame(project_info, columns=['id', 'name', 'keyword', 'start_year', 'funding_agency'])
@@ -1273,6 +1273,17 @@ def get_project_info(project_list):
             project_info.loc[project_info['id'] == i, 'num_studyarea'] = sa_c
             project_info.loc[project_info['id'] == i, 'num_deployment'] = dep_c
     projects = project_info[['id', 'name', 'keyword', 'start_year', 'funding_agency', 'num_studyarea', 'num_deployment', 'num_data']]
+    
+    if order:
+        if sort == 'desc':
+            projects = projects.sort_values(order, ascending=False)
+        else:
+            projects = projects.sort_values(order, ascending=True)
+
+    # if limit and offset:
+    projects = projects[offset:offset+limit]
+
+    
     projects = list(projects.itertuples(index=False, name=None))
     return projects, species_data
 
@@ -1282,35 +1293,32 @@ def project_overview(request):
     public_project = []
     public_species_data = []
     # 公開計畫 depend on publish_date date
-    with connection.cursor() as cursor:
-        # q = "SELECT taicat_project.id FROM taicat_project \
-        #     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
-        q = "SELECT taicat_project.id FROM taicat_project WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't' LIMIT 10;"
-        cursor.execute(q)
-        public_project_list = [l[0] for l in cursor.fetchall()]
+    # with connection.cursor() as cursor:
+    #     # q = "SELECT taicat_project.id FROM taicat_project \
+    #     #     WHERE taicat_project.mode = 'official' AND (CURRENT_DATE >= taicat_project.publish_date OR taicat_project.end_date < now() - '5 years' :: interval);"
+    #     q = "SELECT taicat_project.id FROM taicat_project WHERE taicat_project.mode = 'official' AND taicat_project.is_public = 't' LIMIT 10;"
+    #     cursor.execute(q)
+    #     public_project_list = [l[0] for l in cursor.fetchall()]
+    public_project_list = ProjectSpecies.objects.filter(project_id__in=Project.objects.filter(mode='official', is_public=True)).order_by('project_id').distinct('project_id').values_list('project_id',flat=True)
+
     if public_project_list:
         current_page = 1
         public_total = len(public_project_list)
         public_total_page = math.ceil(public_total / 10)
         public_page_list = get_page_list(current_page, public_total_page)
         public_project, public_species_data = get_project_info(public_project_list[:10])
-    # ---------------我的計畫
+    # # ---------------我的計畫
     # my project
-    my_project = []
     my_species_data = []
     if member_id := request.session.get('id', None):
         if my_project_list := get_my_project_list(member_id,[]):
-            current_page = 1
-            my_total = len(my_project_list)
-            my_total_page = math.ceil(my_total / 10)
-            my_page_list = get_page_list(current_page, my_total_page)
-            my_project, my_species_data = get_project_info(my_project_list[:10])
-    return render(request, 'project/project_overview.html', {'public_project': public_project, 'my_project': my_project, 
+            my_project, my_species_data = get_project_info(my_project_list)
+    return render(request, 'project/project_overview.html', {'public_project': public_project, 
                                                              'is_authorized_create': is_authorized_create,
                                                              'public_species_data': public_species_data, 'my_species_data': my_species_data,
-                                                             'public_page_list': public_page_list, 'my_page_list': my_page_list,
-                                                             'public_total_page': public_total_page, 'my_total_page': my_total_page,
-                                                             'public_total': public_total, 'my_total': my_total,
+                                                             'public_page_list': public_page_list, 
+                                                             'public_total_page': public_total_page,
+                                                             'public_total': public_total, 
                                                              })
 
 # project overview datatable
@@ -2185,34 +2193,75 @@ def robots_txt(request):
 
 def get_project_overview(request):
 
-
     if request.method == 'POST':
         table_id = request.POST.get('table_id')
         keyword = request.POST.get('keyword')
-        limit = request.POST.get('limit', 10)
-        page = request.POST.get('page', 1)
-        offset = (page-1)*limit 
-        orderby = request.POST.get('orderby', 'project_id')
-        sort = request.POST.get('sort', 'asc')
-
         species = request.POST.getlist('species[]')
-
+        limit = int(request.POST.get('limit'))
+        order = request.POST.get('order', 'id')
+        sort = request.POST.get('sort')
+        current_page = int(request.POST.get('page', 1))
 
         if table_id == 'publicproject':
-            # project_filter = Project.objects.filter(mode='official',is_public=True)
-            project_list = ProjectSpecies.objects.filter(name__in=species, project__mode='official', project__is_public=True).order_by('project_id').distinct('project_id')[offset:offset+limit]
-            project_list = list(project_list.values_list('project_id', flat=True))
+            project_filter = Project.objects.filter(mode='official', is_public=True)
         else:
             member_id = request.session.get('id', None)
             if member_id := request.session.get('id', None):
-                if my_project_list := get_my_project_list(member_id,[]): 
-                    with connection.cursor() as cursor:
-                        project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=my_project_list).order_by('project_id').distinct('project_id')
-                        project_list = list(project_list.values_list('project_id', flat=True))
+                if project_list := get_my_project_list(member_id,[]): 
+                    project_filter = Project.objects.filter(id__in=project_list)
+
+        if species:
+            project_filter = project_filter.filter(id__in=ProjectSpecies.objects.filter(name__in=species).values_list('project_id',flat=True))
+        
+        if keyword: #計畫名稱 計畫關鍵字 委辦單位
+            project_filter = project_filter.filter(Q(name__icontains=keyword)|Q(keyword__icontains=keyword)|Q(funding_agency__icontains=keyword))
+
+        project_list = list(project_filter.order_by('id').distinct('id').values_list('id',flat=True))
         project = []
+        total = 0
+        total_page = 0
+        page_list = []
+        show_start = 0
+        show_end = 0
+
         if project_list:
-            project, _ = get_project_info(project_list)
+            total = len(project_list)
+            total_page = math.ceil(total / limit)
+            page_list = get_page_list(current_page, total_page)
+            offset = (current_page-1)*limit
+            # [(current_page-1)*limit:current_page*limit]
+            project, _ = get_project_info(project_list, limit, offset, order, sort)
+            show_start = (current_page-1)*limit + 1
+            show_end = current_page*limit if total > current_page*limit else total
+        response = {'project': project, 'total': total, 'total_page': total_page, 
+                    'page_list': page_list, 'show_start': show_start, 'show_end': show_end}
+        return HttpResponse(json.dumps(response), content_type='application/json')
+
+    # if request.method == 'POST':
+    #     table_id = request.POST.get('table_id')
+    #     keyword = request.POST.get('keyword')
+    #     limit = request.POST.get('limit', 10)
+    #     page = request.POST.get('page', 1)
+    #     offset = (page-1)*limit 
+    #     orderby = request.POST.get('orderby', 'project_id')
+    #     sort = request.POST.get('sort', 'asc')
+
+    #     species = request.POST.getlist('species[]')
 
 
+    #     if table_id == 'publicproject':
+    #         # project_filter = Project.objects.filter(mode='official',is_public=True)
+    #         project_list = ProjectSpecies.objects.filter(name__in=species, project__mode='official', project__is_public=True).order_by('project_id').distinct('project_id')[offset:offset+limit]
+    #         project_list = list(project_list.values_list('project_id', flat=True))
+    #     else:
+    #         member_id = request.session.get('id', None)
+    #         if member_id := request.session.get('id', None):
+    #             if my_project_list := get_my_project_list(member_id,[]): 
+    #                 with connection.cursor() as cursor:
+    #                     project_list = ProjectSpecies.objects.filter(name__in=species, project_id__in=my_project_list).order_by('project_id').distinct('project_id')
+    #                     project_list = list(project_list.values_list('project_id', flat=True))
+    #     project = []
+    #     if project_list:
+    #         project, _ = get_project_info(project_list)
 
-    return HttpResponse(json.dumps(response), content_type='application/json')
+    # return HttpResponse(json.dumps(response), content_type='application/json')
