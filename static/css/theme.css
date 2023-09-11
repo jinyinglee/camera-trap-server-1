@@ -504,7 +504,7 @@ body {
 
 .header {
     position: fixed;
-    z-index: 1200;
+    z-index: 1700;
     background: #006a58;
     background: -moz-linear-gradient(left, #006a58 0%, #9ccc65 100%);
     background: -webkit-linear-gradient(left, #006a58 0%, #9ccc65 100%);
@@ -3468,7 +3468,7 @@ h3.light-green {
     min-height: 50px;
     border-radius: 5px;
     font-size: 16px;
-    display: flex
+    display: flex;
 }
 
 @media only screen and (max-width: 1279px) {
@@ -3941,7 +3941,7 @@ h3.light-green {
 
 .pop-box {
     position: fixed;
-    z-index: 1300;
+    z-index: 1900;
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.8);
@@ -4350,11 +4350,20 @@ h3.light-green {
 .pop-box .photo-debox .left-photobox .img-all {
     position: relative;
     width: 100%;
-    z-index: 1
+    z-index: 1;
 }
 
 .pop-box .photo-debox .left-photobox img {
-    width: 100%
+    width: 100%;
+    
+}
+
+.pop-box .photo-debox .left-photobox video {
+    height: auto !important;
+    width: 100% !important;
+    margin-right: auto !important;
+    margin-left: auto !important;
+    display: block 
 }
 
 .pop-box .photo-debox .right-form {
@@ -5005,22 +5014,22 @@ h3.light-green {
         position: fixed;
         width: 300px;
         top: 0;
-        z-index: 150;
         left: -300px;
-        transition: all .5s;
-        -moz-transition: all .5s;
-        -o-transition: all .5s;
-        -ms-transition: all .5s;
-        -webkit-transition: all .5s
+        transition: all .1s;
+        -moz-transition: all .1s;
+        -o-transition: all .1s;
+        -ms-transition: all .1s;
+        -webkit-transition: all .1s;
+        z-index: 1800;
     }
 
     .pjflex-content .left-selectlist.now {
         left: 0;
-        transition: all .5s;
-        -moz-transition: all .5s;
-        -o-transition: all .5s;
-        -ms-transition: all .5s;
-        -webkit-transition: all .5s
+        transition: all .1s;
+        -moz-transition: all .1s;
+        -o-transition: all .1s;
+        -ms-transition: all .1s;
+        -webkit-transition: all .1s
     }
 }
 
@@ -5090,7 +5099,7 @@ h3.light-green {
     background: #FFF;
     border-top-right-radius: 15px;
     border-top-left-radius: 15px;
-    z-index: 50;
+    z-index: 1650;
     border-bottom: 1px solid #eee
 }
 
@@ -5313,10 +5322,11 @@ h3.light-green {
 
 .pjflex-content .left-selectlist .item-other .input-item .icon-clock {
     position: absolute;
-    right: 10px;
+    right: 15px;
     top: 50%;
     margin-top: -11px;
-    background: none
+    background: none;
+    z-index: 10;
 }
 
 .pjflex-content .left-selectlist .item-other .input-item input, .pjflex-content .left-selectlist .item-other .input-item select {
@@ -5343,11 +5353,9 @@ h3.light-green {
 .pjflex-content .right-tablecont .delete-area {
     display: flex;
     align-items: center;
-    margin-bottom: 15px;
-    display: none
 }
 
-.pjflex-content .right-tablecont .delete-area button {
+.pjflex-content .right-tablecont .delete-area button.d-button {
     background: #CB5757;
     color: #FFF;
     padding: 5px 10px;
@@ -5359,16 +5367,45 @@ h3.light-green {
     -moz-transition: all .3s;
     -o-transition: all .3s;
     -ms-transition: all .3s;
-    -webkit-transition: all .3s
+    -webkit-transition: all .3s;
+    margin-bottom: 15px;
+    /* display: none */
 }
 
-.pjflex-content .right-tablecont .delete-area button:hover {
+.pjflex-content .right-tablecont .delete-area button.d-button:hover {
     transition: all .3s;
     -moz-transition: all .3s;
     -o-transition: all .3s;
     -ms-transition: all .3s;
     -webkit-transition: all .3s;
     background: #E27575
+}
+
+
+.pjflex-content .right-tablecont .delete-area button.e-button {
+    background: #257455;
+    color: #FFF;
+    padding: 5px 10px;
+    border-radius: 30px;
+    font-size: 18px;
+    margin-right: 10px;
+    min-width: 80px;
+    transition: all .3s;
+    -moz-transition: all .3s;
+    -o-transition: all .3s;
+    -ms-transition: all .3s;
+    -webkit-transition: all .3s;
+    margin-bottom: 15px;
+    /* display: none */
+}
+
+.pjflex-content .right-tablecont .delete-area button.e-button:hover {
+    transition: all .3s;
+    -moz-transition: all .3s;
+    -o-transition: all .3s;
+    -ms-transition: all .3s;
+    -webkit-transition: all .3s;
+    background: #3E9171
 }
 
 @media only screen and (max-width: 767px) {
@@ -5530,9 +5567,9 @@ h3.light-green {
     border-bottom: 0
 }
 
-.pjflex-content .right-tablecont .phototable .del-check {
+/* .pjflex-content .right-tablecont .phototable .del-check {
     display: none
-}
+} */
 
 .pjflex-content .right-tablecont .phototable .inp-check {
     width: 20px;

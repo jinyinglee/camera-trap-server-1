@@ -1353,6 +1353,25 @@ def project_overview(request):
 
 def project_detail(request, pk):
     folder = request.GET.get('folder')
+
+
+    folder_list = []
+    with connection.cursor() as cursor:
+        query = f"""SELECT folder_name,
+                        to_char(folder_last_updated AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD HH24:MI:SS') AS folder_last_updated
+                        FROM taicat_imagefolder
+                        WHERE project_id = %s
+                        ORDER BY folder_last_updated desc"""
+        cursor.execute(query, (pk, ))
+        rows = cursor.fetchall()
+        columns = list(cursor.description)
+        for row in rows:
+            row_dict = {}
+            for i, col in enumerate(columns):
+                row_dict[col.name] = row[i]
+            folder_list.append(row_dict)
+
+
     # 使用者是否有系統管理者/project_admin/總管理人的權限
     is_authorized = check_if_authorized(request, pk)
     is_project_authorized = False
@@ -1571,10 +1590,23 @@ def data(request):
     # t = time.time()
     requests = request.POST
     pk = requests.get('pk')
-    _start = requests.get('start')
-    _length = requests.get('length')
+    # _start = requests.get('offset', 0)
+    # _length = requests.get('limit', 10)
+    
     orderby = requests.get('orderby', 'datetime')
     sort = requests.get('sort', 'asc')
+    # page = int(requests.get('page', 1))
+    # print(orderby, sort)
+
+    limit = int(request.POST.get('limit'))
+    current_page = int(request.POST.get('page', 1))
+    offset = (current_page-1)*limit
+
+    # print(page, _length)
+
+    # _start = (page-1)*_length
+
+    # print(_start)
     # 系統管理員
     member_id = request.session.get('id', None)
     is_project_authorized = Contact.objects.filter(id=member_id, is_system_admin=True).exists()
@@ -1598,18 +1630,19 @@ def data(request):
         else:
             end_date = datetime.datetime.strptime(ProjectStat.objects.filter(project_id=pk).first().latest_date.strftime("%Y-%m-%d"), "%Y-%m-%d") + datetime.timedelta(days=1)
         date_filter = "AND datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
+
     conditions = ''
     deployment = requests.getlist('deployment[]')
-    sa = requests.get('sa')
-    if sa:
-        conditions += f'AND studyarea_id = {sa}'
-        if deployment:
-            if 'all' not in deployment:
-                x = [int(i) for i in deployment]
-                x = str(x).replace('[', '(').replace(']', ')')
-                conditions += f'AND deployment_id IN {x}'
-        else:
-            conditions = 'AND deployment_id IS NULL'
+    # sa = requests.get('sa')
+    # if sa:
+    #     conditions += f'AND studyarea_id = {sa}'
+    if deployment:
+        # if 'all' not in deployment:
+        x = [int(i) for i in deployment if i != 'all']
+        x = str(x).replace('[', '(').replace(']', ')')
+        conditions += f'AND deployment_id IN {x}'
+        # else:
+        #     conditions = 'AND deployment_id IS NULL'
     spe_conditions = ''
     species = requests.getlist('species[]')
     if species:
@@ -1668,13 +1701,13 @@ def data(request):
                             ORDER BY {} {}, i.id ASC
                             LIMIT {} OFFSET {}"""
         # set limit = 1000 to avoid bad psql query plan
-        cursor.execute(query.format(deployment_sql, pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, orderby, sort, 1000, _start))
+        cursor.execute(query.format(deployment_sql, pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, orderby, sort, 1000, offset))
         image_info = cursor.fetchall()
         # print(query.format(pk, date_filter, conditions, spe_conditions, time_filter, folder_filter, 1000, _start))
     if image_info:
 
         df = pd.DataFrame(image_info, columns=['image_id', 'studyarea_id', 'deployment_id', 'filename', 'species', 'life_stage', 'sex', 'antler',
-                                               'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime', 'memo', 'specific_bucket'])[:int(_length)]
+                                               'animal_id', 'remarks', 'file_url', 'image_uuid', 'from_mongo', 'datetime', 'memo', 'specific_bucket'])[:int(limit)]
         # print(df)
         # print('b', time.time()-t)
         sa_names = pd.DataFrame(StudyArea.objects.filter(id__in=df.studyarea_id.unique()).values('id', 'name', 'parent_id')
@@ -1695,15 +1728,15 @@ def data(request):
                             WHERE i.species not in ('人','人（有槍）','人＋狗','狗＋人','獵人','砍草工人','研究人員','研究人員自己','除草工人') and i.project_id = {} {} {} {} {} {}"""
             cursor.execute(query.format(deployment_sql, pk, date_filter, conditions, spe_conditions, time_filter, folder_filter))
             count = cursor.fetchone()
-        recordsTotal = count[0]
+        total = count[0]
 
         # print('c-1', time.time()-t)
-        recordsFiltered = recordsTotal
+        # recordsFiltered = recordsTotal
 
-        start = int(_start)
-        length = int(_length)
-        per_page = length
-        page = math.ceil(start / length) + 1
+        # start = int(_start)
+        # length = int(_length)
+        # per_page = length
+        # page = math.ceil(start / length) + 1
         # add sub studyarea if exists
         ssa_exist = StudyArea.objects.filter(project_id=pk, parent__isnull=False)
         if ssa_exist.count() > 0:
@@ -1787,21 +1820,35 @@ def data(request):
         data = data.astype(object).replace(np.nan, '')
         data = data.to_dict('records')
 
+        total_page = math.ceil(total / limit)
+        # print(page)
+        page_list = get_page_list(current_page, total_page)
+
+        show_start = (current_page-1)*limit + 1
+        show_end = current_page*limit if total > current_page*limit else total
+
         response = {
             'data': data,
-            'page': page,
-            'per_page': per_page,
-            'recordsTotal': recordsTotal,
-            'recordsFiltered': recordsFiltered,
+            'page': current_page,
+            'limit': limit,
+            'total': total,
+            'total_page': total_page,
+            'page_list': page_list,
+            'show_start': show_start,
+            'show_end': show_end
         }
 
     else:
         response = {
             'data': [],
             'page': 0,
-            'per_page': 0,
-            'recordsTotal': 0,
-            'recordsFiltered': 0,
+            'limit': 0,
+            'total': 0,
+            'total_page': 0,
+            'page_list': 0,
+            'show_start': 0,
+            'show_end': 0
+
         }
 
     return HttpResponse(json.dumps(response), content_type='application/json')
@@ -1842,25 +1889,35 @@ def generate_download_excel(request, pk):
         date_filter = "AND i.datetime BETWEEN '{}' AND '{}'".format(start_date, end_date)
 
     conditions = ''
-    deployment = requests.getlist('d-filter[]')
-    sa = requests.get('sa-filter')
+    sa = requests.getlist('sa[]')
     sa_download_log = []
-    dep_download_log = []
+
     if sa:
-        conditions += f' AND i.studyarea_id = {sa}'
-        sa_modal = StudyArea.objects.get(id=sa)
-        sa_download_log.append(sa_modal.name)
-        if deployment:
-            if 'all' not in deployment:
-                x = [int(i) for i in deployment]
-                x = str(x).replace('[', '(').replace(']', ')')
-                conditions += f' AND i.deployment_id IN {x}'
-                for i in deployment:
-                    dep_download_log.append(Deployment.objects.get(id=i).name)
-        else:
-            conditions = ' AND i.deployment_id IS NULL'
+        sa = [s for s in sa if s != 'all']
+        sa_str = ' OR '.join([ f'i.studyarea_id = {s}' for s in sa])
+        conditions += f' AND ({sa_str})'
+        # print(conditions, sa)
+        for i in sa:
+            sa_download_log.append(StudyArea.objects.get(id=i).name)
+
+    #     sa_modal = StudyArea.objects.get(id=sa)
+    #     sa_download_log.append(sa_modal.name)
+
+    deployment = requests.getlist('deployment[]')
+    dep_download_log = []
+
+    if deployment:
+        # if 'all' not in deployment:
+        deployment = [int(i) for i in deployment if i != 'all']
+        x = str(deployment).replace('[', '(').replace(']', ')')
+        conditions += f' AND i.deployment_id IN {x}'
+        for i in deployment:
+            dep_download_log.append(Deployment.objects.get(id=i).name)
+        # else:
+        #     conditions = ' AND i.deployment_id IS NULL'
     spe_conditions = ''
-    species = requests.getlist('species-filter[]')
+    species = requests.getlist('species[]')
+
     if species:
         if 'all' not in species:
             x = [i for i in species]
@@ -1915,6 +1972,7 @@ def generate_download_excel(request, pk):
                             JOIN taicat_project p ON i.project_id = p.id
                             WHERE i.project_id = {pk} {date_filter} {conditions} {spe_conditions} {time_filter} {folder_filter}
                             ORDER BY i.created DESC, i.project_id ASC ) to stdout with delimiter ',' csv header;"""
+    
     with connection.cursor() as cursor:
         with open(os.path.join(download_dir, n), 'w+') as fp:
             cursor.copy_expert(sql, fp)

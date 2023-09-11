@@ -116,13 +116,15 @@ def get_notif(contact_id):
 # 確認是否有權限取得單機版檔案
 @register.filter()
 def if_desktop(user_id):
-    # 系統管理員
-    # 計畫總管理人
 
-    projects = list(Organization.objects.get(name='林務局').projects.all().values_list('id',flat=True))
-    if ProjectMember.objects.filter(project__in=projects,member_id=user_id).exists():
+    # 任何計畫下成員
+    # 計畫總管理人
+    # 系統管理員
+
+    # projects = list(Organization.objects.get(name='林務局').projects.all().values_list('id',flat=True))
+    if ProjectMember.objects.filter(member_id=user_id).exists():
         return True
-    elif Contact.objects.filter(Q(id=user_id, is_organization_admin=True, organization__name='林務局')|Q(id=user_id, is_system_admin=True)).exists():
+    elif Contact.objects.filter(Q(id=user_id, is_organization_admin=True)|Q(id=user_id, is_system_admin=True)).exists():
         return True
     else:
         return False
