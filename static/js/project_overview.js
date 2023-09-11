@@ -1,217 +1,234 @@
 var $csrf_token = $('[name="csrfmiddlewaretoken"]').attr("value");
-var $publicproject = $('#publicproject-tbody').html()
-var $myproject = $('#myproject-tbody').html()
 
 $(function () {
+  $(".changePage").on("click", function () {
+    updateTable($(this).data("page"));
+  });
 
+  // 每頁顯示筆數
+  $("select[name=limit]").on("change", function () {
+    updateTable(1);
+  });
 
-	$('.upar1').on('click', function() {
-		$(this).css("fill", "#257455");
-		$('.dwar1').css("fill", "#ADDBB9");
-	});
-	$('.dwar1').on('click', function() {
-		$(this).css("fill", "#257455");
-		$('.upar1').css("fill", "#ADDBB9");
-	});
-	$('.settitle-box').on('click', function() {
-		$(this).next('.check-list').slideToggle();
-		$(this).toggleClass('now');
+  $(".searchicon").on("click", function () {
+    updateTable(1);
+  });
 
-	});
-	$('.opitem-btn').on('click', function() {
-		if($('.left-selectlist').css("left") == "0px"){
-			$('.left-selectlist').animate({
-				left: "-300"
-			});
-		}else{
-			$('.left-selectlist').animate({
-				left: "0"
-			});
-		}
-	});
+  $(".upar1").on("click", function () {
+    $(".upar1").css("fill", "#ADDBB9");
+    $(".now-order").removeClass("now-order");
+    $(this).css("fill", "#257455");
+    $(this).addClass("now-order");
+    $(".dwar1").css("fill", "#ADDBB9");
+    updateTable(1);
+  });
 
+  $(".dwar1").on("click", function () {
+    $(".dwar1").css("fill", "#ADDBB9");
+    $(".now-order").removeClass("now-order");
+    $(this).css("fill", "#257455");
+    $(this).addClass("now-order");
+    $(".upar1").css("fill", "#ADDBB9");
+    updateTable(1);
+  });
 
-  // species: if other checkbox checked, uncheck 'all'
-  /*
-  $("input[name='species-filter'].filter:not(.all)").click(function () {
-    let table_id = $(".col-10 .active").attr("aria-controls");
-    if ($(this).is(":checked")) {
-      $('<i class="fas fa-check title-dark w-12"></i>').insertBefore($(this));
+  $(".settitle-box").on("click", function () {
+    $(this).next(".check-list").slideToggle();
+    $(this).toggleClass("now");
+  });
+
+  $(".opitem-btn").on("click", function () {
+    if ($(".left-selectlist").css("left") == "0px") {
+      $(".left-selectlist").animate({
+        left: "-300",
+      });
     } else {
-      $(this).parent("label").children("svg").remove();
+      $(".left-selectlist").animate({
+        left: "0",
+      });
     }
-    $(`input[name='species-filter'].all.${table_id}`).prop("checked", false);
-    $(`#species-list-all-${table_id} label`).children("svg").remove();
-  });*/
+  });
 
-  $('.species-check-list li:not(.all)').click(function(){
-    $(this).toggleClass('now')
-    let list_name = $(this).data('table')
-    $(`.species-check-list li.all[data-table=${list_name}]`).removeClass('now')
-  })
+  $(".species-check-list li:not(.all)").click(function () {
+    $(this).toggleClass("now");
+    let list_name = $(this).data("table");
+    $(`.species-check-list li.all[data-table=${list_name}]`).removeClass("now");
+  });
 
   // species: if 'all' checked, check all checkbox
 
-  $('.species-check-list li.all').click(function(){
+  $(".species-check-list li.all").click(function () {
+    let list_name = $(this).data("table");
 
-    /*
-    let table_id = $(".pj-tab li.now").data('table');
-    let list_name;
-    if (table_id == "publicproject") {
-      list_name = "public-species";
-    } else {
-      list_name = "my-species";
-    }*/
-
-    let list_name = $(this).data('table')
-
-    if ($(this).hasClass('now')) {
+    if ($(this).hasClass("now")) {
       // 移除掉全部的
-      $(this).removeClass('now')
-      $(`.species-check-list li[data-table=${list_name}]`).removeClass('now')
+      $(this).removeClass("now");
+      $(`.species-check-list li[data-table=${list_name}]`).removeClass("now");
     } else {
       // 先移除掉全部的再一次加上去
-      $(this).removeClass('now')
-      $(`.species-check-list li[data-table=${list_name}]`).removeClass('now')
-      $(this).addClass('now')
-      $(`.species-check-list li[data-table=${list_name}]`).addClass('now')
+      $(this).removeClass("now");
+      $(`.species-check-list li[data-table=${list_name}]`).removeClass("now");
+      $(this).addClass("now");
+      $(`.species-check-list li[data-table=${list_name}]`).addClass("now");
     }
+  });
 
-  })
-
-  /*
-  $("input[name='species-filter'].all").click(function () {
-    let table_id = $(".col-10 .active").attr("aria-controls");
-    let list_name;
-    if (table_id == "publicproject") {
-      list_name = "public-species";
-    } else {
-      list_name = "my-species";
-    }
-    if ($(this).is(":checked")) {
-      // 先移除掉全部的再一次加上去
-      $(`#species-list li.${list_name} label`).children("svg").remove();
-      $(`#species-list li.${list_name} label`).prepend('<i class="fas fa-check title-dark w-12"></i>');
-      $(`input[name='species-filter'].${table_id}`).prop("checked", true);
-    } else {
-      $(`#species-list li.${list_name} label`).children("svg").remove();
-      $(`input[name='species-filter'].${table_id}`).prop("checked", false);
-    }
-  });*/
-
-  // 切換左側物種統計欄
+  // 切換公開計畫 / 我的計畫
   // speices filter list
   $(".pj-tab li").on("click", function () {
+    $(".pj-tab li").removeClass("now");
+    $(this).addClass("now");
 
-    $(".pj-tab li").removeClass('now')
-    $(this).addClass('now')
-
-    if ($(this).data('table') == 'publicproject'){
+    if ($(this).data("table") == "publicproject") {
       $("li[data-table=public-species]").removeClass("d-none");
       $("li[data-table=my-species]").addClass("d-none");
-      $('.myproject-rows').addClass('d-none')
-      $('.publicproject-rows').removeClass('d-none')
-      $('div[data-table=public-page]').removeClass('d-none')
-      $('div[data-table=my-page]').addClass('d-none')
+      $(".myproject-rows").addClass("d-none");
+      $(".publicproject-rows").removeClass("d-none");
+      $("div[data-table=public-page]").removeClass("d-none");
+      $("div[data-table=my-page]").addClass("d-none");
     } else {
       $("li[data-table=my-species]").removeClass("d-none");
       $("li[data-table=public-species]").addClass("d-none");
-      $('.myproject-rows').removeClass('d-none')
-      $('.publicproject-rows').addClass('d-none')
-      $('div[data-table=public-page]').addClass('d-none')
-      $('div[data-table=my-page]').removeClass('d-none')
-
+      $(".myproject-rows").removeClass("d-none");
+      $(".publicproject-rows").addClass("d-none");
+      $("div[data-table=public-page]").addClass("d-none");
+      $("div[data-table=my-page]").removeClass("d-none");
     }
-  });
 
-  /*
-  $("#myproject-tab").on("click", function () {
-    $(".my-species").removeClass("d-none");
-    $(".public-species").addClass("d-none");
-  });*/
+    updateTable(1);
+  });
 
   // clickable datatable
 
-  $('.clickable-row').on('click',function(){
+  $(".clickable-row").on("click", function () {
     window.location = $(this).data("href");
-  })
+  });
 
-  // filter data by species
   $("#filterTableBySpecies").on("click", function () {
-    let table_id = $(".pj-tab li.now").data('table');
-    let list_name;
-    if (table_id == "publicproject") {
-      list_name = "public-species";
-    } else {
-      list_name = "my-species";
-    }
-
-    //let s = $(`[name=species-filter].${table_id}:checked`).val();
-
-   // if (s != undefined && s != "") {
-      // show loading
-      //$(".tab-area").addClass("loading");
-      // current table
-      let check_list = $(`ul.species-check-list li.now:not(.all)[data-table=${list_name}]`);
-      let speciesArray = [];
-      check_list.each(function () {
-        if ($(this).data('species')!=undefined){
-          speciesArray.push($(this).data('species'));
-        }
-      });
-
-      console.log(speciesArray)
-
-/*
-      if (speciesArray.length) {
-        $.ajax({
-          type: "POST",
-          url: "/api/update_datatable",
-          data: { table_id: table_id, species: speciesArray },
-          headers: { "X-CSRFToken": $csrf_token },
-          success: function (response) {
-            $(".tab-area").removeClass("loading");
-            // reset table
-            $("#" + table_id + "-table")
-              .DataTable()
-              .destroy();
-            $("#" + table_id + "-tbody").html("");
-            let i;
-            for (i = 0; i < response.length; i++) {
-              // keyword & funding agency
-              if ((response[i][2] == "None") | (response[i][2] == null)) {
-                response[i][2] = "";
-              }
-
-              if ((response[i][4] == "None") | (response[i][2] == null)) {
-                response[i][4] = "";
-              }
-
-              $("#" + table_id + "-tbody").append(`
-                              <tr class='clickable-row' data-href="info/${response[i][0]}/">
-                                  <td>${response[i][0]}</td>
-                                  <td>${response[i][1]}</td>
-                                  <td>${response[i][2]}</td>
-                                  <td>${response[i][3]}</td>
-                                  <td>${response[i][4]}</td>
-                                  <td>${response[i][5]}</td>
-                                  <td>${response[i][6]}</td>
-                                  <td>${response[i][7]}</td>
-                              </tr>`);
-            }
-            $("#" + table_id + "-table").DataTable({ language: language_settings, columnDefs: column_defs, order: [[3, "desc"]] });
-          },
-        });
-      }
-      */
-
-
-
-   // } else {
-   //   resetTable();
-   // }
+    updateTable(1);
   });
 });
+
+function updateTable(page) {
+  page = page == "" ? 1 : page;
+
+  let table_id = $(".pj-tab li.now").data("table");
+  let list_name = table_id == "publicproject" ? "public" : "my";
+  // 如果 全部check的話 則不用給
+  let speciesArray = [];
+  if ($(`ul.species-check-list li.now.all[data-table=${list_name}-species]`).length == 0) {
+    let check_list = $(`ul.species-check-list li.now:not(.all)[data-table=${list_name}-species]`);
+    check_list.each(function () {
+      if ($(this).data("species") != undefined) {
+        speciesArray.push($(this).data("species"));
+      }
+    });
+  }
+
+  $(".loading-pop").removeClass("d-none");
+
+  $.ajax({
+    type: "POST",
+    url: "/api/project/overview",
+    data: { table_id: table_id, species: speciesArray, keyword: $("input[name=project_keyword]").val(), page: page, limit: $(`[data-table=${list_name}-page] select[name=limit]`).val(), order: $(".now-order").data("order"), sort: $(".now-order").hasClass("dwar1") ? "asc" : "desc" },
+    headers: { "X-CSRFToken": $csrf_token },
+    success: function (response) {
+      $(".loading-pop").addClass("d-none");
+
+      $(`tr.${table_id}-rows`).remove();
+      let i;
+      for (i = 0; i < response.project.length; i++) {
+        // keyword & funding agency
+        if ((response.project[i][2] == "None") | (response.project[i][2] == null)) {
+          response.project[i][2] = "";
+        }
+
+        if ((response.project[i][4] == "None") | (response.project[i][4] == null)) {
+          response.project[i][4] = "";
+        }
+
+        $(".pjtable-styel").append(`
+                        <tr class='clickable-row ${table_id}-rows' data-href="info/${response.project[i][0]}/">
+                            <td>${response.project[i][1]}</td>
+                            <td>${response.project[i][2]}</td>
+                            <td>${response.project[i][3]}</td>
+                            <td>${response.project[i][4]}</td>
+                            <td>${response.project[i][5]}</td>
+                            <td>${response.project[i][6]}</td>
+                            <td>${response.project[i][7]}</td>
+                        </tr>`);
+      }
+
+      $(".clickable-row").off("click");
+      $(".clickable-row").on("click", function () {
+        window.location = $(this).data("href");
+      });
+
+      // 修改筆數資數
+      /* 這邊要修改成當前狀況 */
+      $(`.page-inf[data-table=${list_name}-page] span.show-start`).html(response.show_start);
+      $(`.page-inf[data-table=${list_name}-page] span.show-end`).html(response.show_end);
+      $(`.page-inf[data-table=${list_name}-page] span.show-total`).html(response.total);
+
+      // 修改頁碼
+
+      // 把之前隱藏的部分拿掉
+      $(`.page-inf[data-table=${list_name}-page] .d-none`).removeClass("d-none");
+      $(`.page-inf[data-table=${list_name}-page] .pt-none`).removeClass("pt-none");
+
+      // 修改上下一頁
+      if (page - 1 > 0) {
+        $(`.page-inf[data-table=${list_name}-page] .back`).data("page", page - 1);
+      } else {
+        $(`.page-inf[data-table=${list_name}-page] .back`).addClass("pt-none");
+      }
+
+      if (page + 1 <= response.total_page) {
+        $(`.page-inf[data-table=${list_name}-page] .next`).data("page", page + 1);
+      } else {
+        $(`.page-inf[data-table=${list_name}-page] .next`).addClass("pt-none");
+      }
+
+      // 修改最後一頁
+      $(`.page-inf[data-table=${list_name}-page] .final_page`).data("page", response.total_page);
+      $(`.page-inf[data-table=${list_name}-page] .final_page`).html(response.total_page);
+
+      // 如果只有一頁 要把data-page=1 & 最後一頁隱藏
+      if (response.total_page <= 1) {
+        $(`.page-inf[data-table=${list_name}-page] .final_page, .page-inf[data-table=${list_name}-page] .first_page`).addClass("d-none");
+      }
+
+      // 如果都沒有 要把上下頁隱藏
+      if (response.total_page == 0) {
+        $(`.page-inf[data-table=${list_name}-page] .back, .page-inf[data-table=${list_name}-page] .next`).addClass("d-none");
+      }
+
+      // 修改中間頁碼
+      $(`.page-inf[data-table=${list_name}-page] .middle_page`).remove();
+
+      let html = "";
+      for (let i = 0; i < response.page_list.length; i++) {
+        if (response.page_list[i] == page) {
+          // 如果等於現在的頁數 要加上now
+          html += ` <a class="middle_page num now changePage" data-page="${response.page_list[i]}">${response.page_list[i]}</a> `;
+        } else {
+          html += ` <a class="middle_page num changePage" data-page="${response.page_list[i]}">${response.page_list[i]}</a>  `;
+        }
+      }
+
+      $(`.page-inf[data-table=${list_name}-page] .back`).after(html);
+
+      $(".changePage").off("click");
+      $(".changePage").on("click", function () {
+        updateTable($(this).data("page"));
+      });
+    },
+    error: function () {
+      $(".loading-pop").addClass("d-none");
+    },
+  });
+}
+
 /*
 
 // datatable
@@ -305,7 +322,6 @@ let publicproject_table = $("#publicproject-table").DataTable({
   },
 });*/
 
-
 // radio style
 /*
 $("input[type=radio]").click(function () {
@@ -316,7 +332,7 @@ $("input[type=radio]").click(function () {
 });*/
 
 // reset table
-
+/*
 $('#resetTable').on('click',function(){
     resetTable()
 })
@@ -344,12 +360,12 @@ function resetTable() {
     fixedColumns: true,
     order: [[1, "asc"]],
   });
+*/
+// $('.dataTables_length label').addClass('input-item')
 
- // $('.dataTables_length label').addClass('input-item')
+// filter
 
-  // filter
-
-  /*
+/*
   let table_id = $(".col-10 .active").attr("aria-controls");
   if (table_id == "myproject") {
     $(".my-species").removeClass("d-none");
@@ -358,7 +374,7 @@ function resetTable() {
     $(".my-species").addClass("d-none");
     $(".public-species").removeClass("d-none");
   }*/
-
+/*
   let table_id = $(".pj-tab li.now").data('table');
   if (table_id == 'publicproject'){
     $("li[data-table=public-species]").removeClass("d-none");
@@ -370,7 +386,6 @@ function resetTable() {
 
   // reset checkbox
   $('.species-check-list li').removeClass('now').addClass('now')
-
   //$("input[name=species-filter][type=checkbox]").prop("checked", false);
   //$("input[type=checkbox].all").prop("checked", true);
 
@@ -378,3 +393,143 @@ function resetTable() {
   //$(".fa-check").remove();
   //$('<i class="fas fa-check title-dark"></i>').insertBefore($("input[type=radio].all"));
 }
+
+
+
+*/
+
+// filter data by species
+
+/*
+  $("#filterTableBySpecies").on("click", function () {
+    
+
+
+    let table_id = $(".pj-tab li.now").data('table');
+    let list_name = (table_id == "publicproject") ? "public" : 'my'
+
+
+      // current table
+      let check_list = $(`ul.species-check-list li.now:not(.all)[data-table=${list_name}-species]`);
+      let speciesArray = [];
+      check_list.each(function () {
+        if ($(this).data('species')!=undefined){
+          speciesArray.push($(this).data('species'));
+        }
+      });
+
+      if (speciesArray.length) {
+      $('.loading-pop').removeClass('d-none')
+        $.ajax({
+          type: "POST",
+          url: "/api/project/overview",
+          data: { table_id: table_id, species: speciesArray },
+          headers: { "X-CSRFToken": $csrf_token },
+          success: function (response) {
+
+
+
+            $('.loading-pop').addClass('d-none')
+
+            $(`tr.${table_id}-rows`).remove()
+            let i;
+            for (i = 0; i < response.project.length; i++) {
+
+              // keyword & funding agency
+              if ((response.project[i][2] == "None") | (response.project[i][2] == null)) {
+                response.project[i][2] = "";
+              }
+
+              if ((response.project[i][4] == "None") | (response.project[i][4] == null)) {
+                response.project[i][4] = "";
+              }
+              
+              $('.pjtable-styel').append(`
+                              <tr class='clickable-row ${table_id}-rows' data-href="info/${response.project[i][0]}/">
+                                  <td>${response.project[i][1]}</td>
+                                  <td>${response.project[i][2]}</td>
+                                  <td>${response.project[i][3]}</td>
+                                  <td>${response.project[i][4]}</td>
+                                  <td>${response.project[i][5]}</td>
+                                  <td>${response.project[i][6]}</td>
+                                  <td>${response.project[i][7]}</td>
+                              </tr>`);
+
+              $('.clickable-row').off('click')
+              $('.clickable-row').on('click',function(){
+                window.location = $(this).data("href");
+              })
+
+              // 修改筆數資數
+              $(`.page-inf[data-table=${list_name}-page] span.show-start`).html('1')
+              $(`.page-inf[data-table=${list_name}-page] span.show-end`).html(response.total>=10 ? ('10') : (response.total))
+              $(`.page-inf[data-table=${list_name}-page] span.show-total`).html(response.total)
+
+              // 修改頁碼
+              // 修改最後一頁
+              $(`.page-inf[data-table=${list_name}-page] .final_page`).data('page', response.total_page)
+              $(`.page-inf[data-table=${list_name}-page] .final_page`).html(response.total_page)
+
+              // 如果只有一頁 要把data-page=1 & 最後一頁隱藏 
+              if (response.total_page <= 1){
+                $(`.page-inf[data-table=${list_name}-page] .final_page, .page-inf[data-table=${list_name}-page] .first_page`).addClass('d-none')
+              }
+              
+              // 修改中間頁碼
+              $(`.page-inf[data-table=${list_name}-page] .middle_page`).remove()
+              
+              
+              let html = ''
+              for (let i = 0; i < response.page_list.length; i++) {
+                  if (response.page_list[i] == 1){
+                      html += ` <a class="middle_page num now changePage" data-page="${response.page_list[i]}">${response.page_list[i]}</a> `;
+                  } else {
+                      html += ` <a class="middle_page num changePage" data-page="${response.page_list[i]}">${response.page_list[i]}</a>  `
+                  }
+              }
+
+              $(`.page-inf[data-table=${list_name}-page] .back`).append(html)
+
+            }
+          },
+          error: function(){
+            $('.loading-pop').addClass('d-none')
+          }
+        });
+      } else {
+        resetTable();
+    }
+  });*/
+
+/*
+  $("input[name='species-filter'].all").click(function () {
+    let table_id = $(".col-10 .active").attr("aria-controls");
+    let list_name;
+    if (table_id == "publicproject") {
+      list_name = "public-species";
+    } else {
+      list_name = "my-species";
+    }
+    if ($(this).is(":checked")) {
+      // 先移除掉全部的再一次加上去
+      $(`#species-list li.${list_name} label`).children("svg").remove();
+      $(`#species-list li.${list_name} label`).prepend('<i class="fas fa-check title-dark w-12"></i>');
+      $(`input[name='species-filter'].${table_id}`).prop("checked", true);
+    } else {
+      $(`#species-list li.${list_name} label`).children("svg").remove();
+      $(`input[name='species-filter'].${table_id}`).prop("checked", false);
+    }
+  });*/
+
+// species: if other checkbox checked, uncheck 'all'
+/*
+  $("input[name='species-filter'].filter:not(.all)").click(function () {
+    let table_id = $(".col-10 .active").attr("aria-controls");
+    if ($(this).is(":checked")) {
+      $('<i class="fas fa-check title-dark w-12"></i>').insertBefore($(this));
+    } else {
+      $(this).parent("label").children("svg").remove();
+    }
+    $(`input[name='species-filter'].all.${table_id}`).prop("checked", false);
+    $(`#species-list-all-${table_id} label`).children("svg").remove();
+  });*/

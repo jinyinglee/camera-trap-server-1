@@ -1,7 +1,7 @@
 {% extends 'base/base.html' %}
 {% load static %} 
 {% block head %}
-<link rel="stylesheet" href="{% static 'css/theme.css' %}">
+{% comment %} <link rel="stylesheet" href="{% static 'css/theme.css' %}"> {% endcomment %}
 <link rel="stylesheet" href="{% static 'css/project_info.css' %}">
 <link rel="stylesheet" href="{% static 'css/air-datepicker.css' %}">
 
@@ -42,7 +42,7 @@
 						</g>
 					</svg>
 				</div>
-				<div class="titlebox" id="downloadModal">
+				<div class="titlebox">
 					下載篩選資料
 				</div>
 				<div class="contentbox">

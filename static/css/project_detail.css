@@ -1,4 +1,124 @@
-  /* datatable loader */
+
+
+/* 以下因應新切版 */
+input[name=start_altitude], input[name=end_altitude] {
+  margin: 10px 0;
+}
+
+li .sa-title .arrup:not(.close) {
+  transform: rotate(180deg);
+  transition: all .3s;
+  -moz-transition: all .3s;
+  -o-transition: all .3s;
+  -ms-transition: all .3s;
+  -webkit-transition: all .3s;
+}
+
+li .sa-title .arrup.close {
+  transition: all .3s;
+  -moz-transition: all .3s;
+  -o-transition: all .3s;
+  -ms-transition: all .3s;
+  -webkit-transition: all .3s;
+}
+
+
+
+#times::-webkit-calendar-picker-indicator {
+  position: absolute;
+  background: url("/static/icon/clock.svg") no-repeat top center !important;;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  top: 12px;
+  right: 15px;
+}
+
+
+.select2-container {
+  z-index: 1600;
+}
+
+.input-item .select2-container--default .select2-selection--single {
+  width: 100%;
+  border: 1px solid #ddd;
+  min-height: 45px;
+  border-radius: 5px;
+  font-size: 16px;
+  display: flex
+}
+
+
+.input-item .select2-container--default .select2-selection--single .select2-selection__rendered {
+  line-height: 50px;
+}
+
+.input-item .select2-container--default .select2-selection--single .select2-selection__choice {
+  background: #59AE68;
+  color: #FFF;
+  border: 0;
+  padding: 5px 25px 5px 15px;
+  border-radius: 20px;
+  margin-bottom: 0
+}
+
+.input-item .select2-container--default .select2-selection--single .select2-selection__choice__remove {
+  border: 0;
+  right: 5px;
+  left: inherit;
+  color: #FFF;
+  top: 50%;
+  margin-top: -13px
+}
+
+.input-item .select2-container--default .select2-selection--single .select2-selection__choice__remove:hover {
+  background: none;
+  color: #FFF
+}
+
+.input-item .select2-container--default .select2-selection--single .select2-selection__choice__display {
+  padding: 0;
+  line-height: 25px
+}
+
+
+.d-flex {
+  display: flex;
+}
+
+.jc-start-ai-center {
+  justify-content: start;
+  align-items: center;
+}
+
+.w-80 {
+  width: 80%;
+}
+
+
+
+
+button.disabled {
+  opacity: 0.4;
+}
+
+#edit-image video{
+  padding-top : 75px;
+  padding-bottom : 75px;
+}
+
+.ui-autocomplete {
+  z-index: 2147483647;
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 20px;
+}
+
+
+/* 以下舊css */
+
+/*
   .dataTables_wrapper .dataTables_processing {
     content: "";
     position: absolute;
@@ -29,8 +149,7 @@
     text-align: center;
   }
 
-  /* datatable page button */
-  /* .page-item .page-link{
+.page-item .page-link{
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -67,16 +186,15 @@
     -o-transition: all .3s;
     -ms-transition: all .3s;
     -webkit-transition: all .3s;
-  } */
-
-  /* .page-link {
-    color: black !important;
-  } */
-
-  /* .dataTables_wrapper {
-    background-color: white;
-  } */
+  }
   
+  .page-link {
+    color: black !important;
+  } 
+  
+  .dataTables_wrapper {
+    background-color: white;
+  } 
   #img-table {
     margin: 0 auto;
     border-top-left-radius: 0px !important;
@@ -99,14 +217,14 @@
     width: 100% !important;
   }
 
-  #img-table tbody tr:hover {
+  #img-table_wrapper {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  } 
+  #img-table tr:hover {
     background: #f8f8f8;
     cursor: pointer;
   }
 
-  /* #img-table_wrapper {
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-  } */
 
   .oversight:hover {
     color: lightgrey;
@@ -126,13 +244,10 @@
     z-index: 2147483647;
     max-height: 200px;
     overflow-y: auto;
-    /* prevent horizontal scrollbar */
     overflow-x: hidden;
-    /* add padding to account for vertical scrollbar */
     padding-right: 20px;
   }
 
-  /* radio style */
   input[type="radio"] {
     display: none;
   }
@@ -156,14 +271,13 @@
     display: none;
   }
   
-  */
 
   .remain.col-2 {
-    /*overflow-y: scroll;*/
     height: calc(100vh - 126px);
     background-color: yellow;
   }
 
+  
   .scroll-part {
     overflow-y: scroll;
     height: calc(100vh - 180px);
@@ -176,8 +290,7 @@
 
  
 
-  /* studyarea */
-  /* .studyarea-list-area ul {
+  .studyarea-list-area ul {
     padding: 0;
     list-style: none;
   }
@@ -185,18 +298,16 @@
   .studyarea-list-area li {
     padding: 15px 0;
     cursor: pointer;
-  } */
+  } 
 
-  /* sub studyarea */
-  /* .collapse>li {
+ .collapse>li {
     margin-left: 10%;
   }
 
   .collapse-s>li {
     margin-left: 20%;
-  } */
+  } 
 
-  /* font small */
   .font-sm {
     font-size: 15px;
   }
@@ -268,7 +379,6 @@
   }
 
   .sort-icon {
-    /* fill: #78d989; */
     color: #78d989;
     height: 14px;
     margin-left: 5px;
@@ -276,13 +386,11 @@
   }
 
   .sort-icon-active {
-    /* fill: #FFF; */
     color: #78d989;
     height: 14px;
     margin-left: 5px;
   }
 
-  /*
   body{
     background: #f7f7f7 !important;
     font-size: 1rem !important;
@@ -291,22 +399,19 @@
     letter-spacing: 0.05em !important;
   }
 
-  */
 
 
 
-  /* TODO tmp css wait 2.0 0704  start*/
   #alert-content > a{
     color: #0d6efd !important;
     text-decoration: underline !important;
   }
-  /* TODO tmp css wait 2.0 0704  end*/
   
 
-/*
+
   .innbox {
     padding-top: 0px;
-    }*/
+    }
   
   #img-table thead tr td{
     background: #257455 !important;
@@ -345,6 +450,7 @@
   top: 0px !important;
   z-index: 9999;
 }
+
 
 .check2-layerbox {
   display: none;
@@ -397,7 +503,6 @@
   color: #FFF
 }
 
-
 #img-table_previous{
   border:none !important;
   font-size: 18px !important;
@@ -408,14 +513,13 @@
 #img-table_previous > a{
   border:none !important;
   background-color: #f8f8f8 !important;
-  /* background:none !important; */
   color: black;
 }
 
-/* #img-table_previous a:hover {
+ #img-table_previous a:hover {
   background: none !important;
   cursor: none !important;
-} */
+} 
 
 #img-table_next{
   border:none !important;
@@ -429,14 +533,15 @@
   color: black;
 }
 
-.page-link:focus {
-  box-shadow: none !important;
-}
-
 
 #img-table_length{
   padding-top: 0.85em;
   z-index: 5000;
+}
+
+
+.page-link:focus {
+  box-shadow: none !important;
 }
 
 
@@ -478,9 +583,4 @@
 div.dt-buttons{
   padding-bottom: 10px !important;
 }
-
-
-/* 以下因應新切版 */
-input[name=start_altitude], input[name=end_altitude] {
-  margin: 10px 0;
-}
+*/

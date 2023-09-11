@@ -32,7 +32,7 @@
             </div>
             <div class="contentbox">
                 <p class="marb_20">
-                    確定移除 <span id="remove_mame"></span>？
+                    確定刪除 <span id="remove_mame"></span>？
                     <form id="removeProjectMember" novalidate action="{% url 'edit_project_members' pk %}" method="post">
                         {% csrf_token %}
                         <input type="hidden" name="memberid" id="memberid" value="">
@@ -44,7 +44,7 @@
                         取消
                     </button>
                     <button class="btn-red" id="removePM">
-                        移除
+                        刪除
                     </button>
                 </div>
             </div>
@@ -56,30 +56,6 @@
 
 {% block body %}
 {% if is_authorized %}
-
-
-
-<!-- Modal 
-<div class="modal fade" id="removeModal" tabindex="-1" aria-labelledby="removeModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-body">
-                <h4>確定移除？</h4>
-                <form id="removeProjectMember" novalidate action="{% url 'edit_project_members' pk %}" method="post">
-                {% csrf_token %}
-                <input type="hidden" name="memberid" id="memberid" value="">
-                <input type="hidden" name="action" value="remove">
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
-                <a class="btn btn-danger" id="removePM">移除</a>
-            </div>
-        </div>
-    </div>
-</div>
--->
-
 
 
 <input type="hidden" name="pk" value="{{ pk }}"></input>

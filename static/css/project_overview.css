@@ -2,6 +2,14 @@
   cursor: pointer;
 }
 
+/* 以下因應新切版 */
+
+.pt-none {
+  pointer-events: none;
+}
+
+
+/*
 .table {
   padding: 1% 0;
 }
@@ -12,7 +20,7 @@
 
 .nav-link:hover {
   color: lightgrey;
-}
+}*/
 
 /*
   .page-item.active .page-link {
@@ -24,6 +32,7 @@
   }*/
 
 /* radio style */
+/*
 input[type="radio"] {
   display: none;
 }
@@ -36,12 +45,11 @@ input[name="species-filter"] {
   display: none;
 }
 
-/*
 .w-12 {
   width: 12px;
   margin-right: 5px;
   margin-left: 5px;
-}*/
+}
 
 .fs-14 {
   font-size: 14px
@@ -60,5 +68,4 @@ input[name="species-filter"] {
   background-color: white;
   padding: 2%
 }
-
-/* 以下因應新切版 */
+*/

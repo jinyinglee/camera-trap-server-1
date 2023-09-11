@@ -187,13 +187,13 @@ $( document ).ready(function() {
     })
     
     $('.down-pop .xx').on('click', function (event) {
-        $('.down-pop').fadeOut();
+        $('.down-pop').addClass('d-none');
     });
 
     $('#canceldownload').on('click', function (event) {
-        $('.down-pop').fadeOut();
+        $('.down-pop').addClass('d-none');
     });
-
+    
     $("#download-email").keyup(function () {
         ValidateEmail($(this).val())
     });

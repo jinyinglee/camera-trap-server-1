@@ -10,8 +10,8 @@
 {% block body %}
 <div class="container content">
 
-{% if request.session.is_login == True %}
-        <div class="row">
+    {% if request.session.id|if_desktop %}
+    <div class="row">
             <div class="bg-white shadow px-0 pb-5 mx-2">
                 <p class="backgroud-dark text-white fw-bold px-3 py-2">單機版下載</p>
                 <div class="row py-3">
