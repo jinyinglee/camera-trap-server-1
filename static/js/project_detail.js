@@ -1147,8 +1147,6 @@ function changeEditContent(row) {
   $('#edit-studyarea_id').val('')
   $('#edit-deployment_id').val('')
 
-  // let row = $(`.data-rows [data-id=${image_id}]`);
-  // let row = $(`.data-rows[data-id=12639905]`);
 
   $('#edit-project').val($('input[name=project-name]').val())
   $('#edit-project_id').val(pk)
@@ -1186,11 +1184,6 @@ function changeEditContent(row) {
   })
 
 
-  /*if (idx != 0){
-      $('#editModal').modal('show');
-    // disable edit
-  } */
-
   let editable = window.editable;
   if ((editable != true) || ($('#edit_button').data('edit') == 'off')) {
     $('.edit-content input').attr('disabled', 'disabled')
@@ -1208,7 +1201,6 @@ function changeEditContent(row) {
       changeEditContent(row.next('tr'));
     } else {
       updateTable($(`.page-inf .next`).data('page'), 'next')
-      // $(`.page-inf .next`).trigger('click')
     }
   })
 
@@ -1218,7 +1210,6 @@ function changeEditContent(row) {
       changeEditContent(row.prev('tr'));
     } else {
       updateTable($(`.page-inf .back`).data('page'), 'back')
-      // $(`.page-inf .back`).trigger('click')
     }
   })
 
