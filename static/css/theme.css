@@ -4208,7 +4208,8 @@ h3.light-green {
     background: #FFF;
     border-radius: 15px;
     display: flex;
-    align-items: flex-start;
+    /* align-items: flex-start; */
+    align-items: stretch;
     position: relative
 }
 
@@ -4275,8 +4276,11 @@ h3.light-green {
     flex: 0 0 650px;
     width: 650px;
     position: relative;
-    z-index: 1
-}
+    z-index: 1;
+    min-height: 100px;
+    align-items: center;
+    display: flex;
+  }
 
 @media only screen and (max-width: 1279px) {
     .pop-box .photo-debox .left-photobox {

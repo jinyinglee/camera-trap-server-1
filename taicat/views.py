@@ -1654,11 +1654,18 @@ def data(request):
     # sa = requests.get('sa')
     # if sa:
     #     conditions += f'AND studyarea_id = {sa}'
+    sa = requests.getlist('studyarea[]')
+    if sa:
+        x = [i for i in sa]
+        x = str(x).replace('[', '(').replace(']', ')')
+        conditions += f'AND studyarea_id IN {x} '
+
     if deployment:
         # if 'all' not in deployment:
         x = [int(i) for i in deployment if i != 'all']
-        x = str(x).replace('[', '(').replace(']', ')')
-        conditions += f'AND deployment_id IN {x}'
+        if x:
+            x = str(x).replace('[', '(').replace(']', ')')
+            conditions += f'AND deployment_id IN {x}'
         # else:
         #     conditions = 'AND deployment_id IS NULL'
     spe_conditions = ''
@@ -1795,7 +1802,7 @@ def data(request):
             if not df.from_mongo[i]:
                 # new data - image
                 if extension in ['jpg', '']:
-                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block h-100p" data-src="https://{}.s3.ap-northeast-1.amazonaws.com/{}" />""".format(s3_bucket, file_url)
+                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block" data-src="https://{}.s3.ap-northeast-1.amazonaws.com/{}" />""".format(s3_bucket, file_url)
                 # new data - video
                 else:
                     # df.loc[i, 'file_url'] = """
@@ -1814,7 +1821,7 @@ def data(request):
             else:
                 # old data - image
                 if extension in ['jpg', '']:
-                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block h-100p" data-src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-images/{}" />""".format(
+                    df.loc[i, 'file_url'] = """<img class="img lazy mx-auto d-block" data-src="https://d3gg2vsgjlos1e.cloudfront.net/annotation-images/{}" />""".format(
                         file_url)
                 # old data - video
                 else:
@@ -1924,15 +1931,26 @@ def generate_download_excel(request, pk):
     deployment = requests.getlist('deployment[]')
     dep_download_log = []
 
+
+    sa = requests.getlist('studyarea[]')
+    if sa:
+        x = [i for i in sa]
+        x = str(x).replace('[', '(').replace(']', ')')
+        conditions += f' AND studyarea_id IN {x}'
+
+
     if deployment:
         # if 'all' not in deployment:
         deployment = [int(i) for i in deployment if i != 'all']
-        x = str(deployment).replace('[', '(').replace(']', ')')
-        conditions += f' AND i.deployment_id IN {x}'
-        for i in deployment:
-            dep_download_log.append(Deployment.objects.get(id=i).name)
+        if deployment:
+            x = str(deployment).replace('[', '(').replace(']', ')')
+            conditions += f' AND i.deployment_id IN {x}'
+            for i in deployment:
+                dep_download_log.append(Deployment.objects.get(id=i).name)
         # else:
         #     conditions = ' AND i.deployment_id IS NULL'
+
+
     spe_conditions = ''
     species = requests.getlist('species[]')
 
