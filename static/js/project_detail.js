@@ -371,6 +371,16 @@ function updateTable(page, page_from) {
 
 $(document).ready(function () {
 
+  // 取消按鈕
+  $('#canceledit').on('click', function(){
+    $('.photode-pop').addClass('d-none')   
+  })
+
+  $('.calcel-remove').on('click', function(){
+    $('.remove-pop').addClass('d-none')   
+  })
+
+
   // 刪除
   $('#deleteButton').on('click', function () {
     $('.remove-pop').removeClass('d-none')

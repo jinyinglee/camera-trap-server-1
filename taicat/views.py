@@ -216,15 +216,25 @@ def get_project_detail(request):
     response['folder_list'] = results
     response['latest_date'] = latest_date
     response['earliest_date'] = earliest_date
-    response['sa_d_list'] = Project.objects.get(pk=pk).get_sa_d_list()
-    response['sa_list'] = Project.objects.get(pk=pk).get_sa_list()
-    
+    # response['sa_d_list'] = Project.objects.get(pk=pk).get_sa_d_list()
+    # response['sa_list'] = Project.objects.get(pk=pk).get_sa_list()
+
+    sa = StudyArea.objects.filter(project_id=pk).exclude(id__in=StudyArea.objects.filter(parent_id__isnull=False).values_list('parent_id', flat=True)).order_by('name')
+    sa_list = [{ 'value': s.id,'label': s.name} for s in sa]
+
+    sa_d_list = {}
+    for i in sa:
+        sa_d_list.update({i.name: [{'label': x.name, 'value': x.id} for x in i.deployment_set.all()]})
+
+    response['sa_list'] = sa_list
+    response['sa_d_list'] = sa_d_list
+
     # altitude_range = Deployment.objects.filter(project_id=pk,deprecated=False).aggregate(Max("altitude"), Min("altitude"))
     # response['altitude__max'] = altitude_range['altitude__max']
     # response['altitude__min'] = altitude_range['altitude__min']
     
     study_area = []
-    for sa in StudyArea.objects.filter(project_id=pk).order_by('name'):
+    for sa in StudyArea.objects.filter(project_id=pk).exclude(id__in=StudyArea.objects.filter(parent_id__isnull=False).values_list('parent_id', flat=True)).order_by('name'):
         d_list = []
         for d in sa.deployment_set.all():
             d_list.append({'id': d.id, 'name': d.name})
@@ -626,7 +636,8 @@ def project_info(request, pk):
     # 是否為公開計畫
     is_project_public = Project.objects.filter(id=pk, is_public=True).exists()
     
-    sa = StudyArea.objects.filter(project_id=pk, parent_id__isnull=True)
+    # 排除子樣區的母樣區
+    sa = StudyArea.objects.filter(project_id=pk).exclude(id__in=StudyArea.objects.filter(parent_id__isnull=False).values_list('parent_id', flat=True)).order_by('name')
     sa_list = [str(s.id) for s in sa]
     sa_center = [23.5, 121.2]
     zoom = 6
@@ -1050,7 +1061,7 @@ def edit_project_deployment(request, pk):
 
     if is_authorized:
         project = Project.objects.filter(id=pk)
-        study_area = StudyArea.objects.filter(project_id=pk).order_by('name')
+        study_area = StudyArea.objects.filter(project_id=pk).exclude(id__in=StudyArea.objects.filter(parent_id__isnull=False).values_list('parent_id', flat=True)).order_by('name')
 
     return render(request, 'project/edit_project_deployment.html', {'project': project, 'pk': pk, 
                                                                     'study_area': study_area, 'is_authorized': is_authorized})
@@ -1535,9 +1546,9 @@ def project_detail(request, pk):
             if Organization.objects.filter(id=organization_id, projects=pk):
                 editable = True
                 
-    study_area = StudyArea.objects.filter(project_id=pk).order_by('name')
-    sa_list = Project.objects.get(pk=pk).get_sa_list()
-    sa_d_list = Project.objects.get(pk=pk).get_sa_d_list()
+    study_area = StudyArea.objects.filter(project_id=pk).exclude(id__in=StudyArea.objects.filter(parent_id__isnull=False).values_list('parent_id', flat=True)).order_by('name')
+    # sa_list = Project.objects.get(pk=pk).get_sa_list()
+    # sa_d_list = Project.objects.get(pk=pk).get_sa_d_list()
     if editable:
         pid_list = get_my_project_list(user_id,[])
         projects = Project.objects.filter(pk__in=pid_list)
@@ -1570,18 +1581,25 @@ def project_detail(request, pk):
         'study_area': study_area, 'deployment': deployment, 'folder': folder,
         'earliest_date': earliest_date, 'latest_date': latest_date,
         'editable': editable, 'is_authorized': is_authorized,
-        'folder_list': results, 'sa_list': list(sa_list), 'sa_d_list': sa_d_list, 
+        'folder_list': results, 
         'projects': project_list, 'is_project_authorized': is_project_authorized,'is_project_public':is_project_public,
         'county_list':county_list,'protectedarea_list':protectedarea_list,
-        'altitude__min':altitude__min,'altitude__max':altitude__max,
+        'altitude__min':altitude__min,'altitude__max':altitude__max, #'sa_list': list(sa_list),'sa_d_list': sa_d_list, 
     })
 
 
 def update_edit_autocomplete(request):
     if request.method == 'POST':
         if pk := request.POST.get('pk'):
-            sa_d_list = Project.objects.get(pk=pk).get_sa_d_list()
-            sa_list = Project.objects.get(pk=pk).get_sa_list()
+            sa = StudyArea.objects.filter(project_id=pk).exclude(id__in=StudyArea.objects.filter(parent_id__isnull=False).values_list('parent_id', flat=True)).order_by('name')
+            sa_list = [{ 'value': s.id,'label': s.name} for s in sa]
+
+            sa_d_list = {}
+            for i in sa:
+                sa_d_list.update({i.name: [{'label': x.name, 'value': x.id} for x in i.deployment_set.all()]})
+
+            # sa_d_list = Project.objects.get(pk=pk).get_sa_d_list()
+            # sa_list = Project.objects.get(pk=pk).get_sa_list()
             return JsonResponse({"sa_d_list": sa_d_list, "sa_list": sa_list}, safe=False)
 
 
@@ -1738,16 +1756,16 @@ def data(request):
         # per_page = length
         # page = math.ceil(start / length) + 1
         # add sub studyarea if exists
-        ssa_exist = StudyArea.objects.filter(project_id=pk, parent__isnull=False)
-        if ssa_exist.count() > 0:
-            ssa_list = list(ssa_exist.values_list('name', flat=True))
-            for i in df[df.saname.isin(ssa_list)].index:
-                try:
-                    parent_saname = StudyArea.objects.get(id=df.saparent[i]).name
-                    current_name = df.saname[i]
-                    df.loc[i, 'saname'] = f"{parent_saname}_{current_name}"
-                except:
-                    pass
+        # ssa_exist = StudyArea.objects.filter(project_id=pk, parent__isnull=False)
+        # if ssa_exist.count() > 0:
+        #     ssa_list = list(ssa_exist.values_list('name', flat=True))
+        #     for i in df[df.saname.isin(ssa_list)].index:
+        #         try:
+        #             parent_saname = StudyArea.objects.get(id=df.saparent[i]).name
+        #             current_name = df.saname[i]
+        #             df.loc[i, 'saname'] = f"{parent_saname}_{current_name}"
+        #         except:
+        #             pass
         # print('d', time.time()-t)
         s3_bucket = settings.AWS_S3_BUCKET
 
