@@ -620,9 +620,9 @@ $(document).ready(function () {
 
   /* 樣區 & 相機位置 結束 */
 
-  $("#select-folder").select2({})
-  $("#select-protectarea").select2({})
-  $("#select-county").select2({})
+  $("#select-folder").select2({language: "zh-TW"})
+  $("#select-protectarea").select2({language: "zh-TW"})
+  $("#select-county").select2({language: "zh-TW"})
 
 
   /* 進來頁面後取得起始資料 */
