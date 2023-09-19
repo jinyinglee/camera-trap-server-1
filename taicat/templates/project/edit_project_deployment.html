@@ -5,8 +5,13 @@
 <link rel="stylesheet" href="{% static 'css/bootstrap-select.min.css' %}">-->
 <link rel="stylesheet" href="{% static 'css/edit_project_deployment.css' %}">
 
+
 <link rel=stylesheet type="text/css" href="/static/css/select2.min.css">
-<script src="/static/js/select2.min.js"></script>
+{% comment %} <script src="/static/js/select2.min.js"></script> {% endcomment %}
+<script src="/static/js/select2/select2.min.js"></script>
+<script src="/static/js/select2/i18n/zh-TW.js"></script>
+
+
 
 {% endblock style %}
 
@@ -139,11 +144,12 @@
                     <select name="sa-select">
                         <option value="">請先選擇樣區</option>
                         {% for i in study_area %}
-                            {% if not i.parent_id %}
+                            <option value="{{ i.id }}" id="{{ i.id }}" data-said="{{ i.id }}" data-saname="{{ i.name }}">{{ i.name }}</option>
+                            {% comment %} {% if not i.parent_id %}
                                 <option value="{{ i.id }}" id="{{ i.id }}" data-said="{{ i.id }}" data-saname="{{ i.name }}">{{ i.name }}</option>
                             {% else %}
                                 <option value="{{ i.id }}" id="{{ i.id }}" data-said="{{ i.id }}" data-saname="{{ i.name }}">{{ i.parent.name }}_{{ i.name }}</option>
-                            {% endif %}
+                            {% endif %} {% endcomment %}
                         {% endfor %}
                     </select>
                     

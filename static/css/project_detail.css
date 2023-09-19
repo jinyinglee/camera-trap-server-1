@@ -102,18 +102,36 @@ button.disabled {
   opacity: 0.4;
 }
 
-#edit-image video{
+/* #edit-image video{
   padding-top : 75px;
   padding-bottom : 75px;
+} */
+
+ .ui-autocomplete {
+  position: absolute;
+  z-index: 2147;
+  overflow-y: auto;
+  max-height: 200px;
+  overflow-x: hidden
+  /*
+  overflow-y: auto;
+  overflow-x: hidden; */
+}
+ 
+
+.ui-menu-item-wrapper {
+  font-size: 16px;
 }
 
-.ui-autocomplete {
-  z-index: 2147483647;
-  max-height: 200px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 20px;
-}
+
+.ui-menu-item .ui-menu-item-wrapper.ui-state-active {
+  background: #59AE68 !important;
+  /* font-weight: bold !important; */
+  color: #ffffff !important;
+  border: 0;
+  margin-bottom: 0
+} 
+
 
 
 /* 以下舊css */

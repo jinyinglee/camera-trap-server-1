@@ -243,7 +243,7 @@
 
       <div class="page-inf" data-table="public-page">
         <div class="leftbox">
-          <p>正在檢視第 <span class="show-start">1</span> 至 <span class="show-end">{% if public_total >= 10  %}10{% else %}{{ public_total }}{% endif %}</span> 筆，總共 <span class="show-total">{{ public_total }}</span> 筆</p>
+          <p>正在檢視第 <span class="show-start">{% if public_total >= 1  %}1{% else %}0{% endif %}</span> 至 <span class="show-end">{% if public_total >= 10  %}10{% else %}{{ public_total }}{% endif %}</span> 筆，總共 <span class="show-total">{{ public_total }}</span> 筆</p>
           <div class="evpage">
             <p>每頁顯示</p>
             <div class="input-item">
@@ -258,7 +258,7 @@
           </div>
         </div>
 
-        <div class="page-num">
+        <div class="page-num d-none">
             <a class="first_page num changePage {% if public_total_page <= 1 %} d-none {% endif %}" data-page="1">1</a>
             <a class="back pt-none" data-page="">
               <svg xmlns="http://www.w3.org/2000/svg" width="9.187" height="17.053" viewBox="0 0 9.187 17.053">
@@ -290,11 +290,10 @@
       </div>
 
 
-      <!-- default 不需要放內容 -->
 
       <div class="page-inf d-none" data-table="my-page">
         <div class="leftbox">
-          <p>正在檢視第 <span class="show-start"></span> 至 <span class="show-end"></span> 筆，總共 <span class="show-total"></span> 筆</p>
+          <p>正在檢視第 <span class="show-start">0</span> 至 <span class="show-end">0</span> 筆，總共 <span class="show-total">0</span> 筆</p>
           <div class="evpage">
             <p>每頁顯示</p>
             <div class="input-item">
@@ -309,7 +308,7 @@
           </div>
         </div>
 
-        <div class="page-num">
+        <div class="page-num d-none">
           <a class="first_page num changePage" data-page="1">1</a>
           <a class="back changePage" data-page="">
             <svg xmlns="http://www.w3.org/2000/svg" width="9.187" height="17.053" viewBox="0 0 9.187 17.053">
