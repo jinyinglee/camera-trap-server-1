@@ -16,7 +16,7 @@ $ cd frontend-search
 
 Setting Environment
 
-`.env` for local development
+`.env` for local development: place in ./config
 
 `.env.prod` for production build
 
