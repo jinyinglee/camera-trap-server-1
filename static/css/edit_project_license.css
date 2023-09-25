@@ -1,3 +1,13 @@
+/* New version UI */
+input[type="radio"] {
+    display: none;
+}
+
+.create-newpj .ccbox li .select-box .item label{
+    cursor: pointer;
+}
+/* New version UI end */
+
 .nav-link {
     color: gray;
   }

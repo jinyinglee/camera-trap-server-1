@@ -1,4 +1,5 @@
 $( function() {
+
     $( ".datepicker" ).datepicker({
         dateFormat: "yy-mm-dd",
         });
@@ -9,14 +10,14 @@ $( function() {
 
     // preselect region
 
-    let pk = $('input[name=pk]').val();
-    $.ajax({
-      type: 'GET',
-      url: `/api/get_edit_info/?pk=${pk}&type=basic`,
-      success: function (response) {
-        $('.selectpicker').selectpicker('val', response.region);
-    },
-    })
+    // let pk = $('input[name=pk]').val();
+    // $.ajax({
+    //   type: 'GET',
+    //   url: `/api/get_edit_info/?pk=${pk}&type=basic`,
+    //   success: function (response) {
+    //     $('.selectpicker').selectpicker('val', response.region);
+    // },
+    // })
 
 
 
@@ -80,6 +81,39 @@ $( function() {
   })
   
   });
+
+$(document).ready(function () {
+
+    // select2
+    let pk_test = $('input[name=pk]').val();
+    $.ajax({
+    type: 'GET',
+    url: `/api/get_edit_info/?pk=${pk_test}&type=basic`,
+    success: function (response) {
+        $('#select-area').select2();
+        $('#select-area').val(response.region).trigger('change');
+    },
+    });
+
+    // Attach datepicker to calendar icon
+    $('.date-start').click(function() {
+        $('.datepicker-start').datepicker('show');
+    });
+
+    $('.date-end').click(function() {
+        $('.datepicker-end').datepicker('show');
+    });
+    
+    // Link pages
+    $('.management-box .left-menu-area li:not(.now)').on('click', function(){
+        location.href = $(this).data('href')
+    });
+
+});
+
+
+
+
 
 
 

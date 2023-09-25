@@ -504,6 +504,7 @@ def set_permission(request):
                     Organization.projects.through.objects.filter(id=relation_id).delete()
                     # messages.success(request, '移除成功')
                     return_message = '移除成功'
+            else:
                 project_id = request.POST.get('project', None)
                 org_id = request.POST.get('organization', None)
                 try:

@@ -21,7 +21,73 @@
 <div class="container content">
 
 {% if request.session.is_login == True %}
-    <div class="row mb-10">
+    <div class="main-box">
+        <div class="main-title">
+            <h2>帳號設定</h2>
+        </div>
+
+        <form action="{% url 'personal_info' %}" class="needs-validation" novalidate method="post">
+            {% csrf_token %}
+            <div class="member-fucbox marb_50">
+                <div class="titlebox">
+                    <div class="line-g"></div>
+                    <h2>個人資訊</h2>
+                </div>
+                <div class="cont-area">
+                    <div class="inp2box">
+                        <div class="input-item">
+                            <p><span class="red">*</span>帳號連結</p>
+                            <div class="btn-area">
+                                <a href="https://orcid.org/my-orcid" target="_blank" class="btn-link">
+                                    <p>已連結至ORCID 帳號</p>
+                                    <img src="{% static 'icon/orcid.png' %}" alt="">
+                                </a>
+                            </div>
+                        </div>
+                        <div class="input-item">
+                            <p>使用者名稱</p>
+                            <input type="text" value="{{ info.name }}" name="name" required>
+                        </div>
+                    </div>
+                    <div class="inp2box">
+                        <div class="input-item">
+							<p>電子郵件</p>
+                            {% if info.email == None %}
+							    <input type="text">
+                            {% else %}
+                                <input type="text" value="{{ info.email }}" name="email" required>
+                            {% endif %}
+						</div>
+                        <div class="input-item">
+                            <p>身份種類</p>
+                            <select data-width="100%" data-style="btn-new" name="identity">
+                                <option value="">身份種類</option>
+                                {% for i in identities %}
+                                    {% if info.identity == i.parametername  %}
+                                        <option value="{{ i.parametername }}" selected>{{ i.name }}</option>
+                                    {% else %}
+                                        <option value="{{ i.parametername }}">{{ i.name }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn2-area">
+                <button class="btn-greeno">
+                    取消
+                </button>
+                <button class="btn-green" type="submit">
+                    確認儲存
+                </button>
+            </div>
+        </form>
+    </div>
+
+    
+    <!-- <div class="row mb-10">
         <h4 class="title-dark">帳號設定</h4>     
     </div>
     <form action="{% url 'personal_info' %}" class="needs-validation" novalidate method="post">
@@ -92,7 +158,7 @@
 	</div>		
 </div>
 
-{% endif %}
+{% endif %} -->
 
 </div>
 {% block script %}

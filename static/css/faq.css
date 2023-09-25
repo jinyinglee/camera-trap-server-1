@@ -1,4 +1,11 @@
-    .nav-link {
+/* New version UI */
+.search-box {
+    display: none;
+}
+/* New version UI end */
+
+
+.nav-link {
       color: gray;
       cursor: pointer;
     }
