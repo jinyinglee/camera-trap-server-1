@@ -938,7 +938,7 @@ def create_project(request):
 def edit_project_basic(request, pk):
     is_authorized = check_if_authorized(request, pk)
     project = []
-    city_list = []
+    # city_list = []
 
     if is_authorized:
         if request.method == "POST":

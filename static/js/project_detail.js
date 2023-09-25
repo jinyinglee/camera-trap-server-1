@@ -158,16 +158,6 @@ function updateTable(page, page_from) {
     });
   }
 
-  let saArray = [];
-  if ($(`ul.studyarea-list li.now.all-sa`).length == 0) {
-    let check_list = $(`ul.studyarea-list li.now:not(.all-sa)`);
-    check_list.each(function () {
-      if ($(this).data("sa") != undefined) {
-        saArray.push($(this).data("sa"));
-      }
-    });
-  }
-
   $.ajax({
     type: "POST",
     url: "/api/data",
@@ -180,7 +170,6 @@ function updateTable(page, page_from) {
       times: $("input[name=times]").val(),
       // pk: $("input[name=pk]").val(),
       species: speciesArray,
-      studyarea: saArray,
       start_altitude: $("input[name=start_altitude]").val(),
       end_altitude: $("input[name=end_altitude]").val(),
       start_date: $("input[name=start_date]").val(),
@@ -220,7 +209,10 @@ function updateTable(page, page_from) {
                         </tr>`);
       }
 
-
+      // 如果編輯模式開啟 把checkbox那欄打開
+      if ($('#edit_button').data('edit') == 'on') {
+        $('.data-rows .del-check').removeClass('d-none')
+      }
       // 預設disable
       $('.e-button, .d-button').addClass('disabled')
       //編輯 click
@@ -232,16 +224,6 @@ function updateTable(page, page_from) {
           $('.e-button, .d-button').addClass('disabled')
         }
       })
-
-      // 如果編輯模式開啟 把checkbox那欄打開
-      if ($('#edit_button').data('edit') == 'on') {
-        $('.data-rows .del-check').removeClass('d-none')
-        // 如果本來勾選編輯全部 要把下方的checkbox也勾選 且打開編輯及刪除按鈕
-        if ($('input[name="edit"]#edit-all').is(":checked")) {
-          $("input[name='edit']").prop('checked', true)
-        }      
-        $('.e-button, .d-button').removeClass('disabled')
-      }
 
       // 影像
       // lazy loading for images
@@ -361,12 +343,11 @@ function updateTable(page, page_from) {
       // });
 
 
+
       $('.data-rows td:not(:first-child)').on('click', function () {
         // let current_row = $(this);
         // let idx = table.column(current_row).index();
         $('.photode-pop').removeClass('d-none');
-        $('body').css("overflow", "hidden");
-
         changeEditContent($(this).parent());
         $('.edit-prev, .edit-next').removeClass('d-none');
       });
@@ -374,7 +355,7 @@ function updateTable(page, page_from) {
 
       // 跳到表格最上方
       $([document.documentElement, document.body]).animate({
-        scrollTop: $(".innbox").offset().top
+        scrollTop: $(".table-area").offset().top - 100
       }, 200);
 
 
@@ -387,21 +368,8 @@ function updateTable(page, page_from) {
 }
 
 
+
 $(document).ready(function () {
-
-
-  // 取消按鈕
-  $('#canceledit').on('click', function(){
-    $('.photode-pop').addClass('d-none')   
-    $('body').css("overflow", "initial");
-
-  })
-
-  $('.calcel-remove').on('click', function(){
-    $('.remove-pop').addClass('d-none')   
-
-  })
-
 
   // 刪除
   $('#deleteButton').on('click', function () {
@@ -652,9 +620,9 @@ $(document).ready(function () {
 
   /* 樣區 & 相機位置 結束 */
 
-  $("#select-folder").select2({language: "zh-TW"})
-  $("#select-protectarea").select2({language: "zh-TW"})
-  $("#select-county").select2({language: "zh-TW"})
+  $("#select-folder").select2({})
+  $("#select-protectarea").select2({})
+  $("#select-county").select2({})
 
 
   /* 進來頁面後取得起始資料 */
@@ -915,10 +883,10 @@ $(document).ready(function () {
 
 
 
-  // $('#editModal').on('hidden.bs.modal', function () {
-  //   // remove next & prev event after modal close
-  //   $(this).off('keydown');
-  // })
+  $('#editModal').on('hidden.bs.modal', function () {
+    // remove next & prev event after modal close
+    $(this).off('keydown');
+  })
 
   document.querySelector('#editForm').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -969,7 +937,6 @@ $(document).ready(function () {
     // }
     // }
 
-
     $('#edit-image_id').val(img_array)
     // remove notice info
     $('#edit-studyarea, #edit-deployment, #edit-project').removeClass('notice-border')
@@ -999,37 +966,13 @@ $(document).ready(function () {
 
     // image or videos
     if (allEqual(imguuid_array)) {
-
       $('#edit-filename').html(current_row.data('filename'))
       $('#edit-datetime').html(current_row.data('datetime'))
       $('#edit-image').html(current_row.find('td').last().html())
-      // 上下張按鈕控制
-      $('.photode-pop .arl, .photode-pop .arr').removeClass('d-none')
-      $('.photode-pop .arr').unbind('click');
-      $('.photode-pop .arr').on('click', function () {
-        if (current_row.next('tr').length != 0) {
-          changeEditContent(current_row.next('tr'));
-        } else {
-          updateTable($(`.page-inf .next`).data('page'), 'next')
-        }
-      })
-
-      $('.photode-pop .arl').unbind('click');
-      $('.photode-pop .arl').on('click', function () {
-        if (current_row.prev('tr').length != 0) {
-          changeEditContent(current_row.prev('tr'));
-        } else {
-          updateTable($(`.page-inf .back`).data('page'), 'back')
-        }
-      })
     } else {
       $('#edit-filename').html('')
       $('#edit-datetime').html('')
       $('#edit-image').html('')
-      // 隱藏上下張按鈕
-      $('.photode-pop .arl, .photode-pop .arr').addClass('d-none')
-      $(document).off('keydown')
-
     }
 
     if ($('#edit-image video').length) {
@@ -1050,7 +993,6 @@ $(document).ready(function () {
 
     // $('#editModal').modal('show');
     $('.photode-pop').removeClass('d-none');
-    $('body').css("overflow", "hidden");
 
     // disable edit
 
@@ -1063,6 +1005,24 @@ $(document).ready(function () {
       $('.edit-footer').removeClass('d-none')
     }
 
+    // 上下張按鈕控制
+    $('.arr').unbind('click');
+    $('.arr').on('click', function () {
+      if (current_row.next('tr').length != 0) {
+        changeEditContent(current_row.next('tr'));
+      } else {
+        updateTable($(`.page-inf .next`).data('page'), 'next')
+      }
+    })
+
+    $('.arl').unbind('click');
+    $('.arl').on('click', function () {
+      if (current_row.prev('tr').length != 0) {
+        changeEditContent(current_row.prev('tr'));
+      } else {
+        updateTable($(`.page-inf .back`).data('page'), 'back')
+      }
+    })
 
   })
 
@@ -1106,7 +1066,6 @@ $(document).ready(function () {
         success: function (data) {
           // $('#editModal').modal('hide');
           $('.photode-pop').addClass('d-none')
-          $('body').css("overflow", "initial");
 
           // 修改folder
 
@@ -1235,73 +1194,47 @@ function changeEditContent(row) {
   }
 
 
-    // 上下張按鈕控制
-    $('.photode-pop .arl, .photode-pop .arr').removeClass('d-none')
-    $('.photode-pop .arr').unbind('click');
-    $('.photode-pop .arr').on('click', function () {
-      if (row.next('tr').length != 0) {
-        changeEditContent(row.next('tr'));
-      } else {
-        updateTable($(`.page-inf .next`).data('page'), 'next')
-      }
-    })
+  // 上下張按鈕控制
+  $('.arr').unbind('click');
+  $('.arr').on('click', function () {
+    if (row.next('tr').length != 0) {
+      changeEditContent(row.next('tr'));
+    } else {
+      updateTable($(`.page-inf .next`).data('page'), 'next')
+    }
+  })
 
-    $('.photode-pop .arl').unbind('click');
-    $('.photode-pop .arl').on('click', function () {
-      if (row.prev('tr').length != 0) {
-        changeEditContent(row.prev('tr'));
-      } else {
-        updateTable($(`.page-inf .back`).data('page'), 'back')
-      }
-    })
+  $('.arl').unbind('click');
+  $('.arl').on('click', function () {
+    if (row.prev('tr').length != 0) {
+      changeEditContent(row.prev('tr'));
+    } else {
+      updateTable($(`.page-inf .back`).data('page'), 'back')
+    }
+  })
 
-    $(document).off('keydown');
-    $(document).on('keydown',function(e){
-      if ($('#editModal.d-none').length == 0) {
-        var arrow = { left: 37, right: 39 };
-        switch (e.which) {
-          case arrow.left:
-            if (row.prev('tr').length != 0) {
-              changeEditContent(row.prev('tr'));
-            } else {
-              updateTable($(`.page-inf .back`).data('page'), 'back')
-            }
-            break;
-          case arrow.right:
-            if (row.next('tr').length != 0) {
-              changeEditContent(row.next('tr'));
-            } else {
-              updateTable($(`.page-inf .next`).data('page'), 'next')
-            }
-            break;
-        }    
-      }
-    });
-
-
-  // $('#editModal').off('keydown');
-  // $('#editModal').keydown(function (e) {
-  //   console.log(e)
-  //   var arrow = { left: 37, right: 39 };
-  //   switch (e.which) {
-  //     case arrow.left:
-  //       if (row.prev('tr').length != 0) {
-  //         changeEditContent(row.prev('tr'));
-  //       } else {
-  //         updateTable($(`.page-inf .back`).data('page'), 'back')
-  //         // $(`.page-inf .back`).trigger('click')
-  //       }
-  //       break;
-  //     case arrow.right:
-  //       if (row.next('tr').length != 0) {
-  //         changeEditContent(row.next('tr'));
-  //       } else {
-  //         updateTable($(`.page-inf .next`).data('page'), 'next')
-  //         // $(`.page-inf .next`).trigger('click')
-  //       }
-  //       break;
-  //   }
-  // });
+  $('#editModal').off('keydown');
+  $('#editModal').keydown(function (e) {
+    var arrow = { left: 37, right: 39 };
+    switch (e.which) {
+      case arrow.left:
+        if (row.prev('tr').length != 0) {
+          changeEditContent(row.prev('tr'));
+        } else {
+          updateTable($(`.page-inf .back`).data('page'), 'back')
+          // $(`.page-inf .back`).trigger('click')
+        }
+        break;
+      case arrow.right:
+        if (row.next('tr').length != 0) {
+          changeEditContent(row.next('tr'));
+        } else {
+          updateTable($(`.page-inf .next`).data('page'), 'next')
+          // $(`.page-inf .next`).trigger('click')
+        }
+        break;
+    }
+  });
 
 
 }
